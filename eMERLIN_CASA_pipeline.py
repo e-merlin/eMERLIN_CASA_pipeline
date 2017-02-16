@@ -213,5 +213,5 @@ if(mystep in thesteps):
 	print 'Step ', mystep, step_title[mystep]
 	
 	os.system('rm -rf '+inbase+'.mms.K0')
-	gaincal(vis=inbase+'.mms', gaintype='K',field=','.join(list(set(phsrefs+fluxcals+bpasscals+pointcals))), caltable=inbase+'mms.K0', refant=refant, solint='inf', minblperant=3, minsnr=3) 
+	gaincal(vis=inbase+'.mms', gaintype='K',field=','.join(list(set(phsrefs+fluxcals+bpasscals+pointcals))), caltable=inbase+'.mms.K0', refant=refant, solint='inf', minblperant=3, minsnr=3) 
 	
