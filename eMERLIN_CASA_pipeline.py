@@ -1,6 +1,9 @@
 ## v0.00001 of an eMERLIN CASA pipeline ##
 ##Dependencies##
-import os,sys,math, dflux
+import os,sys,math 
+import eMERLIN_CASA_functions as em
+from casa import *
+
 ################
 
 ##Inputs##
@@ -52,21 +55,23 @@ if (thesteps==[]):
 	print 'Executing all steps: ', thesteps
 
 ### Import the data into a measurement set ###
+
+fitsfile = inbase+'.fits'
+vis = inbase+'.ms'
+
 mystep = 1
 if(mystep in thesteps):
 	print 'Step ', mystep, step_title[mystep]
 
-	os.system('rm -r '+inbase+'.ms')
-	importuvfits(fitsfile=inbase+'.fits',vis=inbase+'.ms')
+	em.run_importuvfits(fitsfile,vis)
 
 
 mystep = 2
 if(mystep in thesteps):
 	print 'Step ', mystep, step_title[mystep]
 	
-	os.system('rm -r '+inbase+'_han.ms')
-	hanningsmooth(vis=inbase+'.ms',outputvis=inbase+'_han.ms',datacolumn='data')
-	flagdata(vis=inbase+'_han.ms',mode='manual',autocorr=True)
+	em.hanningflag(inputvis=vis,deloriginal=True)
+	
 
 
 mystep = 3
