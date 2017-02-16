@@ -5,12 +5,13 @@ import os,sys,math
 
 ##Inputs##
 inbase ='20nov2016_CASA_calib'
-targets = '0716+4708, 1557+3721'	#1236+621 	# List of targets (comma-separated if more than one)
+refant = 'Mk2'
+targets = ['0716+4708']	#1236+621 	# List of targets (comma-separated if more than one)
 widetargets = 'B1938+6648'	#1236+621 # List of targets for wide-field imaging (comma-separated if more than one)
-phsrefs = '0720+0720' 	# List pf phase cals (comma-separated if more than one)
-fluxcals = '1331+305','0319+415'	# List of flux cals (comma-separated... you get the idea)
-bpasscals = '1407+284'	# List of bandpass cals (as above)
-pointcals = '1407+284'	# List of point cals (as above, although unlikely to be >1)
+phsrefs = ['0720+0720'] 	# List pf phase cals (comma-separated if more than one)
+fluxcals = ['1331+305','0319+415']	# List of flux cals (comma-separated... you get the idea)
+bpasscals = ['1407+284']	# List of bandpass cals (as above)
+pointcals = ['1407+284']# List of point cals (as above, although unlikely to be >1)
 ##########
 
 ##Functions##
@@ -107,7 +108,8 @@ step_title = {1: 'Convert into measurement set',
               3: 'Rfigui strategies',
 	      4: 'AOflag with defined strategies',
               5: 'Convert into mms',
-              6: 'What\'s in your data?'
+              6: 'What\'s in your data?',
+	      7: 'Delay correction',
 }
 
 
@@ -181,9 +183,8 @@ if(mystep in thesteps):
 			s = raw_input('All rfistrategys are there: Proceed?:\n')
 			if s == 'yes' or s == 'y':
 				for i in range(len(x.keys())-6):
-					print 'Splitting: '+x[i]['source_name']
 					print 'Flagging: '+x[i]['source_name']+'.ms'+' with strategy: '+x[i]['source_name']+'.rfis'
-					os.system('aoflagger -fields '+str(i)+'-strategy '+x[i]['source_name']+'.rfis '+inbase+'_han.ms')
+					os.system('aoflagger -fields '+str(i)+' -strategy '+x[i]['source_name']+'.rfis '+inbase+'_han.ms')
 				break
 			if s == 'no' or s == 'n':
 				sys.exit('Please restart when you are happy')
@@ -194,7 +195,7 @@ if(mystep in thesteps):
 	print 'Step ', mystep, step_title[mystep]
 
 	os.system('rm -r '+inbase+'.mms')
-	partition(vis=inbase+'_flagged.ms',outputvis=inbase+'.mms',createmms=True,separationaxis="auto",numsubms="auto",flagbackup=True,datacolumn=
+	partition(vis=inbase+'_han.ms',outputvis=inbase+'.mms',createmms=True,separationaxis="auto",numsubms="auto",flagbackup=True,datacolumn=
 "all",field="",spw="",scan="",antenna="",correlation="",timerange="",intent="",array="",uvrange="",observation="",feed="",disableparallel=None,ddistart=None
 ,taql=None)
 
@@ -206,3 +207,11 @@ if(mystep in thesteps):
 	os.system('rm -rf '+inbase+'.mms.listobs')
 	listobs(vis=inbase+'.mms',
             listfile=inbase+'.mms.listobs')
+
+mystep = 7
+if(mystep in thesteps):
+	print 'Step ', mystep, step_title[mystep]
+	
+	os.system('rm -rf '+inbase+'.mms.K0')
+	gaincal(vis=inbase+'.mms', gaintype='K',field=','.join(list(set(phsrefs+fluxcals+bpasscals+pointcals))), caltable=inbase+'mms.K0', refant=refant, solint='inf', minblperant=3, minsnr=3) 
+	
