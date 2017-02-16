@@ -108,7 +108,7 @@ def dfluxpy(freq,baseline):
 
 
 #####################################################################
-
+'''
 
 if __name__ == '__main__':
 
@@ -145,3 +145,5 @@ if __name__ == '__main__':
     if (resolved_percent >= caution_res_pc):
         print' ->(CAUTION! Resolved values higher than about',caution_res_pc, 'percent become increasingly inaccurate.)'
     print 'Suggested flux density for MERLIN on', thisbl, 'is' ,merlinflux, 'Jy. \n'
+
+'''
