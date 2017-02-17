@@ -16,7 +16,7 @@ def run_importuvfits(fitsfile,vis):
 	os.system('rm -r '+vis)
 	importuvfits(fitsfile=fitsfile,vis=vis)
 	print 'You have been transformed from an ugly UVFITS to beautiful MS'
-	return
+	returnmy
 
 ##Hanning smoothing and flag of autocorrelations, will delete original and rename
 def hanningflag(inputvis,deloriginal):
@@ -29,6 +29,41 @@ def hanningflag(inputvis,deloriginal):
 		os.system('mv '+inputvis+'_hanning.ms.flagversions '+inputvis+'.flagversions')
 	return
 
+##Run aoflagger. Mode = auto uses best fit strategy for e-MERLIN (credit J. Moldon), Mode=user uses custon straegy for each field 
+def run_aoflagger(vis,mode):
+	
+	if mode == 'user':
+		x = vishead(vis,mode='list',listitems='field')['field'][0]
+		y = []
+		for i in range(len(x)):
+			if os.path.isfile(x[i]+'.rfis')==False:
+				y=y+[x[i]]
+		if len(y) != 0:
+			for i in range(len(y)):
+				print 'Missing rfistrategy for: '+y[i]
+			print 'Please run step 3 again!'
+		else:
+			while True:
+				s = raw_input('All rfistrategys are there: Proceed?:\n')
+				if s == 'yes' or s == 'y':
+					for i in range(len(x)):
+						print 'Flagging field, '+x[i]+' with strategy: '+x[i]+'.rfis'
+						os.system('aoflagger -fields '+str(i)+' -strategy '+x[i]+'.rfis  '+vis)
+					break
+				if s == 'no' or s == 'n':
+					sys.exit('Please restart when you are happy')
+	elif mode == 'default':
+		print '---- Running AOflagger with eMERLIN default strategy ----\n'
+		os.system('aoflagger -strategy eMERLIN_default_ao_strategy_v1.rfis '+vis)
+	else:
+		print 'Error: Please use either mode=user or mode=default'
+		sys.exit()
+
+def ms2mms(vis,mode):
+	if mode == 'parallel':
+		partition(vis=vis,outputvis=vis[:-3]+'.mms',createmms=True,separationaxis="auto",numsubms="auto",flagbackup=True,datacolumn=
+"all",field="",spw="",scan="",antenna="",correlation="",timerange="",intent="",array="",uvrange="",observation="",feed="",disableparallel=None,ddistart=None
+,taql=None)
 
 def dfluxpy(freq,baseline):
 	#######

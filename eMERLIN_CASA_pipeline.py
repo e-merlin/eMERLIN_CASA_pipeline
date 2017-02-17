@@ -82,40 +82,15 @@ if(mystep in thesteps):
 mystep = 4
 if(mystep in thesteps):
 	print 'Step ', mystep, step_title[mystep]
-
-	x = au.timeOnSource(inbase+'_han.ms')
-	y = []
-
-	sourcenames = []
-	for i in range(len(x.keys())-6):
-		sourcenames = sourcenames + [x[i]['source_name']+'.ms']
-		if os.path.isfile(x[i]['source_name']+'.rfis')==False:
-			y=y+[x[i]['source_name']]
-			print y
-	if len(y) != 0:
-		for i in range(len(y)):
-			print 'Missing rfistrategy for: '+y[i]
-		print 'Please run step 3 again!'
-	else:
-		while True:
-			s = raw_input('All rfistrategys are there: Proceed?:\n')
-			if s == 'yes' or s == 'y':
-				for i in range(len(x.keys())-6):
-					print 'Flagging: '+x[i]['source_name']+'.ms'+' with strategy: '+x[i]['source_name']+'.rfis'
-					os.system('aoflagger -fields '+str(i)+' -strategy '+x[i]['source_name']+'.rfis '+inbase+'_han.ms')
-				break
-			if s == 'no' or s == 'n':
-				sys.exit('Please restart when you are happy')
+	
+	em.run_aoflagger(vis=vis,mode='user')
 	
 ### Convert to mms for parallelisation ###
 mystep = 5
 if(mystep in thesteps):
 	print 'Step ', mystep, step_title[mystep]
 
-	os.system('rm -r '+inbase+'.mms')
-	partition(vis=inbase+'_han.ms',outputvis=inbase+'.mms',createmms=True,separationaxis="auto",numsubms="auto",flagbackup=True,datacolumn=
-"all",field="",spw="",scan="",antenna="",correlation="",timerange="",intent="",array="",uvrange="",observation="",feed="",disableparallel=None,ddistart=None
-,taql=None)
+	em.ms2mms(vis=vis,mode='parallel')
 
 
 mystep = 6
