@@ -1,7 +1,17 @@
 #!/usr/local/python
 import os
 from casa import *
+import Tkinter,tkFileDialog
 ##imports fitsfile to ms
+
+def Tkinter_select():
+	root = Tkinter.Tk()
+	root.withdraw()
+	file = tkFileDialog.askdirectory(parent=root,mode='rb',title='Choose a file')
+	if file != None:
+    		print file
+	return file
+
 def run_importuvfits(fitsfile,vis): 
 	os.system('rm -r '+vis)
 	importuvfits(fitsfile=fitsfile,vis=vis)
@@ -16,6 +26,7 @@ def hanningflag(inputvis,deloriginal):
 	if deloriginal==True:
 		os.system('rm -r '+inputvis)
 		os.system('mv '+inputvis+'_hanning.ms '+inputvis)
+		os.system('mv '+inputvis+'_hanning.ms.flagversions '+inputvis+'.flagversions')
 	return
 
 

@@ -3,7 +3,7 @@
 import os,sys,math 
 import eMERLIN_CASA_functions as em
 from casa import *
-
+import Tkinter,tkFileDialog
 ################
 
 ##Inputs##
@@ -69,7 +69,6 @@ if(mystep in thesteps):
 mystep = 2
 if(mystep in thesteps):
 	print 'Step ', mystep, step_title[mystep]
-	
 	em.hanningflag(inputvis=vis,deloriginal=True)
 	
 
