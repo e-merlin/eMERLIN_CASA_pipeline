@@ -72,7 +72,6 @@ if(mystep in thesteps):
 	em.hanningflag(inputvis=vis,deloriginal=True)
 	
 
-
 mystep = 3
 if(mystep in thesteps):
 	print 'Step ', mystep, step_title[mystep]

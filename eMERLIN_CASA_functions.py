@@ -1,9 +1,31 @@
 #!/usr/local/python
 import os
 from casa import *
+from casa import table as tb
+from casa import ms
 import Tkinter,tkFileDialog
 ##imports fitsfile to ms
 
+def GUI_pipeline(vis):
+	def get_var(w):
+		print Tkinter.Entry.get(w)
+	root = Tkinter.Toplevel()
+	logo = Tkinter.PhotoImage(file='emerlin-2.gif')
+	w1 = Tkinter.Label(root,image=logo)
+	explanation = """This is the eMERLIN pipeline"""
+	w2 = Tkinter.Label(root,justify='left',padx=10,text=explanation)
+	w3 = Tkinter.Button(root,text='Quit',command=root.quit)
+	w4 = Tkinter.Label(root,text='targets',padx=5,justify='right')
+	w5 = Tkinter.Entry(root)
+	w6 = Tkinter.Button(root,text='Confirm?',command=get_var(w5))
+	w1.grid(row=0,column=1,columnspan=2,rowspan=2,sticky='w,e,n,s')
+	w2.grid(row=0,column=0,columnspan=1,rowspan=2)
+	w3.grid(row=2,column=2)
+	w4.grid(row=3,column=0)
+	w5.grid(row=3,column=1,columnspan=2)
+	w6.grid(row=3,column=3,columnspan=1)
+	root.mainloop()
+	root.destroy()
 def Tkinter_select():
 	root = Tkinter.Tk()
 	root.withdraw()
@@ -12,11 +34,24 @@ def Tkinter_select():
     		print file
 	return file
 
+def check_history(vis):
+	tb.open(vis+'/HISTORY')
+	x = tb.getcol('MESSAGE')
+	y = [i for i, item in enumerate(x) if 'eMER_CASA_Pipeline:' in item]
+	if len(y) == 0:
+		print 'Measurement set has not been processed \n'
+	else:
+		print 'WARNING: Some pipeline processes have already been run'
+		for i in range(len(y)):
+			print x[y[i]]
+
+
 def run_importuvfits(fitsfile,vis): 
 	os.system('rm -r '+vis)
 	importuvfits(fitsfile=fitsfile,vis=vis)
+	ms.writehistory(message='eMER_CASA_Pipeline: Import uvfits to ms, complete',msname=vis)
 	print 'You have been transformed from an ugly UVFITS to beautiful MS'
-	returnmy
+	return
 
 ##Hanning smoothing and flag of autocorrelations, will delete original and rename
 def hanningflag(inputvis,deloriginal):
@@ -27,6 +62,10 @@ def hanningflag(inputvis,deloriginal):
 		os.system('rm -r '+inputvis)
 		os.system('mv '+inputvis+'_hanning.ms '+inputvis)
 		os.system('mv '+inputvis+'_hanning.ms.flagversions '+inputvis+'.flagversions')
+		ms.writehistory(message='eMER_CASA_Pipeline: Hanning smoothed data, complete',msname=inputvis)
+	else:
+		print 'Original not deleted, '+inputvis+'_hanning.ms is the new measurement set'
+		ms.writehistory(message='eMER_CASA_Pipeline: Hanning smoothed data, complete',msname=inputvis+'_hanning.ms')
 	return
 
 ##Run aoflagger. Mode = auto uses best fit strategy for e-MERLIN (credit J. Moldon), Mode=user uses custon straegy for each field 
@@ -34,6 +73,7 @@ def run_aoflagger(vis,mode):
 	
 	if mode == 'user':
 		x = vishead(vis,mode='list',listitems='field')['field'][0]
+		os.system('touch pre-cal_flag_stats.txt')
 		y = []
 		for i in range(len(x)):
 			if os.path.isfile(x[i]+'.rfis')==False:
@@ -48,7 +88,7 @@ def run_aoflagger(vis,mode):
 				if s == 'yes' or s == 'y':
 					for i in range(len(x)):
 						print 'Flagging field, '+x[i]+' with strategy: '+x[i]+'.rfis'
-						os.system('aoflagger -fields '+str(i)+' -strategy '+x[i]+'.rfis  '+vis)
+						os.system('aoflagger -fields '+str(i)+' -strategy '+x[i]+'.rfis  '+vis+ '| tee -a pre-cal_flag_stats.txt')
 					break
 				if s == 'no' or s == 'n':
 					sys.exit('Please restart when you are happy')
@@ -64,6 +104,18 @@ def ms2mms(vis,mode):
 		partition(vis=vis,outputvis=vis[:-3]+'.mms',createmms=True,separationaxis="auto",numsubms="auto",flagbackup=True,datacolumn=
 "all",field="",spw="",scan="",antenna="",correlation="",timerange="",intent="",array="",uvrange="",observation="",feed="",disableparallel=None,ddistart=None
 ,taql=None)
+		if os.path.isdir(vis[:-3]+'.mms') == True:
+			os.system('rm -r '+vis)
+			os.system('rm -r '+vis+'.flagversions')
+
+	## Need to use single if you need to aoflag the data later	
+	if mode == 'single':
+		partition(vis=vis,outputvis=vis[:-3]+'.ms',createmms=False,separationaxis="auto",numsubms="auto",flagbackup=True,datacolumn=
+"all",field="",spw="",scan="",antenna="",correlation="",timerange="",intent="",array="",uvrange="",observation="",feed="",disableparallel=None,ddistart=None
+,taql=None)
+		if os.path.isdir(vis[:-3]+'.ms') == True:
+			os.system('rm -r '+vis)
+			os.system('rm -r '+vis+'.flagversions')
 
 def dfluxpy(freq,baseline):
 	#######
