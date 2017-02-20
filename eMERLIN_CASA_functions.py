@@ -3,29 +3,43 @@ import os
 from casa import *
 from casa import table as tb
 from casa import ms
-import Tkinter,tkFileDialog
+from Tkinter import *
 ##imports fitsfile to ms
 
-def GUI_pipeline(vis):
-	def get_var(w):
-		print Tkinter.Entry.get(w)
-	root = Tkinter.Toplevel()
-	logo = Tkinter.PhotoImage(file='emerlin-2.gif')
-	w1 = Tkinter.Label(root,image=logo)
-	explanation = """This is the eMERLIN pipeline"""
-	w2 = Tkinter.Label(root,justify='left',padx=10,text=explanation)
-	w3 = Tkinter.Button(root,text='Quit',command=root.quit)
-	w4 = Tkinter.Label(root,text='targets',padx=5,justify='right')
-	w5 = Tkinter.Entry(root)
-	w6 = Tkinter.Button(root,text='Confirm?',command=get_var(w5))
-	w1.grid(row=0,column=1,columnspan=2,rowspan=2,sticky='w,e,n,s')
-	w2.grid(row=0,column=0,columnspan=1,rowspan=2)
-	w3.grid(row=2,column=2)
-	w4.grid(row=3,column=0)
-	w5.grid(row=3,column=1,columnspan=2)
-	w6.grid(row=3,column=3,columnspan=1)
-	root.mainloop()
-	root.destroy()
+class GUI_pipeline:
+	def __init__(self):
+		self.root = Toplevel()
+		self.root.title('eMERLIN CASA Pipeline') 
+		logo = PhotoImage(file='emerlin-2.gif')
+		self.w1 = Label(self.root,image=logo)
+		explanation = """This is the eMERLIN pipeline"""
+		self.w2 = Label(self.root,justify='left',padx=10,text=explanation)
+		self.w4 = Label(self.root,text='targets',padx=5,justify='right')
+		self.w1.grid(row=0,column=2,columnspan=2,rowspan=2,sticky='w,e,n,s')
+		self.w2.grid(row=0,column=0,columnspan=1,rowspan=2)
+		self.w4.grid(row=3,column=0)
+
+		
+		self.w6 = Button(self.root,text='Confirm?',command=self.printmsg)
+		self.w6.grid(row=3,column=3,columnspan=1)
+		self.phscals = StringVar()
+		self.w5 = Entry(self.root,textvariable=self.phscals)
+		self.w5.grid(row=3,column=1,columnspan=2)
+
+
+		### Quit button ###
+		self.w3 = Button(self.root,text='Quit',command=self.root.quit)
+		self.w3.grid(row=4,column=2)
+		###################
+		### Destroy GUI ###
+		self.root.mainloop()
+		self.root.destroy()
+		###################
+
+	def printmsg(self):
+		x = self.text.get()
+		return x
+
 def Tkinter_select():
 	root = Tkinter.Tk()
 	root.withdraw()
