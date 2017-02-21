@@ -175,9 +175,11 @@ class GUI_pipeline:
 		self.root.mainloop()
 		self.root.destroy()
 		###################
+
 	def quit(self):
 		self.quit_var.set(1)
 		self.root.quit()
+
 	def confirm_parameters(self):
 		self.inputs = {'quit':self.quit_var.get(),'inbase':self.inbase.get(),'targets':self.targets.get(),'phscals':self.phscals.get(),'fluxcal':self.fluxcal.get(),'bpcal':self.bpcal.get(),'ptcal':self.ptcal.get(),'refant':self.refant.get()}
 		self.processes = {'run_importuvfits':self.run_importuvfits.get(),'hanningflag':self.hanningflag.get(),'autoflag':self.autoflag.get(),'rfigui':self.rfigui.get(),'ms2mms':self.ms2mms.get(),'do_prediag':self.do_prediag.get()}
@@ -185,10 +187,7 @@ class GUI_pipeline:
 		return self.inputs, self.processes
 
 	def printhistory(self):
-		if os.path.isdir('./'+self.inbase_entry.get()+'.ms') == True:
-			msname = self.inbase_entry.get()+'.ms'
-			if os.path.isdir('./'+self.inbase_entry.get()+'.mms') == True:
-				msname = self.inbase_entry.get()+'.mms'
+		def check_his(msname):
 			tb.open(msname+'/HISTORY')
 			x = tb.getcol('MESSAGE')
 			y = [i for i, item in enumerate(x) if 'eMER_CASA_Pipeline:' in item]
@@ -197,13 +196,20 @@ class GUI_pipeline:
 			else:
 				print 'Measurement set: '+msname+' has these steps conducted:'
 			for i in range(len(y)):
-				print x[y[i]]
+					print x[y[i]]
+		if os.path.isdir('./'+self.inbase_entry.get()+'.ms') == True:
+			msname = self.inbase_entry.get()+'.ms'
+			check_his(msname)
+		elif os.path.isdir('./'+self.inbase_entry.get()+'.mms') == True:
+			msname = self.inbase_entry.get()+'.mms'
+			check_his(msname)
 		else:
 			print 'Data set: '+self.inbase_entry.get()+'.fits/.ms/.mms does not exist'
 			print 'Current working directory:'
 			for file in os.listdir('./'):
 				if file.endswith('.ms') or file.endswith('.mms') or file.endswith('.fits'):
 					print file
+
 	def default_inbase(self):
 		x = []
 		for file in os.listdir('./'):
@@ -300,6 +306,7 @@ def run_aoflagger(vis,mode):
 		print 'Error: Please use either mode=user or mode=default'
 		sys.exit()
 
+
 def ms2mms(vis,mode):
 	if mode == 'parallel':
 		partition(vis=vis,outputvis=vis[:-3]+'.mms',createmms=True,separationaxis="auto",numsubms="auto",flagbackup=True,datacolumn=
@@ -318,6 +325,7 @@ def ms2mms(vis,mode):
 		if os.path.isdir(vis[:-3]+'.ms') == True:
 			os.system('rm -r '+vis)
 			os.system('rm -r '+vis+'.flagversions')
+
 
 def dfluxpy(freq,baseline):
 	#######
