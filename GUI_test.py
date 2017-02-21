@@ -1,4 +1,5 @@
 from Tkinter import *
+from casa import *
 import pickle
 class GUI_pipeline:
 	def __init__(self):
@@ -15,6 +16,24 @@ class GUI_pipeline:
 
 		##file names ###
 		self.inbase = StringVar()
+		################################################
+		##set default to be the last instance with fits#
+		################################################
+		x=[]
+		for file in os.listdir('./'):
+				if file.endswith('.ms') or file.endswith('.mms') or file.endswith('.fits'):
+					x=x+[file]
+		if len(x) > 3:
+			return 'Multiple ms, click check history for cwd'
+		else:
+			x=x[0]
+			if x.endswith('.ms'):
+				x=x[:-3]
+			if x.endswith('.mms'):
+				x=x[:-4]
+			if x.endswith('.fits'):
+				x=x[:-5]
+		self.inbase.set(x)
 		self.history = StringVar()
 		self.inbase_label = Label(self.root,text='UV file (without .fits/.ms/.mms):',justify='right')
 		self.inbase_label.grid(row=4,column=0,columnspan=1,sticky='e')
@@ -23,6 +42,16 @@ class GUI_pipeline:
 		self.inbase_button_his = Button(self.root,text='Check history',command=self.printhistory)
 		self.inbase_button_his.grid(row=4,column=3)
 		
+
+		##################################################
+		##### Set defaults to be set from targets ########
+		##################################################
+		if os.path.isdir('./'+x+'.mms') == True:
+			fields = vishead(x+'.mms',mode='list',listitems='field')['field'][0]
+			telescopes = vishead(x+'.mms',mode='list',listitems='telescope')['telescope'][0]
+		elif os.path.isdir('./'+x+'.ms') == True:
+			fields = vishead(x+'.ms',mode='list',listitems='field')['field'][0]
+			telescopes = vishead(x+'.ms',mode='list',listitems='telescope')['telescope'][0]
 		## Targets ###
 		self.targets = StringVar()
 		self.targets_label = Label(self.root,text='Targets:',justify='right')
@@ -38,28 +67,48 @@ class GUI_pipeline:
 		self.phscals_entry.grid(row=6,column=1,columnspan=2)
 
 		## Flux calibrators ###
+		x = ''
+		if '1407+284' in fields:
+			x = x+'1407+284'
+		if '1331+305' in fields:
+			if len(x)!=0:
+				x=x+','
+			x=x+'1331+305'
 		self.fluxcal = StringVar()
+		self.fluxcal.set(x)
 		self.fluxcal_label = Label(self.root,text='Flux calibrators:',justify='right')
 		self.fluxcal_label.grid(row=7,column=0,columnspan=1,sticky='e')
 		self.fluxcal_entry = Entry(self.root,textvariable=self.fluxcal)
 		self.fluxcal_entry.grid(row=7,column=1,columnspan=2)
 
 		## Bandpass calibrators ###
+		x=''
+		if '1407+284' in fields:
+			x = x+'1407+284'
 		self.bpcal = StringVar()
+		self.bpcal.set(x)
 		self.bpcal_label = Label(self.root,text='Bandpass calibrators:',justify='right')
 		self.bpcal_label.grid(row=8,column=0,columnspan=1,sticky='e')
 		self.bpcal_entry = Entry(self.root,textvariable=self.bpcal)
 		self.bpcal_entry.grid(row=8,column=1,columnspan=2)
 
 		## Point calibrators ###
+		x=''
+		if '1407+284' in fields:
+			x = x+'1407+284'
 		self.ptcal = StringVar()
+		self.ptcal.set(x)
 		self.ptcal_label = Label(self.root,text='Point calibrators:',justify='right')
 		self.ptcal_label.grid(row=9,column=0,columnspan=1,sticky='e')
 		self.ptcal_entry = Entry(self.root,textvariable=self.ptcal)
 		self.ptcal_entry.grid(row=9,column=1,columnspan=2)
 
 		## Refant ###
+		x=''
+		if 'Mk2' in telescopes:
+			x=x+'Mk2'
 		self.refant = StringVar()
+		self.refant.set(x)
 		self.refant_label = Label(self.root,text='Reference antennas:',justify='right')
 		self.refant_label.grid(row=10,column=0,columnspan=1,sticky='e')
 		self.refant_entry = Entry(self.root,textvariable=self.refant)
@@ -101,9 +150,9 @@ class GUI_pipeline:
 		###################
 
 	def confirm_parameters(self):
-		print self.phscals.get()
-		print self.targets.get()
-		return self.phscals.get(), self.targets.get()
+		self.inputs = [self.inbase.get(),self.targets.get(),self.phscals.get(),self.fluxcal.get(),self.fluxcal.get(),self.bpcal.get(),self.ptcal.get(),self.refant.get()]
+		print self.inputs
+		return self.inputs
 	def printhistory(self):
 		if os.path.isdir('./'+self.inbase_entry.get()+'.ms') == True:
 			msname = self.inbase_entry.get()+'.ms'
@@ -124,6 +173,21 @@ class GUI_pipeline:
 			for file in os.listdir('./'):
 				if file.endswith('.ms') or file.endswith('.mms') or file.endswith('.fits'):
 					print file
+	def default_inbase(self):
+		x = []
+		for file in os.listdir('./'):
+				if file.endswith('.ms') or file.endswith('.mms') or file.endswith('.fits'):
+					x=x+[file]
+		if len(x) > 3:
+			return 'Multiple ms, click check history for cwd'
+		else:
+			x=x[0]
+			if x.endswith('.ms'):
+				return x[:-3]
+			if x.endswith('.mms'):
+				return x[:-4]
+			if x.endswith('.fits'):
+				return x[:-5]
 
 
 GUI_pipeline().confirm_parameters()
