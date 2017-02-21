@@ -40,12 +40,10 @@ if processes['autoflag'] == 1:
 if processes['ms2mms'] == 1:
 	em.ms2mms(vis=vis,mode='parallel')
 
+vis = inputs['inbase']+'.mms'
 
 if processes['do_prediag'] == 1:
-
-	os.system('rm -rf '+inbase+'.mms.listobs')
-	listobs(vis=inbase+'.mms',
-            listfile=inbase+'.mms.listobs')
+	em.do_prediagnostics(vis)
 
 '''
 

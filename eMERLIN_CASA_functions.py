@@ -326,6 +326,26 @@ def ms2mms(vis,mode):
 			os.system('rm -r '+vis)
 			os.system('rm -r '+vis+'.flagversions')
 
+def do_prediagnostics(vis):
+	##Pre diagnostics for measurement sets##
+	## Includes:
+	## - Antenna positions
+	## - Amplitude vs. Time 
+	## - Amplitude vs. Frequency
+	## - Phase vs. Time
+	## - Phase vs. Frequency
+	## - Closures (if task is available)
+	## - Listobs summary
+
+	if os.path.isdir('./pipeline_plots') == False:
+		os.system('mkdir ./pipeline_plots')
+	if os.path.isdir('./pipeline_plots/pre-calibration') == False:
+		os.system('mkdir ./pipeline_plots/pre-calibration')
+	directory = './pipeline_plots/pre-calibration/'
+	
+	#vishead(vis=vis,listfile=directory+vis+'.listobs')
+	#plotants(vis=vis,figfile=directory+vis+'.plotants.png')
+	## Amplitude vs Time:
 
 def dfluxpy(freq,baseline):
 	#######
