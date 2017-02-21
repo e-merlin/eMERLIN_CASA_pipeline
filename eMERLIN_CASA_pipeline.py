@@ -30,7 +30,7 @@ if processes['hanningflag'] == 1:
 
 if processes['autoflag'] == 1:
     if processes['rfigui'] == 1:
-	os.system('rfigui '+inbase+'_han.ms')
+	os.system('rfigui '+vis)
         em.run_aoflagger(vis=vis,mode='user')
     if processes['rfigui']== 0:
 	em.run_aoflagger(vis=vis,mode='default')

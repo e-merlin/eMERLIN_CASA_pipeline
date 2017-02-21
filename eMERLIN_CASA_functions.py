@@ -29,16 +29,17 @@ class GUI_pipeline:
 				if file.endswith('.ms') or file.endswith('.mms') or file.endswith('.fits'):
 					x=x+[file]
 		if len(x) > 3:
-			return 'Multiple ms, click check history for cwd'
+			self.inbase.set('Multiple ms, click check history for cwd')
 		else:
-			x=x[0]
-			if x.endswith('.ms'):
-				x=x[:-3]
-			if x.endswith('.mms'):
-				x=x[:-4]
-			if x.endswith('.fits'):
-				x=x[:-5]
-		self.inbase.set(x)
+			if len(x)!=0:
+				x=x[0]
+				if x.endswith('.ms'):
+					x=x[:-3]
+				if x.endswith('.mms'):
+					x=x[:-4]
+				if x.endswith('.fits'):
+					x=x[:-5]
+				self.inbase.set(x)
 		self.history = StringVar()
 		self.inbase_label = Label(self.root,text='UV file (without .fits/.ms/.mms):',justify='right')
 		self.inbase_label.grid(row=4,column=0,columnspan=1,sticky='e')
@@ -51,10 +52,12 @@ class GUI_pipeline:
 		##################################################
 		##### Set defaults to be set from targets ########
 		##################################################
-		if os.path.isdir('./'+x+'.mms') == True:
-			fields = vishead(x+'.mms',mode='list',listitems='field')['field'][0]
-		elif os.path.isdir('./'+x+'.ms') == True:
-			fields = vishead(x+'.ms',mode='list',listitems='field')['field'][0]
+		fields = []
+		if len(x) != 0:
+			if os.path.isdir('./'+x+'.mms') == True:
+				fields = vishead(x+'.mms',mode='list',listitems='field')['field'][0]
+			elif os.path.isdir('./'+x+'.ms') == True:
+				fields = vishead(x+'.ms',mode='list',listitems='field')['field'][0]
 		## Targets ###
 		self.targets = StringVar()
 		self.targets_label = Label(self.root,text='Targets:',justify='right')
@@ -71,12 +74,13 @@ class GUI_pipeline:
 
 		## Flux calibrators ###
 		x = ''
-		if '1407+284' in fields:
-			x = x+'1407+284'
-		if '1331+305' in fields:
-			if len(x)!=0:
-				x=x+','
-			x=x+'1331+305'
+		if len(fields) != 0:
+			if '1407+284' in fields:
+				x = x+'1407+284'
+			if '1331+305' in fields:
+				if len(x)!=0:
+					x=x+','
+				x=x+'1331+305'
 		self.fluxcal = StringVar()
 		self.fluxcal.set(x)
 		self.fluxcal_label = Label(self.root,text='Flux calibrators:',justify='right')
@@ -85,9 +89,10 @@ class GUI_pipeline:
 		self.fluxcal_entry.grid(row=7,column=1,columnspan=2)
 
 		## Bandpass calibrators ###
-		x=''
-		if '1407+284' in fields:
-			x = x+'1407+284'
+		x=''		
+		if len(fields) != 0:
+			if '1407+284' in fields:
+				x = x+'1407+284'
 		self.bpcal = StringVar()
 		self.bpcal.set(x)
 		self.bpcal_label = Label(self.root,text='Bandpass calibrators:',justify='right')
@@ -97,8 +102,9 @@ class GUI_pipeline:
 
 		## Point calibrators ###
 		x=''
-		if '1407+284' in fields:
-			x = x+'1407+284'
+		if len(fields) != 0:
+			if '1407+284' in fields:
+				x = x+'1407+284'
 		self.ptcal = StringVar()
 		self.ptcal.set(x)
 		self.ptcal_label = Label(self.root,text='Point calibrators:',justify='right')
@@ -278,7 +284,9 @@ def run_aoflagger(vis,mode):
 			while True:
 				s = raw_input('All rfistrategys are there: Proceed?:\n')
 				if s == 'yes' or s == 'y':
+					ms.writehistory(message='eMER_CASA_Pipeline: AOFlag with user specified strategies:',msname=vis)
 					for i in range(len(x)):
+						ms.writehistory(message='eMER_CASA_Pipeline: Flagging field, '+x[i]+' with strategy: '+x[i]+'.rfis',msname=vis)
 						print 'Flagging field, '+x[i]+' with strategy: '+x[i]+'.rfis'
 						os.system('aoflagger -fields '+str(i)+' -strategy '+x[i]+'.rfis  '+vis+ '| tee -a pre-cal_flag_stats.txt')
 					break
@@ -287,6 +295,7 @@ def run_aoflagger(vis,mode):
 	elif mode == 'default':
 		print '---- Running AOflagger with eMERLIN default strategy ----\n'
 		os.system('aoflagger -strategy eMERLIN_default_ao_strategy_v1.rfis '+vis)
+		ms.writehistory(message='eMER_CASA_Pipeline: AOFlag with default strategy, complete',msname=vis)
 	else:
 		print 'Error: Please use either mode=user or mode=default'
 		sys.exit()
@@ -299,6 +308,7 @@ def ms2mms(vis,mode):
 		if os.path.isdir(vis[:-3]+'.mms') == True:
 			os.system('rm -r '+vis)
 			os.system('rm -r '+vis+'.flagversions')
+		ms.writehistory(message='eMER_CASA_Pipeline: Converted MS to MMS for parallelisation',msname=vis[:-3]+'.mms')
 
 	## Need to use single if you need to aoflag the data later
 	if mode == 'single':
