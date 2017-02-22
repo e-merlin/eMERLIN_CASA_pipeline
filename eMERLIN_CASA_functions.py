@@ -342,6 +342,15 @@ def do_prediagnostics(vis):
 	if os.path.isdir('./pipeline_plots/pre-calibration') == False:
 		os.system('mkdir ./pipeline_plots/pre-calibration')
 	directory = './pipeline_plots/pre-calibration/'
+	## Get information from ms
+	x = vishead(vis,mode='list',listitems='field')['field'][0]
+	tb.open(vis+'/SPECTRAL_WINDOW')
+	nChan = tb.getcol('NUM_CHAN')[0]
+	time = 10E6
+	for i in range(len(x)):
+		## - Amplitude vs. Time
+		plotms(vis=vis,xaxis='time',yaxis='phase',xdatacolumn='data',ydatacolumn='data',\
+field=x[i], antenna='*&*', averagedata=True, avgchannel=str(nChan), iteraxis='baseline', plotfile=directory+'pre-cal_'+vis+'_'+x[i]+'_amp_vs_time.pdf', expformat='pdf',exprange='all', showgui=False)
 	
 	#vishead(vis=vis,listfile=directory+vis+'.listobs')
 	#plotants(vis=vis,figfile=directory+vis+'.plotants.png')
