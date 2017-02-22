@@ -4,6 +4,7 @@ from casa import *
 from casa import table as tb
 from casa import ms
 from Tkinter import *
+import tkMessageBox
 ##imports fitsfile to ms
 
 class GUI_pipeline:
@@ -166,6 +167,10 @@ class GUI_pipeline:
 		### Run button ###
 		self.run = Button(self.root,text='Run',command=self.root.quit)
 		self.run.grid(row=100,column=1,sticky='e')
+		
+		self.run = Button(self.root,text='Summary',command=self.check_inputs)
+		self.run.grid(row=100,column=0,sticky='e')
+
 		self.quit_var = IntVar()
 		self.quit = Button(self.root,text='Quit',command=self.quit)
 		self.quit.grid(row=100,column=3,sticky='e')
@@ -188,27 +193,36 @@ class GUI_pipeline:
 
 	def printhistory(self):
 		def check_his(msname):
+			lines = []
 			tb.open(msname+'/HISTORY')
 			x = tb.getcol('MESSAGE')
 			y = [i for i, item in enumerate(x) if 'eMER_CASA_Pipeline:' in item]
 			if len(y) == 0:
-				print 'Measurement set: '+msname+' has not been processed'
+				lines=lines+['Measurement set: '+msname+' has not been processed']
 			else:
+				lines=lines+['Measurement set: '+msname+' has these steps conducted:']
 				print 'Measurement set: '+msname+' has these steps conducted:'
 			for i in range(len(y)):
-					print x[y[i]]
+					lines = lines+[x[y[i]][20:]] +["\n"]
+					print x[y[i]][20:]
+			return lines
 		if os.path.isdir('./'+self.inbase_entry.get()+'.ms') == True:
 			msname = self.inbase_entry.get()+'.ms'
-			check_his(msname)
+			lines = check_his(msname)
+			tkMessageBox.showinfo('History of'+msname,"\n".join(lines))
 		elif os.path.isdir('./'+self.inbase_entry.get()+'.mms') == True:
 			msname = self.inbase_entry.get()+'.mms'
-			check_his(msname)
+			lines = check_his(msname)
+			tkMessageBox.showinfo('History of'+msname,"\n".join(lines))
 		else:
-			print 'Data set: '+self.inbase_entry.get()+'.fits/.ms/.mms does not exist'
+			lines = []
+			lines = lines+['Data set: '+self.inbase_entry.get()+'.fits/.ms/.mms does not exist','Current working directory:']
 			print 'Current working directory:'
 			for file in os.listdir('./'):
 				if file.endswith('.ms') or file.endswith('.mms') or file.endswith('.fits'):
+					lines=lines+[file]
 					print file
+			tkMessageBox.showinfo('Wrong ms',"\n".join(lines))
 
 	def default_inbase(self):
 		x = []
@@ -225,6 +239,20 @@ class GUI_pipeline:
 				return x[:-4]
 			if x.endswith('.fits'):
 				return x[:-5]
+	def check_inputs(self):
+		self.inputs = {'quit':self.quit_var.get(),'inbase':self.inbase.get(),'targets':self.targets.get(),'phscals':self.phscals.get(),'fluxcal':self.fluxcal.get(),'bpcal':self.bpcal.get(),'ptcal':self.ptcal.get(),'refant':self.refant.get()}
+		self.processes = {'run_importuvfits':self.run_importuvfits.get(),'hanningflag':self.hanningflag.get(),'autoflag':self.autoflag.get(),'rfigui':self.rfigui.get(),'ms2mms':self.ms2mms.get(),'do_prediag':self.do_prediag.get()}
+		input_key = self.inputs.keys()
+		input_values = self.inputs.values()
+		processes_key = self.processes.keys()
+		processes_values = self.processes.values()
+		lines = []
+		for i in range(len(input_key)):
+			lines = lines + [str(input_key[i])+':'+str(input_values[i])]
+		for i in range(len(processes_key)):
+			lines = lines + [str(processes_key[i])+':'+str(processes_values[i])]
+		tkMessageBox.showinfo('Summary',"\n".join(lines))
+		
 
 def check_in():
 	inputs, processes = GUI_pipeline().confirm_parameters()
