@@ -2,6 +2,7 @@
 ##Dependencies##
 import os,sys,math
 import eMERLIN_CASA_functions as em
+import eMERLIN_CASA_GUI as emGUI
 from casa import *
 import os
 from casa import table as tb
@@ -10,7 +11,7 @@ from Tkinter import *
 ################
 
 ##Inputs##
-inputs, processes = em.GUI_pipeline().confirm_parameters()
+inputs, processes = emGUI.GUI_pipeline().confirm_parameters()
 print inputs
 print processes
 ##########
