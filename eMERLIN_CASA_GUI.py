@@ -239,7 +239,7 @@ class GUI_pipeline:
 				return x[:-5]
 	def check_inputs(self):
 		self.inputs = {'quit':self.quit_var.get(),'inbase':self.inbase.get(),'targets':self.targets.get(),'phscals':self.phscals.get(),'fluxcal':self.fluxcal.get(),'bpcal':self.bpcal.get(),'ptcal':self.ptcal.get(),'refant':self.refant.get()}
-		self.processes = {'run_importuvfits':self.run_importuvfits.get(),'hanningflag':self.hanningflag.get(),'autoflag':self.autoflag.get(),'rfigui':self.rfigui.get(),'ms2mms':self.ms2mms.get(),'do_prediag':self.do_prediag.get()}
+		self.processes = {'run_importuvfits':self.run_importuvfits.get(),'hanning':self.hanningflag.get(),'autoflag':self.autoflag.get(),'rfigui':self.rfigui.get(),'ms2mms':self.ms2mms.get(),'do_prediag':self.do_prediag.get()}
 		input_key = self.inputs.keys()
 		input_values = self.inputs.values()
 		processes_key = self.processes.keys()
