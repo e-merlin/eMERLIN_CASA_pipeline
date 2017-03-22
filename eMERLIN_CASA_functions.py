@@ -34,23 +34,31 @@ def run_importuvfits(fitsfile,vis):
 	os.system('rm -r '+vis)
 	importuvfits(fitsfile=fitsfile,vis=vis)
 	ms.writehistory(message='eMER_CASA_Pipeline: Import uvfits to ms, complete',msname=vis)
+    flagdata(vis=vis,mode='manual',autocorr=True)
 	print 'You have been transformed from an ugly UVFITS to beautiful MS'
 	return
 
 ##Hanning smoothing and flag of autocorrelations, will delete original and rename
-def hanningflag(inputvis,deloriginal):
-	os.system('rm -r '+inputvis+'_hanning.ms')
-	hanningsmooth(vis=inputvis,outputvis=inputvis+'_hanning.ms',datacolumn='data')
-	flagdata(vis=inputvis+'_hanning.ms',mode='manual',autocorr=True)
-	if deloriginal==True:
-		os.system('rm -r '+inputvis)
-		os.system('mv '+inputvis+'_hanning.ms '+inputvis)
-		os.system('mv '+inputvis+'_hanning.ms.flagversions '+inputvis+'.flagversions')
-		ms.writehistory(message='eMER_CASA_Pipeline: Hanning smoothed data, complete',msname=inputvis)
-	else:
-		print 'Original not deleted, '+inputvis+'_hanning.ms is the new measurement set'
-		ms.writehistory(message='eMER_CASA_Pipeline: Hanning smoothed data, complete',msname=inputvis+'_hanning.ms')
-	return
+def hanning(inputvis,deloriginal):
+    if inputvis[-3:].upper() == '.MS':
+        outputvis = inputvis[:-3]+'_hanning'+inputvis[-3:]
+        os.system('rm -r '+outputvis)
+        hanningsmooth(vis=inputvis,outputvis=outputvis,datacolumn='data')
+    elif inputvis[-3:].upper() == 'MMS':
+        outputvis = inputvis[:-4]+'_hanning'+inputvis[-4:]
+        os.system('rm -r '+outputvis)
+        mstransform(vis=inputvis,outputvis=outputvis,hanning=True,datacolumn='data')
+    if deloriginal==True:
+        os.system('rm -r {0}'.format(inputvis))
+        os.system('rm -r {0}.flagversions'.format(inputvis))
+    else:
+        os.system('mv {0} {1}'.format(inputvis, inputvis+'_prehanning'))
+        os.system('mv {0}.flagversions {1}.flagversions'.format(inputvis, inputvis+'_prehanning'))
+    os.system('mv {0} {1}'.format(outputvis, inputvis))
+    os.system('mv {0}.flagversions {1}.flagversions'.format(outputvis, inputvis))
+    ms.writehistory(message='eMER_CASA_Pipeline: Hanning smoothed data, complete',msname=inputvis)
+    return
+
 
 ##Run aoflagger. Mode = auto uses best fit strategy for e-MERLIN (credit J. Moldon), Mode=user uses custon straegy for each field
 def run_aoflagger(vis,mode):
