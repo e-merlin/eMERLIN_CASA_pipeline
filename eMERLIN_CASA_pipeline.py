@@ -26,8 +26,8 @@ if processes['run_importuvfits'] == 1:
 	em.run_importuvfits(fitsfile,vis)
 
 
-if processes['hanningflag'] == 1:
-	em.hanningflag(inputvis=vis,deloriginal=True)
+if processes['hanning'] == 1:
+	em.hanning(inputvis=vis,deloriginal=True)
 
 if processes['autoflag'] == 1:
     if processes['rfigui'] == 1:
