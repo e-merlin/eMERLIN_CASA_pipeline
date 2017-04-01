@@ -92,7 +92,7 @@ def run_importfitsIDI(data_dir,vis):
 		if file.endswith('fits') or file.endswith('FITS'):
 			fitsfiles = fitsfiles + [data_dir+file]
 	print 'fits files found in data'
-	importfitsidi(fitsidifile=fitsfiles, vis=vis)
+	importfitsidi(fitsidifile=fitsfiles, vis=vis, constobsid=True, scanreindexgap_s=15.0)
 	ms.writehistory(message='eMER_CASA_Pipeline: Import uvfits to ms, complete',msname=vis)
 	flagdata(vis=vis,mode='manual',autocorr=True)
 	print 'You have been transformed from an ugly UVFITS to beautiful MS'
