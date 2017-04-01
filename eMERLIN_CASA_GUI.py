@@ -9,7 +9,7 @@ class GUI_pipeline:
 	def __init__(self):
 		self.root = Toplevel()
 		self.root.title('eMERLIN CASA Pipeline')
-		logo = PhotoImage(file='emerlin-2.gif')
+		logo = PhotoImage(file='CASA_eMERLIN_pipeline/emerlin-2.gif')
 		self.w1 = Label(self.root,image=logo)
 		self.w1.grid(row=0,column=2,columnspan=3,rowspan=2,sticky='w,e,n,s')
 		self.w2 = Label(self.root,justify='left',padx=10,text="This is the eMERLIN pipeline")
@@ -17,6 +17,21 @@ class GUI_pipeline:
 		self.subtitle = Label(self.root,justify='center',padx=10,pady=10,text="------ Inputs ------")
 		self.subtitle.grid(row=3,column=0,columnspan=3,rowspan=1)
 
+		##Set directories for plots, calibration and data
+		## Data dir ##
+		self.data_dir = StringVar()
+		self.data_dir.set('./data')
+		self.data_dir_label = Label(self.root,text='Data directory:',justify='right')
+		self.data_dir_label.grid(row=5,column=3,columnspan=1,sticky='e')
+		self.data_dir_entry = Entry(self.root,textvariable=self.data_dir)
+		self.data_dir_entry.grid(row=5,column=4,columnspan=3)
+		## Plots dir ##
+		self.plots_dir = StringVar()
+		self.plots_dir.set('./plots')
+		self.plots_dir_label = Label(self.root,text='Plots directory:',justify='right')
+		self.plots_dir_label.grid(row=6,column=3,columnspan=1,sticky='e')
+		self.plots_dir_entry = Entry(self.root,textvariable=self.plots_dir)
+		self.plots_dir_entry.grid(row=6,column=4,columnspan=3)
 
 		##file names ###
 		self.inbase = StringVar()
@@ -24,8 +39,8 @@ class GUI_pipeline:
 		##set default to be the last instance with fits#
 		################################################
 		x=[]
-		for file in os.listdir('./'):
-				if file.endswith('.ms') or file.endswith('.mms') or file.endswith('.fits'):
+		for file in os.listdir('./data'):
+				if file.endswith('.ms') or file.endswith('.mms'):
 					x=x+[file]
 		if len(x) > 3:
 			self.inbase.set('Multiple ms, click check history for cwd')
@@ -88,7 +103,7 @@ class GUI_pipeline:
 		self.fluxcal_entry.grid(row=7,column=1,columnspan=2)
 
 		## Bandpass calibrators ###
-		x=''		
+		x=''
 		if len(fields) != 0:
 			if '1407+284' in fields:
 				x = x+'1407+284'
@@ -126,17 +141,17 @@ class GUI_pipeline:
 		self.subtitle2.grid(row=11,column=0,columnspan=3,rowspan=1)
 
 		## Convert fits to ms ##
-		self.run_importuvfits = IntVar()
-		self.run_importuvfits_check = Checkbutton(self.root,text='Convert fits to ms',variable =self.run_importuvfits,onvalue=1,offvalue=0,justify='left')
-		self.run_importuvfits_check.grid(row=12,column=0,sticky='w')
+		self.run_importfits = IntVar()
+		self.run_importfits_check = Checkbutton(self.root,text='Convert fits-IDI to ms',variable =self.run_importfits,onvalue=1,offvalue=0,justify='left')
+		self.run_importfits_check.grid(row=12,column=0,sticky='w')
 		#---------------------##
-		
+
 		## Hanning smoothing and flag autocorrelations ##
-		self.hanningflag = IntVar()
-		self.hanningflag_check = Checkbutton(self.root,text='Hanning smoothing',variable =self.hanningflag,onvalue=1,offvalue=0)
-		self.hanningflag_check.grid(row=13,column=0,sticky='w')
-		# ---------------------------------------------##		
-		
+		self.hanning = IntVar()
+		self.hanning_check = Checkbutton(self.root,text='Hanning smoothing',variable =self.hanning,onvalue=1,offvalue=0)
+		self.hanning_check.grid(row=13,column=0,sticky='w')
+		# ---------------------------------------------##
+
 		# Auto flagging #
 		self.autoflag = IntVar()
 		self.autoflag_check = Checkbutton(self.root,text='Autoflagging?',variable =self.autoflag,onvalue=1,offvalue=0,pady=5)
@@ -148,7 +163,7 @@ class GUI_pipeline:
 		self.rfigui_check.grid(row=14,column=1,sticky='w')
 		# -------------------------------------------##
 
-		## Convert to mms ##		
+		## Convert to mms ##
 		self.ms2mms = IntVar()
 		self.ms2mms_check = Checkbutton(self.root,text='Convert to MMS',variable =self.ms2mms,onvalue=1,offvalue=0,pady=5)
 		self.ms2mms_check.grid(row=15,column=0,sticky='w')
@@ -161,11 +176,11 @@ class GUI_pipeline:
 		## Set parameters ##
 		self.w6 = Button(self.root,text='Confirm?',command=self.confirm_parameters)
 		self.w6.grid(row=100,column=2,sticky='e')
-		
+
 		### Run button ###
 		self.run = Button(self.root,text='Run',command=self.root.quit)
 		self.run.grid(row=100,column=1,sticky='e')
-		
+
 		self.run = Button(self.root,text='Summary',command=self.check_inputs)
 		self.run.grid(row=100,column=0,sticky='e')
 
@@ -184,10 +199,15 @@ class GUI_pipeline:
 		self.root.quit()
 
 	def confirm_parameters(self):
-		self.inputs = {'quit':self.quit_var.get(),'inbase':self.inbase.get(),'targets':self.targets.get(),'phscals':self.phscals.get(),'fluxcal':self.fluxcal.get(),'bpcal':self.bpcal.get(),'ptcal':self.ptcal.get(),'refant':self.refant.get()}
-		self.processes = {'run_importuvfits':self.run_importuvfits.get(),'hanningflag':self.hanningflag.get(),'autoflag':self.autoflag.get(),'rfigui':self.rfigui.get(),'ms2mms':self.ms2mms.get(),'do_prediag':self.do_prediag.get()}
-		print self.inputs
-		return self.inputs, self.processes
+		self.inputs = {'quit':self.quit_var.get(),'data_dir':self.data_dir.get(),\
+		'plots_dir':self.plots_dir.get(),\
+		'inbase':self.inbase.get(),'targets':self.targets.get(),\
+		'phscals':self.phscals.get(),'fluxcal':self.fluxcal.get(),\
+		'bpcal':self.bpcal.get(),'ptcal':self.ptcal.get(),'refant':self.refant.get(),\
+		'run_importfits':self.run_importfits.get(),'hanning':self.hanning.get(),\
+		'autoflag':self.autoflag.get(),'rfigui':self.rfigui.get(),\
+		'ms2mms':self.ms2mms.get(),'do_prediag':self.do_prediag.get()}
+		return self.inputs
 
 	def printhistory(self):
 		def check_his(msname):
@@ -237,16 +257,20 @@ class GUI_pipeline:
 				return x[:-4]
 			if x.endswith('.fits'):
 				return x[:-5]
+
 	def check_inputs(self):
-		self.inputs = {'quit':self.quit_var.get(),'inbase':self.inbase.get(),'targets':self.targets.get(),'phscals':self.phscals.get(),'fluxcal':self.fluxcal.get(),'bpcal':self.bpcal.get(),'ptcal':self.ptcal.get(),'refant':self.refant.get()}
-		self.processes = {'run_importuvfits':self.run_importuvfits.get(),'hanning':self.hanningflag.get(),'autoflag':self.autoflag.get(),'rfigui':self.rfigui.get(),'ms2mms':self.ms2mms.get(),'do_prediag':self.do_prediag.get()}
-		input_key = self.inputs.keys()
+		self.inputs = {'quit':self.quit_var.get(),'data_dir':self.data_dir.get(),\
+		'plots_dir':self.plots_dir.get(),\
+		'inbase':self.inbase.get(),'targets':self.targets.get(),\
+		'phscals':self.phscals.get(),'fluxcal':self.fluxcal.get(),\
+		'bpcal':self.bpcal.get(),'ptcal':self.ptcal.get(),'refant':self.refant.get(),\
+		'run_importfits':self.run_importfits.get(),'hanning':self.hanning.get(),\
+		'autoflag':self.autoflag.get(),'rfigui':self.rfigui.get(),\
+		'ms2mms':self.ms2mms.get(),'do_prediag':self.do_prediag.get()}
+		print self.inputs
+		input_key=self.inputs.keys()
 		input_values = self.inputs.values()
-		processes_key = self.processes.keys()
-		processes_values = self.processes.values()
 		lines = []
 		for i in range(len(input_key)):
 			lines = lines + [str(input_key[i])+':'+str(input_values[i])]
-		for i in range(len(processes_key)):
-			lines = lines + [str(processes_key[i])+':'+str(processes_values[i])]
 		tkMessageBox.showinfo('Summary',"\n".join(lines))
