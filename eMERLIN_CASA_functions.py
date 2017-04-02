@@ -5,10 +5,71 @@ from casa import table as tb
 from casa import ms
 from Tkinter import *
 import tkMessageBox
+import sys
+import getopt
+from task_importfitsidi import *
 
 def check_in():
-	inputs, processes = GUI_pipeline().confirm_parameters()
+	try:
+		opts, arg = getopt.getopt(sys.argv[1:],'i:c:hg',['help','input=','gui'])
+		print sys.argv[1:]
+	except getopt.GetoptError as err:
+		print(err)
+		sys.exit(2)
+	for o,a in opts:
+		print o,a
+		if o in ('-i','--input'):
+			inputs = headless(a) ## read input file
+			inputs['quit'] = 0 ##needed to add to be compatible with GUI
+			print inputs
+		elif o in ('-g','--gui'):
+			inputs = GUI_pipeline().confirm_parameters() ## read input file
+			print inputs
+		elif o in ('-h','--help'):
+			print 'help will be written soon'
+			sys.exit()
+		elif o == '-c':
+			print 'Executing!'
+		else:
+			assert False, "rerun with either headless -i or gui" #if none are specifed run GUI
+	return inputs
 
+def backslash_check(directory):
+	if directory[-1] != '/':
+		return directory+'/'
+	else:
+		return directory
+
+
+def headless(inputfile):
+	''' Parse the list of inputs given in the specified file. (Modified from evn_funcs.py)'''
+	INPUTFILE = open(inputfile, "r")
+	control = {}
+	# a few useful regular expressions
+	newline = re.compile(r'\n')
+	space = re.compile(r'\s')
+	char = re.compile(r'\w')
+	comment = re.compile(r'#.*')
+	# parse the input file assuming '=' is used to separate names from values
+	for line in INPUTFILE:
+		if char.match(line):
+			line = comment.sub(r'', line)
+			line = line.replace("'", '')
+			(param, value) = line.split('=')
+			param = newline.sub(r'', param)
+			param = param.strip()
+			param = space.sub(r'', param)
+			value = newline.sub(r'', value)
+			value = value.strip()
+			valuelist = value.split(', ')
+			if len(valuelist) == 1:
+				if valuelist[0] == '0' or valuelist[0]=='1':
+					control[param] = int(valuelist[0])
+				else:
+					control[param] = str(valuelist[0])
+			else:
+				control[param] = str(valuelist)
+	return control
 
 def Tkinter_select():
 	root = Tkinter.Tk()
@@ -30,11 +91,20 @@ def check_history(vis):
 			print x[y[i]]
 
 
-def run_importuvfits(fitsfile,vis):
+def run_importfitsIDI(data_dir,vis):
 	os.system('rm -r '+vis)
-	importuvfits(fitsfile=fitsfile,vis=vis)
-	ms.writehistory(message='eMER_CASA_Pipeline: Import uvfits to ms, complete',msname=vis)
-    flagdata(vis=vis,mode='manual',autocorr=True)
+	fitsfiles =[]
+	for file in os.listdir(data_dir):
+		if file.endswith('fits') or file.endswith('FITS'):
+			fitsfiles = fitsfiles + [data_dir+file]
+	print 'fits files found in data'
+	importfitsidi(fitsidifile=fitsfiles, vis=vis, constobsid=True, scanreindexgap_s=15.0)
+	ms.writehistory(message='eMER_CASA_Pipeline: Import fitsidi to ms, complete',msname=vis)
+	fixvis(vis=vis,outputvis=vis+'.uvfix')
+	os.system('rm -r {0}'.format(vis))
+	os.system('mv {0} {1}'.format(vis+'.uvfix', vis))
+	flagdata(vis=vis,mode='manual',autocorr=True)
+	ms.writehistory(message='eMER_CASA_Pipeline: Fixed uv coordinates & remove autocorr',msname=vis)
 	print 'You have been transformed from an ugly UVFITS to beautiful MS'
 	return
 
@@ -62,7 +132,6 @@ def hanning(inputvis,deloriginal):
 
 ##Run aoflagger. Mode = auto uses best fit strategy for e-MERLIN (credit J. Moldon), Mode=user uses custon straegy for each field
 def run_aoflagger(vis,mode):
-
 	if mode == 'user':
 		x = vishead(vis,mode='list',listitems='field')['field'][0]
 		os.system('touch pre-cal_flag_stats.txt')
@@ -114,22 +183,22 @@ def ms2mms(vis,mode):
 			os.system('rm -r '+vis)
 			os.system('rm -r '+vis+'.flagversions')
 
-def do_prediagnostics(vis):
+def do_prediagnostics(vis,plot_dir):
 	##Pre diagnostics for measurement sets##
 	## Includes:
 	## - Antenna positions
-	## - Amplitude vs. Time 
+	## - Amplitude vs. Time
 	## - Amplitude vs. Frequency
 	## - Phase vs. Time
 	## - Phase vs. Frequency
 	## - Closures (if task is available)
 	## - Listobs summary
 
-	if os.path.isdir('./pipeline_plots') == False:
-		os.system('mkdir ./pipeline_plots')
-	if os.path.isdir('./pipeline_plots/pre-calibration') == False:
-		os.system('mkdir ./pipeline_plots/pre-calibration')
-	directory = './pipeline_plots/pre-calibration/'
+	if os.path.isdir(plot_dir) == False:
+		os.system('mkdir '+plot_dir)
+	if os.path.isdir('./'+plot_dir+'pre-calibration') == False:
+		os.system('mkdir ./'+plot_dir+'pre-calibration')
+	directory = plot_dir
 	## Get information from ms
 	x = vishead(vis,mode='list',listitems='field')['field'][0]
 	tb.open(vis+'/SPECTRAL_WINDOW')
@@ -146,7 +215,7 @@ field=x[i], antenna='*&*', averagedata=True, avgchannel=str(nChan), iteraxis='ba
 field=x[i], antenna='*&*', averagedata=True, avgchannel='1', avgtime=time, iteraxis='baseline', plotfile=directory+'pre-cal_'+vis+'_'+x[i]+'_amp_vs_frequency.pdf',highres=True ,dpi=1200,expformat='pdf',exprange='all', showgui=False)
 		os.system('convert '+directory+'pre-cal_'+vis+'_'+x[i]+'_amp_vs_frequency_* '+directory+'Pre-cal_amp_vs_frequency_'+vis+'_'+x[i]+'.pdf')
 		os.system('rm '+directory+'pre-cal_'+vis+'_'+x[i]+'_amp_vs_frequency_*')
-		
+
 		## - Phase vs time
 		plotms(vis=vis,xaxis='time',yaxis='phase',xdatacolumn='data',ydatacolumn='data',\
 field=x[i], antenna='*&*', averagedata=True, avgchannel=str(nChan), iteraxis='baseline', plotfile=directory+'pre-cal_'+vis+'_'+x[i]+'_phase_vs_time.pdf', expformat='pdf',highres=True,dpi=1200,exprange='all', showgui=False)

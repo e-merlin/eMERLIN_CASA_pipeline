@@ -1,0 +1,19 @@
+#text entries
+quit=0
+data_dir=./data/
+plots_dir=./plots/
+inbase=CY1012
+targets= '1241+602'
+phscals= '1236+612'
+fluxcal= '3C84'
+bpcal= 'OQ208'
+ptcal= '3C345'
+refant= 'Mk2'
+
+# processes (1 is go 0 is not)
+run_importfits=1
+hanning=0
+autoflag=0
+rfigui=0
+ms2mms=0
+do_prediag=0
