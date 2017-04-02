@@ -22,6 +22,8 @@ The pipeline uses a GUI interface as an input and now has a headless version. To
   * Else to run GUI
     `mpicasa -n num_cores casa -c CASA_eMERLIN_pipeline/eMERLIN_CASA_pipeline.py -g`
 
+To run not in parallel remove `mpicasa -n num_cores`
+
 IMPORTANT: The pipeline will look in your data directory for a ms or mms with the prefix defined in inputs and copy it to your current directory if it cannot find it in the current directory.
 
 N.b. replace num_cores with the number of cores you would like to use
