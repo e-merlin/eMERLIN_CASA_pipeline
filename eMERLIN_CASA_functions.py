@@ -20,6 +20,7 @@ def check_in():
 		print o,a
 		if o in ('-i','--input'):
 			inputs = headless(a) ## read input file
+			inputs['quit'] = 0 ##needed to add to be compatible with GUI
 			print inputs
 		elif o in ('-g','--gui'):
 			inputs = GUI_pipeline().confirm_parameters() ## read input file
@@ -33,6 +34,11 @@ def check_in():
 			assert False, "rerun with either headless -i or gui" #if none are specifed run GUI
 	return inputs
 
+def backslash_check(directory):
+	if directory[-1] != '/':
+		return directory+'/'
+	else:
+		return directory
 
 
 def headless(inputfile):
@@ -93,8 +99,12 @@ def run_importfitsIDI(data_dir,vis):
 			fitsfiles = fitsfiles + [data_dir+file]
 	print 'fits files found in data'
 	importfitsidi(fitsidifile=fitsfiles, vis=vis, constobsid=True, scanreindexgap_s=15.0)
-	ms.writehistory(message='eMER_CASA_Pipeline: Import uvfits to ms, complete',msname=vis)
+	ms.writehistory(message='eMER_CASA_Pipeline: Import fitsidi to ms, complete',msname=vis)
+	fixvis(vis=vis,outputvis=vis+'.uvfix')
+	os.system('rm -r {0}'.format(vis))
+	os.system('mv {0} {1}'.format(vis+'.uvfix', vis))
 	flagdata(vis=vis,mode='manual',autocorr=True)
+	ms.writehistory(message='eMER_CASA_Pipeline: Fixed uv coordinates & remove autocorr',msname=vis)
 	print 'You have been transformed from an ugly UVFITS to beautiful MS'
 	return
 
@@ -122,7 +132,6 @@ def hanning(inputvis,deloriginal):
 
 ##Run aoflagger. Mode = auto uses best fit strategy for e-MERLIN (credit J. Moldon), Mode=user uses custon straegy for each field
 def run_aoflagger(vis,mode):
-
 	if mode == 'user':
 		x = vishead(vis,mode='list',listitems='field')['field'][0]
 		os.system('touch pre-cal_flag_stats.txt')
@@ -174,7 +183,7 @@ def ms2mms(vis,mode):
 			os.system('rm -r '+vis)
 			os.system('rm -r '+vis+'.flagversions')
 
-def do_prediagnostics(vis):
+def do_prediagnostics(vis,plot_dir):
 	##Pre diagnostics for measurement sets##
 	## Includes:
 	## - Antenna positions
@@ -185,11 +194,11 @@ def do_prediagnostics(vis):
 	## - Closures (if task is available)
 	## - Listobs summary
 
-	if os.path.isdir('./pipeline_plots') == False:
-		os.system('mkdir ./pipeline_plots')
-	if os.path.isdir('./pipeline_plots/pre-calibration') == False:
-		os.system('mkdir ./pipeline_plots/pre-calibration')
-	directory = './pipeline_plots/pre-calibration/'
+	if os.path.isdir(plot_dir) == False:
+		os.system('mkdir '+plot_dir)
+	if os.path.isdir('./'+plot_dir+'pre-calibration') == False:
+		os.system('mkdir ./'+plot_dir+'pre-calibration')
+	directory = plot_dir
 	## Get information from ms
 	x = vishead(vis,mode='list',listitems='field')['field'][0]
 	tb.open(vis+'/SPECTRAL_WINDOW')
