@@ -110,11 +110,11 @@ def run_importfitsIDI(data_dir,vis):
 
 ##Hanning smoothing and flag of autocorrelations, will delete original and rename
 def hanning(inputvis,deloriginal):
-    if inputvis[-3:].upper() == '.MS':
+    if inputvis[-3:].lower() == '.ms':
         outputvis = inputvis[:-3]+'_hanning'+inputvis[-3:]
         os.system('rm -r '+outputvis)
         hanningsmooth(vis=inputvis,outputvis=outputvis,datacolumn='data')
-    elif inputvis[-3:].upper() == 'MMS':
+    elif inputvis[-3:].lower() == 'mms':
         outputvis = inputvis[:-4]+'_hanning'+inputvis[-4:]
         os.system('rm -r '+outputvis)
         mstransform(vis=inputvis,outputvis=outputvis,hanning=True,datacolumn='data')
@@ -131,61 +131,78 @@ def hanning(inputvis,deloriginal):
 
 
 ##Run aoflagger. Mode = auto uses best fit strategy for e-MERLIN (credit J. Moldon), Mode=user uses custon straegy for each field
-def run_aoflagger(vis,mode):
-	if mode == 'user':
-		x = vishead(vis,mode='list',listitems='field')['field'][0]
-		os.system('touch pre-cal_flag_stats.txt')
-		y = []
-		for i in range(len(x)):
-			if os.path.isfile(x[i]+'.rfis')==False:
-				y=y+[x[i]]
-		if len(y) != 0:
-			for i in range(len(y)):
-				print 'Missing rfistrategy for: '+y[i]
-			print 'Please run step 3 again!'
-		else:
-			while True:
-				s = raw_input('All rfistrategys are there: Proceed?:\n')
-				if s == 'yes' or s == 'y':
-					ms.writehistory(message='eMER_CASA_Pipeline: AOFlag with user specified strategies:',msname=vis)
-					for i in range(len(x)):
-						ms.writehistory(message='eMER_CASA_Pipeline: Flagging field, '+x[i]+' with strategy: '+x[i]+'.rfis',msname=vis)
-						print 'Flagging field, '+x[i]+' with strategy: '+x[i]+'.rfis'
-						os.system('aoflagger -fields '+str(i)+' -strategy '+x[i]+'.rfis  '+vis+ '| tee -a pre-cal_flag_stats.txt')
-					break
-				if s == 'no' or s == 'n':
-					sys.exit('Please restart when you are happy')
-	elif mode == 'default':
-		print '---- Running AOflagger with eMERLIN default strategy ----\n'
-		os.system('aoflagger -strategy eMERLIN_default_ao_strategy_v1.rfis '+vis)
-		ms.writehistory(message='eMER_CASA_Pipeline: AOFlag with default strategy, complete',msname=vis)
-	else:
-		print 'Error: Please use either mode=user or mode=default'
-		sys.exit()
+#def run_aoflagger(vis,mode):
+#	if mode == 'user':
+#		x = vishead(vis,mode='list',listitems='field')['field'][0]
+#		os.system('touch pre-cal_flag_stats.txt')
+#		y = []
+#		for i in range(len(x)):
+#			if os.path.isfile(x[i]+'.rfis')==False:
+#				y=y+[x[i]]
+#		if len(y) != 0:
+#			for i in range(len(y)):
+#				print 'Missing rfistrategy for: '+y[i]
+#			print 'Please run step 3 again!'
+#		else:
+#			while True:
+#				s = raw_input('All rfistrategys are there: Proceed?:\n')
+#				if s == 'yes' or s == 'y':
+#					ms.writehistory(message='eMER_CASA_Pipeline: AOFlag with user specified strategies:',msname=vis)
+#					for i in range(len(x)):
+#						ms.writehistory(message='eMER_CASA_Pipeline: Flagging field, '+x[i]+' with strategy: '+x[i]+'.rfis',msname=vis)
+#						print 'Flagging field, '+x[i]+' with strategy: '+x[i]+'.rfis'
+#						os.system('aoflagger -fields '+str(i)+' -strategy '+x[i]+'.rfis  '+vis+ '| tee -a pre-cal_flag_stats.txt')
+#					break
+#				if s == 'no' or s == 'n':
+#					sys.exit('Please restart when you are happy')
+#	elif mode == 'default':
+#		print '---- Running AOflagger with eMERLIN default strategy ----\n'
+#		os.system('aoflagger -strategy eMERLIN_default_ao_strategy_v1.rfis '+vis)
+#		ms.writehistory(message='eMER_CASA_Pipeline: AOFlag with default strategy, complete',msname=vis)
+#	else:
+#		print 'Error: Please use either mode=user or mode=default'
+#		sys.exit()
+
+def run_aoflagger_fields(vis,fields='all'):
+    """This version of the autoflagger iterates through the ms within the mms structure selecting individual fields. It uses pre-defined strategies.
+    ToDo: accept aostrategy_list: a list of paths with the same length as fields with user specified strategies."""
+    os.system('touch pre-cal_flag_stats.txt')
+    if fields == 'all':
+        fields = vishead(vis,mode='list',listitems='field')['field'][0]
+    else:
+        fields = np.atleast_1d(fields)
+    for field in fields:
+        if os.path.isfile('./CASA_eMERLIN_pipeline/aoflagger_strategies/{0}.rfis'.format(field))==True:
+            aostrategy = './CASA_eMERLIN_pipeline/aoflagger_strategies/{0}.rfis'.format(field)
+        else:
+            aostrategy = './CASA_eMERLIN_pipeline/aoflagger_strategies/{0}.rfis'.format('default_faint')
+        flagcommand = 'time aoflagger -strategy {0} {1}'.format(aostrategy, vis+'/SUBMSS/*{0}.mms.*.ms'.format(field))
+        os.system(flagcommand+' | tee -a pre-cal_flag_stats.txt')
+        ms.writehistory(message='eMER_CASA_Pipeline: AOFlag field {0} with strategy {1}:'.format(field, aostrategy),msname=vis)
 
 
-def ms2mms(vis,mode):
-	if mode == 'parallel':
-		partition(vis=vis,outputvis=vis[:-3]+'.mms',createmms=True,separationaxis="auto",numsubms="auto",flagbackup=True,datacolumn=
-"all",field="",spw="",scan="",antenna="",correlation="",timerange="",intent="",array="",uvrange="",observation="",feed="",disableparallel=None,ddistart=None
-,taql=None)
-		if os.path.isdir(vis[:-3]+'.mms') == True:
-			os.system('rm -r '+vis)
-			os.system('rm -r '+vis+'.flagversions')
-		ms.writehistory(message='eMER_CASA_Pipeline: Converted MS to MMS for parallelisation',msname=vis[:-3]+'.mms')
-
-	## Need to use single if you need to aoflag the data later
-	if mode == 'single':
-		partition(vis=vis,outputvis=vis[:-3]+'.ms',createmms=False,separationaxis="auto",numsubms="auto",flagbackup=True,datacolumn=
-"all",field="",spw="",scan="",antenna="",correlation="",timerange="",intent="",array="",uvrange="",observation="",feed="",disableparallel=None,ddistart=None
-,taql=None)
-		if os.path.isdir(vis[:-3]+'.ms') == True:
-			os.system('rm -r '+vis)
-			os.system('rm -r '+vis+'.flagversions')
+#def ms2mms(vis,mode):
+#	if mode == 'parallel':
+#		partition(vis=vis,outputvis=vis[:-3]+'.mms',createmms=True,separationaxis="auto",numsubms="auto",flagbackup=True,datacolumn=
+#"all",field="",spw="",scan="",antenna="",correlation="",timerange="",intent="",array="",uvrange="",observation="",feed="",disableparallel=None,ddistart=None
+#,taql=None)
+#		if os.path.isdir(vis[:-3]+'.mms') == True:
+#			os.system('rm -r '+vis)
+#			os.system('rm -r '+vis+'.flagversions')
+#		ms.writehistory(message='eMER_CASA_Pipeline: Converted MS to MMS for parallelisation',msname=vis[:-3]+'.mms')
+#
+#	## Need to use single if you need to aoflag the data later
+#	if mode == 'single':
+#		partition(vis=vis,outputvis=vis[:-3]+'.ms',createmms=False,separationaxis="auto",numsubms="auto",flagbackup=True,datacolumn=
+#"all",field="",spw="",scan="",antenna="",correlation="",timerange="",intent="",array="",uvrange="",observation="",feed="",disableparallel=None,ddistart=None
+#,taql=None)
+#		if os.path.isdir(vis[:-3]+'.ms') == True:
+#			os.system('rm -r '+vis)
+#			os.system('rm -r '+vis+'.flagversions')
 
 def ms2mms_fields(msfile):
     output_mmsfile = msfile[:-3]+'.mms'
-    fields = vishead(vis, mode = 'list', listitems = 'field')['field'][0]
+    fields = vishead(msfile, mode = 'list', listitems = 'field')['field'][0]
     mmsfiles = []
     for field in fields:
         mmsfile = msfile[:-3]+'_'+field+'.mms'
@@ -193,6 +210,7 @@ def ms2mms_fields(msfile):
         partition(vis=msfile, outputvis=mmsfile, createmms=True, separationaxis="baseline", numsubms="auto", flagbackup=False, datacolumn="all", field= field, spw="", scan="", antenna="", correlation="", timerange="", intent="", array="", uvrange="", observation="", feed="", disableparallel=None, ddistart=None, taql=None)
     # Virtual concatenation. No data copied, just moved to SUBMMS directory
     virtualconcat(vis = mmsfiles, concatvis = output_mmsfile, copypointing=True)
+
 
 
 def do_prediagnostics(vis,plot_dir):

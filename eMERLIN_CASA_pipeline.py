@@ -24,6 +24,19 @@ if inputs['quit'] == 1: #Check from GUI if quit is needed
 fitsfile = inputs['inbase']+'.fits'
 vis = inputs['inbase']+'.ms'
 
+def ms2mms_fields(msfile):
+    "This function should go to eMERLIN_CASA_functions.py when we solve the sys.path problems."
+    output_mmsfile = msfile[:-3]+'.mms'
+    fields = vishead(msfile, mode = 'list', listitems = 'field')['field'][0]
+    mmsfiles = []
+    for field in fields:
+        mmsfile = msfile[:-3]+'_'+field+'.mms'
+        mmsfiles.append(mmsfile)
+        partition(vis=msfile, outputvis=mmsfile, createmms=True, separationaxis="baseline", numsubms="auto", flagbackup=False, datacolumn="all", field= field, spw="", scan="", antenna="", correlation="", timerange="", intent="", array="", uvrange="", observation="", feed="", disableparallel=None, ddistart=None, taql=None)
+    # Virtual concatenation. No data copied, just moved to SUBMMS directory
+    virtualconcat(vis = mmsfiles, concatvis = output_mmsfile, copypointing=True)
+
+
 ## Check for measurement sets in current directory otherwise drag from defined data directory
 if os.path.isdir(inputs['inbase']+'.ms') == False and os.path.isdir(inputs['inbase']+'.mms') == False:
 	if os.path.isdir(data_dir+inputs['inbase']+'.mms') == True:
@@ -43,26 +56,17 @@ if inputs['run_importfits'] == 1:
 if inputs['hanning'] == 1:
 	em.hanning(inputvis=vis,deloriginal=True)
 
-if inputs['autoflag'] == 1:
-    if inputs['rfigui'] == 1:
-	os.system('rfigui '+vis)
-        em.run_aoflagger(vis=vis,mode='user')
-    if inputs['rfigui']== 0:
-	em.run_aoflagger(vis=vis,mode='default')
-
-
 ### Convert to mms for parallelisation ###
 if inputs['ms2mms'] == 1:
-	em.ms2mms(vis=vis,mode='parallel')
+	ms2mms_fields(msfile=vis)
 
 if os.path.isdir('./'+inputs['inbase']+'.mms') == True: #takes into account parallel or not
 	vis = inputs['inbase']+'.mms'
 
+if inputs['autoflag'] == 1:
+    em.run_aoflagger_fields(vis=vis,fields='all')
+
 if inputs['do_prediag'] == 1:
 	em.do_prediagnostics(vis,plots_dir)
 
-'''
 
-	os.system('rm -rf '+inbase+'.mms.K0')
-	gaincal(vis=inbase+'.mms', gaintype='K',field=','.join(list(set(phsrefs+fluxcals+bpasscals+pointcals))), caltable=inbase+'.mms.K0', refant=refant, solint='inf', minblperant=3, minsnr=3)
-'''
