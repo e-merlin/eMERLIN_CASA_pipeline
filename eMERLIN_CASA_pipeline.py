@@ -22,7 +22,7 @@ if inputs['quit'] == 1: #Check from GUI if quit is needed
 	sys.exit()
 
 fitsfile = inputs['inbase']+'.fits'
-vis = inputs['inbase']+'.ms'
+vis = data_dir+inputs['inbase']+'.ms'
 
 ## Check for measurement sets in current directory otherwise drag from defined data directory
 if os.path.isdir(inputs['inbase']+'.ms') == False and os.path.isdir(inputs['inbase']+'.mms') == False:
