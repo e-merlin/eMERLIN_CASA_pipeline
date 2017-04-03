@@ -35,6 +35,9 @@ def ms2mms_fields(msfile):
         partition(vis=msfile, outputvis=mmsfile, createmms=True, separationaxis="baseline", numsubms="auto", flagbackup=False, datacolumn="all", field= field, spw="", scan="", antenna="", correlation="", timerange="", intent="", array="", uvrange="", observation="", feed="", disableparallel=None, ddistart=None, taql=None)
     # Virtual concatenation. No data copied, just moved to SUBMMS directory
     virtualconcat(vis = mmsfiles, concatvis = output_mmsfile, copypointing=True)
+    if os.path.isdir(msfile) == True:
+        os.system('rm -r '+msfile)
+        os.system('rm -r '+msfile+'.flagversions')
 
 
 ## Check for measurement sets in current directory otherwise drag from defined data directory
