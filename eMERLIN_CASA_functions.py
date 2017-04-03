@@ -183,6 +183,18 @@ def ms2mms(vis,mode):
 			os.system('rm -r '+vis)
 			os.system('rm -r '+vis+'.flagversions')
 
+def ms2mms_fields(msfile):
+    output_mmsfile = msfile[:-3]+'.mms'
+    fields = vishead(vis, mode = 'list', listitems = 'field')['field'][0]
+    mmsfiles = []
+    for field in fields:
+        mmsfile = msfile[:-3]+'_'+field+'.mms'
+        mmsfiles.append(mmsfile)
+        partition(vis=msfile, outputvis=mmsfile, createmms=True, separationaxis="baseline", numsubms="auto", flagbackup=False, datacolumn="all", field= field, spw="", scan="", antenna="", correlation="", timerange="", intent="", array="", uvrange="", observation="", feed="", disableparallel=None, ddistart=None, taql=None)
+    # Virtual concatenation. No data copied, just moved to SUBMMS directory
+    virtualconcat(vis = mmsfiles, concatvis = output_mmsfile, copypointing=True)
+
+
 def do_prediagnostics(vis,plot_dir):
 	##Pre diagnostics for measurement sets##
 	## Includes:
