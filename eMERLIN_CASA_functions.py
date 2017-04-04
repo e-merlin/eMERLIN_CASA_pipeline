@@ -8,6 +8,7 @@ import tkMessageBox
 import sys
 import getopt
 from task_importfitsidi import *
+# Need to be in this order:
 from tasks import *
 from casa import *
 
