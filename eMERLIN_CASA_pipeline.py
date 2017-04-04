@@ -45,7 +45,7 @@ if inputs['run_importfits'] == 1:
 if inputs['hanning'] == 1:
 	em.hanning(inputvis=vis,deloriginal=True)
 
-### Convert to mms for parallelisation ###
+### Check AOflagger version. Decide if old or new procedure is needed. ###
 aoflagger_version, aoversion_list = em.check_aoflagger_version()
 if (aoversion_list[0] == '2') and (int(aoversion_list[1]) < 9):
     old_aoflagger = True
@@ -53,15 +53,17 @@ else:
     old_aoflagger = False
 print 'AOflagger version is {0}'.format(aoflagger_version)
 
+### Convert to mms for parallelisation ###
 if inputs['ms2mms'] == 1:
     if old_aoflagger:
         em.ms2mms_fields(msfile=vis)
     else:
         em.ms2mms(vis=vis,mode='parallel')
 
-if os.path.isdir('./'+inputs['inbase']+'.mms') == True: #takes into account parallel or not
+if os.path.isdir('./'+inputs['inbase']+'.mms') == True:
 	vis = inputs['inbase']+'.mms'
 
+### Autoflag all sources in data set ###
 if inputs['autoflag'] == 1:
     if old_aoflagger:
         em.run_aoflagger_fields(vis=vis,fields='all')
@@ -72,9 +74,7 @@ if inputs['autoflag'] == 1:
         if inputs['rfigui']== 0:
             em.run_aoflagger(vis=vis,mode='default')
 
-
-
-
+### Produce some initial plots ###
 if inputs['do_prediag'] == 1:
 	em.do_prediagnostics(vis,plots_dir)
 
