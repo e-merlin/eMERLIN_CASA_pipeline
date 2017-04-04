@@ -4,11 +4,13 @@ sys.path.insert(0,'./CASA_eMERLIN_pipeline') # add github path at runtime
 import os,sys,math
 import eMERLIN_CASA_functions as em
 import eMERLIN_CASA_GUI as emGUI
-from casa import *
 from casa import table as tb
 from casa import ms
 from Tkinter import *
 import getopt
+from tasks import *
+from casa import *
+
 ################
 
 ##Inputs##
@@ -23,22 +25,6 @@ if inputs['quit'] == 1: #Check from GUI if quit is needed
 
 fitsfile = inputs['inbase']+'.fits'
 vis = inputs['inbase']+'.ms'
-
-def ms2mms_fields(msfile):
-    "This function should go to eMERLIN_CASA_functions.py when we solve the sys.path problems."
-    output_mmsfile = msfile[:-3]+'.mms'
-    fields = vishead(msfile, mode = 'list', listitems = 'field')['field'][0]
-    mmsfiles = []
-    for field in fields:
-        mmsfile = msfile[:-3]+'_'+field+'.mms'
-        mmsfiles.append(mmsfile)
-        partition(vis=msfile, outputvis=mmsfile, createmms=True, separationaxis="baseline", numsubms="auto", flagbackup=False, datacolumn="all", field= field, spw="", scan="", antenna="", correlation="", timerange="", intent="", array="", uvrange="", observation="", feed="", disableparallel=None, ddistart=None, taql=None)
-    # Virtual concatenation. No data copied, just moved to SUBMMS directory
-    virtualconcat(vis = mmsfiles, concatvis = output_mmsfile, copypointing=True)
-    if os.path.isdir(msfile) == True:
-        os.system('rm -r '+msfile)
-        os.system('rm -r '+msfile+'.flagversions')
-
 
 ## Check for measurement sets in current directory otherwise drag from defined data directory
 if os.path.isdir(inputs['inbase']+'.ms') == False and os.path.isdir(inputs['inbase']+'.mms') == False:
@@ -60,8 +46,18 @@ if inputs['hanning'] == 1:
 	em.hanning(inputvis=vis,deloriginal=True)
 
 ### Convert to mms for parallelisation ###
+aoflagger_version, aoversion_list = em.check_aoflagger_version()
+if (aoversion_list[0] == '2') and (int(aoversion_list[1]) < 9):
+    old_aoflagger = True
+else:
+    old_aoflagger = False
+print 'AOflagger version is {0}'.format(aoflagger_version)
+
 if inputs['ms2mms'] == 1:
-	ms2mms_fields(msfile=vis)
+    if old_aoflagger:
+        em.ms2mms_fields(msfile=vis)
+    else:
+        em.ms2mms(vis=vis,mode='parallel')
 
 if os.path.isdir('./'+inputs['inbase']+'.mms') == True: #takes into account parallel or not
 	vis = inputs['inbase']+'.mms'
