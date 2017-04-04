@@ -167,14 +167,14 @@ def run_aoflagger(vis,mode):
 		sys.exit()
 
 def run_aoflagger_fields(vis,fields='all'):
-    """This version of the autoflagger iterates through the ms within the mms structure selecting individual fields. It uses pre-defined strategies.
+    """This version of the autoflagger iterates through the ms within the mms structure selecting individual fields. It uses pre-defined strategies. The np.unique in the loop below is needed for single source files. The mms thinks there are many filds (one per mms). I think it is a bug from virtualconcat.
     ToDo: accept aostrategy_list: a list of paths with the same length as fields with user specified strategies."""
     os.system('touch pre-cal_flag_stats.txt')
     if fields == 'all':
         fields = vishead(vis,mode='list',listitems='field')['field'][0]
     else:
         fields = np.atleast_1d(fields)
-    for field in fields:
+    for field in np.unique(fields):
         if os.path.isfile('./CASA_eMERLIN_pipeline/aoflagger_strategies/{0}.rfis'.format(field))==True:
             aostrategy = './CASA_eMERLIN_pipeline/aoflagger_strategies/{0}.rfis'.format(field)
         else:

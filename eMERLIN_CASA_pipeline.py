@@ -63,7 +63,17 @@ if os.path.isdir('./'+inputs['inbase']+'.mms') == True: #takes into account para
 	vis = inputs['inbase']+'.mms'
 
 if inputs['autoflag'] == 1:
-    em.run_aoflagger_fields(vis=vis,fields='all')
+    if old_aoflagger:
+        em.run_aoflagger_fields(vis=vis,fields='all')
+    else:
+        if inputs['rfigui'] == 1:
+            os.system('rfigui '+vis)
+            em.run_aoflagger(vis=vis,mode='user')
+        if inputs['rfigui']== 0:
+            em.run_aoflagger(vis=vis,mode='default')
+
+
+
 
 if inputs['do_prediag'] == 1:
 	em.do_prediagnostics(vis,plots_dir)
