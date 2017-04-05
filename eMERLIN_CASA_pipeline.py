@@ -47,6 +47,9 @@ if inputs['run_importfits'] == 1:
 if inputs['hanning'] == 1:
 	em.hanning(inputvis=vis,deloriginal=True)
 
+if inputs['rfigui'] == 1:
+    em.run_rfigui(vis)
+
 ### Flagging and parallelisation ###
 ### Check AOflagger version. Decide if old or new procedure is needed. ###
 ### if v2.7< do ms2mms fields
@@ -59,22 +62,16 @@ if em.check_aoflagger_version(): #Use J. Moldon's default flagger for mms archit
         if os.path.isdir('./'+inputs['inbase']+'.mms') == True:
             vis = inputs['inbase']+'.mms'
         em.run_aoflagger_fields(vis=vis,fields='all', pipeline_path = pipeline_path)
-
-
 ### if v2.9+ use -field parameter and can generate source specific rfi strategies
 else: ##run aoflagger on .ms file first so that gui works properly if aoflagger >2.9
 	if inputs['autoflag'] == 1:
-		if inputs['rfigui'] == 1:
-			os.system('rfigui '+vis)
-			em.run_aoflagger(vis=vis,mode='user')
-		if inputs['rfigui']== 0:
-			em.run_aoflagger(vis=vis,mode='default')
+		em.run_aoflagger(vis=vis,mode='default')
 	if inputs['ms2mms'] == 1:
 		em.ms2mms(vis=vis,mode='parallel')
 
 ## check for parallelisation
 if os.path.isdir('./'+inputs['inbase']+'.mms') == True:
-			vis = inputs['inbase']+'.mms'
+    vis = inputs['inbase']+'.mms'
 
 
 ### Produce some initial plots ###

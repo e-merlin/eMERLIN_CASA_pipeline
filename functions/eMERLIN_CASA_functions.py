@@ -132,6 +132,11 @@ def hanning(inputvis,deloriginal):
     ms.writehistory(message='eMER_CASA_Pipeline: Hanning smoothed data, complete',msname=inputvis)
     return
 
+def run_rfigui(vis):
+    """This function should output the new strategies to /aoflagger_strategies/user/<field>.rfis in 
+    either the local folder or the pipeline folder."""
+    os.system('rfigui '+vis)
+
 
 #Run aoflagger. Mode = auto uses best fit strategy for e-MERLIN (credit J. Moldon), Mode=user uses custon straegy for each field
 def run_aoflagger(vis,mode):
@@ -166,17 +171,21 @@ def run_aoflagger(vis,mode):
 		print 'Error: Please use either mode=user or mode=default'
 		sys.exit()
 
-def run_aoflagger_fields(vis,fields='all'):
-    """This version of the autoflagger iterates through the ms within the mms structure selecting individual fields. It uses pre-defined strategies. The np.unique in the loop below is needed for single source files. The mms thinks there are many filds (one per mms). I think it is a bug from virtualconcat.
-    ToDo: accept aostrategy_list: a list of paths with the same length as fields with user specified strategies."""
-    os.system('touch pre-cal_flag_stats.txt')
+def run_aoflagger_fields(vis,fields='all', pipeline_path='./'):
+    """This version of the autoflagger iterates through the ms within the mms structure selecting individual fields. It uses pre-defined strategies. The np.unique in the loop below is needed for single source files. The mms thinks there are many filds (one per mms). I think it is a bug from virtualconcat."""
     if fields == 'all':
         fields = vishead(vis,mode='list',listitems='field')['field'][0]
     else:
         fields = np.atleast_1d(fields)
     for field in np.unique(fields):
-        if os.path.isfile(pipeline_path+'aoflagger_strategies/user/{0}.rfis'.format(field))==True:
-            aostrategy = pipeline_path+'aoflagger_strategies/user/{0}.rfis'.format(field)
+        # First, check if user has a new strategy for this field in the local folder.
+        # If not, check if user has produced a new strategy for this field in the pipeline folder (for typical sources, etc).
+        # If not, check for default strategies for this field
+        # If nothing is found, just use the default strategy
+        if os.path.isfile('./aoflagger_strategies/user/{0}.rfis'.format(field))==True:
+            aostrategy = './aoflagger_strategies/user/{0}.rfis'.format(field)
+        elif os.path.isfile(pipeline_path+'aoflagger_strategies/default/{0}.rfis'.format(field))==True:
+            aostrategy = pipeline_path+'aoflagger_strategies/default/{0}.rfis'.format(field)
         elif os.path.isfile(pipeline_path+'aoflagger_strategies/default/{0}.rfis'.format(field))==True:
             aostrategy = pipeline_path+'aoflagger_strategies/default/{0}.rfis'.format(field)
         else:
