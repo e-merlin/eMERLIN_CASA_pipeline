@@ -2,14 +2,18 @@
 ##Dependencies##
 import os,sys,math
 import numpy as np
-import functions.eMERLIN_CASA_functions as em
-import functions.eMERLIN_CASA_GUI as emGUI
 from casa import table as tb
 from casa import ms
 from Tkinter import *
 import getopt
 #from tasks import *
 #from casa import *
+
+## Find path of pipeline to find external files (like aoflagger strategies)
+pipeline_path = os.path.dirname(sys.argv[np.where(np.asarray(sys.argv)=='-c')[0][0] + 1]) + '/'
+sys.path.append(pipeline_path)
+import functions.eMERLIN_CASA_functions as em
+import functions.eMERLIN_CASA_GUI as emGUI
 
 ###############
 
@@ -26,8 +30,6 @@ if inputs['quit'] == 1: #Check from GUI if quit is needed
 fitsfile = inputs['inbase']+'.fits'
 vis = inputs['inbase']+'.ms'
 
-## Find path of pipeline to find external files (like aoflagger strategies)
-pipeline_path = os.path.dirname(sys.argv[np.where(np.asarray(sys.argv)=='-c')[0][0] + 1]) + '/'
 
 ## Check for measurement sets in current directory otherwise drag from defined data directory
 if os.path.isdir(inputs['inbase']+'.ms') == False and os.path.isdir(inputs['inbase']+'.mms') == False:
