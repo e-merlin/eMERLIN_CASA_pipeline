@@ -7,8 +7,8 @@ from casa import table as tb
 from casa import ms
 from Tkinter import *
 import getopt
-from tasks import *
-from casa import *
+#from tasks import *
+#from casa import *
 
 
 ###############
@@ -48,12 +48,15 @@ if inputs['hanning'] == 1:
 ### Check AOflagger version. Decide if old or new procedure is needed. ###
 ### if v2.7< do ms2mms fields
 if em.check_aoflagger_version(): #Use J. Moldon's default flagger for mms architecture when -field parameter doesnt exist
-	if inputs['ms2mms'] == 1:
-		em.ms2mms_fields(msfile=vis)
-		if os.path.isdir('./'+inputs['inbase']+'.mms') == True:
-			vis = inputs['inbase']+'.mms'
-	if inputs['autoflag'] == 1:
-	    em.run_aoflagger_fields(vis=vis,fields='all')
+    if inputs['ms2mms'] == 1:
+        em.ms2mms_fields(msfile=vis)
+        if os.path.isdir('./'+inputs['inbase']+'.mms') == True:
+            vis = inputs['inbase']+'.mms'
+    if inputs['autoflag'] == 1:
+        if os.path.isdir('./'+inputs['inbase']+'.mms') == True:
+            vis = inputs['inbase']+'.mms'
+        em.run_aoflagger_fields(vis=vis,fields='all')
+
 
 ### if v2.9+ use -field parameter and can generate source specific rfi strategies
 else: ##run aoflagger on .ms file first so that gui works properly if aoflagger >2.9
