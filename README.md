@@ -8,19 +8,19 @@ This is the CASA pipeline for e-MERLIN data, it is designed to be fully parallel
 - python2.7
 
 ## Download ##
-If you have git installed, you can download the pipeline from:
+If you have git installed, you can get the pipeline using:  
 `git clone https://github.com/e-merlin/CASA_eMERLIN_pipeline.git`
 
-If you don't have git, you can download and unzip the files from [here](https://github.com/e-merlin/CASA_eMERLIN_pipeline/archive/master.zip):
+If you don't have git, you can download and unzip the files from [here](https://github.com/e-merlin/CASA_eMERLIN_pipeline/archive/master.zip).
 
 ## Usage ##
 The pipeline uses a GUI interface as an input and now has a headless version. To run, do the following:
-   * Using GUI:
+   * Using GUI:  
    `mpicasa -n <num_cores casa> -c /path/to/pipeline/eMERLIN_CASA_pipeline.py -g`
-   * With an input file (find sameple in pipeline. Define data location and steps to follow)
+   * With an input file (find sameple in pipeline. Define data location and steps to follow)  
     `mpicasa -n <num_cores> casa -c /path/to/pipeline/eMERLIN_CASA_pipeline.py -i <input file>`
   
-N.b. replace num_cores with the number of cores you would like to use
+N.b. replace num_cores with the number of cores you would like to use.  
 To run not in parallel remove `mpicasa -n num_cores`
 
 IMPORTANT: The pipeline will look in your data directory for a ms or mms with the prefix defined in inputs and copy it to your current directory if it cannot find it in the current directory.
