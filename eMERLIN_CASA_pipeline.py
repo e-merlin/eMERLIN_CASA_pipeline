@@ -1,6 +1,5 @@
 ## v0.00001 of an eMERLIN CASA pipeline ##
 ##Dependencies##
-sys.path.insert(0,'./CASA_eMERLIN_pipeline') # add github path at runtime
 import os,sys,math
 import eMERLIN_CASA_functions as em
 import eMERLIN_CASA_GUI as emGUI
@@ -39,43 +38,38 @@ else:
 
 ## Pipeline processes, inputs are read from the inputs dictionary
 if inputs['run_importfits'] == 1:
-	print data_dir
 	em.run_importfitsIDI(data_dir,vis)
 
 if inputs['hanning'] == 1:
 	em.hanning(inputvis=vis,deloriginal=True)
 
+### Flagging and parallelisation ###
 ### Check AOflagger version. Decide if old or new procedure is needed. ###
-aoflagger_version, aoversion_list = em.check_aoflagger_version()
-if (aoversion_list[0] == '2') and (int(aoversion_list[1]) < 9):
-    old_aoflagger = True
-else:
-    old_aoflagger = False
-print 'AOflagger version is {0}'.format(aoflagger_version)
+### if v2.7< do ms2mms fields
+if em.check_aoflagger_version(): #Use J. Moldon's default flagger for mms architecture when -field parameter doesnt exist
+	if inputs['ms2mms'] == 1:
+		em.ms2mms_fields(msfile=vis)
+		if os.path.isdir('./'+inputs['inbase']+'.mms') == True:
+			vis = inputs['inbase']+'.mms'
+	if inputs['autoflag'] == 1:
+	    em.run_aoflagger_fields(vis=vis,fields='all')
 
-### Convert to mms for parallelisation ###
-if inputs['ms2mms'] == 1:
-    if old_aoflagger:
-        em.ms2mms_fields(msfile=vis)
-    else:
-        em.ms2mms(vis=vis,mode='parallel')
+### if v2.9+ use -field parameter and can generate source specific rfi strategies
+else: ##run aoflagger on .ms file first so that gui works properly if aoflagger >2.9
+	if inputs['autoflag'] == 1:
+		if inputs['rfigui'] == 1:
+			os.system('rfigui '+vis)
+			em.run_aoflagger(vis=vis,mode='user')
+		if inputs['rfigui']== 0:
+			em.run_aoflagger(vis=vis,mode='default')
+	if inputs['ms2mms'] == 1:
+		em.ms2mms(vis=vis,mode='parallel')
 
+## check for parallelisation
 if os.path.isdir('./'+inputs['inbase']+'.mms') == True:
-	vis = inputs['inbase']+'.mms'
+			vis = inputs['inbase']+'.mms'
 
-### Autoflag all sources in data set ###
-if inputs['autoflag'] == 1:
-    if old_aoflagger:
-        em.run_aoflagger_fields(vis=vis,fields='all')
-    else:
-        if inputs['rfigui'] == 1:
-            os.system('rfigui '+vis)
-            em.run_aoflagger(vis=vis,mode='user')
-        if inputs['rfigui']== 0:
-            em.run_aoflagger(vis=vis,mode='default')
 
 ### Produce some initial plots ###
 if inputs['do_prediag'] == 1:
 	em.do_prediagnostics(vis,plots_dir)
-
-

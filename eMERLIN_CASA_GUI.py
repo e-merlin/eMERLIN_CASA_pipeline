@@ -5,6 +5,9 @@ from casa import table as tb
 from casa import ms
 from Tkinter import *
 import tkMessageBox
+from tasks import *
+from casa import *
+
 class GUI_pipeline:
 	def __init__(self):
 		self.root = Toplevel()

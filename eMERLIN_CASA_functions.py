@@ -7,7 +7,7 @@ from Tkinter import *
 import tkMessageBox
 import sys
 import getopt
-from task_importfitsidi import *
+#from task_importfitsidi import *
 # Need to be in this order:
 from tasks import *
 from casa import *
@@ -184,13 +184,19 @@ def run_aoflagger_fields(vis,fields='all'):
         ms.writehistory(message='eMER_CASA_Pipeline: AOFlag field {0} with strategy {1}:'.format(field, aostrategy),msname=vis)
 
 def check_aoflagger_version():
-    from subprocess import Popen, PIPE
-    process = Popen(['aoflagger'], stdout=PIPE)
-    (output, err) = process.communicate()
-    exit_code = process.wait()
-    version = output.split()[1]
-    version_list = version.split('.')
-    return version, version_list
+	from subprocess import Popen, PIPE
+	process = Popen(['aoflagger'], stdout=PIPE)
+	(output, err) = process.communicate()
+	exit_code = process.wait()
+	version = output.split()[1]
+	version_list = version.split('.')
+	if (version_list[0] == '2') and (int(version_list[1]) < 9):
+		old_aoflagger = True
+	else:
+		old_aoflagger = False
+	print 'AOflagger version is {0}'.format(version)
+	old_aoflagger = True
+	return old_aoflagger
 
 def ms2mms(vis,mode):
 	if mode == 'parallel':
