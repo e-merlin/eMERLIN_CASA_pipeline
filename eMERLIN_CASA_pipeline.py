@@ -1,8 +1,8 @@
 ## v0.00001 of an eMERLIN CASA pipeline ##
 ##Dependencies##
 import os,sys,math
-import eMERLIN_CASA_functions as em
-import eMERLIN_CASA_GUI as emGUI
+import functions.eMERLIN_CASA_functions as em
+import functions.eMERLIN_CASA_GUI as emGUI
 from casa import table as tb
 from casa import ms
 from Tkinter import *
@@ -10,7 +10,8 @@ import getopt
 from tasks import *
 from casa import *
 
-################
+
+###############
 
 ##Inputs##
 inputs = em.check_in()
