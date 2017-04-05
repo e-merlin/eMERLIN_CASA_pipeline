@@ -9,7 +9,7 @@ import getopt
 #from tasks import *
 #from casa import *
 
-## Find path of pipeline to find external files (like aoflagger strategies)
+## Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 pipeline_path = os.path.dirname(sys.argv[np.where(np.asarray(sys.argv)=='-c')[0][0] + 1]) + '/'
 sys.path.append(pipeline_path)
 import functions.eMERLIN_CASA_functions as em
@@ -18,7 +18,7 @@ import functions.eMERLIN_CASA_GUI as emGUI
 ###############
 
 ##Inputs##
-inputs = em.check_in()
+inputs = em.check_in(pipeline_path)
 data_dir = em.backslash_check(inputs['data_dir'])
 plots_dir = em.backslash_check(inputs['plots_dir'])
 print inputs

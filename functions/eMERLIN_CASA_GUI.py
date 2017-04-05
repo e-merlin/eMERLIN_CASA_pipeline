@@ -9,10 +9,10 @@ from tasks import *
 from casa import *
 
 class GUI_pipeline:
-	def __init__(self):
+	def __init__(self, pipeline_path):
 		self.root = Toplevel()
 		self.root.title('eMERLIN CASA Pipeline')
-		logo = PhotoImage(file='CASA_eMERLIN_pipeline/emerlin-2.gif')
+		logo = PhotoImage(file=pipeline_path+'emerlin-2.gif')
 		self.w1 = Label(self.root,image=logo)
 		self.w1.grid(row=0,column=2,columnspan=3,rowspan=2,sticky='w,e,n,s')
 		self.w2 = Label(self.root,justify='left',padx=10,text="This is the eMERLIN pipeline")

@@ -8,11 +8,12 @@ import tkMessageBox
 import sys
 import getopt
 #from task_importfitsidi import *
+from eMERLIN_CASA_GUI import GUI_pipeline
 # Need to be in this order:
 from tasks import *
 from casa import *
 
-def check_in():
+def check_in(pipeline_path):
 	try:
 		opts, arg = getopt.getopt(sys.argv[1:],'i:c:hg',['help','input=','gui'])
 		print sys.argv[1:]
@@ -26,7 +27,7 @@ def check_in():
 			inputs['quit'] = 0 ##needed to add to be compatible with GUI
 			print inputs
 		elif o in ('-g','--gui'):
-			inputs = GUI_pipeline().confirm_parameters() ## read input file
+			inputs = GUI_pipeline(pipeline_path).confirm_parameters() ## read input file
 			print inputs
 		elif o in ('-h','--help'):
 			print 'help will be written soon'
