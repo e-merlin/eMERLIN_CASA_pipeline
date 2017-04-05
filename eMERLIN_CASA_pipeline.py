@@ -1,6 +1,7 @@
 ## v0.00001 of an eMERLIN CASA pipeline ##
 ##Dependencies##
 import os,sys,math
+import numpy as np
 import functions.eMERLIN_CASA_functions as em
 import functions.eMERLIN_CASA_GUI as emGUI
 from casa import table as tb
@@ -9,7 +10,6 @@ from Tkinter import *
 import getopt
 #from tasks import *
 #from casa import *
-
 
 ###############
 
@@ -25,6 +25,9 @@ if inputs['quit'] == 1: #Check from GUI if quit is needed
 
 fitsfile = inputs['inbase']+'.fits'
 vis = inputs['inbase']+'.ms'
+
+## Find path of pipeline to find external files (like aoflagger strategies)
+pipeline_path = os.path.dirname(sys.argv[np.where(np.asarray(sys.argv)=='-c')[0][0] + 1]) + '/'
 
 ## Check for measurement sets in current directory otherwise drag from defined data directory
 if os.path.isdir(inputs['inbase']+'.ms') == False and os.path.isdir(inputs['inbase']+'.mms') == False:
@@ -55,7 +58,7 @@ if em.check_aoflagger_version(): #Use J. Moldon's default flagger for mms archit
     if inputs['autoflag'] == 1:
         if os.path.isdir('./'+inputs['inbase']+'.mms') == True:
             vis = inputs['inbase']+'.mms'
-        em.run_aoflagger_fields(vis=vis,fields='all')
+        em.run_aoflagger_fields(vis=vis,fields='all', pipeline_path = pipeline_path)
 
 
 ### if v2.9+ use -field parameter and can generate source specific rfi strategies

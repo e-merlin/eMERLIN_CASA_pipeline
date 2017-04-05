@@ -1,8 +1,8 @@
 #!/usr/local/python
 import os
-from casa import *
 from casa import table as tb
 from casa import ms
+import numpy as np
 from Tkinter import *
 import tkMessageBox
 import sys
@@ -175,10 +175,13 @@ def run_aoflagger_fields(vis,fields='all'):
     else:
         fields = np.atleast_1d(fields)
     for field in np.unique(fields):
-        if os.path.isfile('./CASA_eMERLIN_pipeline/aoflagger_strategies/{0}.rfis'.format(field))==True:
-            aostrategy = './CASA_eMERLIN_pipeline/aoflagger_strategies/{0}.rfis'.format(field)
+        if os.path.isfile(pipeline_path+'aoflagger_strategies/user/{0}.rfis'.format(field))==True:
+            aostrategy = pipeline_path+'aoflagger_strategies/user/{0}.rfis'.format(field)
+        elif os.path.isfile(pipeline_path+'aoflagger_strategies/default/{0}.rfis'.format(field))==True:
+            aostrategy = pipeline_path+'aoflagger_strategies/default/{0}.rfis'.format(field)
         else:
-            aostrategy = './CASA_eMERLIN_pipeline/aoflagger_strategies/{0}.rfis'.format('default_faint')
+            aostrategy = pipeline_path+'aoflagger_strategies/default/{0}.rfis'.format('default_faint')
+        print 'Running AOFLagger for field {0} using strategy {1}'.format(field, aostrategy)
         flagcommand = 'time aoflagger -strategy {0} {1}'.format(aostrategy, vis+'/SUBMSS/*{0}.mms.*.ms'.format(field))
         os.system(flagcommand+' | tee -a pre-cal_flag_stats.txt')
         ms.writehistory(message='eMER_CASA_Pipeline: AOFlag field {0} with strategy {1}:'.format(field, aostrategy),msname=vis)
@@ -226,7 +229,12 @@ def ms2mms_fields(msfile):
         mmsfiles.append(mmsfile)
         partition(vis=msfile, outputvis=mmsfile, createmms=True, separationaxis="baseline", numsubms="auto", flagbackup=False, datacolumn="all", field= field, spw="", scan="", antenna="", correlation="", timerange="", intent="", array="", uvrange="", observation="", feed="", disableparallel=None, ddistart=None, taql=None)
     # Virtual concatenation. No data copied, just moved to SUBMMS directory
-    virtualconcat(vis = mmsfiles, concatvis = output_mmsfile, copypointing=True)
+    if len(mmsfiles) == 1: # No need to concatenate because there is only one file
+        os.system('rm -r {0} {1}'.format(mmsfiles[0], output_mmsfile))
+    elif len(mmsfiles) > 1:
+        virtualconcat(vis = mmsfiles, concatvis = output_mmsfile, copypointing=True)
+    else:
+        print 'No MMS files found.'
     if os.path.isdir(msfile) == True:
         os.system('rm -r '+msfile)
         os.system('rm -r '+msfile+'.flagversions')
