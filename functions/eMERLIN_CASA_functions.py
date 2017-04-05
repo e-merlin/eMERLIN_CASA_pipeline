@@ -13,27 +13,30 @@ from eMERLIN_CASA_GUI import GUI_pipeline
 from tasks import *
 from casa import *
 
+import logging
+logger = logging.getLogger('logger')
+
 def check_in(pipeline_path):
 	try:
 		opts, arg = getopt.getopt(sys.argv[1:],'i:c:hg',['help','input=','gui'])
-		print sys.argv[1:]
+		logger.debug(sys.argv[1:])
 	except getopt.GetoptError as err:
-		print(err)
+		logger.error(err)
 		sys.exit(2)
 	for o,a in opts:
-		print o,a
+		logger.debug('{0} {1}'.format(o,a))
 		if o in ('-i','--input'):
 			inputs = headless(a) ## read input file
 			inputs['quit'] = 0 ##needed to add to be compatible with GUI
-			print inputs
+			logger.info('inputs from file: {}'.format(inputs))
 		elif o in ('-g','--gui'):
 			inputs = GUI_pipeline(pipeline_path).confirm_parameters() ## read input file
-			print inputs
+			logger.info('inputs from GUI: {}'.format(inputs))
 		elif o in ('-h','--help'):
-			print 'help will be written soon'
+			logger.debug('help will be written soon')
 			sys.exit()
 		elif o == '-c':
-			print 'Executing!'
+			logger.debug('Executing!')
 		else:
 			assert False, "rerun with either headless -i or gui" #if none are specifed run GUI
 	return inputs
@@ -96,12 +99,13 @@ def check_history(vis):
 
 
 def run_importfitsIDI(data_dir,vis):
+	logger.info('Start importfitsIDI')
 	os.system('rm -r '+vis)
 	fitsfiles =[]
 	for file in os.listdir(data_dir):
 		if file.endswith('fits') or file.endswith('FITS'):
 			fitsfiles = fitsfiles + [data_dir+file]
-	print 'fits files found in data'
+	logger.debug('fits files found in data')
 	importfitsidi(fitsidifile=fitsfiles, vis=vis, constobsid=True, scanreindexgap_s=15.0)
 	ms.writehistory(message='eMER_CASA_Pipeline: Import fitsidi to ms, complete',msname=vis)
 	fixvis(vis=vis,outputvis=vis+'.uvfix')
@@ -109,7 +113,8 @@ def run_importfitsIDI(data_dir,vis):
 	os.system('mv {0} {1}'.format(vis+'.uvfix', vis))
 	flagdata(vis=vis,mode='manual',autocorr=True)
 	ms.writehistory(message='eMER_CASA_Pipeline: Fixed uv coordinates & remove autocorr',msname=vis)
-	print 'You have been transformed from an ugly UVFITS to beautiful MS'
+	logger.debug('You have been transformed from an ugly UVFITS to beautiful MS')
+	logger.info('End importfitsIDI')
 	return
 
 ##Hanning smoothing and flag of autocorrelations, will delete original and rename
@@ -134,10 +139,11 @@ def hanning(inputvis,deloriginal):
     return
 
 def run_rfigui(vis):
+    logger.info('Start run_rfigui')
     """This function should output the new strategies to /aoflagger_strategies/user/<field>.rfis in 
     either the local folder or the pipeline folder."""
     os.system('rfigui '+vis)
-
+    logger.info('End run_rfigui')
 
 #Run aoflagger. Mode = auto uses best fit strategy for e-MERLIN (credit J. Moldon), Mode=user uses custon straegy for each field
 def run_aoflagger(vis,mode):
@@ -174,6 +180,7 @@ def run_aoflagger(vis,mode):
 
 def run_aoflagger_fields(vis,fields='all', pipeline_path='./'):
     """This version of the autoflagger iterates through the ms within the mms structure selecting individual fields. It uses pre-defined strategies. The np.unique in the loop below is needed for single source files. The mms thinks there are many filds (one per mms). I think it is a bug from virtualconcat."""
+    logger.info('Start run_aoflagger_fields')
     if fields == 'all':
         fields = vishead(vis,mode='list',listitems='field')['field'][0]
     else:
@@ -191,12 +198,14 @@ def run_aoflagger_fields(vis,fields='all', pipeline_path='./'):
             aostrategy = pipeline_path+'aoflagger_strategies/default/{0}.rfis'.format(field)
         else:
             aostrategy = pipeline_path+'aoflagger_strategies/default/{0}.rfis'.format('default_faint')
-        print 'Running AOFLagger for field {0} using strategy {1}'.format(field, aostrategy)
+        logger.info('Running AOFLagger for field {0} using strategy {1}'.format(field, aostrategy))
         flagcommand = 'time aoflagger -strategy {0} {1}'.format(aostrategy, vis+'/SUBMSS/*{0}.mms.*.ms'.format(field))
         os.system(flagcommand+' | tee -a pre-cal_flag_stats.txt')
         ms.writehistory(message='eMER_CASA_Pipeline: AOFlag field {0} with strategy {1}:'.format(field, aostrategy),msname=vis)
+    logger.info('End run_aoflagger_fields')
 
 def check_aoflagger_version():
+	logger.info('Start check_aoflagger_version')
 	from subprocess import Popen, PIPE
 	process = Popen(['aoflagger'], stdout=PIPE)
 	(output, err) = process.communicate()
@@ -207,8 +216,9 @@ def check_aoflagger_version():
 		old_aoflagger = True
 	else:
 		old_aoflagger = False
-	print 'AOflagger version is {0}'.format(version)
+	logger.info('AOflagger version is {0}'.format(version))
 	old_aoflagger = True
+	logger.info('End check_aoflagger_version')
 	return old_aoflagger
 
 def ms2mms(vis,mode):
@@ -231,24 +241,26 @@ def ms2mms(vis,mode):
 			os.system('rm -r '+vis+'.flagversions')
 
 def ms2mms_fields(msfile):
+    logger.info('Start ms2mms_fields')
     output_mmsfile = msfile[:-3]+'.mms'
     fields = vishead(msfile, mode = 'list', listitems = 'field')['field'][0]
     mmsfiles = []
     for field in fields:
+        logger.info('Field found: {}'.format(field))
         mmsfile = msfile[:-3]+'_'+field+'.mms'
         mmsfiles.append(mmsfile)
         partition(vis=msfile, outputvis=mmsfile, createmms=True, separationaxis="baseline", numsubms="auto", flagbackup=False, datacolumn="all", field= field, spw="", scan="", antenna="", correlation="", timerange="", intent="", array="", uvrange="", observation="", feed="", disableparallel=None, ddistart=None, taql=None)
     # Virtual concatenation. No data copied, just moved to SUBMMS directory
     if len(mmsfiles) == 1: # No need to concatenate because there is only one file
-        os.system('rm -r {0} {1}'.format(mmsfiles[0], output_mmsfile))
+        os.system('mv {0} {1}'.format(mmsfiles[0], output_mmsfile))
     elif len(mmsfiles) > 1:
         virtualconcat(vis = mmsfiles, concatvis = output_mmsfile, copypointing=True)
     else:
-        print 'No MMS files found.'
+        logger.critical('No MMS files found.')
     if os.path.isdir(msfile) == True:
         os.system('rm -r '+msfile)
         os.system('rm -r '+msfile+'.flagversions')
-
+    logger.info('End ms2mms_fields')
 
 def do_prediagnostics(vis,plot_dir):
 	##Pre diagnostics for measurement sets##
@@ -260,7 +272,7 @@ def do_prediagnostics(vis,plot_dir):
 	## - Phase vs. Frequency
 	## - Closures (if task is available)
 	## - Listobs summary
-
+	logger.info('Start prediagnostics')
 	if os.path.isdir(plot_dir) == False:
 		os.system('mkdir '+plot_dir)
 	if os.path.isdir('./'+plot_dir+'pre-calibration') == False:
@@ -297,6 +309,7 @@ field=x[i], antenna='*&*', averagedata=True, avgtime=time, iteraxis='baseline', 
 	#vishead(vis=vis,listfile=directory+vis+'.listobs')
 	#plotants(vis=vis,figfile=directory+vis+'.plotants.png')
 	## Amplitude vs Time:
+	logger.info('End prediagnostics')
 
 def dfluxpy(freq,baseline):
 	#######

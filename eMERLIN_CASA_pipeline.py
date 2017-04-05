@@ -6,26 +6,38 @@ from casa import table as tb
 from casa import ms
 from Tkinter import *
 import getopt
-#from tasks import *
-#from casa import *
+import logging
 
-## Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
+# Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 pipeline_path = os.path.dirname(sys.argv[np.where(np.asarray(sys.argv)=='-c')[0][0] + 1]) + '/'
 sys.path.append(pipeline_path)
 import functions.eMERLIN_CASA_functions as em
 import functions.eMERLIN_CASA_GUI as emGUI
 
-###############
+# Setup logger
+logger = logging.getLogger('logger')
+logger.setLevel(logging.INFO)
+handler = logging.FileHandler('hello.log') # create a file handler
+handler.setLevel(logging.INFO)
+formatter = logging.Formatter(fmt='%(asctime)s.%(msecs)1d | %(levelname)s | %(message)s',datefmt='%Y-%m-%d %H:%M:%S')
+handler.setFormatter(formatter)
+logger.addHandler(handler) # add the handlers to the logger
+consoleHandler = logging.StreamHandler() # Stream errors to terminal also
+consoleHandler.setFormatter(formatter)
+logger.addHandler(consoleHandler)
+
+logger.info('Starting pipeline')
+logger.info('Running pipeline from: {}'.format(pipeline_path))
 
 ##Inputs##
 inputs = em.check_in(pipeline_path)
 data_dir = em.backslash_check(inputs['data_dir'])
 plots_dir = em.backslash_check(inputs['plots_dir'])
-print inputs
-##########
+logger.info('Inputs used: {}'.format(inputs))
 
 if inputs['quit'] == 1: #Check from GUI if quit is needed
-	sys.exit()
+    logger.debug('Pipeline exit')
+    sys.exit()
 
 fitsfile = inputs['inbase']+'.fits'
 vis = inputs['inbase']+'.ms'
@@ -38,9 +50,9 @@ if os.path.isdir(inputs['inbase']+'.ms') == False and os.path.isdir(inputs['inba
 	elif os.path.isdir(data_dir+inputs['inbase']+'.ms') == True:
 		os.system('rsync -ar --progress {0} ./'.format(data_dir+inputs['inbase']+'.ms'))
 	else:
-		print 'No measurement set found, assuming you need to importfits or change data dir'
+		logger.info('No measurement set found, assuming you need to importfits or change data dir')
 else:
-	print 'Measurement set found: '+vis+'. Continuing with your inputs'
+	logger.info('Measurement set found: {}. Continuing with your inputs'.format(vis))
 
 ## Pipeline processes, inputs are read from the inputs dictionary
 if inputs['run_importfits'] == 1:
