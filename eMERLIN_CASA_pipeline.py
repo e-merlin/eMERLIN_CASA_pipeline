@@ -17,7 +17,7 @@ import functions.eMERLIN_CASA_GUI as emGUI
 # Setup logger
 logger = logging.getLogger('logger')
 logger.setLevel(logging.INFO)
-handler = logging.FileHandler('hello.log') # create a file handler
+handler = logging.FileHandler('eMCP.log') # create a file handler
 handler.setLevel(logging.INFO)
 formatter = logging.Formatter(fmt='%(asctime)s.%(msecs)1d | %(levelname)s | %(message)s',datefmt='%Y-%m-%d %H:%M:%S')
 handler.setFormatter(formatter)
@@ -91,3 +91,8 @@ if os.path.isdir('./'+inputs['inbase']+'.mms') == True:
 ### Produce some initial plots ###
 if inputs['do_prediag'] == 1:
 	em.do_prediagnostics(vis,plots_dir)
+
+
+logger.info('Pipeline finished')
+logger.info('#################')
+
