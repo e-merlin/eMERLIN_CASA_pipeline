@@ -99,26 +99,32 @@ def check_history(vis):
 
 
 def run_importfitsIDI(data_dir,vis):
-	logger.info('Start importfitsIDI')
+	logger.info('Starting importfitsIDI procedure')
 	os.system('rm -r '+vis)
 	fitsfiles =[]
 	for file in os.listdir(data_dir):
 		if file.endswith('fits') or file.endswith('FITS'):
 			fitsfiles = fitsfiles + [data_dir+file]
-	logger.debug('fits files found in data')
+			logger.info('FITS file found to be imported: {0}'.format(file))
+	logger.info('Start importfitsIDI')
 	importfitsidi(fitsidifile=fitsfiles, vis=vis, constobsid=True, scanreindexgap_s=15.0)
 	ms.writehistory(message='eMER_CASA_Pipeline: Import fitsidi to ms, complete',msname=vis)
+	logger.info('End importfitsIDI')
+	logger.info('Start UVFIX')
 	fixvis(vis=vis,outputvis=vis+'.uvfix')
+	logger.info('End UVFIX')
 	os.system('rm -r {0}'.format(vis))
 	os.system('mv {0} {1}'.format(vis+'.uvfix', vis))
+	logger.info('Start flagdata_autocorr')
 	flagdata(vis=vis,mode='manual',autocorr=True)
 	ms.writehistory(message='eMER_CASA_Pipeline: Fixed uv coordinates & remove autocorr',msname=vis)
+	logger.info('End flagdata_autocorr')
 	logger.debug('You have been transformed from an ugly UVFITS to beautiful MS')
-	logger.info('End importfitsIDI')
 	return
 
 ##Hanning smoothing and flag of autocorrelations, will delete original and rename
 def hanning(inputvis,deloriginal):
+    logger.info('Start hanning')
     if inputvis[-3:].lower() == '.ms':
         outputvis = inputvis[:-3]+'_hanning'+inputvis[-3:]
         os.system('rm -r '+outputvis)
@@ -136,6 +142,7 @@ def hanning(inputvis,deloriginal):
     os.system('mv {0} {1}'.format(outputvis, inputvis))
     os.system('mv {0}.flagversions {1}.flagversions'.format(outputvis, inputvis))
     ms.writehistory(message='eMER_CASA_Pipeline: Hanning smoothed data, complete',msname=inputvis)
+    logger.info('End hanning')
     return
 
 def run_rfigui(vis):
@@ -205,7 +212,7 @@ def run_aoflagger_fields(vis,fields='all', pipeline_path='./'):
     logger.info('End run_aoflagger_fields')
 
 def check_aoflagger_version():
-	logger.info('Start check_aoflagger_version')
+	logger.info('Checking AOflagger version')
 	from subprocess import Popen, PIPE
 	process = Popen(['aoflagger'], stdout=PIPE)
 	(output, err) = process.communicate()
@@ -218,10 +225,10 @@ def check_aoflagger_version():
 		old_aoflagger = False
 	logger.info('AOflagger version is {0}'.format(version))
 	old_aoflagger = True
-	logger.info('End check_aoflagger_version')
 	return old_aoflagger
 
 def ms2mms(vis,mode):
+	logger.info('Start ms2mms')
 	if mode == 'parallel':
 		partition(vis=vis,outputvis=vis[:-3]+'.mms',createmms=True,separationaxis="auto",numsubms="auto",flagbackup=True,datacolumn=
 "all",field="",spw="",scan="",antenna="",correlation="",timerange="",intent="",array="",uvrange="",observation="",feed="",disableparallel=None,ddistart=None
@@ -239,6 +246,7 @@ def ms2mms(vis,mode):
 		if os.path.isdir(vis[:-3]+'.ms') == True:
 			os.system('rm -r '+vis)
 			os.system('rm -r '+vis+'.flagversions')
+	logger.info('End ms2mms')
 
 def ms2mms_fields(msfile):
     logger.info('Start ms2mms_fields')
@@ -246,7 +254,7 @@ def ms2mms_fields(msfile):
     fields = vishead(msfile, mode = 'list', listitems = 'field')['field'][0]
     mmsfiles = []
     for field in fields:
-        logger.info('Field found: {}'.format(field))
+        logger.info('Running partition on field found: {}'.format(field))
         mmsfile = msfile[:-3]+'_'+field+'.mms'
         mmsfiles.append(mmsfile)
         partition(vis=msfile, outputvis=mmsfile, createmms=True, separationaxis="baseline", numsubms="auto", flagbackup=False, datacolumn="all", field= field, spw="", scan="", antenna="", correlation="", timerange="", intent="", array="", uvrange="", observation="", feed="", disableparallel=None, ddistart=None, taql=None)
