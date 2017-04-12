@@ -175,46 +175,49 @@ def run_rfigui(vis):
     os.system('rfigui '+vis)
     logger.info('End run_rfigui')
 
-#Run aoflagger. Mode = auto uses best fit strategy for e-MERLIN (credit J. Moldon), Mode=user uses custon straegy for each field
-def run_aoflagger(vis,mode):
-	if mode == 'user':
-		x = vishead(vis,mode='list',listitems='field')['field'][0]
-		os.system('touch pre-cal_flag_stats.txt')
-		y = []
-		for i in range(len(x)):
-			if os.path.isfile(x[i]+'.rfis')==False:
-				y=y+[x[i]]
-		if len(y) != 0:
-			for i in range(len(y)):
-				print 'Missing rfistrategy for: '+y[i]
-			print 'Please run step 3 again!'
-		else:
-			while True:
-				s = raw_input('All rfistrategys are there: Proceed?:\n')
-				if s == 'yes' or s == 'y':
-					ms.writehistory(message='eMER_CASA_Pipeline: AOFlag with user specified strategies:',msname=vis)
-					for i in range(len(x)):
-						ms.writehistory(message='eMER_CASA_Pipeline: Flagging field, '+x[i]+' with strategy: '+x[i]+'.rfis',msname=vis)
-						print 'Flagging field, '+x[i]+' with strategy: '+x[i]+'.rfis'
-						os.system('aoflagger -fields '+str(i)+' -strategy '+x[i]+'.rfis  '+vis+ '| tee -a pre-cal_flag_stats.txt')
-					break
-				if s == 'no' or s == 'n':
-					sys.exit('Please restart when you are happy')
-	elif mode == 'default':
-		print '---- Running AOflagger with eMERLIN default strategy ----\n'
-		os.system('aoflagger -strategy eMERLIN_default_ao_strategy_v1.rfis '+vis)
-		ms.writehistory(message='eMER_CASA_Pipeline: AOFlag with default strategy, complete',msname=vis)
-	else:
-		print 'Error: Please use either mode=user or mode=default'
-		sys.exit()
+##Run aoflagger. Mode = auto uses best fit strategy for e-MERLIN (credit J. Moldon), Mode=user uses custon straegy for each field
+#def run_aoflagger(vis,mode):
+#	if mode == 'user':
+#		x = vishead(vis,mode='list',listitems='field')['field'][0]
+#		os.system('touch pre-cal_flag_stats.txt')
+#		y = []
+#		for i in range(len(x)):
+#			if os.path.isfile(x[i]+'.rfis')==False:
+#				y=y+[x[i]]
+#		if len(y) != 0:
+#			for i in range(len(y)):
+#				print 'Missing rfistrategy for: '+y[i]
+#			print 'Please run step 3 again!'
+#		else:
+#			while True:
+#				s = raw_input('All rfistrategys are there: Proceed?:\n')
+#				if s == 'yes' or s == 'y':
+#					ms.writehistory(message='eMER_CASA_Pipeline: AOFlag with user specified strategies:',msname=vis)
+#					for i in range(len(x)):
+#						ms.writehistory(message='eMER_CASA_Pipeline: Flagging field, '+x[i]+' with strategy: '+x[i]+'.rfis',msname=vis)
+#						print 'Flagging field, '+x[i]+' with strategy: '+x[i]+'.rfis'
+#						os.system('aoflagger -fields '+str(i)+' -strategy '+x[i]+'.rfis  '+vis+ '| tee -a pre-cal_flag_stats.txt')
+#					break
+#				if s == 'no' or s == 'n':
+#					sys.exit('Please restart when you are happy')
+#	elif mode == 'default':
+#		print '---- Running AOflagger with eMERLIN default strategy ----\n'
+#		os.system('aoflagger -strategy eMERLIN_default_ao_strategy_v1.rfis '+vis)
+#		ms.writehistory(message='eMER_CASA_Pipeline: AOFlag with default strategy, complete',msname=vis)
+#	else:
+#		print 'Error: Please use either mode=user or mode=default'
+#		sys.exit()
 
 def run_aoflagger_fields(vis,fields='all', pipeline_path='./'):
     """This version of the autoflagger iterates through the ms within the mms structure selecting individual fields. It uses pre-defined strategies. The np.unique in the loop below is needed for single source files. The mms thinks there are many filds (one per mms). I think it is a bug from virtualconcat."""
     logger.info('Start run_aoflagger_fields')
+    vis_fields = vishead(vis,mode='list',listitems='field')['field'][0]
+    fields_num = {f:i for i,f in enumerate(vis_fields)}
     if fields == 'all':
-        fields = vishead(vis,mode='list',listitems='field')['field'][0]
+        fields = vis_fields
     else:
         fields = np.atleast_1d(fields)
+    old_aoflagger = check_aoflagger_version()
     for field in np.unique(fields):
         # First, check if user has a new strategy for this field in the local folder.
         # If not, check if user has produced a new strategy for this field in the pipeline folder (for typical sources, etc).
@@ -228,8 +231,11 @@ def run_aoflagger_fields(vis,fields='all', pipeline_path='./'):
             aostrategy = pipeline_path+'aoflagger_strategies/default/{0}.rfis'.format(field)
         else:
             aostrategy = pipeline_path+'aoflagger_strategies/default/{0}.rfis'.format('default_faint')
-        logger.info('Running AOFLagger for field {0} using strategy {1}'.format(field, aostrategy))
-        flagcommand = 'time aoflagger -strategy {0} {1}'.format(aostrategy, vis+'/SUBMSS/*{0}.mms.*.ms'.format(field))
+        logger.info('Running AOFLagger for field {0} ({1}) using strategy {2}'.format(field,fields_num[field], aostrategy))
+        if old_aoflagger: # < 2.9
+            flagcommand = 'time aoflagger -strategy {0} {1}'.format(aostrategy, vis+'/SUBMSS/*{0}.mms.*.ms'.format(field))
+        else: # >= 2.9
+            flagcommand = 'time aoflagger -fields {2} -strategy {0} {1}'.format(aostrategy, vis, fields_num[field])
         os.system(flagcommand+' | tee -a pre-cal_flag_stats.txt')
         ms.writehistory(message='eMER_CASA_Pipeline: AOFlag field {0} with strategy {1}:'.format(field, aostrategy),msname=vis)
     logger.info('End run_aoflagger_fields')
@@ -247,7 +253,6 @@ def check_aoflagger_version():
 	else:
 		old_aoflagger = False
 	logger.info('AOflagger version is {0}'.format(version))
-	old_aoflagger = True
 	return old_aoflagger
 
 def ms2mms(vis,mode):
