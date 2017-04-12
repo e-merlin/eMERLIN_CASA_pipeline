@@ -347,6 +347,21 @@ field=x[i], antenna='*&*', averagedata=True, avgtime=time, iteraxis='baseline', 
 	## Amplitude vs Time:
 	logger.info('End prediagnostics')
 
+def solve_delays(vis,caltable_name,calsources,solint,refant,caldir,plotdir,combine='',spw='',timerange='',minblperant=2,minsnr=2):
+    logger.info('Start solve_delays')
+    caltable = caldir+caltable_name
+    caltableplot = plotdir+caltable_name+'.png'
+    rmdir(caltable)
+    rmfile(caltableplot)
+    logger.info('Delay calibration in: {0}'.format(caltable))
+    logger.info('Delay calibration plot in: {0}'.format(caltableplot))
+    gaincal(vis=vis, gaintype='K', caltable=caltable, field=calsources, solint=solint, combine=combine, refant=refant, spw=spw, timerange=timerange, minblperant=minblperant, minsnr=minsnr)
+    logger.info('caltable: {0}, figfile: {1}'.format(caltable, caltableplot))
+    plotcal(caltable=caltable,xaxis='time',yaxis='delay',subplot=321,iteration='antenna',showgui=False,figfile=caltableplot, fontsize = 8)
+    logger.info('End solve_delays')
+    return
+
+
 def dfluxpy(freq,baseline):
 	#######
 	# Python version of 3C286 flux calculation program (original author unknown)

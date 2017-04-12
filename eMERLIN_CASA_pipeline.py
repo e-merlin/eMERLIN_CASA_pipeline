@@ -90,6 +90,14 @@ if inputs['do_prediag'] == 1:
 	em.do_prediagnostics(vis,plots_dir)
 
 
+### Delay calibration ###
+if inputs['do_delay'] == 1:
+    caltable_name = inputs['inbase']+'_delay.K'
+    em.solve_delays(vis,caltable_name=caltable_name,calsources='',solint='600s',refant=refant,combine='spw',spw='',caldir=calib_dir,plotdir=plots_dir)
+
+
+
+
 logger.info('Pipeline finished')
 logger.info('#################')
 
