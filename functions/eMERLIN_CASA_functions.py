@@ -5,7 +5,7 @@ from casa import ms
 import numpy as np
 from Tkinter import *
 import tkMessageBox
-import sys
+import sys, shutil
 import getopt
 #from task_importfitsidi import *
 from eMERLIN_CASA_GUI import GUI_pipeline
@@ -97,6 +97,29 @@ def check_history(vis):
 		for i in range(len(y)):
 			print x[y[i]]
 
+def makedir(pathdir):
+    try:
+        os.mkdir(pathdir)
+        logger.info('Create directory: {}'.format(pathdir))
+    except:
+        logger.debug('Cannot create directory: {}'.format(pathdir))
+        pass
+
+def rmdir(pathdir,message='Deleted:'):
+    try:
+        shutil.rmtree(pathdir)
+        logger.info('{0} {1}'.format(message, pathdir))
+    except:
+        logger.debug('Could not delete: {0} {1}'.format(message, pathdir))
+        pass
+
+def rmfile(pathdir,message='Deleted:'):
+    try:
+        os.remove(pathdir)
+        logger.info('{0} {1}'.format(message, pathdir))
+    except:
+        logger.debug('Could not delete: {0} {1}'.format(message, pathdir))
+        pass
 
 def run_importfitsIDI(data_dir,vis):
 	logger.info('Starting importfitsIDI procedure')

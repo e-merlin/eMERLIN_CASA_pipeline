@@ -33,7 +33,14 @@ logger.info('Running pipeline from: {}'.format(pipeline_path))
 inputs = em.check_in(pipeline_path)
 data_dir = em.backslash_check(inputs['data_dir'])
 plots_dir = em.backslash_check(inputs['plots_dir'])
+calib_dir = em.backslash_check(inputs['calib_dir'])
 logger.info('Inputs used: {}'.format(inputs))
+
+refant = inputs['refant']
+
+## Create directory structure ##
+em.makedir(plots_dir)
+em.makedir(calib_dir)
 
 if inputs['quit'] == 1: #Check from GUI if quit is needed
     logger.debug('Pipeline exit')
