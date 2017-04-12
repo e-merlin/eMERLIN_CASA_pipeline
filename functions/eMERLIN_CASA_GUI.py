@@ -35,6 +35,13 @@ class GUI_pipeline:
 		self.plots_dir_label.grid(row=6,column=3,columnspan=1,sticky='e')
 		self.plots_dir_entry = Entry(self.root,textvariable=self.plots_dir)
 		self.plots_dir_entry.grid(row=6,column=4,columnspan=3)
+		## Calibration directory ##
+		self.calib_dir = StringVar()
+		self.calib_dir.set('./calibration')
+		self.calib_dir_label = Label(self.root,text='Calibration directory:',justify='right')
+		self.calib_dir_label.grid(row=7,column=3,columnspan=1,sticky='e')
+		self.calib_dir_entry = Entry(self.root,textvariable=self.calib_dir)
+		self.calib_dir_entry.grid(row=7,column=4,columnspan=3)
 
 		##file names ###
 		self.inbase = StringVar()
@@ -176,6 +183,10 @@ class GUI_pipeline:
 		self.do_prediag_check = Checkbutton(self.root,text='Pre-diagnostics',variable =self.do_prediag,onvalue=1,offvalue=0,pady=5)
 		self.do_prediag_check.grid(row=16,column=0,sticky='w')
 
+		self.solve_delays = IntVar()
+		self.solve_delays_check = Checkbutton(self.root,text='Solve delays',variable =self.solve_delays,onvalue=1,offvalue=0,pady=5)
+		self.solve_delays_check.grid(row=17,column=0,sticky='w')
+
 		## Set parameters ##
 		self.w6 = Button(self.root,text='Confirm?',command=self.confirm_parameters)
 		self.w6.grid(row=100,column=2,sticky='e')
@@ -203,13 +214,14 @@ class GUI_pipeline:
 
 	def confirm_parameters(self):
 		self.inputs = {'quit':self.quit_var.get(),'data_dir':self.data_dir.get(),\
-		'plots_dir':self.plots_dir.get(),\
+		'plots_dir':self.plots_dir.get(),'calib_dir':self.calib_dir.get(),\
 		'inbase':self.inbase.get(),'targets':self.targets.get(),\
 		'phscals':self.phscals.get(),'fluxcal':self.fluxcal.get(),\
 		'bpcal':self.bpcal.get(),'ptcal':self.ptcal.get(),'refant':self.refant.get(),\
 		'run_importfits':self.run_importfits.get(),'hanning':self.hanning.get(),\
 		'autoflag':self.autoflag.get(),'rfigui':self.rfigui.get(),\
-		'ms2mms':self.ms2mms.get(),'do_prediag':self.do_prediag.get()}
+		'ms2mms':self.ms2mms.get(),'do_prediag':self.do_prediag.get(),\
+		'do_delay':self.solve_delays.get()}
 		return self.inputs
 
 	def printhistory(self):
@@ -263,13 +275,14 @@ class GUI_pipeline:
 
 	def check_inputs(self):
 		self.inputs = {'quit':self.quit_var.get(),'data_dir':self.data_dir.get(),\
-		'plots_dir':self.plots_dir.get(),\
+		'plots_dir':self.plots_dir.get(),'calib_dir':self.calib_dir.get(),\
 		'inbase':self.inbase.get(),'targets':self.targets.get(),\
 		'phscals':self.phscals.get(),'fluxcal':self.fluxcal.get(),\
 		'bpcal':self.bpcal.get(),'ptcal':self.ptcal.get(),'refant':self.refant.get(),\
 		'run_importfits':self.run_importfits.get(),'hanning':self.hanning.get(),\
 		'autoflag':self.autoflag.get(),'rfigui':self.rfigui.get(),\
-		'ms2mms':self.ms2mms.get(),'do_prediag':self.do_prediag.get()}
+		'ms2mms':self.ms2mms.get(),'do_prediag':self.do_prediag.get(),\
+		'do_delay':self.solve_delays.get()}
 		print self.inputs
 		input_key=self.inputs.keys()
 		input_values = self.inputs.values()

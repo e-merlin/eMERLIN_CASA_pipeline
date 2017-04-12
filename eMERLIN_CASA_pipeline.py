@@ -33,7 +33,14 @@ logger.info('Running pipeline from: {}'.format(pipeline_path))
 inputs = em.check_in(pipeline_path)
 data_dir = em.backslash_check(inputs['data_dir'])
 plots_dir = em.backslash_check(inputs['plots_dir'])
+calib_dir = em.backslash_check(inputs['calib_dir'])
 logger.info('Inputs used: {}'.format(inputs))
+
+refant = inputs['refant']
+
+## Create directory structure ##
+em.makedir(plots_dir)
+em.makedir(calib_dir)
 
 if inputs['quit'] == 1: #Check from GUI if quit is needed
     logger.debug('Pipeline exit')
@@ -64,33 +71,31 @@ if inputs['hanning'] == 1:
 if inputs['rfigui'] == 1:
     em.run_rfigui(vis)
 
-### Flagging and parallelisation ###
-### Check AOflagger version. Decide if old or new procedure is needed. ###
-### if v2.7< do ms2mms fields
-if em.check_aoflagger_version(): #Use J. Moldon's default flagger for mms architecture when -field parameter doesnt exist
-    if inputs['ms2mms'] == 1:
+### Convert MS to MMS ###
+if inputs['ms2mms'] == 1:
+    if em.check_aoflagger_version():
         em.ms2mms_fields(msfile=vis)
-        if os.path.isdir('./'+inputs['inbase']+'.mms') == True:
-            vis = inputs['inbase']+'.mms'
-    if inputs['autoflag'] == 1:
-        if os.path.isdir('./'+inputs['inbase']+'.mms') == True:
-            vis = inputs['inbase']+'.mms'
-        em.run_aoflagger_fields(vis=vis,fields='all', pipeline_path = pipeline_path)
-### if v2.9+ use -field parameter and can generate source specific rfi strategies
-else: ##run aoflagger on .ms file first so that gui works properly if aoflagger >2.9
-	if inputs['autoflag'] == 1:
-		em.run_aoflagger(vis=vis,mode='default')
-	if inputs['ms2mms'] == 1:
-		em.ms2mms(vis=vis,mode='parallel')
+    else:
+        em.ms2mms(vis=vis,mode='parallel')
 
 ## check for parallelisation
 if os.path.isdir('./'+inputs['inbase']+'.mms') == True:
     vis = inputs['inbase']+'.mms'
 
+if inputs['autoflag'] == 1:
+    em.run_aoflagger_fields(vis=vis,fields='all', pipeline_path = pipeline_path)
 
 ### Produce some initial plots ###
 if inputs['do_prediag'] == 1:
 	em.do_prediagnostics(vis,plots_dir)
+
+
+### Delay calibration ###
+if inputs['do_delay'] == 1:
+    caltable_name = inputs['inbase']+'_delay.K'
+    em.solve_delays(vis,caltable_name=caltable_name,calsources='',solint='600s',refant=refant,combine='spw',spw='',caldir=calib_dir,plotdir=plots_dir)
+
+
 
 
 logger.info('Pipeline finished')
