@@ -390,9 +390,9 @@ def initial_bp_cal(msfile, bpcal, refant, caldir, plotdir,previous_cal='', solin
     gaincal(vis=msfile,calmode=calmode1,field=bpcal,caltable=caltable1,solint=solint1,refant=refant,gaintable=previous_cal,minblperant=minblperant,minsnr=minsnr, spwmap = spwmap0)
     logger.info('caltable: {0}, figfile: {1}'.format(caltable1, caltableplot1))
     plotcal(caltable=caltable1,xaxis='time',yaxis='phase',subplot=321,iteration='antenna',showgui=False,figfile=caltableplot1, fontsize = 8, plotrange = [-1,-1,-180,180])
+    previous_cal.append(caltable1)
 
     # 2 A&P calibration
-    previous_cal.append(caltable1)
     calmode2 = 'ap'
     solint2 = '120s'
     caltable2 = caldir+'bpcal.'+bpcal+'_precal.G2'
@@ -407,11 +407,24 @@ def initial_bp_cal(msfile, bpcal, refant, caldir, plotdir,previous_cal='', solin
     gaincal(vis=msfile,calmode=calmode2,field=bpcal,caltable=caltable2,solint=solint2,refant=refant,gaintable=previous_cal,minblperant=minblperant,minsnr=minsnr, spwmap = [spwmap0, spwmap1])
     logger.info('caltable: {0}, figfile: {1}'.format(caltable2, caltableplot2))
     plotcal(caltable=caltable2,xaxis='time',yaxis='amp',subplot=321,iteration='antenna',showgui=False,figfile=caltableplot2, fontsize = 8, plotrange = [-1,-1,-1,-1])
-    logger.info('End initial_bp_cal')
+    previous_cal.append(caltable2)
 
     # 3 Bandpass calibration
-
-
+    bptable0 = caldir+'bpcal.'+bpcal+'_precal.B0'
+    bptableplot0_phs = plotdir+'bpcal.'+bpcal+'_precal.B0_phs'+'.png'
+    bptableplot0_amp = plotdir+'bpcal.'+bpcal+'_precal.B0.amp'+'.png'
+    rmdir(bptable0)
+    rmfile(bptableplot0_phs)
+    rmfile(bptableplot0_amp)
+    logger.info('Running bandpass on field {0}, solint = {1}, combine = {2}'.format(bpcal, 'inf', 'scan'))
+    logger.info('Previous calibration applied: {0}'.format(', '.join(previous_cal)))
+    logger.info('Previous calibration spwmap: {0}'.format(str([spwmap0,spwmap1,spwmap2])))
+    logger.info('Generating bandpass table: {0}'.format(bptable0))
+    bandpass(vis=msfile, caltable=bptable0, field=bpcal, fillgaps=16, solint='inf', combine='scan', solnorm=True, refant=refant, minblperant=2, gaintable=previous_cal, spwmap=[spwmap0, spwmap1, spwmap2], minsnr=3)
+    logger.info('bptable: {0}, figfile: {1}'.format(bptable0, ', '.join([bptableplot0_phs, bptableplot0_amp])))
+    plotcal(caltable=bptable0,xaxis='freq',yaxis='phase',subplot=321,iteration='antenna',showgui=False,figfile=bptableplot0_phs, fontsize = 8, plotrange = [-1,-1,-180,180])
+    plotcal(caltable=bptable0,xaxis='freq',yaxis='amp',  subplot=321,iteration='antenna',showgui=False,figfile=bptableplot0_amp, fontsize = 8, plotrange = [-1,-1,-1,-1])
+    logger.info('End initial_bp_cal')
     return
 
 
