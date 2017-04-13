@@ -404,7 +404,7 @@ def initial_bp_cal(msfile, bpcal, refant, caldir, plotdir,previous_cal='', solin
     logger.info('Previous calibration applied: {0}'.format(', '.join(previous_cal)))
     logger.info('Previous calibration spwmap: {0}'.format(str([spwmap0,spwmap1])))
     logger.info('Generating calibration table: {0}'.format(caltable2))
-    gaincal(vis=msfile,calmode=calmode1,field=bpcal,caltable=caltable2,solint=solint2,refant=refant,gaintable=previous_cal,minblperant=minblperant,minsnr=minsnr, spwmap = [spwmap0, spwmap1])
+    gaincal(vis=msfile,calmode=calmode2,field=bpcal,caltable=caltable2,solint=solint2,refant=refant,gaintable=previous_cal,minblperant=minblperant,minsnr=minsnr, spwmap = [spwmap0, spwmap1])
     logger.info('caltable: {0}, figfile: {1}'.format(caltable2, caltableplot2))
     plotcal(caltable=caltable2,xaxis='time',yaxis='amp',subplot=321,iteration='antenna',showgui=False,figfile=caltableplot2, fontsize = 8, plotrange = [-1,-1,-1,-1])
     logger.info('End initial_bp_cal')
