@@ -17,7 +17,7 @@ import functions.eMERLIN_CASA_GUI as emGUI
 # Setup logger
 logger = logging.getLogger('logger')
 logger.setLevel(logging.INFO)
-handler = logging.FileHandler('eMCP.log') # create a file handler
+handler = logging.FileHandler('eMCP.log', mode = 'a') # create a file handler
 handler.setLevel(logging.INFO)
 formatter = logging.Formatter(fmt='%(asctime)s.%(msecs)1d | %(levelname)s | %(message)s',datefmt='%Y-%m-%d %H:%M:%S')
 handler.setFormatter(formatter)
@@ -37,6 +37,8 @@ calib_dir = em.backslash_check(inputs['calib_dir'])
 logger.info('Inputs used: {}'.format(inputs))
 
 refant = inputs['refant']
+bpcal = '1407+284'	# We need a function to check if it is present in the MS
+
 
 ## Create directory structure ##
 em.makedir(plots_dir)
@@ -92,8 +94,14 @@ if inputs['do_prediag'] == 1:
 
 ### Delay calibration ###
 if inputs['do_delay'] == 1:
-    caltable_name = inputs['inbase']+'_delay.K'
-    em.solve_delays(vis,caltable_name=caltable_name,calsources='',solint='600s',refant=refant,combine='spw',spw='',caldir=calib_dir,plotdir=plots_dir)
+    delay_caltable = inputs['inbase']+'_delay.K'
+    em.solve_delays(vis,caltable_name=delay_caltable,calsources='',solint='600s',refant=refant,combine='spw',spw='',caldir=calib_dir,plotdir=plots_dir)
+
+### Initial BandPass calibration ###
+if inputs['do_initial_bandpass'] == 1:
+    if os.path.isdir(calib_dir+inputs['inbase']+'_delay.K'):
+        previous_caltable = calib_dir+inputs['inbase']+'_delay.K'
+    em.initial_bp_cal(vis, bpcal, refant, caldir=calib_dir,plotdir=plots_dir,previous_cal=previous_caltable, solint='30s')
 
 
 
