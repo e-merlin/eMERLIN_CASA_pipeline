@@ -3,7 +3,7 @@ quit=0
 data_dir=./data/
 plots_dir=./plots/
 calib_dir=./calib/
-inbase=TEST1
+inbase=TEST1_L
 targets= '1241+602'
 phscals= '1236+612'
 fluxcal= '3C84'
@@ -13,10 +13,10 @@ refant= 'Mk2'
 
 # processes (1 is go 0 is not)
 run_importfits=1
-hanning=1
+hanning=0
 rfigui=0
-ms2mms=1
-autoflag=1
+ms2mms=0
+autoflag=0
 do_prediag=0
-do_delay=1
-do_initial_bandpass=1
+do_delay=0
+do_initial_bandpass=0

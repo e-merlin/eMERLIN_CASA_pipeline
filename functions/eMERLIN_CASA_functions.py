@@ -121,6 +121,39 @@ def rmfile(pathdir,message='Deleted:'):
         logger.debug('Could not delete: {0} {1}'.format(message, pathdir))
         pass
 
+def check_mixed_mode(vis,mode):
+	logger.info('Check for mixed mode')
+	tb.open(vis + '/SPECTRAL_WINDOW')
+	bw_spw = np.array(tb.getcol('TOTAL_BANDWIDTH'))
+	tb.close()
+	if len(np.unique(bw_spw)) != 1:
+		if mode == 'split':
+			logger.info('Splitting continuum from spectral line')
+			cont_spw = np.where(bw_spw==np.max(np.unique(bw_spw)))[0]
+			print np.array2string(cont_spw, separator=',')[1:-1]
+			split(vis=vis, outputvis=vis+'.continuum', spw=np.array2string(cont_spw, separator=',')[1:-1], datacolumn='data')
+			spec_line = np.delete(bw_spw, cont_spw)
+			logger.info('Splitting spectral line')
+			for i in range(len(np.unique(spec_line))):
+				spec_line_spw = np.where(bw_spw==np.unique(spec_line)[i])[0]
+				split(vis=vis, outputvis=vis+'.sp{0}'.format(i), spw=np.array2string(spec_line_spw, separator=',')[1:-1],datacolumn='data')
+				ms.writehistory(message='eMER_CASA_Pipeline: Spectral line split from {0}'.format(vis),msname=vis+'.sp{0}'.format(i))
+			ms.writehistory(message='eMER_CASA_Pipeline: Spectral lines split from this ms',msname=vis)
+			os.system('mv {0} {1}'.format(vis, vis+'.original'))
+			os.system('mv {0} {1}'.format(vis+'.continuum', vis))
+			logger.info('Will continue with continuum, original data is {0}'.format(vis+'.original'))
+			return_variable = ''
+		if mode == 'check':
+			logger.info('MS is mixed mode. Please split')
+			return_variable = True
+	else:
+		if mode == 'split':
+			logger.info('Not mixed mode, continuing')
+			return_variable = ''
+		if mode == 'check':
+			return_variable = False
+	return return_variable
+
 def run_importfitsIDI(data_dir,vis):
 	logger.info('Starting importfitsIDI procedure')
 	os.system('rm -r '+vis)
@@ -170,7 +203,7 @@ def hanning(inputvis,deloriginal):
 
 def run_rfigui(vis):
     logger.info('Start run_rfigui')
-    """This function should output the new strategies to /aoflagger_strategies/user/<field>.rfis in 
+    """This function should output the new strategies to /aoflagger_strategies/user/<field>.rfis in
     either the local folder or the pipeline folder."""
     os.system('rfigui '+vis)
     logger.info('End run_rfigui')

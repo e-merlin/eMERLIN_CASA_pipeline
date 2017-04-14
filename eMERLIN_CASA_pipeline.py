@@ -65,7 +65,8 @@ else:
 
 ## Pipeline processes, inputs are read from the inputs dictionary
 if inputs['run_importfits'] == 1:
-	em.run_importfitsIDI(data_dir,vis)
+    em.run_importfitsIDI(data_dir,vis)
+    em.check_mixed_mode(vis,mode='split')
 
 if inputs['hanning'] == 1:
 	em.hanning(inputvis=vis,deloriginal=True)
@@ -108,5 +109,3 @@ if inputs['do_initial_bandpass'] == 1:
 
 logger.info('Pipeline finished')
 logger.info('#################')
-
-

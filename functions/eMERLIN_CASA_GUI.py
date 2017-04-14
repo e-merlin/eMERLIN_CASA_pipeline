@@ -187,6 +187,10 @@ class GUI_pipeline:
 		self.solve_delays_check = Checkbutton(self.root,text='Solve delays',variable =self.solve_delays,onvalue=1,offvalue=0,pady=5)
 		self.solve_delays_check.grid(row=17,column=0,sticky='w')
 
+		self.do_initial_bandpass = IntVar()
+		self.do_initial_bandpass_check = Checkbutton(self.root,text='Initial bandpass',variable =self.do_initial_bandpass,onvalue=1,offvalue=0,pady=5)
+		self.do_initial_bandpass_check.grid(row=18,column=0,sticky='w')
+
 		## Set parameters ##
 		self.w6 = Button(self.root,text='Confirm?',command=self.confirm_parameters)
 		self.w6.grid(row=100,column=2,sticky='e')
@@ -221,7 +225,7 @@ class GUI_pipeline:
 		'run_importfits':self.run_importfits.get(),'hanning':self.hanning.get(),\
 		'autoflag':self.autoflag.get(),'rfigui':self.rfigui.get(),\
 		'ms2mms':self.ms2mms.get(),'do_prediag':self.do_prediag.get(),\
-		'do_delay':self.solve_delays.get()}
+		'do_delay':self.solve_delays.get(),'do_initial_bandpass':self.do_initial_bandpass.get()}
 		return self.inputs
 
 	def printhistory(self):
@@ -282,7 +286,7 @@ class GUI_pipeline:
 		'run_importfits':self.run_importfits.get(),'hanning':self.hanning.get(),\
 		'autoflag':self.autoflag.get(),'rfigui':self.rfigui.get(),\
 		'ms2mms':self.ms2mms.get(),'do_prediag':self.do_prediag.get(),\
-		'do_delay':self.solve_delays.get()}
+		'do_delay':self.solve_delays.get(),'do_initial_bandpass':self.do_initial_bandpass.get()}
 		print self.inputs
 		input_key=self.inputs.keys()
 		input_values = self.inputs.values()
