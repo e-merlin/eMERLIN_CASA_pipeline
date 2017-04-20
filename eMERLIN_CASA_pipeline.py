@@ -19,7 +19,8 @@ logger = logging.getLogger('logger')
 logger.setLevel(logging.INFO)
 handler = logging.FileHandler('eMCP.log', mode = 'a') # create a file handler
 handler.setLevel(logging.INFO)
-formatter = logging.Formatter(fmt='%(asctime)s.%(msecs)1d | %(levelname)s | %(message)s',datefmt='%Y-%m-%d %H:%M:%S')
+#formatter = logging.Formatter(fmt='%(asctime)s.%(msecs)1d | %(levelname)s | %(message)s',datefmt='%Y-%m-%d %H:%M:%S')
+formatter = logging.Formatter(fmt='%(asctime)s | %(levelname)s | %(message)s',datefmt='%Y-%m-%d %H:%M:%S')
 handler.setFormatter(formatter)
 logger.addHandler(handler) # add the handlers to the logger
 consoleHandler = logging.StreamHandler() # Stream errors to terminal also
@@ -92,19 +93,22 @@ if inputs['autoflag'] == 1:
 if inputs['do_prediag'] == 1:
 	em.do_prediagnostics(vis,plots_dir)
 
+previous_cal = []
+previous_spwmap = []
 
 ### Delay calibration ###
 if inputs['do_delay'] == 1:
     delay_caltable = inputs['inbase']+'_delay.K'
-    em.solve_delays(vis,caltable_name=delay_caltable,calsources='',solint='600s',refant=refant,combine='spw',spw='',caldir=calib_dir,plotdir=plots_dir)
+    caltable_delay, spwmap_out_delay = em.solve_delays(vis,caltable_name=delay_caltable,calsources='',solint='600s',refant=refant,combine='spw',spw='',caldir=calib_dir,plotdir=plots_dir)
+
+if os.path.isdir(calib_dir+inputs['inbase']+'_delay.K'):
+    num_spw = len(vishead(vis, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
+    previous_cal.append(calib_dir+inputs['inbase']+'_delay.K')
+    previous_spwmap.append([0]*num_spw)
 
 ### Initial BandPass calibration ###
 if inputs['do_initial_bandpass'] == 1:
-    if os.path.isdir(calib_dir+inputs['inbase']+'_delay.K'):
-        previous_caltable = calib_dir+inputs['inbase']+'_delay.K'
-    em.initial_bp_cal(vis, bpcal, refant, caldir=calib_dir,plotdir=plots_dir,previous_cal=previous_caltable, solint='30s')
-
-
+    em.initial_bp_cal(msfile=vis, bpcal=bpcal, refant=refant, caldir=calib_dir, plotdir=plots_dir, previous_cal=previous_cal,  previous_spwmap=previous_spwmap)
 
 
 logger.info('Pipeline finished')
