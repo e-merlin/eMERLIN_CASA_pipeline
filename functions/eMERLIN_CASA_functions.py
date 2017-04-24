@@ -381,7 +381,13 @@ field=x[i], antenna='*&*', averagedata=True, avgtime=time, iteraxis='baseline', 
 	logger.info('End prediagnostics')
 
 def solve_delays(msfile, caltable_name, calsources, solint, refant, caldir, plotdir, combine='', spw='', timerange='', minblperant=2, minsnr=2):
+    """
+    Input tables: None
+    Output tables: caldir+inputs['inbase']+'_delay.K0'
+    """
     logger.info('Start solve_delays')
+    caltables = {}
+    delay_caltable = caldir+inputs['inbase']+'_delay.K0'
     # This should be implemented in the main script
     num_spw = len(vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
     spwmap_out = [0]*num_spw
@@ -394,8 +400,10 @@ def solve_delays(msfile, caltable_name, calsources, solint, refant, caldir, plot
     gaincal(vis=msfile, gaintype='K', caltable=caltable, field=calsources, solint=solint, combine=combine, refant=refant, spw=spw, timerange=timerange, minblperant=minblperant, minsnr=minsnr)
     logger.info('caltable: {0}, figfile: {1}'.format(caltable, caltableplot))
     plotcal(caltable=caltable,xaxis='time',yaxis='delay',subplot=321,iteration='antenna',showgui=False,figfile=caltableplot, fontsize = 8)
+    caltables['tables']  = [delay_caltable]
+    caltables['spwmaps'] = [spwmap_out]
     logger.info('End solve_delays')
-    return caltable, spwmap_out
+    return caltables
 
 
 def run_gaincal(msfile, caltable, calmode, solint, field, combine, refant, spw, previous_cal, previous_spwmap, caldir, plotdir, subplot, iteration, plotrange_phs = [-1,-1,-180,180], plotrange_amp = [-1,-1,-1,-1], timerange='', minblperant=2, minsnr=2):
@@ -491,74 +499,6 @@ def initial_bp_cal(msfile, bpcal, refant, caldir, plotdir, previous_cal=[], prev
     bptableplot0_amp = plotdir+'bpcal.'+bpcal+'_precal.B0.amp'+'.png'
     run_bandpass(msfile=msfile, bptable=bptable0, bpcal=bpcal, refant=refant, previous_cal=previous_cal, previous_spwmap=previous_spwmap, caldir=caldir, plotdir=plotdir, spw='', solint='inf', combine='scan')
     return
-
-
-def initial_bp_cal_old(msfile, bpcal, refant, caldir, plotdir,previous_cal='', solint='30s', minblperant=2, minsnr=2):
-    # This should be implemented in the main script
-    num_spw = len(vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
-    logger.info('Start initial_bp_cal')
-    if previous_cal == '':
-        logger.info('No previous calibration being applied now')
-        previous_cal = []
-    else:
-        previous_cal = previous_cal.split() # To convert to list. Maybe we should force it to be a list
-
-    spwmap0 = [0]*num_spw
-    # We need a consistent way to pass previous calibration tables and spwmap from one task to another
-    # We should create a mycal.txt file with the list of calibrations to apply them in plotms on the fly
-
-    # 1 Phase calibration
-    calmode1 = 'p'
-    solint1 = '10s'
-    caltable1 = caldir+'bpcal.'+bpcal+'_precal.G1'
-    spwmap1 = range(num_spw)
-    caltableplot1 = plotdir+'bpcal.'+bpcal+'_precal.G1'+'.png'
-    rmdir(caltable1)
-    rmfile(caltableplot1)
-    logger.info('Running gaincal on field {0}, calmode = {1}, solint = {2}'.format(bpcal, calmode1, solint1))
-    logger.info('Previous calibration applied: {0}'.format(', '.join(previous_cal)))
-    logger.info('Previous calibration spwmap: {0}'.format(str(spwmap0)))
-    logger.info('Generating calibration table: {0}'.format(caltable1))
-    gaincal(vis=msfile,calmode=calmode1,field=bpcal,caltable=caltable1,solint=solint1,refant=refant,gaintable=previous_cal,minblperant=minblperant,minsnr=minsnr, spwmap = spwmap0)
-    logger.info('caltable: {0}, figfile: {1}'.format(caltable1, caltableplot1))
-    plotcal(caltable=caltable1,xaxis='time',yaxis='phase',subplot=321,iteration='antenna',showgui=False,figfile=caltableplot1, fontsize = 8, plotrange = [-1,-1,-180,180])
-    previous_cal.append(caltable1)
-
-    # 2 A&P calibration
-    calmode2 = 'ap'
-    solint2 = '120s'
-    caltable2 = caldir+'bpcal.'+bpcal+'_precal.G2'
-    spwmap2 = range(num_spw)
-    caltableplot2 = plotdir+'bpcal.'+bpcal+'_precal.G2'+'.png'
-    rmdir(caltable2)
-    rmfile(caltableplot2)
-    logger.info('Running gaincal on field {0}, calmode = {1}, solint = {2}'.format(bpcal, calmode2, solint2))
-    logger.info('Previous calibration applied: {0}'.format(', '.join(previous_cal)))
-    logger.info('Previous calibration spwmap: {0}'.format(str([spwmap0,spwmap1])))
-    logger.info('Generating calibration table: {0}'.format(caltable2))
-    gaincal(vis=msfile,calmode=calmode2,field=bpcal,caltable=caltable2,solint=solint2,refant=refant,gaintable=previous_cal,minblperant=minblperant,minsnr=minsnr, spwmap = [spwmap0, spwmap1])
-    logger.info('caltable: {0}, figfile: {1}'.format(caltable2, caltableplot2))
-    plotcal(caltable=caltable2,xaxis='time',yaxis='amp',subplot=321,iteration='antenna',showgui=False,figfile=caltableplot2, fontsize = 8, plotrange = [-1,-1,-1,-1])
-    previous_cal.append(caltable2)
-
-    # 3 Bandpass calibration
-    bptable0 = caldir+'bpcal.'+bpcal+'_precal.B0'
-    bptableplot0_phs = plotdir+'bpcal.'+bpcal+'_precal.B0_phs'+'.png'
-    bptableplot0_amp = plotdir+'bpcal.'+bpcal+'_precal.B0.amp'+'.png'
-    rmdir(bptable0)
-    rmfile(bptableplot0_phs)
-    rmfile(bptableplot0_amp)
-    logger.info('Running bandpass on field {0}, solint = {1}, combine = {2}'.format(bpcal, 'inf', 'scan'))
-    logger.info('Previous calibration applied: {0}'.format(', '.join(previous_cal)))
-    logger.info('Previous calibration spwmap: {0}'.format(str([spwmap0,spwmap1,spwmap2])))
-    logger.info('Generating bandpass table: {0}'.format(bptable0))
-    bandpass(vis=msfile, caltable=bptable0, field=bpcal, fillgaps=16, solint='inf', combine='scan', solnorm=True, refant=refant, minblperant=2, gaintable=previous_cal, spwmap=[spwmap0, spwmap1, spwmap2], minsnr=3)
-    logger.info('bptable: {0}, figfile: {1}'.format(bptable0, ', '.join([bptableplot0_phs, bptableplot0_amp])))
-    plotcal(caltable=bptable0,xaxis='freq',yaxis='phase',subplot=321,iteration='antenna',showgui=False,figfile=bptableplot0_phs, fontsize = 8, plotrange = [-1,-1,-180,180])
-    plotcal(caltable=bptable0,xaxis='freq',yaxis='amp',  subplot=321,iteration='antenna',showgui=False,figfile=bptableplot0_amp, fontsize = 8, plotrange = [-1,-1,-1,-1])
-    logger.info('End initial_bp_cal')
-    return
-
 
 
 
