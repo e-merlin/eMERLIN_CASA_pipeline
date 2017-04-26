@@ -7,6 +7,7 @@ from casa import ms
 from Tkinter import *
 import getopt
 import logging
+import pickle
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 pipeline_path = os.path.dirname(sys.argv[np.where(np.asarray(sys.argv)=='-c')[0][0] + 1]) + '/'
@@ -93,21 +94,20 @@ if inputs['autoflag'] == 1:
 if inputs['do_prediag'] == 1:
 	em.do_prediagnostics(vis,plots_dir)
 
-previous_cal = []
-previous_spwmap = []
+try:
+    caltables = pickle.load('caltables.dic')
+except:
+    caltables = {}
 
 ### Delay calibration ###
 if inputs['do_delay'] == 1:
-    caltables['delay0'] = em.solve_delays(vis, calsources='', solint='600s', refant=refant, combine='spw', spw='', caldir=calib_dir, plotdir=plots_dir)
-
-#if os.path.isdir(calib_dir+inputs['inbase']+'_delay.K'):
-#    num_spw = len(vishead(vis, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
-#    previous_cal.append(calib_dir+inputs['inbase']+'_delay.K')
-#    previous_spwmap.append([0]*num_spw)
+    caltables = em.solve_delays(msfile=vis, inbase=inputs['inbase'], calsources='', solint='600s', refant=refant, combine='spw', spw='', caldir=calib_dir, plotdir=plots_dir, caltables=caltables)
+    pickle.dump(caltables, open('caltables.dic', 'wb'))
 
 ### Initial BandPass calibration ###
 if inputs['do_initial_bandpass'] == 1:
-    caltables['bpcal0'] = em.initial_bp_cal(msfile=vis, bpcal=bpcal, refant=refant, caldir=calib_dir, plotdir=plots_dir, previous_cal=caltables)
+    caltables = em.initial_bp_cal(msfile=vis, inbase=inputs['inbase'], bpcal=bpcal, refant=refant, caldir=calib_dir, plotdir=plots_dir, caltables=caltables)
+    pickle.dump(caltables, open('caltables.dic', 'wb'))
 
 
 logger.info('Pipeline finished')
