@@ -7,6 +7,7 @@ from casa import ms
 from Tkinter import *
 import getopt
 import logging
+import pickle
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 pipeline_path = os.path.dirname(sys.argv[np.where(np.asarray(sys.argv)=='-c')[0][0] + 1]) + '/'
@@ -19,7 +20,8 @@ logger = logging.getLogger('logger')
 logger.setLevel(logging.INFO)
 handler = logging.FileHandler('eMCP.log', mode = 'a') # create a file handler
 handler.setLevel(logging.INFO)
-formatter = logging.Formatter(fmt='%(asctime)s.%(msecs)1d | %(levelname)s | %(message)s',datefmt='%Y-%m-%d %H:%M:%S')
+#formatter = logging.Formatter(fmt='%(asctime)s.%(msecs)1d | %(levelname)s | %(message)s',datefmt='%Y-%m-%d %H:%M:%S')
+formatter = logging.Formatter(fmt='%(asctime)s | %(levelname)s | %(message)s',datefmt='%Y-%m-%d %H:%M:%S')
 handler.setFormatter(formatter)
 logger.addHandler(handler) # add the handlers to the logger
 consoleHandler = logging.StreamHandler() # Stream errors to terminal also
@@ -92,19 +94,20 @@ if inputs['autoflag'] == 1:
 if inputs['do_prediag'] == 1:
 	em.do_prediagnostics(vis,plots_dir)
 
+try:
+    caltables = pickle.load('caltables.dic')
+except:
+    caltables = {}
 
 ### Delay calibration ###
 if inputs['do_delay'] == 1:
-    delay_caltable = inputs['inbase']+'_delay.K'
-    em.solve_delays(vis,caltable_name=delay_caltable,calsources='',solint='600s',refant=refant,combine='spw',spw='',caldir=calib_dir,plotdir=plots_dir)
+    caltables = em.solve_delays(msfile=vis, inbase=inputs['inbase'], calsources='', solint='600s', refant=refant, combine='spw', spw='', caldir=calib_dir, plotdir=plots_dir, caltables=caltables)
+    pickle.dump(caltables, open('caltables.dic', 'wb'))
 
 ### Initial BandPass calibration ###
 if inputs['do_initial_bandpass'] == 1:
-    if os.path.isdir(calib_dir+inputs['inbase']+'_delay.K'):
-        previous_caltable = calib_dir+inputs['inbase']+'_delay.K'
-    em.initial_bp_cal(vis, bpcal, refant, caldir=calib_dir,plotdir=plots_dir,previous_cal=previous_caltable, solint='30s')
-
-
+    caltables = em.initial_bp_cal(msfile=vis, inbase=inputs['inbase'], bpcal=bpcal, refant=refant, caldir=calib_dir, plotdir=plots_dir, caltables=caltables)
+    pickle.dump(caltables, open('caltables.dic', 'wb'))
 
 
 logger.info('Pipeline finished')
