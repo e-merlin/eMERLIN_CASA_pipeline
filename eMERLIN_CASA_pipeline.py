@@ -2,6 +2,7 @@
 ##Dependencies##
 import os,sys,math
 import numpy as np
+import pickle
 from casa import table as tb
 from casa import ms
 from Tkinter import *
@@ -65,9 +66,14 @@ else:
 	logger.info('Measurement set found: {}. Continuing with your inputs'.format(msfile))
 
 ## Pipeline processes, inputs are read from the inputs dictionary
+print('AAAA')
 if inputs['run_importfits'] == 1:
+    print('BBB', data_dir, msfile)
     em.run_importfitsIDI(data_dir,msfile)
     em.check_mixed_mode(msfile,mode='split')
+    print('CCC')
+
+print('DDD')
 
 if inputs['hanning'] == 1:
 	em.hanning(inputvis=msfile,deloriginal=True)
@@ -93,13 +99,46 @@ if inputs['autoflag'] == 1:
 if inputs['do_prediag'] == 1:
 	em.do_prediagnostics(msfile,plots_dir)
 
-previous_cal = []
-previous_spwmap = []
+num_spw = len(vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
+calsources = ', '.join([inputs['phscals'], inputs['fluxcal'], inputs['bpcal'],
+                       inputs['ptcal']])
+
+# All the calibration steps will be saved in the dictionary caltables.pkl
+# located in the calib directory. If it does not exist a new one is created.
+def save_obj(obj, name):
+    with open(name + '.pkl', 'wb') as f:
+        pickle.dump(obj, f)
+
+def load_obj(name):
+    with open(name + '.pkl', 'rb') as f:
+        return pickle.load(f)
+
+try:
+    caltables = load_obj(calib_dir+'caltables.pkl')
+except:
+    caltables = {}
+    caltables['inbase'] = inputs['inbase']
+    caltables['plots_dir'] = plots_dir
+    caltables['calib_dir'] = calib_dir
 
 ### Delay calibration ###
 if inputs['do_delay'] == 1:
-    delay_caltable = inputs['inbase']+'_delay.K'
-    caltable_delay, spwmap_out_delay = em.solve_delays(msfile,caltable_name=delay_caltable,calsources='',solint='600s',refant=refant,combine='spw',spw='',caldir=calib_dir,plotdir=plots_dir)
+    caltable_name = 'delay.K0'
+    caltables[caltable_name] = {}
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['field'] = calsources
+    caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['spwmap'] = [0]*num_spw
+    caltables[caltable_name]['gaintype'] = 'K'
+    caltables[caltable_name]['calmode'] = 'p'
+    caltables[caltable_name]['solint'] = '600s'
+    em.solve_delays(msfile=msfile, caltables=caltables,
+                    caltable_name=caltable_name,
+                    previous_cal='', refant=refant,
+                    combine='spw', spw='')
+    save_obj(caltables, calib_dir+'caltables.pkl')
+
 
 if os.path.isdir(calib_dir+inputs['inbase']+'_delay.K'):
     num_spw = len(vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
