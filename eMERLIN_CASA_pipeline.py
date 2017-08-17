@@ -66,14 +66,9 @@ else:
 	logger.info('Measurement set found: {}. Continuing with your inputs'.format(msfile))
 
 ## Pipeline processes, inputs are read from the inputs dictionary
-print('AAAA')
 if inputs['run_importfits'] == 1:
-    print('BBB', data_dir, msfile)
     em.run_importfitsIDI(data_dir,msfile)
     em.check_mixed_mode(msfile,mode='split')
-    print('CCC')
-
-print('DDD')
 
 if inputs['hanning'] == 1:
 	em.hanning(inputvis=msfile,deloriginal=True)
@@ -114,30 +109,22 @@ def load_obj(name):
         return pickle.load(f)
 
 try:
-    caltables = load_obj(calib_dir+'caltables.pkl')
+    caltables = load_obj(calib_dir+'caltables')
+    logger.info('Loaded previous calibration tables from: {0}'.format(calib_dir+'caltables'))
 except:
     caltables = {}
     caltables['inbase'] = inputs['inbase']
     caltables['plots_dir'] = plots_dir
     caltables['calib_dir'] = calib_dir
+    caltables['num_spw'] = num_spw
+    logger.info('New caltables dictionary created. Saved to: {0}'.format(calib_dir+'caltables'))
 
 ### Delay calibration ###
 if inputs['do_delay'] == 1:
-    caltable_name = 'delay.K0'
-    caltables[caltable_name] = {}
-    caltables[caltable_name]['name'] = caltable_name
-    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
-    caltables[caltable_name]['field'] = calsources
-    caltables[caltable_name]['interp'] = 'linear'
-    caltables[caltable_name]['spwmap'] = [0]*num_spw
-    caltables[caltable_name]['gaintype'] = 'K'
-    caltables[caltable_name]['calmode'] = 'p'
-    caltables[caltable_name]['solint'] = '600s'
-    em.solve_delays(msfile=msfile, caltables=caltables,
-                    caltable_name=caltable_name,
-                    previous_cal='', refant=refant,
+    caltables = em.solve_delays(msfile=msfile, caltables=caltables,
+                    previous_cal='', calsources=calsources, refant=refant,
                     combine='spw', spw='')
-    save_obj(caltables, calib_dir+'caltables.pkl')
+    save_obj(caltables, calib_dir+'caltables')
 
 
 if os.path.isdir(calib_dir+inputs['inbase']+'_delay.K'):

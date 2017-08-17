@@ -384,10 +384,12 @@ field=x[i], antenna='*&*', averagedata=True, avgtime=time, iteraxis='baseline', 
 def run_gaincal(msfile, caltables, caltable_name, previous_cal, refant, combine, spw, minblperant=2, minsnr=2):
     rmdir(caltables[caltable_name]['table'])
     logger.info('Running gaincal to generate: {0}'.format(caltables[caltable_name]['name']))
-    logger.info('Field(s) {0}, gaintype = {1}, calmode = {2}, solint = {3}'.format(
+    logger.info('Field(s) = {0}, gaintype = {1}, calmode = {2}'.format(
                 caltables[caltable_name]['field'],
                 caltables[caltable_name]['gaintype'],
-                caltables[caltable_name]['calmode'],
+                caltables[caltable_name]['calmode']))
+    logger.info('combine = {0}, solint = {1}'.format(
+                caltables[caltable_name]['combine'],
                 caltables[caltable_name]['solint']))
     # Previous calibration
     gaintable = [caltables[p]['table'] for p in previous_cal]
@@ -406,6 +408,7 @@ def run_gaincal(msfile, caltables, caltable_name, previous_cal, refant, combine,
             gaintype  = caltables[caltable_name]['gaintype'],
             calmode   = caltables[caltable_name]['calmode'],
             solint    = caltables[caltable_name]['solint'],
+            combine   = caltables[caltable_name]['combine'],
             refant    = refant,
             gaintable = gaintable,
             gainfield = gainfield,
@@ -417,8 +420,20 @@ def run_gaincal(msfile, caltables, caltable_name, previous_cal, refant, combine,
                                               caltables[caltable_name]['table']))
 
 
-def solve_delays(msfile, caltables, caltable_name, previous_cal, refant, combine, spw):
+def solve_delays(msfile, caltables, previous_cal, calsources, refant, combine, spw):
     logger.info('Start solve_delays')
+    caltable_name = 'delay.K0'
+    caltables[caltable_name] = {}
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['field'] = calsources
+    caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['spwmap'] = [0]*caltables['num_spw']
+    caltables[caltable_name]['gaintype'] = 'K'
+    caltables[caltable_name]['calmode'] = 'p'
+    caltables[caltable_name]['combine'] = 'spw'
+    caltables[caltable_name]['solint'] = '600s'
+
     caltable = caltables[caltable_name]['table']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name, previous_cal, refant, combine, spw)
@@ -433,7 +448,7 @@ def solve_delays(msfile, caltables, caltable_name, previous_cal, refant, combine
     plotcal(caltable=caltable,xaxis='time',yaxis='delay',subplot=321,iteration='antenna',showgui=False,figfile=caltableplot, fontsize = 8, plotrange = [-1,-1,-20,20])
     logger.info('Delay calibration plot in: {0}'.format(caltableplot))
     logger.info('End solve_delays')
-
+    return caltables
 
 
 def run_gaincal_old(msfile, caltable, calmode, solint, field, combine, refant, spw, previous_cal, previous_spwmap, caldir, plotdir, subplot, iteration, plotrange_phs = [-1,-1,-180,180], plotrange_amp = [-1,-1,-1,-1], timerange='', minblperant=2, minsnr=2):
