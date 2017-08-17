@@ -39,8 +39,13 @@ calib_dir = em.backslash_check(inputs['calib_dir'])
 logger.info('Inputs used: {}'.format(inputs))
 
 refant = inputs['refant']
-bpcal = '1407+284'	# We need a function to check if it is present in the MS
+targets = inputs['targets']
+phscals = inputs['phscals']
+fluxcal = inputs['fluxcal']
+bpcal = inputs['bpcal']
+ptcal = inputs['ptcal']
 
+calsources = ', '.join([phscals, fluxcal, bpcal, ptcal])
 
 ## Create directory structure ##
 em.makedir(plots_dir)
@@ -94,9 +99,6 @@ if inputs['autoflag'] == 1:
 if inputs['do_prediag'] == 1:
 	em.do_prediagnostics(msfile,plots_dir)
 
-num_spw = len(vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
-calsources = ', '.join([inputs['phscals'], inputs['fluxcal'], inputs['bpcal'],
-                       inputs['ptcal']])
 
 # All the calibration steps will be saved in the dictionary caltables.pkl
 # located in the calib directory. If it does not exist a new one is created.
@@ -112,29 +114,28 @@ try:
     caltables = load_obj(calib_dir+'caltables')
     logger.info('Loaded previous calibration tables from: {0}'.format(calib_dir+'caltables'))
 except:
+    num_spw = len(vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
     caltables = {}
     caltables['inbase'] = inputs['inbase']
     caltables['plots_dir'] = plots_dir
     caltables['calib_dir'] = calib_dir
     caltables['num_spw'] = num_spw
+    caltables['refant'] = refant
     logger.info('New caltables dictionary created. Saved to: {0}'.format(calib_dir+'caltables'))
 
 ### Delay calibration ###
 if inputs['do_delay'] == 1:
     caltables = em.solve_delays(msfile=msfile, caltables=caltables,
-                    previous_cal='', calsources=calsources, refant=refant,
-                    combine='spw', spw='')
+                                previous_cal=[], calsources=calsources)
     save_obj(caltables, calib_dir+'caltables')
 
 
-if os.path.isdir(calib_dir+inputs['inbase']+'_delay.K'):
-    num_spw = len(vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
-    previous_cal.append(calib_dir+inputs['inbase']+'_delay.K')
-    previous_spwmap.append([0]*num_spw)
-
 ### Initial BandPass calibration ###
 if inputs['do_initial_bandpass'] == 1:
-    em.initial_bp_cal(msfile=msfile, bpcal=bpcal, refant=refant, caldir=calib_dir, plotdir=plots_dir, previous_cal=previous_cal,  previous_spwmap=previous_spwmap)
+    caltables = em.initial_bp_cal(msfile=msfile, caltables=caltables,
+                                  previous_cal=['delay.K0'], bpcal=bpcal)
+    save_obj(caltables, calib_dir+'caltables')
+
 
 
 logger.info('Pipeline finished')
