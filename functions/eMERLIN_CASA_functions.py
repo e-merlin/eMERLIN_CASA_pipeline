@@ -396,22 +396,8 @@ field=x[i], antenna='*&*', averagedata=True, avgtime=time, iteraxis='baseline', 
 	logger.info('End prediagnostics')
 
 
-def smooth_caltable(msfile, tablein, plotdir, caltable='', field='', smoothtype='median', smoothtime=120.):
-    logger.info('Smoothing table: {0}, field {1}, smoothtype {2}, smoothtime {3}'.format(tablein, field, smoothtype, smoothtime))
-    basename = os.path.basename(tablein)
-    caltableplot_phs = plotdir + basename +'_phs.png'
-    caltableplot_amp = plotdir + basename +'_amp.png'
-    if caltable=='':
-        os.system('mv {0} {1}'.format(caltableplot_phs, plotdir + basename +'_phs_pre_smooth.png'))
-        os.system('mv {0} {1}'.format(caltableplot_amp, plotdir + basename +'_amp_pre_smooth.png'))
-    smoothcal(vis=msfile, tablein=tablein, caltable=tablein+'smooth', field='', smoothtype='median', smoothtime=60*20.)
-    logger.info('Pre-smoothing table saved to: {0}'.format(tablein+'_pre_smooth'))
-    os.system('mv {0} {1}'.format(tablein, tablein+'_pre_smooth'))
-    os.system('mv {0} {1}'.format(tablein+'smooth', tablein))
-    plotcal(caltable=tablein, xaxis='time', yaxis='phase', subplot=321, iteration='antenna', showgui=False, figfile=caltableplot_phs, fontsize = 8, plotrange=[-1,-1,-180,180])
-    plotcal(caltable=tablein, xaxis='time', yaxis='amp', subplot=321, iteration='antenna', showgui=False, figfile=caltableplot_amp, fontsize = 8, plotrange=[-1,-1,-1,-1])
-    return
 
+### Run CASA calibration functions
 
 def run_initialize_models(msfile, fluxcal, models_path, delmod_sources):
     logger.info('Start init_models')
@@ -516,6 +502,83 @@ def run_bandpass(msfile, caltables, caltable_name, previous_cal, minblperant=3, 
     logger.info('caltable {0} in {1}'.format(caltables[caltable_name]['name'],
                                              caltables[caltable_name]['table']))
 
+
+def smooth_caltable(msfile, tablein, plotdir, caltable='', field='', smoothtype='median', smoothtime=120.):
+    logger.info('Smoothing table: {0}, field {1}, smoothtype {2}, smoothtime {3}'.format(tablein, field, smoothtype, smoothtime))
+    basename = os.path.basename(tablein)
+    caltableplot_phs = plotdir + basename +'_phs.png'
+    caltableplot_amp = plotdir + basename +'_amp.png'
+    if caltable=='':
+        os.system('mv {0} {1}'.format(caltableplot_phs, plotdir + basename +'_phs_pre_smooth.png'))
+        os.system('mv {0} {1}'.format(caltableplot_amp, plotdir + basename +'_amp_pre_smooth.png'))
+    smoothcal(vis=msfile, tablein=tablein, caltable=tablein+'smooth', field='', smoothtype='median', smoothtime=60*20.)
+    logger.info('Pre-smoothing table saved to: {0}'.format(tablein+'_pre_smooth'))
+    os.system('mv {0} {1}'.format(tablein, tablein+'_pre_smooth'))
+    os.system('mv {0} {1}'.format(tablein+'smooth', tablein))
+    plotcal(caltable=tablein, xaxis='time', yaxis='phase', subplot=321, iteration='antenna', showgui=False, figfile=caltableplot_phs, fontsize = 8, plotrange=[-1,-1,-180,180])
+    plotcal(caltable=tablein, xaxis='time', yaxis='amp', subplot=321, iteration='antenna', showgui=False, figfile=caltableplot_amp, fontsize = 8, plotrange=[-1,-1,-1,-1])
+    return
+
+
+def run_applycal(msfile, caltables, previous_cal, sources, phscal, target=''):
+    logger.info('Start applycal')
+    allsources = list(set(sources.replace(' ','').split(',')))
+    try:
+        calibsources = copy.copy(allsources)
+        calibsources.remove(target)
+    except:
+        calibsources = allsources
+
+    # 1 correct non-target sources:
+    if len(np.atleast_1d(calibsources)) > 0:
+        logger.info('Applying calibration to calibrator sources')
+        logger.info('Fields: {0}'.format(','.join(calibsources)))
+        # Previous calibration
+        gaintable = [caltables[p]['table'] for p in previous_cal]
+        interp    = [caltables[p]['interp'] for p in previous_cal]
+        spwmap    = [caltables[p]['spwmap'] for p in previous_cal]
+        gainfield = [caltables[p]['field'] if len(np.atleast_1d(caltables[p]['field'].split(',')))<2 else '' for p in previous_cal]
+        logger.info('Previous calibration applied: {0}'.format(str(previous_cal)))
+        logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
+        logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
+        logger.info('Previous calibration interp: {0}'.format(str(interp)))
+        applycal(vis=msfile,
+                 field = ','.join(calibsources),
+                 gaintable = gaintable,
+                 gainfield = gainfield,
+                 interp    = interp,
+                 spwmap    = spwmap)
+
+    # Apply to targets:
+    if target != '':
+        logger.info('Applying calibration to target sources')
+        logger.info('Fields: {0}'.format(target))
+        # Previous calibration
+        gaintable = [caltables[p]['table'] for p in previous_cal]
+        interp    = [caltables[p]['interp'] for p in previous_cal]
+        spwmap    = [caltables[p]['spwmap'] for p in previous_cal]
+        gainfield = [caltables[p]['field'] if len(np.atleast_1d(caltables[p]['field'].split(',')))<2
+                     else phscal for p in previous_cal]
+        logger.info('Previous calibration applied: {0}'.format(str(previous_cal)))
+        logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
+        logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
+        logger.info('Previous calibration interp: {0}'.format(str(interp)))
+        applycal(vis=msfile,
+                 field = target,
+                 gaintable = gaintable,
+                 gainfield = gainfield,
+                 interp    = interp,
+                 spwmap    = spwmap)
+
+
+    logger.info('End applycal')
+
+
+
+
+
+
+### Calibration steps
 
 def solve_delays(msfile, caltables, previous_cal, calsources):
     logger.info('Start solve_delays')
@@ -798,8 +861,6 @@ def bandpass_sp(msfile, caltables, previous_cal, bpcal):
     logger.info('Bandpass1 BP phase plot: {0}'.format(bptableplot_amp))
     logger.info('End bandpass_sp')
     return caltables
-
-
 
 
 def dfluxpy(freq,baseline):
