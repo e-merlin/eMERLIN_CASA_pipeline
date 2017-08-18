@@ -6,6 +6,7 @@ import numpy as np
 from Tkinter import *
 import tkMessageBox
 import sys, shutil
+import copy
 import getopt
 #from task_importfitsidi import *
 from eMERLIN_CASA_GUI import GUI_pipeline
@@ -713,8 +714,58 @@ def initial_gaincal(msfile, caltables, previous_cal, calsources, phscals):
     plotcal(caltable=caltable,xaxis='time',yaxis='phase',subplot=321,iteration='antenna',
             showgui=False,figfile=caltableplot,fontsize=8,plotrange=[-1,-1,-180,180])
     logger.info('Gain phase calibration plot: {0}'.format(caltableplot))
+    logger.info('End initial_gaincal')
+    return caltables
 
 
+def eM_fluxscale(msfile, caltables, ampcal_table, fluxcal, calsources, antenna='!Lo*;!De'):
+    logger.info('Start eM_fluxscale')
+    cals_to_scale = calsources.split(',')
+    cals_to_scale.remove(fluxcal)
+    cals_to_scale = ','.join(cals_to_scale)
+    caltable_name = 'allcal_ap.G1_fluxscaled'
+    caltables[caltable_name] = copy.copy(caltables[ampcal_table])
+    caltables[caltable_name]['table']=caltables[ampcal_table]['table']+'_fluxscaled'
+    calfluxes = fluxscale(vis=msfile, reference=fluxcal,
+                          transfer=cals_to_scale,
+                          antenna = antenna, # Need to make this optional
+                          caltable  = caltables[ampcal_table]['table'],
+                          fluxtable = caltables[caltable_name]['table'],
+                          listfile  = caltables[caltable_name]['table']+'_fluxes.txt')
+    logger.info('Flux density scale from: {0}'.format(fluxcal))
+    logger.info('Transfered to: {0}'.format(cals_to_scale))
+    logger.info('Input caltable   : {0}'.format(caltables[ampcal_table]['table']))
+    logger.info('Modified caltable: {0}'.format(caltables[caltable_name]['table']))
+    logger.info('Spectrum information: {0}'.format(caltables[caltable_name]['table']+'_fluxes.txt'))
+
+    ### VERY IMPORTANT! THIS VALUE NEEDS TO BE COMPUTED USING FUNCTION dfluxpy
+    ### THIS VALUE IS JUST ONLY TEMPORARY
+    eMfactor =  0.99987
+    # Get fitted flux density and spectral index, correctly scaled for e-MERLIN
+    eMcalfluxes = {}
+    for k in calfluxes.keys():
+        if len(calfluxes[k]) > 4:
+            try:
+                a=[]
+                a.append(calfluxes[k]['fitFluxd']*eMfactor)
+                a.append(calfluxes[k]['spidx'][1])
+                a.append(calfluxes[k]['fitRefFreq'])
+                eMcalfluxes[calfluxes[k]['fieldName']]=a
+                logger.info('Spectrum for {0:>9s}: Flux density ={1:6.3f}+/-{2:6.3f}, spidx ={3:5.2f}+/-{4:5.2f}'.format(calfluxes[k]['fieldName'],
+                    calfluxes[k]['fitFluxd'], calfluxes[k]['fitFluxdErr'],
+                    calfluxes[k]['spidx'][1], calfluxes[k]['spidxerr'][1]))
+            except:
+                pass
+
+    for f in eMcalfluxes.keys():    # Phase calibrator and bandpass calibrator
+        setjy(vis = msfile,
+              field = f,
+              standard = 'manual',
+              fluxdensity = eMcalfluxes[f][0],
+              spix = eMcalfluxes[f][1],
+              reffreq = str(eMcalfluxes[f][2])+'Hz')
+    logger.info('End eM_fluxscale')
+    return caltables
 
 
 

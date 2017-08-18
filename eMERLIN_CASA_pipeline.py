@@ -44,7 +44,7 @@ fluxcal = inputs['fluxcal']
 bpcal = inputs['bpcal']
 ptcal = inputs['ptcal']
 
-calsources = ', '.join([phscals, fluxcal, bpcal, ptcal])
+calsources = ','.join([phscals, fluxcal, bpcal, ptcal])
 
 ## Create directory structure ##
 em.makedir(plots_dir)
@@ -109,7 +109,6 @@ if inputs['do_prediag'] == 1:
 	em.do_prediagnostics(msfile,plots_dir)
 
 
-
 ###################
 ### CALIBRATION ###
 ###################
@@ -118,7 +117,7 @@ if inputs['do_prediag'] == 1:
 # located in the calib directory. If it does not exist a new one is created.
 try:
     caltables = load_obj(calib_dir+'caltables')
-    logger.info('Loaded previous calibration tables from: {0}'.format(calib_dir+'caltables'))
+    logger.info('Loaded previous calibration tables from: {0}'.format(calib_dir+'caltables.pkl'))
 except:
     num_spw = len(vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
     caltables = {}
@@ -127,7 +126,7 @@ except:
     caltables['calib_dir'] = calib_dir
     caltables['num_spw'] = num_spw
     caltables['refant'] = refant
-    logger.info('New caltables dictionary created. Saved to: {0}'.format(calib_dir+'caltables'))
+    logger.info('New caltables dictionary created. Saved to: {0}'.format(calib_dir+'caltables.pkl'))
 
 ### Initialize models ###
 if inputs['do_initialize_models'] == 1:  # Need to add parameter to GUI
@@ -142,6 +141,7 @@ if inputs['do_delay'] == 1:
     caltables = em.solve_delays(msfile=msfile, caltables=caltables,
                                 previous_cal=[], calsources=calsources)
     save_obj(caltables, calib_dir+'caltables')
+    save_obj(caltables, calib_dir+'caltables_delay')
 
 
 ### Initial BandPass calibration ###
@@ -149,6 +149,7 @@ if inputs['do_initial_bandpass'] == 1:
     caltables = em.initial_bp_cal(msfile=msfile, caltables=caltables,
                                   previous_cal=['delay.K0'], bpcal=bpcal)
     save_obj(caltables, calib_dir+'caltables')
+    save_obj(caltables, calib_dir+'caltables_bandpass0')
 
 
 ### Gain calibration ###
@@ -157,8 +158,16 @@ if inputs['do_gain_calibration'] == 1:
                                   previous_cal=['delay.K0', 'bpcal.B0'],
                                   calsources=calsources, phscals=phscals)
     save_obj(caltables, calib_dir+'caltables')
+    save_obj(caltables, calib_dir+'caltables_gaincal')
 
-
+### Flux scale ###
+if inputs['do_fluxscale'] == 1:
+    caltables = em.eM_fluxscale(msfile=msfile, caltables=caltables,
+                             fluxcal=fluxcal, calsources=calsources,
+                             ampcal_table='allcal_ap.G1', antenna='')
+                             #ampcal_table='allcal_ap.G1', antenna='!Lo*;!De')
+    save_obj(caltables, calib_dir+'caltables')
+    save_obj(caltables, calib_dir+'caltables_fluxscale')
 
 
 logger.info('Pipeline finished')
