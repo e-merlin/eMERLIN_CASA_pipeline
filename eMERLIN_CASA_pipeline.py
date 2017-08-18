@@ -20,7 +20,6 @@ logger = logging.getLogger('logger')
 logger.setLevel(logging.INFO)
 handler = logging.FileHandler('eMCP.log', mode = 'a') # create a file handler
 handler.setLevel(logging.INFO)
-#formatter = logging.Formatter(fmt='%(asctime)s.%(msecs)1d | %(levelname)s | %(message)s',datefmt='%Y-%m-%d %H:%M:%S')
 formatter = logging.Formatter(fmt='%(asctime)s | %(levelname)s | %(message)s',datefmt='%Y-%m-%d %H:%M:%S')
 handler.setFormatter(formatter)
 logger.addHandler(handler) # add the handlers to the logger
@@ -50,6 +49,16 @@ calsources = ', '.join([phscals, fluxcal, bpcal, ptcal])
 ## Create directory structure ##
 em.makedir(plots_dir)
 em.makedir(calib_dir)
+
+# Functions to save and load dictionaries
+def save_obj(obj, name):
+    with open(name + '.pkl', 'wb') as f:
+        pickle.dump(obj, f)
+
+def load_obj(name):
+    with open(name + '.pkl', 'rb') as f:
+        return pickle.load(f)
+
 
 if inputs['quit'] == 1: #Check from GUI if quit is needed
     logger.debug('Pipeline exit')
@@ -100,16 +109,13 @@ if inputs['do_prediag'] == 1:
 	em.do_prediagnostics(msfile,plots_dir)
 
 
+
+###################
+### CALIBRATION ###
+###################
+
 # All the calibration steps will be saved in the dictionary caltables.pkl
 # located in the calib directory. If it does not exist a new one is created.
-def save_obj(obj, name):
-    with open(name + '.pkl', 'wb') as f:
-        pickle.dump(obj, f)
-
-def load_obj(name):
-    with open(name + '.pkl', 'rb') as f:
-        return pickle.load(f)
-
 try:
     caltables = load_obj(calib_dir+'caltables')
     logger.info('Loaded previous calibration tables from: {0}'.format(calib_dir+'caltables'))
@@ -123,6 +129,14 @@ except:
     caltables['refant'] = refant
     logger.info('New caltables dictionary created. Saved to: {0}'.format(calib_dir+'caltables'))
 
+### Initialize models ###
+if inputs['initialize_models'] == 1:  # Need to add parameter to GUI
+    delmod_sources = ', '.join([bpcal,phscals,targets,ptcal])
+    models_path = pipeline_path+'calibrator_models/'
+    em.run_initialize_models(msfile=msfile, fluxcal=fluxcal,
+                             models_path=models_path,
+                             delmod_sources=delmod_sources)
+
 ### Delay calibration ###
 if inputs['do_delay'] == 1:
     caltables = em.solve_delays(msfile=msfile, caltables=caltables,
@@ -135,7 +149,6 @@ if inputs['do_initial_bandpass'] == 1:
     caltables = em.initial_bp_cal(msfile=msfile, caltables=caltables,
                                   previous_cal=['delay.K0'], bpcal=bpcal)
     save_obj(caltables, calib_dir+'caltables')
-
 
 
 logger.info('Pipeline finished')

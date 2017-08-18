@@ -18,5 +18,6 @@ rfigui=0
 ms2mms=0
 autoflag=0
 do_prediag=0
+initialize_models=0
 do_delay=0
 do_initial_bandpass=0

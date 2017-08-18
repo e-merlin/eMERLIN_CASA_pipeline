@@ -154,6 +154,20 @@ def check_mixed_mode(vis,mode):
 			return_variable = False
 	return return_variable
 
+def check_band(msfile):
+    # Take first frequency in the MS
+    ms.open(msfile)
+    freq = ms.getdata(['axis_info'],ifraxis=True)['axis_info']['freq_axis']['chan_freq'][0][0]/1e9
+    ms.close()
+    band = ''
+    if (freq > 1.2) and (freq < 1.7):
+        band = 'L'
+    if (freq > 4) and (freq < 8):
+        band = 'C'
+    if (freq > 22) and (freq < 24):
+        band = 'K'
+    return band
+
 def run_importfitsIDI(data_dir,vis):
 	logger.info('Starting importfitsIDI procedure')
 	os.system('rm -r '+vis)
@@ -398,6 +412,31 @@ def smooth_caltable(msfile, tablein, plotdir, caltable='', field='', smoothtype=
     return
 
 
+def run_initialize_models(msfile, fluxcal, models_path, delmod_sources):
+    logger.info('Start init_models')
+    # Check dataset frequency:
+    band = check_band(msfile)
+    if band == 'C':
+        model_3C286 = models_path+'3C286_C.clean.model.tt0'
+        logger.info('Dataset is band C. Using C band model of 3C286')
+    elif band == 'L':
+        model_3C286 = models_path+'1331+305.clean.model.tt0'
+        logger.info('Dataset is band L. Using C band model of 3C286')
+    else:
+        logger.warning('No model available!')
+        model_3C286 = ''
+    logger.info('Initializing 3C286 model using: {0}'.format(model_3C286))
+    if fluxcal != '1331+305':
+        logger.warning('Using a model for 3C286 (1331+305) but your flux calibrator source is: {0}. Model may be wrong for that source'.format(fluxcal))
+    setjy(vis=msfile, field=fluxcal, standard='Perley-Butler 2013',
+          model=model_3C286, scalebychan=True, usescratch=True)
+    # Is usescratch needed? Probably not, but I see amp=1 in the model column
+    # otherwise when running on an MMS file.
+    logger.info('Deleting model for all other sources: '+delmod_sources)
+    delmod(vis=msfile, field=delmod_sources)
+    logger.info('End init_models')
+
+
 def run_gaincal(msfile, caltables, caltable_name, previous_cal, minblperant=3, minsnr=2):
     rmdir(caltables[caltable_name]['table'])
     logger.info('Running gaincal to generate: {0}'.format(caltables[caltable_name]['name']))
@@ -474,7 +513,7 @@ def run_bandpass(msfile, caltables, caltable_name, previous_cal, minblperant=3, 
              minblperant=minblperant,
              minsnr=minsnr)
     logger.info('caltable {0} in {1}'.format(caltables[caltable_name]['name'],
-                                              caltables[caltable_name]['table']))
+                                             caltables[caltable_name]['table']))
 
 
 def solve_delays(msfile, caltables, previous_cal, calsources):
