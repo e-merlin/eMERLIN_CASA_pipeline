@@ -23,3 +23,4 @@ do_delay=0
 do_initial_bandpass=0
 do_gain_calibration=0
 do_fluxscale=0
+do_bandpass_sp=0

@@ -169,6 +169,15 @@ if inputs['do_fluxscale'] == 1:
     save_obj(caltables, calib_dir+'caltables')
     save_obj(caltables, calib_dir+'caltables_fluxscale')
 
+### Initial BandPass calibration ###
+if inputs['do_bandpass_sp'] == 1:
+    caltables = em.bandpass_sp(msfile=msfile, caltables=caltables,
+                                  previous_cal=['delay.K0','allcal_p.G0','allcal_ap.G1_fluxscaled'], bpcal=bpcal)
+    save_obj(caltables, calib_dir+'caltables')
+    save_obj(caltables, calib_dir+'caltables_bandpass_sp')
+
+
+
 
 logger.info('Pipeline finished')
 logger.info('#################')

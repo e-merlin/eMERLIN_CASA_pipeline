@@ -453,7 +453,7 @@ def run_gaincal(msfile, caltables, caltable_name, previous_cal, minblperant=3, m
     gaintable = [caltables[p]['table'] for p in previous_cal]
     interp    = [caltables[p]['interp'] for p in previous_cal]
     spwmap    = [caltables[p]['spwmap'] for p in previous_cal]
-    gainfield = [caltables[p]['field'] if len(np.atleast_1d(caltables[p]['field'].split()))<2 else '' for p in previous_cal]
+    gainfield = [caltables[p]['field'] if len(np.atleast_1d(caltables[p]['field'].split(',')))<2 else '' for p in previous_cal]
     logger.info('Previous calibration applied: {0}'.format(str(previous_cal)))
     logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
     logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
@@ -491,7 +491,7 @@ def run_bandpass(msfile, caltables, caltable_name, previous_cal, minblperant=3, 
     gaintable = [caltables[p]['table'] for p in previous_cal]
     interp    = [caltables[p]['interp'] for p in previous_cal]
     spwmap    = [caltables[p]['spwmap'] for p in previous_cal]
-    gainfield = [caltables[p]['field'] if len(np.atleast_1d(caltables[p]['field'].split()))<2 else '' for p in previous_cal]
+    gainfield = [caltables[p]['field'] if len(np.atleast_1d(caltables[p]['field'].split(',')))<2 else '' for p in previous_cal]
     logger.info('Previous calibration applied: {0}'.format(str(previous_cal)))
     logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
     logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
@@ -600,11 +600,11 @@ def initial_bp_cal(msfile, caltables, previous_cal, bpcal):
     caltableplot_phs = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
     plotcal(caltable=caltable,xaxis='time',yaxis='phase',subplot=321,iteration='antenna',
             showgui=False,figfile=caltableplot_phs,fontsize=8, plotrange=[-1,-1,-180,180])
-    logger.info('Bandpass0 phase calibration plot: {0}'.format(caltableplot))
+    logger.info('Bandpass0 phase calibration plot: {0}'.format(caltableplot_phs))
     caltableplot_amp = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_amp.png'
     plotcal(caltable=caltable,xaxis='time',yaxis='amp',subplot=321,iteration='antenna',
             showgui=False,figfile=caltableplot_amp,fontsize=8, plotrange=[-1,-1,-1,-1])
-    logger.info('Bandpass0 phase calibration plot: {0}'.format(caltableplot))
+    logger.info('Bandpass0 phase calibration plot: {0}'.format(caltableplot_amp))
 
     # 3 Bandpass calibration
     caltable_name = 'bpcal.B0'
@@ -765,6 +765,38 @@ def eM_fluxscale(msfile, caltables, ampcal_table, fluxcal, calsources, antenna='
               spix = eMcalfluxes[f][1],
               reffreq = str(eMcalfluxes[f][2])+'Hz')
     logger.info('End eM_fluxscale')
+    return caltables
+
+def bandpass_sp(msfile, caltables, previous_cal, bpcal):
+    logger.info('Start bandpass_sp')
+    # Bandpass calibration
+    caltable_name = 'bpcal_sp.B1'
+    caltables[caltable_name] = {}
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['field'] = bpcal
+    caltables[caltable_name]['solint'] = 'inf'
+    caltables[caltable_name]['interp'] = 'nearest,linear'
+    caltables[caltable_name]['spwmap'] = []
+    caltables[caltable_name]['combine'] = ''
+    caltables[caltable_name]['spw'] = ''
+    caltables[caltable_name]['solnorm'] = False
+    bptable = caltables[caltable_name]['table']
+    # Calibration
+    run_bandpass(msfile, caltables, caltable_name, previous_cal)
+    logger.info('Bandpass1 BP {0}: {1}'.format(caltable_name,bptable))
+    # Plots
+    bptableplot_phs = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
+    bptableplot_amp = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_amp.png'
+    plotcal(caltable=bptable, xaxis='freq', yaxis='phase',
+            subplot=321,iteration='antenna', showgui=False,
+            figfile=bptableplot_phs, fontsize = 8, plotrange = [-1,-1,-180,180])
+    logger.info('Bandpass1 BP phase plot: {0}'.format(bptableplot_phs))
+    plotcal(caltable=bptable, xaxis='freq', yaxis='amp',  subplot=321,
+            iteration='antenna', showgui=False, figfile=bptableplot_amp,
+            fontsize = 8, plotrange = [-1,-1,-1,-1])
+    logger.info('Bandpass1 BP phase plot: {0}'.format(bptableplot_amp))
+    logger.info('End bandpass_sp')
     return caltables
 
 
