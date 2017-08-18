@@ -538,11 +538,13 @@ def solve_delays(msfile, caltables, previous_cal, calsources):
     # Plots
     # 1 No range
     caltableplot = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_1.png'
-    plotcal(caltable=caltable,xaxis='time',yaxis='delay',subplot=321,iteration='antenna',showgui=False,figfile=caltableplot, fontsize = 8, plotrange = [-1,-1,-1,-1])
+    plotcal(caltable=caltable,xaxis='time',yaxis='delay',subplot=321,iteration='antenna',
+            showgui=False,figfile=caltableplot, fontsize = 8, plotrange = [-1,-1,-1,-1])
     logger.info('Delay calibration plot in: {0}'.format(caltableplot))
     # 2 Only show typical delay values: from -20 to 20 nanosec
     caltableplot = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_2.png'
-    plotcal(caltable=caltable,xaxis='time',yaxis='delay',subplot=321,iteration='antenna',showgui=False,figfile=caltableplot, fontsize = 8, plotrange = [-1,-1,-20,20])
+    plotcal(caltable=caltable,xaxis='time',yaxis='delay',subplot=321,iteration='antenna',
+            showgui=False,figfile=caltableplot, fontsize = 8, plotrange = [-1,-1,-20,20])
     logger.info('Delay calibration plot: {0}'.format(caltableplot))
     logger.info('End solve_delays')
     return caltables
@@ -552,7 +554,7 @@ def initial_bp_cal(msfile, caltables, previous_cal, bpcal):
     logger.info('Start initial_bp_cal')
 
     # 1 Phase calibration
-    caltable_name = 'bpcal0.G0'
+    caltable_name = 'bpcal_p.G0'
     caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
@@ -570,11 +572,12 @@ def initial_bp_cal(msfile, caltables, previous_cal, bpcal):
     logger.info('Bandpass0 phase calibration {0}: {1}'.format(caltable_name,caltable))
     # Plots
     caltableplot = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
-    plotcal(caltable=caltable,xaxis='time',yaxis='phase',subplot=321,iteration='antenna',showgui=False,figfile=caltableplot, fontsize = 8, plotrange = [-1,-1,-1,-1])
+    plotcal(caltable=caltable,xaxis='time',yaxis='phase',subplot=321,iteration='antenna',
+            showgui=False,figfile=caltableplot,fontsize=8, plotrange=[-1,-1,-180,180])
     logger.info('Bandpass0 phase calibration plot: {0}'.format(caltableplot))
 
     # 2 Amplitude calibration
-    caltable_name = 'bpcal0.G1'
+    caltable_name = 'bpcal_ap.G1'
     caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
@@ -587,21 +590,23 @@ def initial_bp_cal(msfile, caltables, previous_cal, bpcal):
     caltables[caltable_name]['combine'] = ''
     caltables[caltable_name]['spw'] = ''
     caltable = caltables[caltable_name]['table']
-    previous_cal.append('bpcal0.G0')
+    previous_cal.append('bpcal_p.G0')
     # Calibration
     run_gaincal(msfile, caltables, caltable_name, previous_cal)
     logger.info('Bandpass0 amplitude calibration {0}: {1}'.format(caltable_name,caltable))
 #    smooth_caltable(msfile=msfile, plotdir=plotdir, tablein=caltable2, caltable='', field='', smoothtype='median', smoothtime=60*20.)
     # Plots
     caltableplot_phs = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
-    plotcal(caltable=caltable,xaxis='time',yaxis='phase',subplot=321,iteration='antenna',showgui=False,figfile=caltableplot_phs, fontsize = 8, plotrange = [-1,-1,-1,-1])
+    plotcal(caltable=caltable,xaxis='time',yaxis='phase',subplot=321,iteration='antenna',
+            showgui=False,figfile=caltableplot_phs,fontsize=8, plotrange=[-1,-1,-180,180])
     logger.info('Bandpass0 phase calibration plot: {0}'.format(caltableplot))
     caltableplot_amp = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_amp.png'
-    plotcal(caltable=caltable,xaxis='time',yaxis='amp',subplot=321,iteration='antenna',showgui=False,figfile=caltableplot_amp, fontsize = 8, plotrange = [-1,-1,-1,-1])
+    plotcal(caltable=caltable,xaxis='time',yaxis='amp',subplot=321,iteration='antenna',
+            showgui=False,figfile=caltableplot_amp,fontsize=8, plotrange=[-1,-1,-1,-1])
     logger.info('Bandpass0 phase calibration plot: {0}'.format(caltableplot))
 
     # 3 Bandpass calibration
-    caltable_name = 'bpcal0.B0'
+    caltable_name = 'bpcal.B0'
     caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
@@ -613,7 +618,7 @@ def initial_bp_cal(msfile, caltables, previous_cal, bpcal):
     caltables[caltable_name]['spw'] = ''
     caltables[caltable_name]['solnorm'] = True
     bptable = caltables[caltable_name]['table']
-    previous_cal.append('bpcal0.G1')
+    previous_cal.append('bpcal_ap.G1')
     # Calibration
     run_bandpass(msfile, caltables, caltable_name, previous_cal)
     logger.info('Bandpass0 BP {0}: {1}'.format(caltable_name,bptable))
@@ -626,10 +631,91 @@ def initial_bp_cal(msfile, caltables, previous_cal, bpcal):
     logger.info('Bandpass0 BP phase plot: {0}'.format(caltableplot_phs))
     plotcal(caltable=bptable, xaxis='freq', yaxis='amp',  subplot=321,
             iteration='antenna', showgui=False, figfile=bptableplot_amp,
-            fontsize = 8, plotrange = [-1,-1,0,2])
+            fontsize = 8, plotrange = [-1,-1,-1,-1])
     logger.info('Bandpass0 BP phase plot: {0}'.format(caltableplot_amp))
     logger.info('End initial_bp_cal')
     return caltables
+
+
+def initial_gaincal(msfile, caltables, previous_cal, calsources, phscals):
+    logger.info('Start initial_gaincal')
+
+    # 1 Phase calibration
+    caltable_name = 'allcal_p.G0'
+    caltables[caltable_name] = {}
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['field'] = calsources
+    caltables[caltable_name]['gaintype'] = 'G'
+    caltables[caltable_name]['calmode'] = 'p'
+    caltables[caltable_name]['solint'] = '8s'
+    caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['spwmap'] = []
+    caltables[caltable_name]['combine'] = ''
+    caltables[caltable_name]['spw'] = ''
+    caltable = caltables[caltable_name]['table']
+    # Calibration
+    run_gaincal(msfile, caltables, caltable_name, previous_cal)
+    logger.info('Gain phase calibration {0}: {1}'.format(caltable_name,caltable))
+    # Plots
+    caltableplot = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
+    plotcal(caltable=caltable,xaxis='time',yaxis='phase',subplot=321,iteration='antenna',showgui=False,figfile=caltableplot, fontsize = 8, plotrange = [-1,-1,-180, 180])
+    logger.info('Gain phase calibration plot: {0}'.format(caltableplot))
+
+    # 3 Amplitude calibration
+    caltable_name = 'allcal_ap.G1'
+    caltables[caltable_name] = {}
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['field'] = calsources
+    caltables[caltable_name]['gaintype'] = 'G'
+    caltables[caltable_name]['calmode'] = 'ap'
+    caltables[caltable_name]['solint'] = '120s'
+    caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['spwmap'] = []
+    caltables[caltable_name]['combine'] = ''
+    caltables[caltable_name]['spw'] = ''
+    caltable = caltables[caltable_name]['table']
+    previous_cal.append('allcal_p.G0')
+    # Calibration
+    run_gaincal(msfile, caltables, caltable_name, previous_cal)
+    logger.info('Bandpass0 amplitude calibration {0}: {1}'.format(caltable_name,caltable))
+#    smooth_caltable(msfile=msfile, plotdir=plotdir, tablein=caltable2, caltable='', field='', smoothtype='median', smoothtime=60*20.)
+    # Plots
+    caltableplot_phs = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
+    plotcal(caltable=caltable,xaxis='time',yaxis='phase',subplot=321,iteration='antenna',
+            showgui=False,figfile=caltableplot_phs,fontsize=8,plotrange=[-1,-1,-180,180])
+    logger.info('Bandpass0 phase calibration plot: {0}'.format(caltableplot))
+    caltableplot_amp = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_amp.png'
+    plotcal(caltable=caltable,xaxis='time',yaxis='amp',subplot=321,iteration='antenna',
+            showgui=False,figfile=caltableplot_amp,fontsize=8,plotrange=[-1,-1,-1,-1])
+    logger.info('Bandpass0 phase calibration plot: {0}'.format(caltableplot))
+
+    # 3 Phase calibration on phasecal: scan-averaged phase solutions
+    caltable_name = 'phscal_p_scan.G2'
+    caltables[caltable_name] = {}
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['field'] = phscals
+    caltables[caltable_name]['gaintype'] = 'G'
+    caltables[caltable_name]['calmode'] = 'p'
+    caltables[caltable_name]['solint'] = 'inf'
+    caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['spwmap'] = []
+    caltables[caltable_name]['combine'] = ''
+    caltables[caltable_name]['spw'] = ''
+    caltable = caltables[caltable_name]['table']
+    # Calibration
+    run_gaincal(msfile, caltables, caltable_name, previous_cal)
+    logger.info('Gain phase calibration {0}: {1}'.format(caltable_name,caltable))
+    # Plots
+    caltableplot = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
+    plotcal(caltable=caltable,xaxis='time',yaxis='phase',subplot=321,iteration='antenna',
+            showgui=False,figfile=caltableplot,fontsize=8,plotrange=[-1,-1,-180,180])
+    logger.info('Gain phase calibration plot: {0}'.format(caltableplot))
+
+
+
 
 
 

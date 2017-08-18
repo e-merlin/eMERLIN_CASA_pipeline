@@ -130,7 +130,7 @@ except:
     logger.info('New caltables dictionary created. Saved to: {0}'.format(calib_dir+'caltables'))
 
 ### Initialize models ###
-if inputs['initialize_models'] == 1:  # Need to add parameter to GUI
+if inputs['do_initialize_models'] == 1:  # Need to add parameter to GUI
     delmod_sources = ', '.join([bpcal,phscals,targets,ptcal])
     models_path = pipeline_path+'calibrator_models/'
     em.run_initialize_models(msfile=msfile, fluxcal=fluxcal,
@@ -149,6 +149,16 @@ if inputs['do_initial_bandpass'] == 1:
     caltables = em.initial_bp_cal(msfile=msfile, caltables=caltables,
                                   previous_cal=['delay.K0'], bpcal=bpcal)
     save_obj(caltables, calib_dir+'caltables')
+
+
+### Gain calibration ###
+if inputs['do_gain_calibration'] == 1:
+    caltables = em.initial_gaincal(msfile=msfile, caltables=caltables,
+                                  previous_cal=['delay.K0', 'bpcal.B0'],
+                                  calsources=calsources, phscals=phscals)
+    save_obj(caltables, calib_dir+'caltables')
+
+
 
 
 logger.info('Pipeline finished')
