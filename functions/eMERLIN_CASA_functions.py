@@ -180,11 +180,11 @@ def run_importfitsIDI(data_dir,vis):
 			logger.info('FITS file found to be imported: {0}'.format(file))
 	logger.info('Start importfitsIDI')
 	importfitsidi(fitsidifile=fitsfiles, vis=vis+'_noorder', constobsid=True, scanreindexgap_s=15.0)
-	logger.info('Setting MS order with setToCasaOrder')
 	ms.writehistory(message='eMER_CASA_Pipeline: Import fitsidi to ms, complete',msname=vis)
-    setToCasaOrder(inputMS=vis+'_noorder', outputMS=vis)
-    os.system('rm -r {0}'.format(vis+'_noorder'))
-    ms.writehistory(message='eMER_CASA_Pipeline: setToCasaOrder, complete',msname=vis)
+	logger.info('Setting MS order with setToCasaOrder')
+	setToCasaOrder(inputMS=vis+'_noorder', outputMS=vis)
+	os.system('rm -r {0}'.format(vis+'_noorder'))
+	ms.writehistory(message='eMER_CASA_Pipeline: setToCasaOrder, complete',msname=vis)
 	logger.info('End importfitsIDI')
 	logger.info('Start UVFIX')
 	fixvis(vis=vis,outputvis=vis+'.uvfix')
@@ -525,39 +525,32 @@ def smooth_caltable(msfile, tablein, plotdir, caltable='', field='', smoothtype=
     return
 
 
-def run_applycal(msfile, caltables, previous_cal, sources, phscal, target=''):
+def run_applycal(msfile, caltables, sources, previous_cal):
     logger.info('Start applycal')
-    allsources = list(set(sources.replace(' ','').split(',')))
-    try:
-        calibsources = copy.copy(allsources)
-        calibsources.remove(target)
-    except:
-        calibsources = allsources
-
     # 1 correct non-target sources:
-    if len(np.atleast_1d(calibsources)) > 0:
-        logger.info('Applying calibration to calibrator sources')
-        logger.info('Fields: {0}'.format(','.join(calibsources)))
-        # Previous calibration
-        gaintable = [caltables[p]['table'] for p in previous_cal]
-        interp    = [caltables[p]['interp'] for p in previous_cal]
-        spwmap    = [caltables[p]['spwmap'] for p in previous_cal]
-        gainfield = [caltables[p]['field'] if len(np.atleast_1d(caltables[p]['field'].split(',')))<2 else '' for p in previous_cal]
-        logger.info('Previous calibration applied: {0}'.format(str(previous_cal)))
-        logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
-        logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
-        logger.info('Previous calibration interp: {0}'.format(str(interp)))
-        applycal(vis=msfile,
-                 field = ','.join(calibsources),
-                 gaintable = gaintable,
-                 gainfield = gainfield,
-                 interp    = interp,
-                 spwmap    = spwmap)
+    logger.info('Applying calibration to calibrator sources')
+    logger.info('Fields: {0}'.format(sources['calsources']))
+    # Previous calibration
+    gaintable = [caltables[p]['table'] for p in previous_cal]
+    interp    = [caltables[p]['interp'] for p in previous_cal]
+    spwmap    = [caltables[p]['spwmap'] for p in previous_cal]
+    gainfield = [caltables[p]['field'] if len(np.atleast_1d(caltables[p]['field'].split(',')))<2 else '' for p in previous_cal]
+    logger.info('Previous calibration applied: {0}'.format(str(previous_cal)))
+    logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
+    logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
+    logger.info('Previous calibration interp: {0}'.format(str(interp)))
+    applycal(vis=msfile,
+             field = sources['calsources'],
+             gaintable = gaintable,
+             gainfield = gainfield,
+             interp    = interp,
+             spwmap    = spwmap)
 
-    # Apply to targets:
-    if target != '':
-        logger.info('Applying calibration to target sources')
-        logger.info('Fields: {0}'.format(target))
+    # 2 correct targets
+    logger.info('Applying calibration to target sources')
+    logger.info('Fields: {0}'.format(sources['targets']))
+    for i, s in enumerate(sources['targets'].split(',')):
+        phscal = sources['phscals'].split(',')[i]
         # Previous calibration
         gaintable = [caltables[p]['table'] for p in previous_cal]
         interp    = [caltables[p]['interp'] for p in previous_cal]
@@ -569,18 +562,11 @@ def run_applycal(msfile, caltables, previous_cal, sources, phscal, target=''):
         logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
         logger.info('Previous calibration interp: {0}'.format(str(interp)))
         applycal(vis=msfile,
-                 field = target,
+                 field = sources['targets'],
                  gaintable = gaintable,
                  gainfield = gainfield,
                  interp    = interp,
                  spwmap    = spwmap)
-
-
-    logger.info('End applycal')
-
-
-
-
 
 
 ### Calibration steps
@@ -786,11 +772,10 @@ def initial_gaincal(msfile, caltables, previous_cal, calsources, phscals):
     return caltables
 
 
-def eM_fluxscale(msfile, caltables, ampcal_table, fluxcal, calsources, antenna='!Lo*;!De'):
+def eM_fluxscale(msfile, caltables, ampcal_table, sources, antenna='!Lo*;!De'):
     logger.info('Start eM_fluxscale')
-    cals_to_scale = calsources.split(',')
-    cals_to_scale.remove(fluxcal)
-    cals_to_scale = ','.join(cals_to_scale)
+    cals_to_scale = sources['no_fluxcal']
+    fluxcal = sources['fluxcal']
     caltable_name = 'allcal_ap.G1_fluxscaled'
     caltables[caltable_name] = copy.copy(caltables[ampcal_table])
     caltables[caltable_name]['table']=caltables[ampcal_table]['table']+'_fluxscaled'

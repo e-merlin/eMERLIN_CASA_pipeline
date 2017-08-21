@@ -38,19 +38,25 @@ calib_dir = em.backslash_check(inputs['calib_dir'])
 logger.info('Inputs used: {}'.format(inputs))
 
 refant = inputs['refant']
-targets = inputs['targets']
-phscals = inputs['phscals']
-fluxcal = inputs['fluxcal']
-bpcal = inputs['bpcal']
-ptcal = inputs['ptcal']
-calsources = ','.join([phscals, fluxcal, bpcal, ptcal])
 
-#sources = {}
-#sources['targets'] = inputs['targets']
-#sources['phscals'] = inputs['phscals']
-#sources['fluxcal'] = inputs['fluxcal']
-#sources['bpcal']   = inputs['bpcal']
-#sources['ptcal']   = inputs['ptcal']
+#targets = inputs['targets']
+#phscals = inputs['phscals']
+#fluxcal = inputs['fluxcal']
+#bpcal = inputs['bpcal']
+#ptcal = inputs['ptcal']
+#calsources = ','.join([phscals, fluxcal, bpcal, ptcal])
+
+sources = {}
+sources['targets'] = inputs['targets'].replace(' ','')
+sources['phscals'] = inputs['phscals'].replace(' ','')
+sources['fluxcal'] = inputs['fluxcal']
+sources['bpcal']   = inputs['bpcal']
+sources['ptcal']   = inputs['ptcal']
+sources['calsources'] = ','.join([sources['phscals'], sources['fluxcal'],
+                                  sources['bpcal'], sources['ptcal']])
+sources['maincal'] = ','.join([sources['fluxcal'],sources['bpcal'], sources['ptcal']])
+sources['allsources'] = sources['calsources'] + sources['targets']
+sources['no_fluxcal'] = sources['allsources'].replace(sources['fluxcal'], '').replace(',,',',')
 
 ## Create directory structure ##
 em.makedir(plots_dir)
@@ -136,16 +142,15 @@ except:
 
 ### Initialize models ###
 if inputs['do_initialize_models'] == 1:  # Need to add parameter to GUI
-    delmod_sources = ','.join([bpcal,phscals,targets,ptcal])
     models_path = pipeline_path+'calibrator_models/'
-    em.run_initialize_models(msfile=msfile, fluxcal=fluxcal,
+    em.run_initialize_models(msfile=msfile, fluxcal=sources['fluxcal'],
                              models_path=models_path,
-                             delmod_sources=delmod_sources)
+                             delmod_sources=sources['no_fluxcal'])
 
 ### Delay calibration ###
 if inputs['do_delay'] == 1:
     caltables = em.solve_delays(msfile=msfile, caltables=caltables,
-                                previous_cal=[], calsources=calsources)
+                                previous_cal=[], calsources=sources['calsources'])
     save_obj(caltables, calib_dir+'caltables')
     save_obj(caltables, calib_dir+'caltables_delay')
 
@@ -153,7 +158,7 @@ if inputs['do_delay'] == 1:
 ### Initial BandPass calibration ###
 if inputs['do_initial_bandpass'] == 1:
     caltables = em.initial_bp_cal(msfile=msfile, caltables=caltables,
-                                  previous_cal=['delay.K0'], bpcal=bpcal)
+                                  previous_cal=['delay.K0'], bpcal=sources['bpcal'])
     save_obj(caltables, calib_dir+'caltables')
     save_obj(caltables, calib_dir+'caltables_bandpass0')
 
@@ -162,16 +167,16 @@ if inputs['do_initial_bandpass'] == 1:
 if inputs['do_gain_calibration'] == 1:
     caltables = em.initial_gaincal(msfile=msfile, caltables=caltables,
                                   previous_cal=['delay.K0', 'bpcal.B0'],
-                                  calsources=calsources, phscals=phscals)
+                                  calsources=sources['calsources'], phscals=sources['phscals'])
     save_obj(caltables, calib_dir+'caltables')
     save_obj(caltables, calib_dir+'caltables_gaincal')
 
 ### Flux scale ###
 if inputs['do_fluxscale'] == 1:
     caltables = em.eM_fluxscale(msfile=msfile, caltables=caltables,
-                             fluxcal=fluxcal, calsources=calsources,
-                             ampcal_table='allcal_ap.G1', antenna='')
-                             #ampcal_table='allcal_ap.G1', antenna='!Lo*;!De')
+                                sources=sources,
+                                ampcal_table='allcal_ap.G1', antenna='!Lo*;!De')
+                                #ampcal_table='allcal_ap.G1', antenna='')
     save_obj(caltables, calib_dir+'caltables')
     save_obj(caltables, calib_dir+'caltables_fluxscale')
 
@@ -179,17 +184,14 @@ if inputs['do_fluxscale'] == 1:
 if inputs['do_bandpass_sp'] == 1:
     caltables = em.bandpass_sp(msfile=msfile, caltables=caltables,
                                previous_cal=['delay.K0','allcal_p.G0','allcal_ap.G1_fluxscaled'],
-                               bpcal=bpcal)
+                               bpcal=sources['bpcal'])
     save_obj(caltables, calib_dir+'caltables')
     save_obj(caltables, calib_dir+'caltables_bandpass_sp')
 
-#### Apply calibration  ###
-#if inputs['do_applycal_all'] == 1:
-#    # I think here we need a dictionary similar to caltables containing the
-#    # sources and what they are. That way this would be much simpler.
-#    em.run_applycal(msfile=msfile, caltables=caltables,
-#                    sources=calsources, target=targets, phscal=phscals,
-#                    previous_cal=['delay.K0','allcal_p.G0','allcal_ap.G1_fluxscaled','bpcal_sp.B1'])
+### Apply calibration  ###
+if inputs['do_applycal_all'] == 1:
+    em.run_applycal(msfile=msfile, caltables=caltables, sources=sources,
+                    previous_cal=['delay.K0','allcal_p.G0','allcal_ap.G1_fluxscaled','bpcal_sp.B1'])
 
 
 
