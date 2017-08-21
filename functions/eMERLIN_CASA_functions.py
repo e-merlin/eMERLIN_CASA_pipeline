@@ -13,6 +13,7 @@ from eMERLIN_CASA_GUI import GUI_pipeline
 # Need to be in this order:
 from tasks import *
 from casa import *
+from recipes.setOrder import setToCasaOrder
 
 import logging
 logger = logging.getLogger('logger')
@@ -178,8 +179,12 @@ def run_importfitsIDI(data_dir,vis):
 			fitsfiles = fitsfiles + [data_dir+file]
 			logger.info('FITS file found to be imported: {0}'.format(file))
 	logger.info('Start importfitsIDI')
-	importfitsidi(fitsidifile=fitsfiles, vis=vis, constobsid=True, scanreindexgap_s=15.0)
+	importfitsidi(fitsidifile=fitsfiles, vis=vis+'_noorder', constobsid=True, scanreindexgap_s=15.0)
+	logger.info('Setting MS order with setToCasaOrder')
 	ms.writehistory(message='eMER_CASA_Pipeline: Import fitsidi to ms, complete',msname=vis)
+    setToCasaOrder(inputMS=vis+'_noorder', outputMS=vis)
+    os.system('rm -r {0}'.format(vis+'_noorder'))
+    ms.writehistory(message='eMER_CASA_Pipeline: setToCasaOrder, complete',msname=vis)
 	logger.info('End importfitsIDI')
 	logger.info('Start UVFIX')
 	fixvis(vis=vis,outputvis=vis+'.uvfix')
