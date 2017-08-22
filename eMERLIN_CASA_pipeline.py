@@ -37,15 +37,7 @@ plots_dir = em.backslash_check(inputs['plots_dir'])
 calib_dir = em.backslash_check(inputs['calib_dir'])
 logger.info('Inputs used: {}'.format(inputs))
 
-refant = inputs['refant']
-
-#targets = inputs['targets']
-#phscals = inputs['phscals']
-#fluxcal = inputs['fluxcal']
-#bpcal = inputs['bpcal']
-#ptcal = inputs['ptcal']
-#calsources = ','.join([phscals, fluxcal, bpcal, ptcal])
-
+# Sources to process
 sources = {}
 sources['targets'] = inputs['targets'].replace(' ','')
 sources['phscals'] = inputs['phscals'].replace(' ','')
@@ -59,6 +51,15 @@ sources['allsources'] = sources['calsources'] +','+ sources['targets']
 sources['no_fluxcal'] = sources['allsources'].replace(sources['fluxcal'], '').replace(',,',',').strip(',')
 sources['cals_no_fluxcal'] = sources['calsources'].replace(sources['fluxcal'], '').replace(',,',',').strip(',')
 
+logger.info('Targets:   {0}'.format(sources['targets']))
+logger.info('Phasecals: {0}'.format(sources['phscals']))
+logger.info('Fluxcal:   {0}'.format(sources['fluxcal']))
+logger.info('Bandpass:  {0}'.format(sources['bpcal']))
+logger.info('Pointcal:  {0}'.format(sources['ptcal']))
+
+# Reference antenna
+refant = inputs['refant']
+logger.info('Refant: {}'.format(refant))
 
 ## Create directory structure ##
 em.makedir(plots_dir)
@@ -81,6 +82,7 @@ if inputs['quit'] == 1: #Check from GUI if quit is needed
 fitsfile = inputs['inbase']+'.fits'
 msfile = inputs['inbase']+'.ms'
 
+save_obj(sources, 'sources')
 
 ## Check for measurement sets in current directory otherwise drag from defined data directory
 if os.path.isdir(inputs['inbase']+'.ms') == False and os.path.isdir(inputs['inbase']+'.mms') == False:
@@ -128,10 +130,10 @@ if inputs['do_average1'] == 1:
     em.run_split(msfile, fields=sources['allsources'], width=4, timebin='2s')
 
 # Check if averaged data already generated
-if os.path.isdir('./'+inputs['inbase']+'_avg1.mms') == True:
-    msfile = './'+inputs['inbase']+'_avg1.mms'
-elif os.path.isdir('./'+inputs['inbase']+'_avg1.mms') == True:
-    msfile = './'+inputs['inbase']+'_avg1.ms'
+if os.path.isdir('./'+inputs['inbase']+'_avg.mms') == True:
+    msfile = './'+inputs['inbase']+'_avg.mms'
+elif os.path.isdir('./'+inputs['inbase']+'_avg.mms') == True:
+    msfile = './'+inputs['inbase']+'_avg.ms'
 else:
     pass
 
@@ -166,50 +168,71 @@ if inputs['do_initialize_models'] == 1:  # Need to add parameter to GUI
                              delmod_sources=sources['no_fluxcal'])
 
 ### Delay calibration ###
-if inputs['do_delay'] == 1:
+if inputs['do_delay'] > 0:
     caltables = em.solve_delays(msfile=msfile, caltables=caltables,
                                 previous_cal=[], calsources=sources['calsources'])
     save_obj(caltables, calib_dir+'caltables')
     save_obj(caltables, calib_dir+'caltables_delay')
+    if inputs['do_delay'] == 2:
+        em.run_applycal(msfile=msfile, caltables=caltables, sources=sources,
+           previous_cal=['delay.K0'],
+           previous_cal_targets=['delay.K0'])
 
 
 ### Initial BandPass calibration ###
-if inputs['do_initial_bandpass'] == 1:
+if inputs['do_initial_bandpass'] > 0:
     caltables = em.initial_bp_cal(msfile=msfile, caltables=caltables,
                                   previous_cal=['delay.K0'], bpcal=sources['bpcal'])
     save_obj(caltables, calib_dir+'caltables')
     save_obj(caltables, calib_dir+'caltables_bandpass0')
+    if inputs['do_initial_bandpass'] == 2:
+        em.run_applycal(msfile=msfile, caltables=caltables, sources=sources,
+           previous_cal=['delay.K0','bpcal.B0'],
+           previous_cal_targets=['delay.K0','bpcal.B0'])
 
 
 ### Gain calibration ###
-if inputs['do_gain_calibration'] == 1:
+if inputs['do_gain_calibration'] > 0:
     caltables = em.initial_gaincal(msfile=msfile, caltables=caltables,
                                   previous_cal=['delay.K0', 'bpcal.B0'],
                                   calsources=sources['calsources'], phscals=sources['phscals'])
     save_obj(caltables, calib_dir+'caltables')
     save_obj(caltables, calib_dir+'caltables_gaincal')
+    if inputs['do_gain_calibration'] == 2:
+        em.run_applycal(msfile=msfile, caltables=caltables, sources=sources,
+           previous_cal=['delay.K0','allcal_p.G0','allcal_ap.G1','bpcal.B0'],
+           previous_cal_targets=['delay.K0','phscal_p_scan.G2','allcal_ap.G1','bpcal.B0'])
 
 ### Flux scale ###
-if inputs['do_fluxscale'] == 1:
+if inputs['do_fluxscale'] > 0:
     caltables = em.eM_fluxscale(msfile=msfile, caltables=caltables,
                                 sources=sources,
-                                #ampcal_table='allcal_ap.G1', antenna='!Lo*;!De')
-                                ampcal_table='allcal_ap.G1', antenna='')
+                                ampcal_table='allcal_ap.G1', antenna='!Lo*;!De')
+                                #ampcal_table='allcal_ap.G1', antenna='')
     save_obj(caltables, calib_dir+'caltables')
     save_obj(caltables, calib_dir+'caltables_fluxscale')
+    if inputs['do_fluxscale'] == 2:
+        em.run_applycal(msfile=msfile, caltables=caltables, sources=sources,
+           previous_cal=['delay.K0','allcal_p.G0','allcal_ap.G1_fluxscaled','bpcal.B0'],
+           previous_cal_targets=['delay.K0','phscal_p_scan.G2','allcal_ap.G1_fluxscaled','bpcal.B0'])
 
-### Initial BandPass calibration ###
-if inputs['do_bandpass_sp'] == 1:
+### BandPass calibration ###
+if inputs['do_bandpass_sp'] > 0:
     caltables = em.bandpass_sp(msfile=msfile, caltables=caltables,
                                previous_cal=['delay.K0','allcal_p.G0','allcal_ap.G1_fluxscaled'],
                                bpcal=sources['bpcal'])
     save_obj(caltables, calib_dir+'caltables')
     save_obj(caltables, calib_dir+'caltables_bandpass_sp')
+    if inputs['do_bandpass_sp'] == 2:
+        em.run_applycal(msfile=msfile, caltables=caltables, sources=sources,
+           previous_cal=['delay.K0','allcal_p.G0','allcal_ap.G1_fluxscaled','bpcal_sp.B1'],
+           previous_cal_targets=['delay.K0','phscal_p_scan.G2','allcal_ap.G1_fluxscaled','bpcal_sp.B1'])
 
 ### Apply calibration  ###
-if inputs['do_applycal_all'] == 1:
+if inputs['do_applycal_all'] > 0:
     em.run_applycal(msfile=msfile, caltables=caltables, sources=sources,
-                    previous_cal=['delay.K0','allcal_p.G0','allcal_ap.G1_fluxscaled','bpcal_sp.B1'])
+       previous_cal=['delay.K0','allcal_p.G0','allcal_ap.G1_fluxscaled','bpcal_sp.B1'],
+       previous_cal_targets=['delay.K0','phscal_p_scan.G2','allcal_ap.G1_fluxscaled','bpcal_sp.B1'])
 
 
 

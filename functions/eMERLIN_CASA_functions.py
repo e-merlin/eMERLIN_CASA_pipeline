@@ -72,7 +72,7 @@ def headless(inputfile):
 			value = value.strip()
 			valuelist = value.split(', ')
 			if len(valuelist) == 1:
-				if valuelist[0] == '0' or valuelist[0]=='1':
+				if valuelist[0] == '0' or valuelist[0]=='1' or valuelist[0]=='2':
 					control[param] = int(valuelist[0])
 				else:
 					control[param] = str(valuelist[0])
@@ -180,7 +180,7 @@ def run_importfitsIDI(data_dir,vis):
 			logger.info('FITS file found to be imported: {0}'.format(file))
 	logger.info('Start importfitsIDI')
 	importfitsidi(fitsidifile=fitsfiles, vis=vis+'_noorder', constobsid=True, scanreindexgap_s=15.0)
-	ms.writehistory(message='eMER_CASA_Pipeline: Import fitsidi to ms, complete',msname=vis)
+	ms.writehistory(message='eMER_CASA_Pipeline: Import fitsidi to ms, complete',msname=vis+'_noorder')
 	logger.info('Setting MS order with setToCasaOrder')
 	setToCasaOrder(inputMS=vis+'_noorder', outputMS=vis)
 	os.system('rm -r {0}'.format(vis+'_noorder'))
@@ -509,7 +509,7 @@ def smooth_caltable(msfile, tablein, plotdir, caltable='', field='', smoothtype=
     return
 
 
-def run_applycal(msfile, caltables, sources, previous_cal):
+def run_applycal(msfile, caltables, sources, previous_cal, previous_cal_targets=''):
     logger.info('Start applycal')
     # 1 correct non-target sources:
     logger.info('Applying calibration to calibrator sources')
@@ -532,22 +532,24 @@ def run_applycal(msfile, caltables, sources, previous_cal):
 
     # 2 correct targets
     logger.info('Applying calibration to target sources')
-    logger.info('Fields: {0}'.format(sources['targets']))
+    logger.info('Target fields: {0}'.format(sources['targets']))
+    if previous_cal_targets == '':
+        previous_cal_targets = previous_cal
     for i, s in enumerate(sources['targets'].split(',')):
         if s != '':
             phscal = sources['phscals'].split(',')[i]
             # Previous calibration
-            gaintable = [caltables[p]['table'] for p in previous_cal]
-            interp    = [caltables[p]['interp'] for p in previous_cal]
-            spwmap    = [caltables[p]['spwmap'] for p in previous_cal]
-            gainfield = [caltables[p]['field'] if len(np.atleast_1d(caltables[p]['field'].split(',')))<2
-                         else phscal for p in previous_cal]
-            logger.info('Previous calibration applied: {0}'.format(str(previous_cal)))
+            gaintable = [caltables[p]['table'] for p in previous_cal_targets]
+            interp    = [caltables[p]['interp'] for p in previous_cal_targets]
+            spwmap    = [caltables[p]['spwmap'] for p in previous_cal_targets]
+            gainfield = [caltables[p]['field'] if len(np.atleast_1d(caltables[p]['field'].split(',')))<2 else phscal for p in previous_cal_targets]
+            logger.info('Field: {0}. Phase calibrator: {1}'.format(s, phscal))
+            logger.info('Previous calibration applied: {0}'.format(str(previous_cal_targets)))
             logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
             logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
             logger.info('Previous calibration interp: {0}'.format(str(interp)))
             applycal(vis=msfile,
-                     field = sources['targets'],
+                     field = s,
                      gaintable = gaintable,
                      gainfield = gainfield,
                      interp    = interp,
@@ -765,11 +767,6 @@ def eM_fluxscale(msfile, caltables, ampcal_table, sources, antenna='!Lo*;!De'):
     caltable_name = 'allcal_ap.G1_fluxscaled'
     caltables[caltable_name] = copy.copy(caltables[ampcal_table])
     caltables[caltable_name]['table']=caltables[ampcal_table]['table']+'_fluxscaled'
-    print 'A1',fluxcal
-    print 'A2',cals_to_scale
-    print 'A3',caltables[ampcal_table]['table']
-    print 'A4',caltables[caltable_name]['table']
-    print 'A5',caltables[caltable_name]['table']+'_fluxes.txt'
     calfluxes = fluxscale(vis=msfile, reference=fluxcal,
                           transfer=cals_to_scale,
                           antenna = antenna, # Need to make this optional

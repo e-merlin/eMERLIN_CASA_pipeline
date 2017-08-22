@@ -11,7 +11,7 @@ bpcal= 'OQ208'
 ptcal= '3C345'
 refant= 'Mk2'
 
-# processes (1 is go 0 is not)
+# processes (0=don't run, 1=run; 2=run and apply calib)
 run_importfits=1
 hanning=0
 rfigui=0
