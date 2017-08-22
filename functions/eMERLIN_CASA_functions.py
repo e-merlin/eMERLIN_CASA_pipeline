@@ -451,6 +451,11 @@ def run_gaincal(msfile, caltables, caltable_name, previous_cal, minblperant=3, m
     logger.info('Previous calibration interp: {0}'.format(str(interp)))
     logger.info('Generating calibration table: {0}'.format(caltables[caltable_name]['table']))
     # Run CASA task gaincal
+    print 'A1', caltables[caltable_name]['field']
+    print 'A2', caltables[caltable_name]['table']
+    print 'A3', caltables[caltable_name]['calmode']
+    print 'A4', caltables[caltable_name]['solint']
+    print 'A5', gaintable
     gaincal(vis=msfile,
             caltable  = caltables[caltable_name]['table'],
             field     = caltables[caltable_name]['field'],
@@ -567,6 +572,7 @@ def run_applycal(msfile, caltables, sources, previous_cal):
                  gainfield = gainfield,
                  interp    = interp,
                  spwmap    = spwmap)
+    logger.info('End applycal')
 
 
 ### Calibration steps
@@ -645,9 +651,9 @@ def initial_bp_cal(msfile, caltables, previous_cal, bpcal):
     caltables[caltable_name]['combine'] = ''
     caltables[caltable_name]['spw'] = ''
     caltable = caltables[caltable_name]['table']
-    previous_cal.append('bpcal_p.G0')
+    previous_cal_ap = previous_cal + ['bpcal_p.G0']
     # Calibration
-    run_gaincal(msfile, caltables, caltable_name, previous_cal)
+    run_gaincal(msfile, caltables, caltable_name, previous_cal_ap)
     logger.info('Bandpass0 amplitude calibration {0}: {1}'.format(caltable_name,caltable))
 #    smooth_caltable(msfile=msfile, plotdir=plotdir, tablein=caltable2, caltable='', field='', smoothtype='median', smoothtime=60*20.)
     # Plots
@@ -673,9 +679,9 @@ def initial_bp_cal(msfile, caltables, previous_cal, bpcal):
     caltables[caltable_name]['spw'] = ''
     caltables[caltable_name]['solnorm'] = True
     bptable = caltables[caltable_name]['table']
-    previous_cal.append('bpcal_ap.G1')
+    previous_cal_ap_bp = previous_cal_ap + ['bpcal_ap.G1']
     # Calibration
-    run_bandpass(msfile, caltables, caltable_name, previous_cal)
+    run_bandpass(msfile, caltables, caltable_name, previous_cal_ap_bp)
     logger.info('Bandpass0 BP {0}: {1}'.format(caltable_name,bptable))
     # Plots
     bptableplot_phs = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
@@ -717,7 +723,7 @@ def initial_gaincal(msfile, caltables, previous_cal, calsources, phscals):
     plotcal(caltable=caltable,xaxis='time',yaxis='phase',subplot=321,iteration='antenna',showgui=False,figfile=caltableplot, fontsize = 8, plotrange = [-1,-1,-180, 180])
     logger.info('Gain phase calibration plot: {0}'.format(caltableplot))
 
-    # 3 Amplitude calibration
+    # 2 Amplitude calibration
     caltable_name = 'allcal_ap.G1'
     caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
@@ -731,10 +737,10 @@ def initial_gaincal(msfile, caltables, previous_cal, calsources, phscals):
     caltables[caltable_name]['combine'] = ''
     caltables[caltable_name]['spw'] = ''
     caltable = caltables[caltable_name]['table']
-    previous_cal.append('allcal_p.G0')
+    previous_cal_ap = previous_cal + ['allcal_p.G0']
     # Calibration
-    run_gaincal(msfile, caltables, caltable_name, previous_cal)
-    logger.info('Bandpass0 amplitude calibration {0}: {1}'.format(caltable_name,caltable))
+    run_gaincal(msfile, caltables, caltable_name, previous_cal_ap)
+    logger.info('Gain amplitude calibration {0}: {1}'.format(caltable_name,caltable))
 #    smooth_caltable(msfile=msfile, plotdir=plotdir, tablein=caltable2, caltable='', field='', smoothtype='median', smoothtime=60*20.)
     # Plots
     caltableplot_phs = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
@@ -774,9 +780,11 @@ def initial_gaincal(msfile, caltables, previous_cal, calsources, phscals):
 
 def eM_fluxscale(msfile, caltables, ampcal_table, sources, antenna='!Lo*;!De'):
     logger.info('Start eM_fluxscale')
-    cals_to_scale = sources['no_fluxcal']
+    cals_to_scale = sources['cals_no_fluxcal']
     fluxcal = sources['fluxcal']
     caltable_name = 'allcal_ap.G1_fluxscaled'
+    print 'AAAAAAAAAA', cals_to_scale
+    print 'BBBBBBBBBB', fluxcal
     caltables[caltable_name] = copy.copy(caltables[ampcal_table])
     caltables[caltable_name]['table']=caltables[ampcal_table]['table']+'_fluxscaled'
     calfluxes = fluxscale(vis=msfile, reference=fluxcal,

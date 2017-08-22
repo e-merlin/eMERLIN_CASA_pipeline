@@ -52,11 +52,13 @@ sources['phscals'] = inputs['phscals'].replace(' ','')
 sources['fluxcal'] = inputs['fluxcal']
 sources['bpcal']   = inputs['bpcal']
 sources['ptcal']   = inputs['ptcal']
-sources['calsources'] = ','.join([sources['phscals'], sources['fluxcal'],
-                                  sources['bpcal'], sources['ptcal']])
+sources['calsources'] = ','.join(set([sources['phscals'], sources['fluxcal'],
+                                  sources['bpcal'], sources['ptcal']]))
 sources['maincal'] = ','.join([sources['fluxcal'],sources['bpcal'], sources['ptcal']])
-sources['allsources'] = sources['calsources'] + sources['targets']
-sources['no_fluxcal'] = sources['allsources'].replace(sources['fluxcal'], '').replace(',,',',')
+sources['allsources'] = sources['calsources'] +','+ sources['targets']
+sources['no_fluxcal'] = sources['allsources'].replace(sources['fluxcal'], '').replace(',,',',').strip(',')
+sources['cals_no_fluxcal'] = sources['calsources'].replace(sources['fluxcal'], '').replace(',,',',').strip(',')
+
 
 ## Create directory structure ##
 em.makedir(plots_dir)
