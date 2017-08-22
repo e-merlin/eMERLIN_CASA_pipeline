@@ -228,38 +228,6 @@ def run_rfigui(vis):
     os.system('rfigui '+vis)
     logger.info('End run_rfigui')
 
-##Run aoflagger. Mode = auto uses best fit strategy for e-MERLIN (credit J. Moldon), Mode=user uses custon straegy for each field
-#def run_aoflagger(vis,mode):
-#	if mode == 'user':
-#		x = vishead(vis,mode='list',listitems='field')['field'][0]
-#		os.system('touch pre-cal_flag_stats.txt')
-#		y = []
-#		for i in range(len(x)):
-#			if os.path.isfile(x[i]+'.rfis')==False:
-#				y=y+[x[i]]
-#		if len(y) != 0:
-#			for i in range(len(y)):
-#				print 'Missing rfistrategy for: '+y[i]
-#			print 'Please run step 3 again!'
-#		else:
-#			while True:
-#				s = raw_input('All rfistrategys are there: Proceed?:\n')
-#				if s == 'yes' or s == 'y':
-#					ms.writehistory(message='eMER_CASA_Pipeline: AOFlag with user specified strategies:',msname=vis)
-#					for i in range(len(x)):
-#						ms.writehistory(message='eMER_CASA_Pipeline: Flagging field, '+x[i]+' with strategy: '+x[i]+'.rfis',msname=vis)
-#						print 'Flagging field, '+x[i]+' with strategy: '+x[i]+'.rfis'
-#						os.system('aoflagger -fields '+str(i)+' -strategy '+x[i]+'.rfis  '+vis+ '| tee -a pre-cal_flag_stats.txt')
-#					break
-#				if s == 'no' or s == 'n':
-#					sys.exit('Please restart when you are happy')
-#	elif mode == 'default':
-#		print '---- Running AOflagger with eMERLIN default strategy ----\n'
-#		os.system('aoflagger -strategy eMERLIN_default_ao_strategy_v1.rfis '+vis)
-#		ms.writehistory(message='eMER_CASA_Pipeline: AOFlag with default strategy, complete',msname=vis)
-#	else:
-#		print 'Error: Please use either mode=user or mode=default'
-#		sys.exit()
 
 def run_aoflagger_fields(vis,fields='all', pipeline_path='./'):
     """This version of the autoflagger iterates through the ms within the mms structure selecting individual fields. It uses pre-defined strategies. The np.unique in the loop below is needed for single source files. The mms thinks there are many filds (one per mms). I think it is a bug from virtualconcat."""
@@ -404,6 +372,22 @@ field=x[i], antenna='*&*', averagedata=True, avgtime=time, iteraxis='baseline', 
 
 ### Run CASA calibration functions
 
+def run_split(msfile, fields, width, timebin, datacolumn='data'):
+    logger.info('Start split')
+    name = ''.join(msfile.split('.')[:-1])
+    exte = ''.join(msfile.split('.')[-1])
+    outputmsfile = name+'_avg.'+exte
+    rmdir(outputmsfile)
+    logger.info('Input MS: {0}'.format(msfile))
+    logger.info('Output MS: {0}'.format(outputmsfile))
+    logger.info('width={0}, timebin={1}'.format(width, timebin,))
+    logger.info('Fields: {0}'.format(fields))
+    logger.info('Data column: {0}'.format(datacolumn))
+    split(vis=msfile, outputvis=outputmsfile, field=fields, width=width,
+          timebin=timebin, datacolumn=datacolumn, keepflags=False)
+    logger.info('End split')
+
+
 def run_initialize_models(msfile, fluxcal, models_path, delmod_sources):
     logger.info('Start init_models')
     # Check dataset frequency:
@@ -451,11 +435,6 @@ def run_gaincal(msfile, caltables, caltable_name, previous_cal, minblperant=3, m
     logger.info('Previous calibration interp: {0}'.format(str(interp)))
     logger.info('Generating calibration table: {0}'.format(caltables[caltable_name]['table']))
     # Run CASA task gaincal
-    print 'A1', caltables[caltable_name]['field']
-    print 'A2', caltables[caltable_name]['table']
-    print 'A3', caltables[caltable_name]['calmode']
-    print 'A4', caltables[caltable_name]['solint']
-    print 'A5', gaintable
     gaincal(vis=msfile,
             caltable  = caltables[caltable_name]['table'],
             field     = caltables[caltable_name]['field'],
@@ -555,23 +534,24 @@ def run_applycal(msfile, caltables, sources, previous_cal):
     logger.info('Applying calibration to target sources')
     logger.info('Fields: {0}'.format(sources['targets']))
     for i, s in enumerate(sources['targets'].split(',')):
-        phscal = sources['phscals'].split(',')[i]
-        # Previous calibration
-        gaintable = [caltables[p]['table'] for p in previous_cal]
-        interp    = [caltables[p]['interp'] for p in previous_cal]
-        spwmap    = [caltables[p]['spwmap'] for p in previous_cal]
-        gainfield = [caltables[p]['field'] if len(np.atleast_1d(caltables[p]['field'].split(',')))<2
-                     else phscal for p in previous_cal]
-        logger.info('Previous calibration applied: {0}'.format(str(previous_cal)))
-        logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
-        logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
-        logger.info('Previous calibration interp: {0}'.format(str(interp)))
-        applycal(vis=msfile,
-                 field = sources['targets'],
-                 gaintable = gaintable,
-                 gainfield = gainfield,
-                 interp    = interp,
-                 spwmap    = spwmap)
+        if s != '':
+            phscal = sources['phscals'].split(',')[i]
+            # Previous calibration
+            gaintable = [caltables[p]['table'] for p in previous_cal]
+            interp    = [caltables[p]['interp'] for p in previous_cal]
+            spwmap    = [caltables[p]['spwmap'] for p in previous_cal]
+            gainfield = [caltables[p]['field'] if len(np.atleast_1d(caltables[p]['field'].split(',')))<2
+                         else phscal for p in previous_cal]
+            logger.info('Previous calibration applied: {0}'.format(str(previous_cal)))
+            logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
+            logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
+            logger.info('Previous calibration interp: {0}'.format(str(interp)))
+            applycal(vis=msfile,
+                     field = sources['targets'],
+                     gaintable = gaintable,
+                     gainfield = gainfield,
+                     interp    = interp,
+                     spwmap    = spwmap)
     logger.info('End applycal')
 
 
@@ -783,10 +763,13 @@ def eM_fluxscale(msfile, caltables, ampcal_table, sources, antenna='!Lo*;!De'):
     cals_to_scale = sources['cals_no_fluxcal']
     fluxcal = sources['fluxcal']
     caltable_name = 'allcal_ap.G1_fluxscaled'
-    print 'AAAAAAAAAA', cals_to_scale
-    print 'BBBBBBBBBB', fluxcal
     caltables[caltable_name] = copy.copy(caltables[ampcal_table])
     caltables[caltable_name]['table']=caltables[ampcal_table]['table']+'_fluxscaled'
+    print 'A1',fluxcal
+    print 'A2',cals_to_scale
+    print 'A3',caltables[ampcal_table]['table']
+    print 'A4',caltables[caltable_name]['table']
+    print 'A5',caltables[caltable_name]['table']+'_fluxes.txt'
     calfluxes = fluxscale(vis=msfile, reference=fluxcal,
                           transfer=cals_to_scale,
                           antenna = antenna, # Need to make this optional

@@ -123,6 +123,22 @@ if inputs['do_prediag'] == 1:
 	em.do_prediagnostics(msfile,plots_dir)
 
 
+### Average data ###
+if inputs['do_average1'] == 1:
+    em.run_split(msfile, fields=sources['allsources'], width=4, timebin='2s')
+
+# Check if averaged data already generated
+if os.path.isdir('./'+inputs['inbase']+'_avg1.mms') == True:
+    msfile = './'+inputs['inbase']+'_avg1.mms'
+elif os.path.isdir('./'+inputs['inbase']+'_avg1.mms') == True:
+    msfile = './'+inputs['inbase']+'_avg1.ms'
+else:
+    pass
+
+logger.info('Using MS file: {0}'.format(msfile))
+
+
+
 ###################
 ### CALIBRATION ###
 ###################
@@ -177,8 +193,8 @@ if inputs['do_gain_calibration'] == 1:
 if inputs['do_fluxscale'] == 1:
     caltables = em.eM_fluxscale(msfile=msfile, caltables=caltables,
                                 sources=sources,
-                                ampcal_table='allcal_ap.G1', antenna='!Lo*;!De')
-                                #ampcal_table='allcal_ap.G1', antenna='')
+                                #ampcal_table='allcal_ap.G1', antenna='!Lo*;!De')
+                                ampcal_table='allcal_ap.G1', antenna='')
     save_obj(caltables, calib_dir+'caltables')
     save_obj(caltables, calib_dir+'caltables_fluxscale')
 
