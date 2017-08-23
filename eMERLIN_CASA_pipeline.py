@@ -175,33 +175,33 @@ if inputs['do_delay'] > 0:
     save_obj(caltables, calib_dir+'caltables_delay')
     if inputs['do_delay'] == 2:
         em.run_applycal(msfile=msfile, caltables=caltables, sources=sources,
-           previous_cal=['delay.K0'],
-           previous_cal_targets=['delay.K0'])
+           previous_cal=['delay.K1'],
+           previous_cal_targets=['delay.K1'])
 
 
 ### Initial BandPass calibration ###
 if inputs['do_initial_bandpass'] > 0:
     caltables = em.initial_bp_cal(msfile=msfile, caltables=caltables,
-                                  previous_cal=['delay.K0'], bpcal=sources['bpcal'])
+                                  previous_cal=[], bpcal=sources['bpcal'])
     save_obj(caltables, calib_dir+'caltables')
     save_obj(caltables, calib_dir+'caltables_bandpass0')
     if inputs['do_initial_bandpass'] == 2:
         em.run_applycal(msfile=msfile, caltables=caltables, sources=sources,
-           previous_cal=['delay.K0','bpcal.B0'],
-           previous_cal_targets=['delay.K0','bpcal.B0'])
+           previous_cal=['bpcal.B0'],
+           previous_cal_targets=['bpcal.B0'])
 
 
 ### Gain calibration ###
 if inputs['do_gain_calibration'] > 0:
     caltables = em.initial_gaincal(msfile=msfile, caltables=caltables,
-                                  previous_cal=['delay.K0', 'bpcal.B0'],
+                                  previous_cal=['delay.K1', 'bpcal.B0'],
                                   calsources=sources['calsources'], phscals=sources['phscals'])
     save_obj(caltables, calib_dir+'caltables')
     save_obj(caltables, calib_dir+'caltables_gaincal')
     if inputs['do_gain_calibration'] == 2:
         em.run_applycal(msfile=msfile, caltables=caltables, sources=sources,
-           previous_cal=['delay.K0','allcal_p.G0','allcal_ap.G1','bpcal.B0'],
-           previous_cal_targets=['delay.K0','phscal_p_scan.G2','allcal_ap.G1','bpcal.B0'])
+           previous_cal=['delay.K1','allcal_p.G0','allcal_ap.G1','bpcal.B0'],
+           previous_cal_targets=['delay.K1','phscal_p_scan.G2','allcal_ap.G1','bpcal.B0'])
 
 ### Flux scale ###
 if inputs['do_fluxscale'] > 0:
@@ -213,26 +213,26 @@ if inputs['do_fluxscale'] > 0:
     save_obj(caltables, calib_dir+'caltables_fluxscale')
     if inputs['do_fluxscale'] == 2:
         em.run_applycal(msfile=msfile, caltables=caltables, sources=sources,
-           previous_cal=['delay.K0','allcal_p.G0','allcal_ap.G1_fluxscaled','bpcal.B0'],
-           previous_cal_targets=['delay.K0','phscal_p_scan.G2','allcal_ap.G1_fluxscaled','bpcal.B0'])
+           previous_cal=['delay.K1','allcal_p.G0','allcal_ap.G1_fluxscaled','bpcal.B0'],
+           previous_cal_targets=['delay.K1','phscal_p_scan.G2','allcal_ap.G1_fluxscaled','bpcal.B0'])
 
 ### BandPass calibration ###
 if inputs['do_bandpass_sp'] > 0:
     caltables = em.bandpass_sp(msfile=msfile, caltables=caltables,
-                               previous_cal=['delay.K0','allcal_p.G0','allcal_ap.G1_fluxscaled'],
+                               previous_cal=['delay.K1','allcal_p.G0','allcal_ap.G1_fluxscaled'],
                                bpcal=sources['bpcal'])
     save_obj(caltables, calib_dir+'caltables')
     save_obj(caltables, calib_dir+'caltables_bandpass_sp')
     if inputs['do_bandpass_sp'] == 2:
         em.run_applycal(msfile=msfile, caltables=caltables, sources=sources,
-           previous_cal=['delay.K0','allcal_p.G0','allcal_ap.G1_fluxscaled','bpcal_sp.B1'],
-           previous_cal_targets=['delay.K0','phscal_p_scan.G2','allcal_ap.G1_fluxscaled','bpcal_sp.B1'])
+           previous_cal=['delay.K1','allcal_p.G0','allcal_ap.G1_fluxscaled','bpcal_sp.B1'],
+           previous_cal_targets=['delay.K1','phscal_p_scan.G2','allcal_ap.G1_fluxscaled','bpcal_sp.B1'])
 
 ### Apply calibration  ###
 if inputs['do_applycal_all'] > 0:
     em.run_applycal(msfile=msfile, caltables=caltables, sources=sources,
-       previous_cal=['delay.K0','allcal_p.G0','allcal_ap.G1_fluxscaled','bpcal_sp.B1'],
-       previous_cal_targets=['delay.K0','phscal_p_scan.G2','allcal_ap.G1_fluxscaled','bpcal_sp.B1'])
+       previous_cal=['delay.K1','allcal_p.G0','allcal_ap.G1_fluxscaled','bpcal_sp.B1'],
+       previous_cal_targets=['delay.K1','phscal_p_scan.G2','allcal_ap.G1_fluxscaled','bpcal_sp.B1'])
 
 
 

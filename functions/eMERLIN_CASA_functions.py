@@ -561,7 +561,7 @@ def run_applycal(msfile, caltables, sources, previous_cal, previous_cal_targets=
 
 def solve_delays(msfile, caltables, previous_cal, calsources):
     logger.info('Start solve_delays')
-    caltable_name = 'delay.K0'
+    caltable_name = 'delay.K1'
     caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
@@ -596,6 +596,29 @@ def solve_delays(msfile, caltables, previous_cal, calsources):
 def initial_bp_cal(msfile, caltables, previous_cal, bpcal):
     logger.info('Start initial_bp_cal')
 
+    # 0 Delay calibration of bpcal
+    caltable_name = 'bpcal_d.K0'
+    caltables[caltable_name] = {}
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['field'] = bpcal
+    caltables[caltable_name]['gaintype'] = 'K'
+    caltables[caltable_name]['calmode'] = 'p'
+    caltables[caltable_name]['solint'] = '120s'
+    caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['spwmap'] = [0]*caltables['num_spw']
+    caltables[caltable_name]['combine'] = 'spw'
+    caltables[caltable_name]['spw'] = ''
+    caltable = caltables[caltable_name]['table']
+    # Calibration
+    run_gaincal(msfile, caltables, caltable_name, previous_cal)
+    logger.info('Delay calibration of bpcal {0}: {1}'.format(caltable_name, caltable))
+    # Plots
+    caltableplot = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_1.png'
+    plotcal(caltable=caltable,xaxis='time',yaxis='delay',subplot=321,iteration='antenna',
+            showgui=False,figfile=caltableplot, fontsize = 8, plotrange = [-1,-1,-1,-1])
+    logger.info('Delay calibration plot in: {0}'.format(caltableplot))
+
     # 1 Phase calibration
     caltable_name = 'bpcal_p.G0'
     caltables[caltable_name] = {}
@@ -610,8 +633,9 @@ def initial_bp_cal(msfile, caltables, previous_cal, bpcal):
     caltables[caltable_name]['combine'] = ''
     caltables[caltable_name]['spw'] = ''
     caltable = caltables[caltable_name]['table']
+    previous_cal_p = previous_cal + ['bpcal_d.K0']
     # Calibration
-    run_gaincal(msfile, caltables, caltable_name, previous_cal)
+    run_gaincal(msfile, caltables, caltable_name, previous_cal_p)
     logger.info('Bandpass0 phase calibration {0}: {1}'.format(caltable_name,caltable))
     # Plots
     caltableplot = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
@@ -633,7 +657,7 @@ def initial_bp_cal(msfile, caltables, previous_cal, bpcal):
     caltables[caltable_name]['combine'] = ''
     caltables[caltable_name]['spw'] = ''
     caltable = caltables[caltable_name]['table']
-    previous_cal_ap = previous_cal + ['bpcal_p.G0']
+    previous_cal_ap = previous_cal_p + ['bpcal_p.G0']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name, previous_cal_ap)
     logger.info('Bandpass0 amplitude calibration {0}: {1}'.format(caltable_name,caltable))
