@@ -37,6 +37,16 @@ plots_dir = em.backslash_check(inputs['plots_dir'])
 calib_dir = em.backslash_check(inputs['calib_dir'])
 logger.info('Inputs used: {}'.format(inputs))
 
+# Functions to save and load dictionaries
+def save_obj(obj, name):
+    with open(name + '.pkl', 'wb') as f:
+        pickle.dump(obj, f)
+
+def load_obj(name):
+    with open(name + '.pkl', 'rb') as f:
+        return pickle.load(f)
+
+
 # Sources to process
 sources = {}
 sources['targets'] = inputs['targets'].replace(' ','')
@@ -50,12 +60,22 @@ sources['maincal'] = ','.join([sources['fluxcal'],sources['bpcal'], sources['ptc
 sources['allsources'] = sources['calsources'] +','+ sources['targets']
 sources['no_fluxcal'] = sources['allsources'].replace(sources['fluxcal'], '').replace(',,',',').strip(',')
 sources['cals_no_fluxcal'] = sources['calsources'].replace(sources['fluxcal'], '').replace(',,',',').strip(',')
+sources['targets_phscals'] = sources['targets']+','+sources['phscals']
 
 logger.info('Targets:   {0}'.format(sources['targets']))
 logger.info('Phasecals: {0}'.format(sources['phscals']))
 logger.info('Fluxcal:   {0}'.format(sources['fluxcal']))
 logger.info('Bandpass:  {0}'.format(sources['bpcal']))
 logger.info('Pointcal:  {0}'.format(sources['ptcal']))
+
+# Flags applied to the data by the pipeline
+try:
+    flags = load_obj('./flags')
+    logger.info('Loaded previous flags list from: {0}'.format('./flags.pkl'))
+except:
+    flags = []
+    logger.info('Generating empty flags list')
+
 
 # Reference antenna
 refant = inputs['refant']
@@ -64,15 +84,6 @@ logger.info('Refant: {}'.format(refant))
 ## Create directory structure ##
 em.makedir(plots_dir)
 em.makedir(calib_dir)
-
-# Functions to save and load dictionaries
-def save_obj(obj, name):
-    with open(name + '.pkl', 'wb') as f:
-        pickle.dump(obj, f)
-
-def load_obj(name):
-    with open(name + '.pkl', 'rb') as f:
-        return pickle.load(f)
 
 
 if inputs['quit'] == 1: #Check from GUI if quit is needed
@@ -117,12 +128,17 @@ if inputs['ms2mms'] == 1:
 if os.path.isdir('./'+inputs['inbase']+'.mms') == True:
     msfile = inputs['inbase']+'.mms'
 
-if inputs['autoflag'] == 1:
-    em.run_aoflagger_fields(vis=msfile,fields='all', pipeline_path = pipeline_path)
+if inputs['flagdata0_aoflagger'] == 1:
+    flags = em.run_aoflagger_fields(vis=msfile, flags=flags, fields='all', pipeline_path = pipeline_path)
 
 ### Produce some initial plots ###
 if inputs['do_prediag'] == 1:
 	em.do_prediagnostics(msfile,plots_dir)
+
+
+### A-priori flagdata: Lo&Mk2, edge channels, standard quack
+if inputs['flagdata1_apriori'] == 1:
+    flags = em.flagdata1_apriori(msfile=msfile, sources=sources, flags=flags, do_quack=True)
 
 
 ### Average data ###
@@ -179,9 +195,15 @@ if inputs['do_initial_bandpass'] > 0:
            previous_cal=['bpcal.B0'],
            previous_cal_targets=['bpcal.B0'])
 
-### flagdata with mode TFCROP including bandpass calibration B0
-# 1. ApplycalOnly needed if inputs['do_initial_bandpass'] != 2
-# 2. flagdata
+### Flagdata using TFCROP and bandpass shape B0
+if inputs['flagdata2_tfcropBP'] == 1:
+    # If B0 has not been applied before, do it now
+    if inputs['do_initial_bandpass'] != 2:
+        em.run_applycal(msfile=msfile, caltables=caltables, sources=sources,
+           previous_cal=['bpcal.B0'],
+           previous_cal_targets=['bpcal.B0'])
+    flags = em.flagdata2_tfcropBP(msfile=msfile, sources=sources, flags=flags)
+
 
 ### Delay calibration ###
 if inputs['do_delay'] > 0:

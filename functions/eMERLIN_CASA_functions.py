@@ -3,6 +3,7 @@ import os
 from casa import table as tb
 from casa import ms
 import numpy as np
+import pickle
 from Tkinter import *
 import tkMessageBox
 import sys, shutil
@@ -123,6 +124,16 @@ def rmfile(pathdir,message='Deleted:'):
         logger.debug('Could not delete: {0} {1}'.format(message, pathdir))
         pass
 
+# Functions to save and load dictionaries
+def save_obj(obj, name):
+    with open(name + '.pkl', 'wb') as f:
+        pickle.dump(obj, f)
+
+def load_obj(name):
+    with open(name + '.pkl', 'rb') as f:
+        return pickle.load(f)
+
+
 def check_mixed_mode(vis,mode):
 	logger.info('Check for mixed mode')
 	tb.open(vis + '/SPECTRAL_WINDOW')
@@ -229,7 +240,7 @@ def run_rfigui(vis):
     logger.info('End run_rfigui')
 
 
-def run_aoflagger_fields(vis,fields='all', pipeline_path='./'):
+def run_aoflagger_fields(vis, flags, fields='all', pipeline_path='./'):
     """This version of the autoflagger iterates through the ms within the mms structure selecting individual fields. It uses pre-defined strategies. The np.unique in the loop below is needed for single source files. The mms thinks there are many filds (one per mms). I think it is a bug from virtualconcat."""
     logger.info('Start run_aoflagger_fields')
     vis_fields = vishead(vis,mode='list',listitems='field')['field'][0]
@@ -259,7 +270,9 @@ def run_aoflagger_fields(vis,fields='all', pipeline_path='./'):
             flagcommand = 'time aoflagger -fields {2} -strategy {0} {1}'.format(aostrategy, vis, fields_num[field])
         os.system(flagcommand+' | tee -a pre-cal_flag_stats.txt')
         ms.writehistory(message='eMER_CASA_Pipeline: AOFlag field {0} with strategy {1}:'.format(field, aostrategy),msname=vis)
+    flag_applied(flags, 'flagdata0_aoflagger')
     logger.info('End run_aoflagger_fields')
+    return flags
 
 def check_aoflagger_version():
 	logger.info('Checking AOflagger version')
@@ -369,6 +382,60 @@ field=x[i], antenna='*&*', averagedata=True, avgtime=time, iteraxis='baseline', 
 	logger.info('End prediagnostics')
 
 
+def flagdata1_apriori(msfile, sources, flags, do_quack=True):
+    # Find number of channels in MS:
+    ms.open(msfile)
+    d = ms.getdata(['axis_info'],ifraxis=True)
+    ms.close()
+    nchan = len(d['axis_info']['freq_axis']['chan_freq'][:,0])
+
+    logger.info('Start flagdata1_apriori')
+    # Flag Lo-Mk2
+    logger.info('Flagging Lo-Mk2 baseline')
+    flagdata(vis=msfile, mode='manual', field=sources['allsources'], antenna='Lo*&Mk2*')
+    # Subband edges
+    channels_to_flag = '*:0~{0};{1}~{2}'.format(nchan/128-1, nchan-nchan/128, nchan-1)
+    logger.info('MS has {}'.format())
+    logger.info('Flagging edge channels {0}'.format(channels_to_flag))
+    flagdata(vis=msfile, mode='manual', field=sources['allsources'], spw=channels_to_flag)
+    # Slewing (typical):
+    # Main calibrators, 5 min
+    logger.info('Flagging 5 min from bright calibrators')
+    flagdata(vis=msfile, field=sources['maincal'], mode='quack', quackinterval=300)
+    # Target and phase reference, 20 sec
+    logger.info('Flagging first 20 sec of target and phasecal')
+    flagdata(vis=msfile, field=sources['targets_phscals'], mode='quack', quackinterval=20)
+    # We can add more (Lo is slower, etc).
+    flag_applied(flags, 'flagdata1_apriori')
+    logger.info('End flagdata1_apriori')
+    return flags
+
+def flagdata2_tfcropBP(msfile, sources, flags):
+    logger.info('Start flagdata2_tfcropBP')
+    logger.info("Running flagdata, mode = 'tfcrop'")
+    logger.info("correlation='ABS_ALL'")
+    logger.info("ntime='90min', combinescans=True, datacolumn='corrected'")
+    logger.info("winsize=3, timecutoff=4.0, freqcutoff=3.0, maxnpieces=1")
+    logger.info("usewindowstats='sum', halfwin=3, extendflags=True")
+    flagdata(vis=msfile, mode='tfcrop', field=sources['allsources'],
+             antenna='', scan='',spw='', correlation='ABS_ALL',
+             ntime='90min', combinescans=True, datacolumn='corrected',
+             winsize=3, timecutoff=4.0, freqcutoff=3.0, maxnpieces=1,
+             usewindowstats='sum', halfwin=3, extendflags=True,
+             action='apply', display='', flagbackup=True)
+    flag_applied(flags, 'flagdata2_tfcropBP')
+    logger.info('End flagdata2_tfcropBP')
+    return flags
+
+def flag_applied(flags, new_flag):
+    if new_flag in flags:
+        logger.warning('Flags from {0} were already applied by the pipeline! They are applied more than once.'.format(new_flag))
+    flags.append(new_flag)
+    logger.info('New flags applied: {0}'.format(new_flag))
+    logger.info('Current flags applied: {0}'.format(flags))
+    save_obj(flags, './flags')
+    return flags
+
 
 ### Run CASA calibration functions
 
@@ -397,7 +464,7 @@ def run_initialize_models(msfile, fluxcal, models_path, delmod_sources):
         logger.info('Dataset is band C. Using C band model of 3C286')
     elif band == 'L':
         model_3C286 = models_path+'1331+305.clean.model.tt0'
-        logger.info('Dataset is band L. Using C band model of 3C286')
+        logger.info('Dataset is band L. Using L band model of 3C286')
     else:
         logger.warning('No model available!')
         model_3C286 = ''
