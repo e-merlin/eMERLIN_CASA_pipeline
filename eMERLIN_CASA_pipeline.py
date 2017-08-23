@@ -167,17 +167,6 @@ if inputs['do_initialize_models'] == 1:  # Need to add parameter to GUI
                              models_path=models_path,
                              delmod_sources=sources['no_fluxcal'])
 
-### Delay calibration ###
-if inputs['do_delay'] > 0:
-    caltables = em.solve_delays(msfile=msfile, caltables=caltables,
-                                previous_cal=[], calsources=sources['calsources'])
-    save_obj(caltables, calib_dir+'caltables')
-    save_obj(caltables, calib_dir+'caltables_delay')
-    if inputs['do_delay'] == 2:
-        em.run_applycal(msfile=msfile, caltables=caltables, sources=sources,
-           previous_cal=['delay.K1'],
-           previous_cal_targets=['delay.K1'])
-
 
 ### Initial BandPass calibration ###
 if inputs['do_initial_bandpass'] > 0:
@@ -189,6 +178,23 @@ if inputs['do_initial_bandpass'] > 0:
         em.run_applycal(msfile=msfile, caltables=caltables, sources=sources,
            previous_cal=['bpcal.B0'],
            previous_cal_targets=['bpcal.B0'])
+
+### flagdata with mode TFCROP including bandpass calibration B0
+# 1. ApplycalOnly needed if inputs['do_initial_bandpass'] != 2
+# 2. flagdata
+
+### Delay calibration ###
+if inputs['do_delay'] > 0:
+    caltables = em.solve_delays(msfile=msfile, caltables=caltables,
+                                previous_cal=['bpcal.B0'], calsources=sources['calsources'])
+    # Should the previous_cal be bpcal.B0? Probably better delay fit, but later
+    # delay.K1 is applied without bpcal.B0, when bpcal_sp.B1 is computed
+    save_obj(caltables, calib_dir+'caltables')
+    save_obj(caltables, calib_dir+'caltables_delay')
+    if inputs['do_delay'] == 2:
+        em.run_applycal(msfile=msfile, caltables=caltables, sources=sources,
+           previous_cal=['bpcal.B0','delay.K1'],
+           previous_cal_targets=['bpcal.B0','delay.K1'])
 
 
 ### Gain calibration ###
