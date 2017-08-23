@@ -132,7 +132,7 @@ if inputs['do_average1'] == 1:
 # Check if averaged data already generated
 if os.path.isdir('./'+inputs['inbase']+'_avg.mms') == True:
     msfile = './'+inputs['inbase']+'_avg.mms'
-elif os.path.isdir('./'+inputs['inbase']+'_avg.mms') == True:
+elif os.path.isdir('./'+inputs['inbase']+'_avg.ms') == True:
     msfile = './'+inputs['inbase']+'_avg.ms'
 else:
     pass
