@@ -77,10 +77,6 @@ except:
     logger.info('Generating empty flags list')
 
 
-# Reference antenna
-refant = inputs['refant']
-logger.info('Refant: {}'.format(refant))
-
 ## Create directory structure ##
 em.makedir(plots_dir)
 em.makedir(calib_dir)
@@ -110,6 +106,21 @@ else:
 if inputs['run_importfits'] == 1:
     em.run_importfitsIDI(data_dir,msfile)
     em.check_mixed_mode(msfile,mode='split')
+
+
+### Retrieve MS information
+# Antenna list and reference antenna
+ms.open(msfile)
+d = ms.getdata(['axis_info'],ifraxis=True)
+ms.close()
+antennas = np.unique('-'.join(d['axis_info']['ifr_axis']['ifr_name']).split('-'))
+
+logger.info('Antennas in MS: {0}'.format(antennas))
+refant = inputs['refant']
+logger.info('Refant: {}'.format(refant))
+if refant not in antennas:
+    logger.warning('Selected reference antenna {0} not in MS!'.format(refant))
+
 
 if inputs['hanning'] == 1:
 	em.hanning(inputvis=msfile,deloriginal=True)
@@ -235,8 +246,7 @@ if inputs['do_gain_calibration'] > 0:
 if inputs['do_fluxscale'] > 0:
     caltables = em.eM_fluxscale(msfile=msfile, caltables=caltables,
                                 sources=sources,
-                                ampcal_table='allcal_ap.G1', antenna='!Lo*;!De')
-                                #ampcal_table='allcal_ap.G1', antenna='')
+                                ampcal_table='allcal_ap.G1', antennas=antennas)
     save_obj(caltables, calib_dir+'caltables')
     save_obj(caltables, calib_dir+'caltables_fluxscale')
     if inputs['do_fluxscale'] == 2:

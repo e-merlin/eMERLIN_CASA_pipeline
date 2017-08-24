@@ -850,26 +850,39 @@ def initial_gaincal(msfile, caltables, previous_cal, calsources, phscals):
     logger.info('End initial_gaincal')
     return caltables
 
+def find_anten_fluxscale(antennas):
+    # This function tries to remove Lo and De from the fluxscale determination.
+    # But only if there are enough antennas to have at least 4 of them.
+    # I found unstable solutions if too few antennas are used
+    if len(antennas) > 4:
+         anten_for_flux = [x for x in antennas if x != "Lo"]
+         if len(anten_for_flux) > 4:
+             anten_for_flux = [x for x in anten_for_flux if x != "De"]
+    else:
+        anten_for_flux = antennas
+    return anten_for_flux
 
-def eM_fluxscale(msfile, caltables, ampcal_table, sources, antenna='!Lo*;!De'):
+
+def eM_fluxscale(msfile, caltables, ampcal_table, sources, antennas):
     logger.info('Start eM_fluxscale')
+    anten_for_flux = find_anten_fluxscale(antennas)
     cals_to_scale = sources['cals_no_fluxcal']
     fluxcal = sources['fluxcal']
     caltable_name = 'allcal_ap.G1_fluxscaled'
     caltables[caltable_name] = copy.copy(caltables[ampcal_table])
     caltables[caltable_name]['table']=caltables[ampcal_table]['table']+'_fluxscaled'
+    logger.info('Flux density scale from: {0}'.format(fluxcal))
+    logger.info('Transfered to: {0}'.format(cals_to_scale))
+    logger.info('Input caltable: {0}'.format(caltables[ampcal_table]['table']))
+    logger.info('Antennas used to scale: {0}'.format(anten_for_flux))
     calfluxes = fluxscale(vis=msfile, reference=fluxcal,
                           transfer=cals_to_scale,
-                          antenna = antenna, # Need to make this optional
+                          antenna = ','.join(anten_for_flux),
                           caltable  = caltables[ampcal_table]['table'],
                           fluxtable = caltables[caltable_name]['table'],
                           listfile  = caltables[caltable_name]['table']+'_fluxes.txt')
-    logger.info('Flux density scale from: {0}'.format(fluxcal))
-    logger.info('Transfered to: {0}'.format(cals_to_scale))
-    logger.info('Input caltable   : {0}'.format(caltables[ampcal_table]['table']))
     logger.info('Modified caltable: {0}'.format(caltables[caltable_name]['table']))
     logger.info('Spectrum information: {0}'.format(caltables[caltable_name]['table']+'_fluxes.txt'))
-
     ### VERY IMPORTANT! THIS VALUE NEEDS TO BE COMPUTED USING FUNCTION dfluxpy
     ### THIS VALUE IS JUST ONLY TEMPORARY
     eMfactor =  0.99987
