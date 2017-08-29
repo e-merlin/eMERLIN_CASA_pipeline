@@ -3,15 +3,18 @@ import os
 from casa import table as tb
 from casa import ms
 import numpy as np
+import pickle
 from Tkinter import *
 import tkMessageBox
 import sys, shutil
+import copy
 import getopt
 #from task_importfitsidi import *
 from eMERLIN_CASA_GUI import GUI_pipeline
 # Need to be in this order:
 from tasks import *
 from casa import *
+from recipes.setOrder import setToCasaOrder
 
 import logging
 logger = logging.getLogger('logger')
@@ -70,7 +73,7 @@ def headless(inputfile):
 			value = value.strip()
 			valuelist = value.split(', ')
 			if len(valuelist) == 1:
-				if valuelist[0] == '0' or valuelist[0]=='1':
+				if valuelist[0] == '0' or valuelist[0]=='1' or valuelist[0]=='2':
 					control[param] = int(valuelist[0])
 				else:
 					control[param] = str(valuelist[0])
@@ -121,6 +124,16 @@ def rmfile(pathdir,message='Deleted:'):
         logger.debug('Could not delete: {0} {1}'.format(message, pathdir))
         pass
 
+# Functions to save and load dictionaries
+def save_obj(obj, name):
+    with open(name + '.pkl', 'wb') as f:
+        pickle.dump(obj, f)
+
+def load_obj(name):
+    with open(name + '.pkl', 'rb') as f:
+        return pickle.load(f)
+
+
 def check_mixed_mode(vis,mode):
 	logger.info('Check for mixed mode')
 	tb.open(vis + '/SPECTRAL_WINDOW')
@@ -154,6 +167,20 @@ def check_mixed_mode(vis,mode):
 			return_variable = False
 	return return_variable
 
+def check_band(msfile):
+    # Take first frequency in the MS
+    ms.open(msfile)
+    freq = ms.getdata(['axis_info'],ifraxis=True)['axis_info']['freq_axis']['chan_freq'][0][0]/1e9
+    ms.close()
+    band = ''
+    if (freq > 1.2) and (freq < 1.7):
+        band = 'L'
+    if (freq > 4) and (freq < 8):
+        band = 'C'
+    if (freq > 22) and (freq < 24):
+        band = 'K'
+    return band
+
 def run_importfitsIDI(data_dir,vis):
 	logger.info('Starting importfitsIDI procedure')
 	os.system('rm -r '+vis)
@@ -163,8 +190,12 @@ def run_importfitsIDI(data_dir,vis):
 			fitsfiles = fitsfiles + [data_dir+file]
 			logger.info('FITS file found to be imported: {0}'.format(file))
 	logger.info('Start importfitsIDI')
-	importfitsidi(fitsidifile=fitsfiles, vis=vis, constobsid=True, scanreindexgap_s=15.0)
-	ms.writehistory(message='eMER_CASA_Pipeline: Import fitsidi to ms, complete',msname=vis)
+	importfitsidi(fitsidifile=fitsfiles, vis=vis+'_noorder', constobsid=True, scanreindexgap_s=15.0)
+	ms.writehistory(message='eMER_CASA_Pipeline: Import fitsidi to ms, complete',msname=vis+'_noorder')
+	logger.info('Setting MS order with setToCasaOrder')
+	setToCasaOrder(inputMS=vis+'_noorder', outputMS=vis)
+	os.system('rm -r {0}'.format(vis+'_noorder'))
+	ms.writehistory(message='eMER_CASA_Pipeline: setToCasaOrder, complete',msname=vis)
 	logger.info('End importfitsIDI')
 	logger.info('Start UVFIX')
 	fixvis(vis=vis,outputvis=vis+'.uvfix')
@@ -208,40 +239,8 @@ def run_rfigui(vis):
     os.system('rfigui '+vis)
     logger.info('End run_rfigui')
 
-##Run aoflagger. Mode = auto uses best fit strategy for e-MERLIN (credit J. Moldon), Mode=user uses custon straegy for each field
-#def run_aoflagger(vis,mode):
-#	if mode == 'user':
-#		x = vishead(vis,mode='list',listitems='field')['field'][0]
-#		os.system('touch pre-cal_flag_stats.txt')
-#		y = []
-#		for i in range(len(x)):
-#			if os.path.isfile(x[i]+'.rfis')==False:
-#				y=y+[x[i]]
-#		if len(y) != 0:
-#			for i in range(len(y)):
-#				print 'Missing rfistrategy for: '+y[i]
-#			print 'Please run step 3 again!'
-#		else:
-#			while True:
-#				s = raw_input('All rfistrategys are there: Proceed?:\n')
-#				if s == 'yes' or s == 'y':
-#					ms.writehistory(message='eMER_CASA_Pipeline: AOFlag with user specified strategies:',msname=vis)
-#					for i in range(len(x)):
-#						ms.writehistory(message='eMER_CASA_Pipeline: Flagging field, '+x[i]+' with strategy: '+x[i]+'.rfis',msname=vis)
-#						print 'Flagging field, '+x[i]+' with strategy: '+x[i]+'.rfis'
-#						os.system('aoflagger -fields '+str(i)+' -strategy '+x[i]+'.rfis  '+vis+ '| tee -a pre-cal_flag_stats.txt')
-#					break
-#				if s == 'no' or s == 'n':
-#					sys.exit('Please restart when you are happy')
-#	elif mode == 'default':
-#		print '---- Running AOflagger with eMERLIN default strategy ----\n'
-#		os.system('aoflagger -strategy eMERLIN_default_ao_strategy_v1.rfis '+vis)
-#		ms.writehistory(message='eMER_CASA_Pipeline: AOFlag with default strategy, complete',msname=vis)
-#	else:
-#		print 'Error: Please use either mode=user or mode=default'
-#		sys.exit()
 
-def run_aoflagger_fields(vis,fields='all', pipeline_path='./'):
+def run_aoflagger_fields(vis, flags, fields='all', pipeline_path='./'):
     """This version of the autoflagger iterates through the ms within the mms structure selecting individual fields. It uses pre-defined strategies. The np.unique in the loop below is needed for single source files. The mms thinks there are many filds (one per mms). I think it is a bug from virtualconcat."""
     logger.info('Start run_aoflagger_fields')
     vis_fields = vishead(vis,mode='list',listitems='field')['field'][0]
@@ -271,7 +270,9 @@ def run_aoflagger_fields(vis,fields='all', pipeline_path='./'):
             flagcommand = 'time aoflagger -fields {2} -strategy {0} {1}'.format(aostrategy, vis, fields_num[field])
         os.system(flagcommand+' | tee -a pre-cal_flag_stats.txt')
         ms.writehistory(message='eMER_CASA_Pipeline: AOFlag field {0} with strategy {1}:'.format(field, aostrategy),msname=vis)
+    flag_applied(flags, 'flagdata0_aoflagger')
     logger.info('End run_aoflagger_fields')
+    return flags
 
 def check_aoflagger_version():
 	logger.info('Checking AOflagger version')
@@ -380,80 +381,183 @@ field=x[i], antenna='*&*', averagedata=True, avgtime=time, iteraxis='baseline', 
 	## Amplitude vs Time:
 	logger.info('End prediagnostics')
 
-def solve_delays(msfile, inbase, calsources, solint, refant, caldir, plotdir, caltables, combine='', spw='', timerange='', minblperant=2, minsnr=2):
-    """
-    Input tables: None
-    Output tables: caldir+inputs['inbase']+'_delay.K0'
-    Output plots: plotdir+inputs['inbase']+'_delay.K0.png'
-    """
-    logger.info('Start solve_delays')
-    delay_caltable = inbase +'_delay.K0'
-    # This should be implemented in the main script
-    num_spw = len(vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
-    spwmap_out = [0]*num_spw
-    caltable = caldir+delay_caltable
-    caltableplot = plotdir+delay_caltable+'.png'
-    gaintype = 'K'
-#    rmdir(caltable)
-#    rmfile(caltableplot)
-    logger.info('Running gaincal on field {0}, gaintype = {1}, solint = {2}'.format(calsources, gaintype, solint))
-    logger.info('Delay calibration in: {0}'.format(caltable))
-    logger.info('Delay calibration plot in: {0}'.format(caltableplot))
-#    gaincal(vis=msfile, gaintype=gaintype, caltable=caltable, field=calsources, solint=solint, combine=combine, refant=refant, spw=spw, timerange=timerange, minblperant=minblperant, minsnr=minsnr)
-    logger.info('caltable: {0}, figfile: {1}'.format(caltable, caltableplot))
-#    plotcal(caltable=caltable,xaxis='time',yaxis='delay',subplot=321,iteration='antenna',showgui=False,figfile=caltableplot, fontsize = 8)
-    caltables['delay0'] = {}
-    caltables['delay0']['tables']  = [caltable]
-    caltables['delay0']['spwmaps'] = [spwmap_out]
-    logger.info('End solve_delays')
-    return caltables
+
+def flagdata1_apriori(msfile, sources, flags, do_quack=True):
+    # Find number of channels in MS:
+    ms.open(msfile)
+    d = ms.getdata(['axis_info'],ifraxis=True)
+    ms.close()
+    nchan = len(d['axis_info']['freq_axis']['chan_freq'][:,0])
+
+    logger.info('Start flagdata1_apriori')
+    # Flag Lo-Mk2
+    logger.info('Flagging Lo-Mk2 baseline')
+    flagdata(vis=msfile, mode='manual', field=sources['allsources'], antenna='Lo*&Mk2*')
+    # Subband edges
+    channels_to_flag = '*:0~{0};{1}~{2}'.format(nchan/128-1, nchan-nchan/128, nchan-1)
+    logger.info('MS has {}'.format())
+    logger.info('Flagging edge channels {0}'.format(channels_to_flag))
+    flagdata(vis=msfile, mode='manual', field=sources['allsources'], spw=channels_to_flag)
+    # Slewing (typical):
+    # Main calibrators, 5 min
+    logger.info('Flagging 5 min from bright calibrators')
+    flagdata(vis=msfile, field=sources['maincal'], mode='quack', quackinterval=300)
+    # Target and phase reference, 20 sec
+    logger.info('Flagging first 20 sec of target and phasecal')
+    flagdata(vis=msfile, field=sources['targets_phscals'], mode='quack', quackinterval=20)
+    # We can add more (Lo is slower, etc).
+    flag_applied(flags, 'flagdata1_apriori')
+    logger.info('End flagdata1_apriori')
+    return flags
+
+def flagdata2_tfcropBP(msfile, sources, flags):
+    logger.info('Start flagdata2_tfcropBP')
+    logger.info("Running flagdata, mode = 'tfcrop'")
+    logger.info("correlation='ABS_ALL'")
+    logger.info("ntime='90min', combinescans=True, datacolumn='corrected'")
+    logger.info("winsize=3, timecutoff=4.0, freqcutoff=3.0, maxnpieces=1")
+    logger.info("usewindowstats='sum', halfwin=3, extendflags=True")
+    flagdata(vis=msfile, mode='tfcrop', field=sources['allsources'],
+             antenna='', scan='',spw='', correlation='ABS_ALL',
+             ntime='90min', combinescans=True, datacolumn='corrected',
+             winsize=3, timecutoff=4.0, freqcutoff=3.0, maxnpieces=1,
+             usewindowstats='sum', halfwin=3, extendflags=True,
+             action='apply', display='', flagbackup=True)
+    flag_applied(flags, 'flagdata2_tfcropBP')
+    logger.info('End flagdata2_tfcropBP')
+    return flags
+
+def flag_applied(flags, new_flag):
+    if new_flag in flags:
+        logger.warning('Flags from {0} were already applied by the pipeline! They are applied more than once.'.format(new_flag))
+    flags.append(new_flag)
+    logger.info('New flags applied: {0}'.format(new_flag))
+    logger.info('Current flags applied: {0}'.format(flags))
+    save_obj(flags, './flags')
+    return flags
 
 
-def run_gaincal(msfile, caltable, calmode, solint, field, combine, refant, spw, previous_tables, previous_spwmap, caldir, plotdir, subplot, iteration, plotrange_phs = [-1,-1,-180,180], plotrange_amp = [-1,-1,-1,-1], timerange='', minblperant=2, minsnr=2):
-    # This should be implemented in the main script
-    num_spw = len(vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
-    if 'spw' in combine.split():
-        spwmap_out = [0]*num_spw
+### Run CASA calibration functions
+
+def run_split(msfile, fields, width, timebin, datacolumn='data'):
+    logger.info('Start split')
+    name = ''.join(msfile.split('.')[:-1])
+    exte = ''.join(msfile.split('.')[-1])
+    outputmsfile = name+'_avg.'+exte
+    rmdir(outputmsfile)
+    logger.info('Input MS: {0}'.format(msfile))
+    logger.info('Output MS: {0}'.format(outputmsfile))
+    logger.info('width={0}, timebin={1}'.format(width, timebin,))
+    logger.info('Fields: {0}'.format(fields))
+    logger.info('Data column: {0}'.format(datacolumn))
+    split(vis=msfile, outputvis=outputmsfile, field=fields, width=width,
+          timebin=timebin, datacolumn=datacolumn, keepflags=False)
+    logger.info('End split')
+
+
+def run_initialize_models(msfile, fluxcal, models_path, delmod_sources):
+    logger.info('Start init_models')
+    # Check dataset frequency:
+    band = check_band(msfile)
+    if band == 'C':
+        model_3C286 = models_path+'3C286_C.clean.model.tt0'
+        logger.info('Dataset is band C. Using C band model of 3C286')
+    elif band == 'L':
+        model_3C286 = models_path+'1331+305.clean.model.tt0'
+        logger.info('Dataset is band L. Using L band model of 3C286')
     else:
-        spwmap_out = range(num_spw)
-    basename = os.path.basename(caltable)
-    caltableplot_phs = plotdir + basename +'_phs.png'
-    caltableplot_amp = plotdir + basename +'_amp.png' 
-    rmdir(caltable)
-    rmfile(caltableplot_phs)
-    rmfile(caltableplot_amp)
-    logger.info('Running gaincal on field {0}, calmode = {1}, solint = {2}'.format(field, calmode, solint))
-    logger.info('Previous calibration applied: {0}'.format(', '.join(previous_tables)))
-    logger.info('Previous calibration spwmap: {0}'.format(previous_spwmap))
-    logger.info('Generating calibration table: {0}'.format(caltable))
-    gaincal(vis=msfile, calmode=calmode, field=field, caltable=caltable, solint=solint, combine=combine, refant=refant, spw=spw, timerange=timerange, gaintable=previous_tables, spwmap = previous_spwmap, minblperant=minblperant, minsnr=minsnr)
-    logger.info('caltable: {0}, figfiles: {1}, {2}'.format(caltable, caltableplot_phs, caltableplot_amp))
-    plotcal(caltable=caltable, xaxis='time', yaxis='phase', subplot=subplot, iteration=iteration, showgui=False, figfile=caltableplot_phs, fontsize = 8, plotrange = plotrange_phs)
-    plotcal(caltable=caltable, xaxis='time', yaxis='amp', subplot=subplot, iteration=iteration, showgui=False, figfile=caltableplot_amp, fontsize = 8, plotrange = plotrange_amp)
-    return caltable, spwmap_out
+        logger.warning('No model available!')
+        model_3C286 = ''
+    logger.info('Initializing 3C286 model using: {0}'.format(model_3C286))
+    if fluxcal != '1331+305':
+        logger.warning('Using a model for 3C286 (1331+305) but your flux calibrator source is: {0}. Model may be wrong for that source'.format(fluxcal))
+    setjy(vis=msfile, field=fluxcal, standard='Perley-Butler 2013',
+          model=model_3C286, scalebychan=True, usescratch=True)
+    # Is usescratch needed? Probably not, but I see amp=1 in the model column
+    # otherwise when running on an MMS file.
+    logger.info('Deleting model for all other sources: '+delmod_sources)
+    delmod(vis=msfile, field=delmod_sources)
+    logger.info('End init_models')
 
-def run_bandpass(msfile, bptable, bpcal, refant, previous_tables, previous_spwmap, caldir, plotdir, spw='', solint='inf', combine='scan'):
-    # This should be implemented in the main script
-    num_spw = len(vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
-    if 'spw' in combine.split():
-        spwmap_out = [0]*num_spw
-    else:
-        spwmap_out = range(num_spw)
-    basename = os.path.basename(bptable)
-    bptableplot_phs = plotdir+basename+'_phs'+'.png'
-    bptableplot_amp = plotdir+basename+'_amp'+'.png'
-    rmdir(bptable)
-    rmfile(bptableplot_phs)
-    rmfile(bptableplot_amp)
-    logger.info('Running bandpass on field {0}, solint = {1}, combine = {2}'.format(bpcal, solint, combine))
-    logger.info('Previous calibration applied: {0}'.format(', '.join(previous_tables)))
-    logger.info('Previous calibration spwmap: {0}'.format(previous_spwmap))
-    logger.info('Generating bandpass table: {0}'.format(bptable))
-    bandpass(vis=msfile, caltable=bptable, field=bpcal, fillgaps=16, solint=solint, combine=combine, solnorm=True, refant=refant, minblperant=2, gaintable=previous_tables, spwmap = previous_spwmap, minsnr=3)
-    logger.info('bptable: {0}, figfile: {1}'.format(bptable, ', '.join([bptableplot_phs, bptableplot_amp])))
-    plotcal(caltable=bptable, xaxis='freq', yaxis='phase', subplot=321,iteration='antenna', showgui=False, figfile=bptableplot_phs, fontsize = 8, plotrange = [-1,-1,-180,180])
-    plotcal(caltable=bptable, xaxis='freq', yaxis='amp',  subplot=321, iteration='antenna', showgui=False, figfile=bptableplot_amp, fontsize = 8, plotrange = [-1,-1,-1,-1])
-    return bptable, spwmap_out
+
+def run_gaincal(msfile, caltables, caltable_name, previous_cal, minblperant=3, minsnr=2):
+    rmdir(caltables[caltable_name]['table'])
+    logger.info('Running gaincal to generate: {0}'.format(caltables[caltable_name]['name']))
+    logger.info('Field(s) = {0}, gaintype = {1}, calmode = {2}'.format(
+                caltables[caltable_name]['field'],
+                caltables[caltable_name]['gaintype'],
+                caltables[caltable_name]['calmode']))
+    logger.info('solint = {0}, spw = {1},  combine = {2}'.format(
+                caltables[caltable_name]['solint'],
+                caltables[caltable_name]['spw'],
+                caltables[caltable_name]['combine']))
+    # Previous calibration
+    gaintable = [caltables[p]['table'] for p in previous_cal]
+    interp    = [caltables[p]['interp'] for p in previous_cal]
+    spwmap    = [caltables[p]['spwmap'] for p in previous_cal]
+    gainfield = [caltables[p]['field'] if len(np.atleast_1d(caltables[p]['field'].split(',')))<2 else '' for p in previous_cal]
+    logger.info('Previous calibration applied: {0}'.format(str(previous_cal)))
+    logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
+    logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
+    logger.info('Previous calibration interp: {0}'.format(str(interp)))
+    logger.info('Generating calibration table: {0}'.format(caltables[caltable_name]['table']))
+    # Run CASA task gaincal
+    gaincal(vis=msfile,
+            caltable  = caltables[caltable_name]['table'],
+            field     = caltables[caltable_name]['field'],
+            gaintype  = caltables[caltable_name]['gaintype'],
+            calmode   = caltables[caltable_name]['calmode'],
+            solint    = caltables[caltable_name]['solint'],
+            combine   = caltables[caltable_name]['combine'],
+            spw       = caltables[caltable_name]['spw'],
+            refant    = caltables['refant'],
+            gaintable = gaintable,
+            gainfield = gainfield,
+            interp    = interp,
+            spwmap    = spwmap,
+            minblperant=minblperant,
+            minsnr=minsnr)
+    logger.info('caltable {0} in {1}'.format(caltables[caltable_name]['name'],
+                                              caltables[caltable_name]['table']))
+
+def run_bandpass(msfile, caltables, caltable_name, previous_cal, minblperant=3, minsnr=2):
+    rmdir(caltables[caltable_name]['table'])
+    logger.info('Running bandpass to generate: {0}'.format(caltables[caltable_name]['name']))
+    logger.info('Field(s) {0}, solint = {1}, spw = {2}, combine = {3}, solnorm = {4}'.format(
+                 caltables[caltable_name]['field'],
+                 caltables[caltable_name]['solint'],
+                 caltables[caltable_name]['spw'],
+                 caltables[caltable_name]['combine'],
+                 caltables[caltable_name]['solnorm']))
+    # Previous calibration
+    gaintable = [caltables[p]['table'] for p in previous_cal]
+    interp    = [caltables[p]['interp'] for p in previous_cal]
+    spwmap    = [caltables[p]['spwmap'] for p in previous_cal]
+    gainfield = [caltables[p]['field'] if len(np.atleast_1d(caltables[p]['field'].split(',')))<2 else '' for p in previous_cal]
+    logger.info('Previous calibration applied: {0}'.format(str(previous_cal)))
+    logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
+    logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
+    logger.info('Previous calibration interp: {0}'.format(str(interp)))
+    logger.info('Generating calibration table: {0}'.format(caltables[caltable_name]['table']))
+    # Run CASA task bandpass
+    bandpass(vis=msfile,
+             caltable  = caltables[caltable_name]['table'],
+             field     = caltables[caltable_name]['field'],
+             solint    = caltables[caltable_name]['solint'],
+             combine   = caltables[caltable_name]['combine'],
+             spw       = caltables[caltable_name]['spw'],
+             solnorm   = caltables[caltable_name]['solnorm'],
+             fillgaps  = 16,
+             refant    = caltables['refant'],
+             gaintable = gaintable,
+             gainfield = gainfield,
+             interp    = interp,
+             spwmap    = spwmap,
+             minblperant=minblperant,
+             minsnr=minsnr)
+    logger.info('caltable {0} in {1}'.format(caltables[caltable_name]['name'],
+                                             caltables[caltable_name]['table']))
+
 
 def smooth_caltable(msfile, tablein, plotdir, caltable='', field='', smoothtype='median', smoothtime=120.):
     logger.info('Smoothing table: {0}, field {1}, smoothtype {2}, smoothtime {3}'.format(tablein, field, smoothtype, smoothtime))
@@ -471,51 +575,374 @@ def smooth_caltable(msfile, tablein, plotdir, caltable='', field='', smoothtype=
     plotcal(caltable=tablein, xaxis='time', yaxis='amp', subplot=321, iteration='antenna', showgui=False, figfile=caltableplot_amp, fontsize = 8, plotrange=[-1,-1,-1,-1])
     return
 
-def initial_bp_cal(msfile, inbase, bpcal, refant, caldir, plotdir, caltables, minblperant=2, minsnr=2):
-    """
-    Input tables (caldir+inputs['inbase']+): '_delay.K0'
-    Output tables (caldir+inputs['inbase']+): ['bpcal0.G0', 'bpcal0.G1', 'bpcal0.B0']
-    Output plots (plotdir+inputs['inbase']+): ['bpcal0.G0.png', 'bpcal0.G1.png', 'bpcal0.B0.png']
-    """
-    logger.info('Start initial_bp_cal')
-    # This should be implemented in the main script
-    num_spw = len(vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
-    previous_tables = caltables['delay0']['tables']
-    previous_spwmap = caltables['delay0']['spwmaps']
 
-    # 1 Phase calibration
-    calmode1 = 'p'
-    solint1 = '10s'
-    caltable1 = caldir+inbase+'_bpcal0.G0'
-    spwmap1 = range(num_spw)
-#    run_gaincal(msfile=msfile, caltable=caltable1, calmode=calmode1, solint=solint1, field=bpcal, combine='', refant=refant, spw='', previous_tables=previous_tables, previous_spwmap=previous_spwmap, caldir=caldir, plotdir=plotdir, subplot=321, iteration='antenna', plotrange_phs = [-1,-1,-180,180])
-    previous_tables.append(caltable1)
-    previous_spwmap.append(spwmap1)
+def run_applycal(msfile, caltables, sources, previous_cal, previous_cal_targets=''):
+    logger.info('Start applycal')
+    # 1 correct non-target sources:
+    logger.info('Applying calibration to calibrator sources')
+    logger.info('Fields: {0}'.format(sources['calsources']))
+    # Previous calibration
+    gaintable = [caltables[p]['table'] for p in previous_cal]
+    interp    = [caltables[p]['interp'] for p in previous_cal]
+    spwmap    = [caltables[p]['spwmap'] for p in previous_cal]
+    gainfield = [caltables[p]['field'] if len(np.atleast_1d(caltables[p]['field'].split(',')))<2 else '' for p in previous_cal]
+    logger.info('Previous calibration applied: {0}'.format(str(previous_cal)))
+    logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
+    logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
+    logger.info('Previous calibration interp: {0}'.format(str(interp)))
+    applycal(vis=msfile,
+             field = sources['calsources'],
+             gaintable = gaintable,
+             gainfield = gainfield,
+             interp    = interp,
+             spwmap    = spwmap)
 
-    # 2 A&P calibration
-    calmode2 = 'ap'
-    solint2 = '120s'
-    caltable2 = caldir+inbase+'_bpcal0.G1'
-    spwmap2 = range(num_spw)
-#    run_gaincal(msfile=msfile, caltable=caltable2, calmode=calmode2, solint=solint2, field=bpcal, combine='', refant=refant, spw='', previous_tables=previous_tables, previous_spwmap=previous_spwmap, caldir=caldir, plotdir=plotdir, subplot=321, iteration='antenna', plotrange_phs = [-1,-1,-180,180])
-    smooth_caltable(msfile=msfile, plotdir=plotdir, tablein=caltable2, caltable='', field='', smoothtype='median', smoothtime=60*20.)
-    previous_tables.append(caltable2)
-    previous_spwmap.append(spwmap2)
+    # 2 correct targets
+    logger.info('Applying calibration to target sources')
+    logger.info('Target fields: {0}'.format(sources['targets']))
+    if previous_cal_targets == '':
+        previous_cal_targets = previous_cal
+    for i, s in enumerate(sources['targets'].split(',')):
+        if s != '':
+            phscal = sources['phscals'].split(',')[i]
+            # Previous calibration
+            gaintable = [caltables[p]['table'] for p in previous_cal_targets]
+            interp    = [caltables[p]['interp'] for p in previous_cal_targets]
+            spwmap    = [caltables[p]['spwmap'] for p in previous_cal_targets]
+            gainfield = [caltables[p]['field'] if len(np.atleast_1d(caltables[p]['field'].split(',')))<2 else phscal for p in previous_cal_targets]
+            logger.info('Field: {0}. Phase calibrator: {1}'.format(s, phscal))
+            logger.info('Previous calibration applied: {0}'.format(str(previous_cal_targets)))
+            logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
+            logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
+            logger.info('Previous calibration interp: {0}'.format(str(interp)))
+            applycal(vis=msfile,
+                     field = s,
+                     gaintable = gaintable,
+                     gainfield = gainfield,
+                     interp    = interp,
+                     spwmap    = spwmap)
+    logger.info('End applycal')
 
-    # 3 Bandpass calibration
-    bptable0 = caldir+inbase+'_bpcal0.B0'
-    bptableplot0_phs = plotdir+'bpcal.'+bpcal+'_precal.B0_phs'+'.png'
-    bptableplot0_amp = plotdir+'bpcal.'+bpcal+'_precal.B0.amp'+'.png'
-#    run_bandpass(msfile=msfile, bptable=bptable0, bpcal=bpcal, refant=refant, previous_tables=previous_tables, previous_spwmap=previous_spwmap, caldir=caldir, plotdir=plotdir, spw='', solint='inf', combine='scan')
-    logger.info('End initial_bp_cal')
 
-    caltables['bpcal0'] = {}
-    caltables['bpcal0']['tables']  = [caltable1, caltable2]
-    caltables['bpcal0']['spwmaps'] = [spwmap1, spwmap2]
+### Calibration steps
+
+def solve_delays(msfile, caltables, previous_cal, calsources):
+    logger.info('Start solve_delays')
+    caltable_name = 'delay.K1'
+    caltables[caltable_name] = {}
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['field'] = calsources
+    caltables[caltable_name]['gaintype'] = 'K'
+    caltables[caltable_name]['calmode'] = 'p'
+    caltables[caltable_name]['solint'] = '600s'
+    caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['spwmap'] = [0]*caltables['num_spw']
+    caltables[caltable_name]['combine'] = 'spw'
+    caltables[caltable_name]['spw'] = ''
+
+    caltable = caltables[caltable_name]['table']
+    # Calibration
+    run_gaincal(msfile, caltables, caltable_name, previous_cal)
+    logger.info('Delay calibration {0}: {1}'.format(caltable_name, caltable))
+    # Plots
+    # 1 No range
+    caltableplot = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_1.png'
+    plotcal(caltable=caltable,xaxis='time',yaxis='delay',subplot=321,iteration='antenna',
+            showgui=False,figfile=caltableplot, fontsize = 8, plotrange = [-1,-1,-1,-1])
+    logger.info('Delay calibration plot in: {0}'.format(caltableplot))
+    # 2 Only show typical delay values: from -20 to 20 nanosec
+    caltableplot = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_2.png'
+    plotcal(caltable=caltable,xaxis='time',yaxis='delay',subplot=321,iteration='antenna',
+            showgui=False,figfile=caltableplot, fontsize = 8, plotrange = [-1,-1,-20,20])
+    logger.info('Delay calibration plot: {0}'.format(caltableplot))
     logger.info('End solve_delays')
-
     return caltables
 
+
+def initial_bp_cal(msfile, caltables, previous_cal, bpcal):
+    logger.info('Start initial_bp_cal')
+
+    # 0 Delay calibration of bpcal
+    caltable_name = 'bpcal_d.K0'
+    caltables[caltable_name] = {}
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['field'] = bpcal
+    caltables[caltable_name]['gaintype'] = 'K'
+    caltables[caltable_name]['calmode'] = 'p'
+    caltables[caltable_name]['solint'] = '120s'
+    caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['spwmap'] = [0]*caltables['num_spw']
+    caltables[caltable_name]['combine'] = 'spw'
+    caltables[caltable_name]['spw'] = ''
+    caltable = caltables[caltable_name]['table']
+    # Calibration
+    run_gaincal(msfile, caltables, caltable_name, previous_cal)
+    logger.info('Delay calibration of bpcal {0}: {1}'.format(caltable_name, caltable))
+    # Plots
+    caltableplot = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_1.png'
+    plotcal(caltable=caltable,xaxis='time',yaxis='delay',subplot=321,iteration='antenna',
+            showgui=False,figfile=caltableplot, fontsize = 8, plotrange = [-1,-1,-1,-1])
+    logger.info('Delay calibration plot in: {0}'.format(caltableplot))
+
+    # 1 Phase calibration
+    caltable_name = 'bpcal_p.G0'
+    caltables[caltable_name] = {}
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['field'] = bpcal
+    caltables[caltable_name]['gaintype'] = 'G'
+    caltables[caltable_name]['calmode'] = 'p'
+    caltables[caltable_name]['solint'] = '8s'
+    caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['spwmap'] = []
+    caltables[caltable_name]['combine'] = ''
+    caltables[caltable_name]['spw'] = ''
+    caltable = caltables[caltable_name]['table']
+    previous_cal_p = previous_cal + ['bpcal_d.K0']
+    # Calibration
+    run_gaincal(msfile, caltables, caltable_name, previous_cal_p)
+    logger.info('Bandpass0 phase calibration {0}: {1}'.format(caltable_name,caltable))
+    # Plots
+    caltableplot = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
+    plotcal(caltable=caltable,xaxis='time',yaxis='phase',subplot=321,iteration='antenna',
+            showgui=False,figfile=caltableplot,fontsize=8, plotrange=[-1,-1,-180,180])
+    logger.info('Bandpass0 phase calibration plot: {0}'.format(caltableplot))
+
+    # 2 Amplitude calibration
+    caltable_name = 'bpcal_ap.G1'
+    caltables[caltable_name] = {}
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['field'] = bpcal
+    caltables[caltable_name]['gaintype'] = 'G'
+    caltables[caltable_name]['calmode'] = 'ap'
+    caltables[caltable_name]['solint'] = '120s'
+    caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['spwmap'] = []
+    caltables[caltable_name]['combine'] = ''
+    caltables[caltable_name]['spw'] = ''
+    caltable = caltables[caltable_name]['table']
+    previous_cal_ap = previous_cal_p + ['bpcal_p.G0']
+    # Calibration
+    run_gaincal(msfile, caltables, caltable_name, previous_cal_ap)
+    logger.info('Bandpass0 amplitude calibration {0}: {1}'.format(caltable_name,caltable))
+#    smooth_caltable(msfile=msfile, plotdir=plotdir, tablein=caltable2, caltable='', field='', smoothtype='median', smoothtime=60*20.)
+    # Plots
+    caltableplot_phs = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
+    plotcal(caltable=caltable,xaxis='time',yaxis='phase',subplot=321,iteration='antenna',
+            showgui=False,figfile=caltableplot_phs,fontsize=8, plotrange=[-1,-1,-180,180])
+    logger.info('Bandpass0 phase calibration plot: {0}'.format(caltableplot_phs))
+    caltableplot_amp = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_amp.png'
+    plotcal(caltable=caltable,xaxis='time',yaxis='amp',subplot=321,iteration='antenna',
+            showgui=False,figfile=caltableplot_amp,fontsize=8, plotrange=[-1,-1,-1,-1])
+    logger.info('Bandpass0 phase calibration plot: {0}'.format(caltableplot_amp))
+
+    # 3 Bandpass calibration
+    caltable_name = 'bpcal.B0'
+    caltables[caltable_name] = {}
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['field'] = bpcal
+    caltables[caltable_name]['solint'] = 'inf'
+    caltables[caltable_name]['interp'] = 'nearest,linear'
+    caltables[caltable_name]['spwmap'] = []
+    caltables[caltable_name]['combine'] = ''
+    caltables[caltable_name]['spw'] = ''
+    caltables[caltable_name]['solnorm'] = True
+    bptable = caltables[caltable_name]['table']
+    previous_cal_ap_bp = previous_cal_ap + ['bpcal_ap.G1']
+    # Calibration
+    run_bandpass(msfile, caltables, caltable_name, previous_cal_ap_bp)
+    logger.info('Bandpass0 BP {0}: {1}'.format(caltable_name,bptable))
+    # Plots
+    bptableplot_phs = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
+    bptableplot_amp = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_amp.png'
+    plotcal(caltable=bptable, xaxis='freq', yaxis='phase',
+            subplot=321,iteration='antenna', showgui=False,
+            figfile=bptableplot_phs, fontsize = 8, plotrange = [-1,-1,-180,180])
+    logger.info('Bandpass0 BP phase plot: {0}'.format(caltableplot_phs))
+    plotcal(caltable=bptable, xaxis='freq', yaxis='amp',  subplot=321,
+            iteration='antenna', showgui=False, figfile=bptableplot_amp,
+            fontsize = 8, plotrange = [-1,-1,-1,-1])
+    logger.info('Bandpass0 BP phase plot: {0}'.format(caltableplot_amp))
+    logger.info('End initial_bp_cal')
+    return caltables
+
+
+def initial_gaincal(msfile, caltables, previous_cal, calsources, phscals):
+    logger.info('Start initial_gaincal')
+
+    # 1 Phase calibration
+    caltable_name = 'allcal_p.G0'
+    caltables[caltable_name] = {}
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['field'] = calsources
+    caltables[caltable_name]['gaintype'] = 'G'
+    caltables[caltable_name]['calmode'] = 'p'
+    caltables[caltable_name]['solint'] = '8s'
+    caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['spwmap'] = []
+    caltables[caltable_name]['combine'] = ''
+    caltables[caltable_name]['spw'] = ''
+    caltable = caltables[caltable_name]['table']
+    # Calibration
+    run_gaincal(msfile, caltables, caltable_name, previous_cal)
+    logger.info('Gain phase calibration {0}: {1}'.format(caltable_name,caltable))
+    # Plots
+    caltableplot = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
+    plotcal(caltable=caltable,xaxis='time',yaxis='phase',subplot=321,iteration='antenna',showgui=False,figfile=caltableplot, fontsize = 8, plotrange = [-1,-1,-180, 180])
+    logger.info('Gain phase calibration plot: {0}'.format(caltableplot))
+
+    # 2 Amplitude calibration
+    caltable_name = 'allcal_ap.G1'
+    caltables[caltable_name] = {}
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['field'] = calsources
+    caltables[caltable_name]['gaintype'] = 'G'
+    caltables[caltable_name]['calmode'] = 'ap'
+    caltables[caltable_name]['solint'] = '120s'
+    caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['spwmap'] = []
+    caltables[caltable_name]['combine'] = ''
+    caltables[caltable_name]['spw'] = ''
+    caltable = caltables[caltable_name]['table']
+    previous_cal_ap = previous_cal + ['allcal_p.G0']
+    # Calibration
+    run_gaincal(msfile, caltables, caltable_name, previous_cal_ap)
+    logger.info('Gain amplitude calibration {0}: {1}'.format(caltable_name,caltable))
+#    smooth_caltable(msfile=msfile, plotdir=plotdir, tablein=caltable2, caltable='', field='', smoothtype='median', smoothtime=60*20.)
+    # Plots
+    caltableplot_phs = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
+    plotcal(caltable=caltable,xaxis='time',yaxis='phase',subplot=321,iteration='antenna',
+            showgui=False,figfile=caltableplot_phs,fontsize=8,plotrange=[-1,-1,-180,180])
+    logger.info('Bandpass0 phase calibration plot: {0}'.format(caltableplot))
+    caltableplot_amp = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_amp.png'
+    plotcal(caltable=caltable,xaxis='time',yaxis='amp',subplot=321,iteration='antenna',
+            showgui=False,figfile=caltableplot_amp,fontsize=8,plotrange=[-1,-1,-1,-1])
+    logger.info('Bandpass0 phase calibration plot: {0}'.format(caltableplot))
+
+    # 3 Phase calibration on phasecal: scan-averaged phase solutions
+    caltable_name = 'phscal_p_scan.G2'
+    caltables[caltable_name] = {}
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['field'] = phscals
+    caltables[caltable_name]['gaintype'] = 'G'
+    caltables[caltable_name]['calmode'] = 'p'
+    caltables[caltable_name]['solint'] = 'inf'
+    caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['spwmap'] = []
+    caltables[caltable_name]['combine'] = ''
+    caltables[caltable_name]['spw'] = ''
+    caltable = caltables[caltable_name]['table']
+    # Calibration
+    run_gaincal(msfile, caltables, caltable_name, previous_cal)
+    logger.info('Gain phase calibration {0}: {1}'.format(caltable_name,caltable))
+    # Plots
+    caltableplot = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
+    plotcal(caltable=caltable,xaxis='time',yaxis='phase',subplot=321,iteration='antenna',
+            showgui=False,figfile=caltableplot,fontsize=8,plotrange=[-1,-1,-180,180])
+    logger.info('Gain phase calibration plot: {0}'.format(caltableplot))
+    logger.info('End initial_gaincal')
+    return caltables
+
+def find_anten_fluxscale(antennas):
+    # This function tries to remove Lo and De from the fluxscale determination.
+    # But only if there are enough antennas to have at least 4 of them.
+    # I found unstable solutions if too few antennas are used
+    if len(antennas) > 4:
+         anten_for_flux = [x for x in antennas if x != "Lo"]
+         if len(anten_for_flux) > 4:
+             anten_for_flux = [x for x in anten_for_flux if x != "De"]
+    else:
+        anten_for_flux = antennas
+    return anten_for_flux
+
+
+def eM_fluxscale(msfile, caltables, ampcal_table, sources, antennas):
+    logger.info('Start eM_fluxscale')
+    anten_for_flux = find_anten_fluxscale(antennas)
+    cals_to_scale = sources['cals_no_fluxcal']
+    fluxcal = sources['fluxcal']
+    caltable_name = 'allcal_ap.G1_fluxscaled'
+    caltables[caltable_name] = copy.copy(caltables[ampcal_table])
+    caltables[caltable_name]['table']=caltables[ampcal_table]['table']+'_fluxscaled'
+    logger.info('Flux density scale from: {0}'.format(fluxcal))
+    logger.info('Transfered to: {0}'.format(cals_to_scale))
+    logger.info('Input caltable: {0}'.format(caltables[ampcal_table]['table']))
+    logger.info('Antennas used to scale: {0}'.format(anten_for_flux))
+    calfluxes = fluxscale(vis=msfile, reference=fluxcal,
+                          transfer=cals_to_scale,
+                          antenna = ','.join(anten_for_flux),
+                          caltable  = caltables[ampcal_table]['table'],
+                          fluxtable = caltables[caltable_name]['table'],
+                          listfile  = caltables[caltable_name]['table']+'_fluxes.txt')
+    logger.info('Modified caltable: {0}'.format(caltables[caltable_name]['table']))
+    logger.info('Spectrum information: {0}'.format(caltables[caltable_name]['table']+'_fluxes.txt'))
+    ### VERY IMPORTANT! THIS VALUE NEEDS TO BE COMPUTED USING FUNCTION dfluxpy
+    ### THIS VALUE IS JUST ONLY TEMPORARY
+    eMfactor =  0.99987
+    # Get fitted flux density and spectral index, correctly scaled for e-MERLIN
+    eMcalfluxes = {}
+    for k in calfluxes.keys():
+        if len(calfluxes[k]) > 4:
+            try:
+                a=[]
+                a.append(calfluxes[k]['fitFluxd']*eMfactor)
+                a.append(calfluxes[k]['spidx'][1])
+                a.append(calfluxes[k]['fitRefFreq'])
+                eMcalfluxes[calfluxes[k]['fieldName']]=a
+                logger.info('Spectrum for {0:>9s}: Flux density ={1:6.3f}+/-{2:6.3f}, spidx ={3:5.2f}+/-{4:5.2f}'.format(calfluxes[k]['fieldName'],
+                    calfluxes[k]['fitFluxd'], calfluxes[k]['fitFluxdErr'],
+                    calfluxes[k]['spidx'][1], calfluxes[k]['spidxerr'][1]))
+            except:
+                pass
+
+    for f in eMcalfluxes.keys():    # Phase calibrator and bandpass calibrator
+        setjy(vis = msfile,
+              field = f,
+              standard = 'manual',
+              fluxdensity = eMcalfluxes[f][0],
+              spix = eMcalfluxes[f][1],
+              reffreq = str(eMcalfluxes[f][2])+'Hz')
+    logger.info('End eM_fluxscale')
+    return caltables
+
+def bandpass_sp(msfile, caltables, previous_cal, bpcal):
+    logger.info('Start bandpass_sp')
+    # Bandpass calibration
+    caltable_name = 'bpcal_sp.B1'
+    caltables[caltable_name] = {}
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['field'] = bpcal
+    caltables[caltable_name]['solint'] = 'inf'
+    caltables[caltable_name]['interp'] = 'nearest,linear'
+    caltables[caltable_name]['spwmap'] = []
+    caltables[caltable_name]['combine'] = ''
+    caltables[caltable_name]['spw'] = ''
+    caltables[caltable_name]['solnorm'] = False
+    bptable = caltables[caltable_name]['table']
+    # Calibration
+    run_bandpass(msfile, caltables, caltable_name, previous_cal)
+    logger.info('Bandpass1 BP {0}: {1}'.format(caltable_name,bptable))
+    # Plots
+    bptableplot_phs = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
+    bptableplot_amp = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_amp.png'
+    plotcal(caltable=bptable, xaxis='freq', yaxis='phase',
+            subplot=321,iteration='antenna', showgui=False,
+            figfile=bptableplot_phs, fontsize = 8, plotrange = [-1,-1,-180,180])
+    logger.info('Bandpass1 BP phase plot: {0}'.format(bptableplot_phs))
+    plotcal(caltable=bptable, xaxis='freq', yaxis='amp',  subplot=321,
+            iteration='antenna', showgui=False, figfile=bptableplot_amp,
+            fontsize = 8, plotrange = [-1,-1,-1,-1])
+    logger.info('Bandpass1 BP phase plot: {0}'.format(bptableplot_amp))
+    logger.info('End bandpass_sp')
+    return caltables
 
 
 def dfluxpy(freq,baseline):

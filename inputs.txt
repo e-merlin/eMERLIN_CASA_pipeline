@@ -11,12 +11,20 @@ bpcal= 'OQ208'
 ptcal= '3C345'
 refant= 'Mk2'
 
-# processes (1 is go 0 is not)
+# processes (0=don't run, 1=run; 2=run and apply calib)
 run_importfits=1
 hanning=0
 rfigui=0
 ms2mms=0
-autoflag=0
+flagdata0_aoflagger=0
 do_prediag=0
-do_delay=0
+flagdata1_apriori=0
+do_average1=0
+do_initialize_models=0
 do_initial_bandpass=0
+flagdata2_tfcropBP=0
+do_delay=0
+do_gain_calibration=0
+do_fluxscale=0
+do_bandpass_sp=0
+do_applycal_all=0
