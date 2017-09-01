@@ -149,7 +149,8 @@ if inputs['do_prediag'] == 1:
 
 ### A-priori flagdata: Lo&Mk2, edge channels, standard quack
 if inputs['flagdata1_apriori'] == 1:
-    flags = em.flagdata1_apriori(msfile=msfile, sources=sources, flags=flags, do_quack=True)
+    flags = em.flagdata1_apriori(msfile=msfile, sources=sources, flags=flags,
+                                 antennas=antennas, do_quack=True)
 
 
 ### Average data ###
