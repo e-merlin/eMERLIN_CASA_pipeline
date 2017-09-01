@@ -382,7 +382,7 @@ field=x[i], antenna='*&*', averagedata=True, avgtime=time, iteraxis='baseline', 
 	logger.info('End prediagnostics')
 
 
-def flagdata1_apriori(msfile, sources, flags, antennas=antennas, do_quack=True):
+def flagdata1_apriori(msfile, sources, flags, antennas, do_quack=True):
     # Find number of channels in MS:
     ms.open(msfile)
     d = ms.getdata(['axis_info'],ifraxis=True)
@@ -396,7 +396,7 @@ def flagdata1_apriori(msfile, sources, flags, antennas=antennas, do_quack=True):
         flagdata(vis=msfile, mode='manual', field=sources['allsources'], antenna='Lo*&Mk2*')
     # Subband edges
     channels_to_flag = '*:0~{0};{1}~{2}'.format(nchan/128-1, nchan-nchan/128, nchan-1)
-    logger.info('MS has {}'.format())
+    logger.info('MS has {} channels'.format(nchan))
     logger.info('Flagging edge channels {0}'.format(channels_to_flag))
     flagdata(vis=msfile, mode='manual', field=sources['allsources'], spw=channels_to_flag)
     # Slewing (typical):

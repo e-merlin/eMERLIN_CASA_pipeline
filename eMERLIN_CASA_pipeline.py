@@ -108,18 +108,6 @@ if inputs['run_importfits'] == 1:
     em.check_mixed_mode(msfile,mode='split')
 
 
-### Retrieve MS information
-# Antenna list and reference antenna
-ms.open(msfile)
-d = ms.getdata(['axis_info'],ifraxis=True)
-ms.close()
-antennas = np.unique('-'.join(d['axis_info']['ifr_axis']['ifr_name']).split('-'))
-
-logger.info('Antennas in MS: {0}'.format(antennas))
-refant = inputs['refant']
-logger.info('Refant: {}'.format(refant))
-if refant not in antennas:
-    logger.warning('Selected reference antenna {0} not in MS!'.format(refant))
 
 
 if inputs['hanning'] == 1:
@@ -139,8 +127,24 @@ if inputs['ms2mms'] == 1:
 if os.path.isdir('./'+inputs['inbase']+'.mms') == True:
     msfile = inputs['inbase']+'.mms'
 
+### Retrieve MS information
+# Antenna list and reference antenna
+ms.open(msfile)
+d = ms.getdata(['axis_info'],ifraxis=True)
+ms.close()
+antennas = np.unique('-'.join(d['axis_info']['ifr_axis']['ifr_name']).split('-'))
+
+logger.info('Antennas in MS: {0}'.format(antennas))
+refant = inputs['refant']
+logger.info('Refant: {}'.format(refant))
+if refant not in antennas:
+    logger.warning('Selected reference antenna {0} not in MS!'.format(refant))
+
+
+### Run AOflagger
 if inputs['flagdata0_aoflagger'] == 1:
     flags = em.run_aoflagger_fields(vis=msfile, flags=flags, fields='all', pipeline_path = pipeline_path)
+
 
 ### Produce some initial plots ###
 if inputs['do_prediag'] == 1:
