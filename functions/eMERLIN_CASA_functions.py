@@ -181,7 +181,7 @@ def check_band(msfile):
         band = 'K'
     return band
 
-def run_importfitsIDI(data_dir,vis):
+def run_importfitsIDI(data_dir,vis, setorder=False):
 	logger.info('Starting importfitsIDI procedure')
 	os.system('rm -r '+vis)
 	fitsfiles =[]
@@ -190,11 +190,13 @@ def run_importfitsIDI(data_dir,vis):
 			fitsfiles = fitsfiles + [data_dir+file]
 			logger.info('FITS file found to be imported: {0}'.format(file))
 	logger.info('Start importfitsIDI')
-	importfitsidi(fitsidifile=fitsfiles, vis=vis+'_noorder', constobsid=True, scanreindexgap_s=15.0)
-	ms.writehistory(message='eMER_CASA_Pipeline: Import fitsidi to ms, complete',msname=vis+'_noorder')
-	logger.info('Setting MS order with setToCasaOrder')
-	setToCasaOrder(inputMS=vis+'_noorder', outputMS=vis)
-	os.system('rm -r {0}'.format(vis+'_noorder'))
+	importfitsidi(fitsidifile=fitsfiles, vis=vis, constobsid=True, scanreindexgap_s=15.0)
+	ms.writehistory(message='eMER_CASA_Pipeline: Import fitsidi to ms, complete',msname=vis)
+	if setorder:
+		logger.info('Setting MS order with setToCasaOrder')
+		os.system('mv {0} {1}'.format(vis, vis+'_noorder'))
+		setToCasaOrder(inputMS=vis+'_noorder', outputMS=vis)
+		os.system('rm -r {0}'.format(vis+'_noorder'))
 	ms.writehistory(message='eMER_CASA_Pipeline: setToCasaOrder, complete',msname=vis)
 	logger.info('End importfitsIDI')
 	logger.info('Start UVFIX')
