@@ -20,85 +20,85 @@ import logging
 logger = logging.getLogger('logger')
 
 def check_in(pipeline_path):
-	try:
-		opts, arg = getopt.getopt(sys.argv[1:],'i:c:hg',['help','input=','gui'])
-		logger.debug(sys.argv[1:])
-	except getopt.GetoptError as err:
-		logger.error(err)
-		sys.exit(2)
-	for o,a in opts:
-		logger.debug('{0} {1}'.format(o,a))
-		if o in ('-i','--input'):
-			inputs = headless(a) ## read input file
-			inputs['quit'] = 0 ##needed to add to be compatible with GUI
-			logger.info('inputs from file: {}'.format(inputs))
-		elif o in ('-g','--gui'):
-			inputs = GUI_pipeline(pipeline_path).confirm_parameters() ## read input file
-			logger.info('inputs from GUI: {}'.format(inputs))
-		elif o in ('-h','--help'):
-			logger.debug('help will be written soon')
-			sys.exit()
-		elif o == '-c':
-			logger.debug('Executing!')
-		else:
-			assert False, "rerun with either headless -i or gui" #if none are specifed run GUI
-	return inputs
+    try:
+        opts, arg = getopt.getopt(sys.argv[1:],'i:c:hg',['help','input=','gui'])
+        logger.debug(sys.argv[1:])
+    except getopt.GetoptError as err:
+        logger.error(err)
+        sys.exit(2)
+    for o,a in opts:
+        logger.debug('{0} {1}'.format(o,a))
+        if o in ('-i','--input'):
+            inputs = headless(a) ## read input file
+            inputs['quit'] = 0 ##needed to add to be compatible with GUI
+            logger.info('inputs from file: {}'.format(inputs))
+        elif o in ('-g','--gui'):
+            inputs = GUI_pipeline(pipeline_path).confirm_parameters() ## read input file
+            logger.info('inputs from GUI: {}'.format(inputs))
+        elif o in ('-h','--help'):
+            logger.debug('help will be written soon')
+            sys.exit()
+        elif o == '-c':
+            logger.debug('Executing!')
+        else:
+            assert False, "rerun with either headless -i or gui" #if none are specifed run GUI
+    return inputs
 
 def backslash_check(directory):
-	if directory[-1] != '/':
-		return directory+'/'
-	else:
-		return directory
+    if directory[-1] != '/':
+        return directory+'/'
+    else:
+        return directory
 
 
 def headless(inputfile):
-	''' Parse the list of inputs given in the specified file. (Modified from evn_funcs.py)'''
-	INPUTFILE = open(inputfile, "r")
-	control = {}
-	# a few useful regular expressions
-	newline = re.compile(r'\n')
-	space = re.compile(r'\s')
-	char = re.compile(r'\w')
-	comment = re.compile(r'#.*')
-	# parse the input file assuming '=' is used to separate names from values
-	for line in INPUTFILE:
-		if char.match(line):
-			line = comment.sub(r'', line)
-			line = line.replace("'", '')
-			(param, value) = line.split('=')
-			param = newline.sub(r'', param)
-			param = param.strip()
-			param = space.sub(r'', param)
-			value = newline.sub(r'', value)
-			value = value.strip()
-			valuelist = value.split(', ')
-			if len(valuelist) == 1:
-				if valuelist[0] == '0' or valuelist[0]=='1' or valuelist[0]=='2':
-					control[param] = int(valuelist[0])
-				else:
-					control[param] = str(valuelist[0])
-			else:
-				control[param] = str(valuelist)
-	return control
+    ''' Parse the list of inputs given in the specified file. (Modified from evn_funcs.py)'''
+    INPUTFILE = open(inputfile, "r")
+    control = {}
+    # a few useful regular expressions
+    newline = re.compile(r'\n')
+    space = re.compile(r'\s')
+    char = re.compile(r'\w')
+    comment = re.compile(r'#.*')
+    # parse the input file assuming '=' is used to separate names from values
+    for line in INPUTFILE:
+        if char.match(line):
+            line = comment.sub(r'', line)
+            line = line.replace("'", '')
+            (param, value) = line.split('=')
+            param = newline.sub(r'', param)
+            param = param.strip()
+            param = space.sub(r'', param)
+            value = newline.sub(r'', value)
+            value = value.strip()
+            valuelist = value.split(', ')
+            if len(valuelist) == 1:
+                if valuelist[0] == '0' or valuelist[0]=='1' or valuelist[0]=='2':
+                    control[param] = int(valuelist[0])
+                else:
+                    control[param] = str(valuelist[0])
+            else:
+                control[param] = str(valuelist)
+    return control
 
 def Tkinter_select():
-	root = Tkinter.Tk()
-	root.withdraw()
-	file = tkFileDialog.askdirectory(parent=root,mode='rb',title='Choose a file')
-	if file != None:
-    		print file
-	return file
+    root = Tkinter.Tk()
+    root.withdraw()
+    file = tkFileDialog.askdirectory(parent=root,mode='rb',title='Choose a file')
+    if file != None:
+            print file
+    return file
 
 def check_history(vis):
-	tb.open(vis+'/HISTORY')
-	x = tb.getcol('MESSAGE')
-	y = [i for i, item in enumerate(x) if 'eMER_CASA_Pipeline:' in item]
-	if len(y) == 0:
-		print 'Measurement set has not been processed \n'
-	else:
-		print 'WARNING: Some pipeline processes have already been run'
-		for i in range(len(y)):
-			print x[y[i]]
+    tb.open(vis+'/HISTORY')
+    x = tb.getcol('MESSAGE')
+    y = [i for i, item in enumerate(x) if 'eMER_CASA_Pipeline:' in item]
+    if len(y) == 0:
+        print 'Measurement set has not been processed \n'
+    else:
+        print 'WARNING: Some pipeline processes have already been run'
+        for i in range(len(y)):
+            print x[y[i]]
 
 def makedir(pathdir):
     try:
@@ -135,37 +135,37 @@ def load_obj(name):
 
 
 def check_mixed_mode(vis,mode):
-	logger.info('Check for mixed mode')
-	tb.open(vis + '/SPECTRAL_WINDOW')
-	bw_spw = np.array(tb.getcol('TOTAL_BANDWIDTH'))
-	tb.close()
-	if len(np.unique(bw_spw)) != 1:
-		if mode == 'split':
-			logger.info('Splitting continuum from spectral line')
-			cont_spw = np.where(bw_spw==np.max(np.unique(bw_spw)))[0]
-			print np.array2string(cont_spw, separator=',')[1:-1]
-			split(vis=vis, outputvis=vis+'.continuum', spw=np.array2string(cont_spw, separator=',')[1:-1], datacolumn='data')
-			spec_line = np.delete(bw_spw, cont_spw)
-			logger.info('Splitting spectral line')
-			for i in range(len(np.unique(spec_line))):
-				spec_line_spw = np.where(bw_spw==np.unique(spec_line)[i])[0]
-				split(vis=vis, outputvis=vis+'.sp{0}'.format(i), spw=np.array2string(spec_line_spw, separator=',')[1:-1],datacolumn='data')
-				ms.writehistory(message='eMER_CASA_Pipeline: Spectral line split from {0}'.format(vis),msname=vis+'.sp{0}'.format(i))
-			ms.writehistory(message='eMER_CASA_Pipeline: Spectral lines split from this ms',msname=vis)
-			os.system('mv {0} {1}'.format(vis, vis+'.original'))
-			os.system('mv {0} {1}'.format(vis+'.continuum', vis))
-			logger.info('Will continue with continuum, original data is {0}'.format(vis+'.original'))
-			return_variable = ''
-		if mode == 'check':
-			logger.info('MS is mixed mode. Please split')
-			return_variable = True
-	else:
-		if mode == 'split':
-			logger.info('Not mixed mode, continuing')
-			return_variable = ''
-		if mode == 'check':
-			return_variable = False
-	return return_variable
+    logger.info('Check for mixed mode')
+    tb.open(vis + '/SPECTRAL_WINDOW')
+    bw_spw = np.array(tb.getcol('TOTAL_BANDWIDTH'))
+    tb.close()
+    if len(np.unique(bw_spw)) != 1:
+        if mode == 'split':
+            logger.info('Splitting continuum from spectral line')
+            cont_spw = np.where(bw_spw==np.max(np.unique(bw_spw)))[0]
+            print np.array2string(cont_spw, separator=',')[1:-1]
+            split(vis=vis, outputvis=vis+'.continuum', spw=np.array2string(cont_spw, separator=',')[1:-1], datacolumn='data')
+            spec_line = np.delete(bw_spw, cont_spw)
+            logger.info('Splitting spectral line')
+            for i in range(len(np.unique(spec_line))):
+                spec_line_spw = np.where(bw_spw==np.unique(spec_line)[i])[0]
+                split(vis=vis, outputvis=vis+'.sp{0}'.format(i), spw=np.array2string(spec_line_spw, separator=',')[1:-1],datacolumn='data')
+                ms.writehistory(message='eMER_CASA_Pipeline: Spectral line split from {0}'.format(vis),msname=vis+'.sp{0}'.format(i))
+            ms.writehistory(message='eMER_CASA_Pipeline: Spectral lines split from this ms',msname=vis)
+            os.system('mv {0} {1}'.format(vis, vis+'.original'))
+            os.system('mv {0} {1}'.format(vis+'.continuum', vis))
+            logger.info('Will continue with continuum, original data is {0}'.format(vis+'.original'))
+            return_variable = ''
+        if mode == 'check':
+            logger.info('MS is mixed mode. Please split')
+            return_variable = True
+    else:
+        if mode == 'split':
+            logger.info('Not mixed mode, continuing')
+            return_variable = ''
+        if mode == 'check':
+            return_variable = False
+    return return_variable
 
 def check_band(msfile):
     # Take first frequency in the MS
@@ -182,34 +182,34 @@ def check_band(msfile):
     return band
 
 def run_importfitsIDI(data_dir,vis, setorder=False):
-	logger.info('Starting importfitsIDI procedure')
-	os.system('rm -r '+vis)
-	fitsfiles =[]
-	for file in os.listdir(data_dir):
-		if file.endswith('fits') or file.endswith('FITS'):
-			fitsfiles = fitsfiles + [data_dir+file]
-			logger.info('FITS file found to be imported: {0}'.format(file))
-	logger.info('Start importfitsIDI')
-	importfitsidi(fitsidifile=fitsfiles, vis=vis, constobsid=True, scanreindexgap_s=15.0)
-	ms.writehistory(message='eMER_CASA_Pipeline: Import fitsidi to ms, complete',msname=vis)
-	if setorder:
-		logger.info('Setting MS order with setToCasaOrder')
-		os.system('mv {0} {1}'.format(vis, vis+'_noorder'))
-		setToCasaOrder(inputMS=vis+'_noorder', outputMS=vis)
-		os.system('rm -r {0}'.format(vis+'_noorder'))
-	ms.writehistory(message='eMER_CASA_Pipeline: setToCasaOrder, complete',msname=vis)
-	logger.info('End importfitsIDI')
-	logger.info('Start UVFIX')
-	fixvis(vis=vis,outputvis=vis+'.uvfix')
-	logger.info('End UVFIX')
-	os.system('rm -r {0}'.format(vis))
-	os.system('mv {0} {1}'.format(vis+'.uvfix', vis))
-	logger.info('Start flagdata_autocorr')
-	flagdata(vis=vis,mode='manual',autocorr=True)
-	ms.writehistory(message='eMER_CASA_Pipeline: Fixed uv coordinates & remove autocorr',msname=vis)
-	logger.info('End flagdata_autocorr')
-	logger.debug('You have been transformed from an ugly UVFITS to beautiful MS')
-	return
+    logger.info('Starting importfitsIDI procedure')
+    os.system('rm -r '+vis)
+    fitsfiles =[]
+    for file in os.listdir(data_dir):
+        if file.endswith('fits') or file.endswith('FITS'):
+            fitsfiles = fitsfiles + [data_dir+file]
+            logger.info('FITS file found to be imported: {0}'.format(file))
+    logger.info('Start importfitsIDI')
+    importfitsidi(fitsidifile=fitsfiles, vis=vis, constobsid=True, scanreindexgap_s=15.0)
+    ms.writehistory(message='eMER_CASA_Pipeline: Import fitsidi to ms, complete',msname=vis)
+    if setorder:
+        logger.info('Setting MS order with setToCasaOrder')
+        os.system('mv {0} {1}'.format(vis, vis+'_noorder'))
+        setToCasaOrder(inputMS=vis+'_noorder', outputMS=vis)
+        os.system('rm -r {0}'.format(vis+'_noorder'))
+    ms.writehistory(message='eMER_CASA_Pipeline: setToCasaOrder, complete',msname=vis)
+    logger.info('End importfitsIDI')
+    logger.info('Start UVFIX')
+    fixvis(vis=vis,outputvis=vis+'.uvfix')
+    logger.info('End UVFIX')
+    os.system('rm -r {0}'.format(vis))
+    os.system('mv {0} {1}'.format(vis+'.uvfix', vis))
+    logger.info('Start flagdata_autocorr')
+    flagdata(vis=vis,mode='manual',autocorr=True)
+    ms.writehistory(message='eMER_CASA_Pipeline: Fixed uv coordinates & remove autocorr',msname=vis)
+    logger.info('End flagdata_autocorr')
+    logger.debug('You have been transformed from an ugly UVFITS to beautiful MS')
+    return
 
 ##Hanning smoothing and flag of autocorrelations, will delete original and rename
 def hanning(inputvis,deloriginal):
@@ -277,40 +277,40 @@ def run_aoflagger_fields(vis, flags, fields='all', pipeline_path='./'):
     return flags
 
 def check_aoflagger_version():
-	logger.info('Checking AOflagger version')
-	from subprocess import Popen, PIPE
-	process = Popen(['aoflagger'], stdout=PIPE)
-	(output, err) = process.communicate()
-	exit_code = process.wait()
-	version = output.split()[1]
-	version_list = version.split('.')
-	if (version_list[0] == '2') and (int(version_list[1]) < 9):
-		old_aoflagger = True
-	else:
-		old_aoflagger = False
-	logger.info('AOflagger version is {0}'.format(version))
-	return old_aoflagger
+    logger.info('Checking AOflagger version')
+    from subprocess import Popen, PIPE
+    process = Popen(['aoflagger'], stdout=PIPE)
+    (output, err) = process.communicate()
+    exit_code = process.wait()
+    version = output.split()[1]
+    version_list = version.split('.')
+    if (version_list[0] == '2') and (int(version_list[1]) < 9):
+        old_aoflagger = True
+    else:
+        old_aoflagger = False
+    logger.info('AOflagger version is {0}'.format(version))
+    return old_aoflagger
 
 def ms2mms(vis,mode):
-	logger.info('Start ms2mms')
-	if mode == 'parallel':
-		partition(vis=vis,outputvis=vis[:-3]+'.mms',createmms=True,separationaxis="baseline",numsubms="auto",flagbackup=True,datacolumn=
+    logger.info('Start ms2mms')
+    if mode == 'parallel':
+        partition(vis=vis,outputvis=vis[:-3]+'.mms',createmms=True,separationaxis="baseline",numsubms="auto",flagbackup=True,datacolumn=
 "all",field="",spw="",scan="",antenna="",correlation="",timerange="",intent="",array="",uvrange="",observation="",feed="",disableparallel=None,ddistart=None
 ,taql=None)
-		if os.path.isdir(vis[:-3]+'.mms') == True:
-			os.system('rm -r '+vis)
-			os.system('rm -r '+vis+'.flagversions')
-		ms.writehistory(message='eMER_CASA_Pipeline: Converted MS to MMS for parallelisation',msname=vis[:-3]+'.mms')
+        if os.path.isdir(vis[:-3]+'.mms') == True:
+            os.system('rm -r '+vis)
+            os.system('rm -r '+vis+'.flagversions')
+        ms.writehistory(message='eMER_CASA_Pipeline: Converted MS to MMS for parallelisation',msname=vis[:-3]+'.mms')
 
-	## Need to use single if you need to aoflag the data later
-	if mode == 'single':
-		partition(vis=vis,outputvis=vis[:-3]+'.ms',createmms=False,separationaxis="auto",numsubms="auto",flagbackup=True,datacolumn=
+    ## Need to use single if you need to aoflag the data later
+    if mode == 'single':
+        partition(vis=vis,outputvis=vis[:-3]+'.ms',createmms=False,separationaxis="auto",numsubms="auto",flagbackup=True,datacolumn=
 "all",field="",spw="",scan="",antenna="",correlation="",timerange="",intent="",array="",uvrange="",observation="",feed="",disableparallel=None,ddistart=None
 ,taql=None)
-		if os.path.isdir(vis[:-3]+'.ms') == True:
-			os.system('rm -r '+vis)
-			os.system('rm -r '+vis+'.flagversions')
-	logger.info('End ms2mms')
+        if os.path.isdir(vis[:-3]+'.ms') == True:
+            os.system('rm -r '+vis)
+            os.system('rm -r '+vis+'.flagversions')
+    logger.info('End ms2mms')
 
 def ms2mms_fields(msfile):
     logger.info('Start ms2mms_fields')
@@ -335,53 +335,53 @@ def ms2mms_fields(msfile):
     logger.info('End ms2mms_fields')
 
 def do_prediagnostics(vis,plot_dir):
-	##Pre diagnostics for measurement sets##
-	## Includes:
-	## - Antenna positions
-	## - Amplitude vs. Time
-	## - Amplitude vs. Frequency
-	## - Phase vs. Time
-	## - Phase vs. Frequency
-	## - Closures (if task is available)
-	## - Listobs summary
-	logger.info('Start prediagnostics')
-	if os.path.isdir(plot_dir) == False:
-		os.system('mkdir '+plot_dir)
-	if os.path.isdir('./'+plot_dir+'pre-calibration') == False:
-		os.system('mkdir ./'+plot_dir+'pre-calibration')
-	directory = plot_dir
-	## Get information from ms
-	x = vishead(vis,mode='list',listitems='field')['field'][0]
-	tb.open(vis+'/SPECTRAL_WINDOW')
-	nChan = str(tb.getcol('NUM_CHAN')[0])
-	time = str(10E6)
-	for i in range(len(x)):
-		## - Amplitude vs. Time
-		plotms(vis=vis,xaxis='time',yaxis='amplitude',xdatacolumn='data',ydatacolumn='data',\
+    ##Pre diagnostics for measurement sets##
+    ## Includes:
+    ## - Antenna positions
+    ## - Amplitude vs. Time
+    ## - Amplitude vs. Frequency
+    ## - Phase vs. Time
+    ## - Phase vs. Frequency
+    ## - Closures (if task is available)
+    ## - Listobs summary
+    logger.info('Start prediagnostics')
+    if os.path.isdir(plot_dir) == False:
+        os.system('mkdir '+plot_dir)
+    if os.path.isdir('./'+plot_dir+'pre-calibration') == False:
+        os.system('mkdir ./'+plot_dir+'pre-calibration')
+    directory = plot_dir
+    ## Get information from ms
+    x = vishead(vis,mode='list',listitems='field')['field'][0]
+    tb.open(vis+'/SPECTRAL_WINDOW')
+    nChan = str(tb.getcol('NUM_CHAN')[0])
+    time = str(10E6)
+    for i in range(len(x)):
+        ## - Amplitude vs. Time
+        plotms(vis=vis,xaxis='time',yaxis='amplitude',xdatacolumn='data',ydatacolumn='data',\
 field=x[i], antenna='*&*', averagedata=True, avgchannel=str(nChan), iteraxis='baseline', plotfile=directory+'pre-cal_'+vis+'_'+x[i]+'_amp_vs_time.pdf',highres=True ,dpi=1200,expformat='pdf',exprange='all', showgui=False)
-		os.system('convert '+directory+'pre-cal_'+vis+'_'+x[i]+'_amp_vs_time_* '+directory+'Pre-cal_amp_vs_time_'+vis+'_'+x[i]+'.pdf')
-		os.system('rm '+directory+'pre-cal_'+vis+'_'+x[i]+'_amp_vs_time_*')
-		## - Amplitude vs frequency
-		plotms(vis=vis,xaxis='frequency',yaxis='amplitude',xdatacolumn='data',ydatacolumn='data',\
+        os.system('convert '+directory+'pre-cal_'+vis+'_'+x[i]+'_amp_vs_time_* '+directory+'Pre-cal_amp_vs_time_'+vis+'_'+x[i]+'.pdf')
+        os.system('rm '+directory+'pre-cal_'+vis+'_'+x[i]+'_amp_vs_time_*')
+        ## - Amplitude vs frequency
+        plotms(vis=vis,xaxis='frequency',yaxis='amplitude',xdatacolumn='data',ydatacolumn='data',\
 field=x[i], antenna='*&*', averagedata=True, avgchannel='1', avgtime=time, iteraxis='baseline', plotfile=directory+'pre-cal_'+vis+'_'+x[i]+'_amp_vs_frequency.pdf',highres=True ,dpi=1200,expformat='pdf',exprange='all', showgui=False)
-		os.system('convert '+directory+'pre-cal_'+vis+'_'+x[i]+'_amp_vs_frequency_* '+directory+'Pre-cal_amp_vs_frequency_'+vis+'_'+x[i]+'.pdf')
-		os.system('rm '+directory+'pre-cal_'+vis+'_'+x[i]+'_amp_vs_frequency_*')
+        os.system('convert '+directory+'pre-cal_'+vis+'_'+x[i]+'_amp_vs_frequency_* '+directory+'Pre-cal_amp_vs_frequency_'+vis+'_'+x[i]+'.pdf')
+        os.system('rm '+directory+'pre-cal_'+vis+'_'+x[i]+'_amp_vs_frequency_*')
 
-		## - Phase vs time
-		plotms(vis=vis,xaxis='time',yaxis='phase',xdatacolumn='data',ydatacolumn='data',\
+        ## - Phase vs time
+        plotms(vis=vis,xaxis='time',yaxis='phase',xdatacolumn='data',ydatacolumn='data',\
 field=x[i], antenna='*&*', averagedata=True, avgchannel=str(nChan), iteraxis='baseline', plotfile=directory+'pre-cal_'+vis+'_'+x[i]+'_phase_vs_time.pdf', expformat='pdf',highres=True,dpi=1200,exprange='all', showgui=False)
-		os.system('convert '+directory+'pre-cal_'+vis+'_'+x[i]+'_phase_vs_time_* '+directory+'Pre-cal_phase_vs_time_'+vis+'_'+x[i]+'.pdf')
-		os.system('rm '+directory+'pre-cal_'+vis+'_'+x[i]+'_phase_vs_time_*')
+        os.system('convert '+directory+'pre-cal_'+vis+'_'+x[i]+'_phase_vs_time_* '+directory+'Pre-cal_phase_vs_time_'+vis+'_'+x[i]+'.pdf')
+        os.system('rm '+directory+'pre-cal_'+vis+'_'+x[i]+'_phase_vs_time_*')
 
-		## - Phase vs frequency
-		plotms(vis=vis,xaxis='frequency',yaxis='phase',xdatacolumn='data',ydatacolumn='data',\
+        ## - Phase vs frequency
+        plotms(vis=vis,xaxis='frequency',yaxis='phase',xdatacolumn='data',ydatacolumn='data',\
 field=x[i], antenna='*&*', averagedata=True, avgtime=time, iteraxis='baseline', plotfile=directory+'pre-cal_'+vis+'_'+x[i]+'_phase_vs_frequency.pdf', expformat='pdf',highres=True,dpi=1200,exprange='all', showgui=False)
-		os.system('convert '+directory+'pre-cal_'+vis+'_'+x[i]+'_phase_vs_frequency_* '+directory+'Pre-cal_phase_vs_frequency_'+vis+'_'+x[i]+'.pdf')
-		os.system('rm '+directory+'pre-cal_'+vis+'_'+x[i]+'_phase_vs_frequency_*')
-	#vishead(vis=vis,listfile=directory+vis+'.listobs')
-	#plotants(vis=vis,figfile=directory+vis+'.plotants.png')
-	## Amplitude vs Time:
-	logger.info('End prediagnostics')
+        os.system('convert '+directory+'pre-cal_'+vis+'_'+x[i]+'_phase_vs_frequency_* '+directory+'Pre-cal_phase_vs_frequency_'+vis+'_'+x[i]+'.pdf')
+        os.system('rm '+directory+'pre-cal_'+vis+'_'+x[i]+'_phase_vs_frequency_*')
+    #vishead(vis=vis,listfile=directory+vis+'.listobs')
+    #plotants(vis=vis,figfile=directory+vis+'.plotants.png')
+    ## Amplitude vs Time:
+    logger.info('End prediagnostics')
 
 
 def flagdata1_apriori(msfile, sources, flags, antennas, do_quack=True):
@@ -949,98 +949,98 @@ def bandpass_sp(msfile, caltables, previous_cal, bpcal):
 
 
 def dfluxpy(freq,baseline):
-	#######
-	# Python version of 3C286 flux calculation program (original author unknown)
-	# ..............................
-	# Author DMF       20/10/2011
-	# ..............................
-	#
-	# Update to use Perley & Butler 2012 coefficients
-	# 10/04/2013
-	# DMF
-	########
+    #######
+    # Python version of 3C286 flux calculation program (original author unknown)
+    # ..............................
+    # Author DMF       20/10/2011
+    # ..............................
+    #
+    # Update to use Perley & Butler 2012 coefficients
+    # 10/04/2013
+    # DMF
+    ########
 
-	# Reworked to use the 1999 VLA flux formula, and a 2nd formula to give a continuous estimate of the resolved fraction, by Ian Stewart, JBO, 8 Aug 2007.
-	# Minor changes by amsr, 8 Aug 2007
+    # Reworked to use the 1999 VLA flux formula, and a 2nd formula to give a continuous estimate of the resolved fraction, by Ian Stewart, JBO, 8 Aug 2007.
+    # Minor changes by amsr, 8 Aug 2007
 
-	# my $program_name = 'dflux'; # $0 returns the './' prefix if this is used.
+    # my $program_name = 'dflux'; # $0 returns the './' prefix if this is used.
 
-	lowest_freq = 300.0;
-	highest_freq = 50000.0;
-	if (freq < lowest_freq or freq > highest_freq):
-		print "Frequency must be between $lowest_freq and $highest_freq MHz. \n"
+    lowest_freq = 300.0;
+    highest_freq = 50000.0;
+    if (freq < lowest_freq or freq > highest_freq):
+        print "Frequency must be between $lowest_freq and $highest_freq MHz. \n"
 
-	# Old values for 3C286
-	# A = 1.23734
-	# B = -0.43276
-	# C = -0.14223
-	# D = 0.00345
+    # Old values for 3C286
+    # A = 1.23734
+    # B = -0.43276
+    # C = -0.14223
+    # D = 0.00345
 
-	# New values taken from AIPS SETJY 31DEC11
-	# Values as of 2010
+    # New values taken from AIPS SETJY 31DEC11
+    # Values as of 2010
 
-	# A = 1.2361
-	# B = -0.4127
-	# C = -0.1864
-	# D = 0.0294
+    # A = 1.2361
+    # B = -0.4127
+    # C = -0.1864
+    # D = 0.0294
 
-	# Perley & Butler 2012 values
-	A = 1.2515
-	B = -0.4605
-	C = -0.1715
-	D = 0.0336
+    # Perley & Butler 2012 values
+    A = 1.2515
+    B = -0.4605
+    C = -0.1715
+    D = 0.0336
 
-	log10f = (math.log(freq)/2.3025851) - 3.0; # Why the -3? Because freq has to be GHz for the formula to work.
-	log_flux = A + B*log10f + C*log10f*log10f + D*log10f*log10f*log10f
-	vlaflux = math.pow(10.0,log_flux)
-
-
+    log10f = (math.log(freq)/2.3025851) - 3.0; # Why the -3? Because freq has to be GHz for the formula to work.
+    log_flux = A + B*log10f + C*log10f*log10f + D*log10f*log10f*log10f
+    vlaflux = math.pow(10.0,log_flux)
 
 
-	# The VLA flux must now be corrected to account for the higher resolving power of merlin. The formula used was obtained with the help of Peter Thomasson. If we assume that 3C286 is represented by a gaussian of angular size theta_s, and represent the resolving power of the given baseline as a function of frequency f and antenna separation L by theta_b(f,L), then the reduction in central flux density A(0) due to the finite theta_s is given by
-	#
-	#	                           1
-	#	            -----------------------------------
-	#	 A'(0)       2 pi (theta_b(f,L)^2 + theta_s^2)
-	#	------- = --------------------------------------- ,
-	#	 A(0)                      1
-	#	                   ---------------------
-	#	                    2 pi theta_b(f,L)^2
-	#
-	#	               1
-	#	        = -------------- ,
-	#	           1 + rho(f,L)
-	#
-	# where the resolved fraction rho(f,L) is given by
-	#
-	#	              theta_s^2
-	#	rho(f,L) = ---------------- .
-	#	            theta_b(f,L)^2
-	#
-	# Use of theta_b(f,L) = k/(fL) allows this to be written
-	#
-	#	           (   f*L     )^2
-	#	rho(f,L) = (-----------)   * rho_ref .
-	#	           (f_ref*L_ref)
-	#
-	# The reference value of rho is fixed at 0.04 for the MK-TA baseline at 5 GHz (Peter Thomasson).
-
-	ref_bl_length = 11236.79 # MK-TA separation in metres.
-	ref_freq = 5000.0
-	ref_rho = 0.04
-	thisbl = "this baseline (Mk-Ta)"
-
-	bl_length = baseline
-	# bl_str = sprintf "%8.2f", $ref_bl_length;
 
 
-	frac = (freq / ref_freq) * (bl_length / ref_bl_length)
-	rho = frac * frac * ref_rho
-	merlinflux = vlaflux / (1.0 + rho)
+    # The VLA flux must now be corrected to account for the higher resolving power of merlin. The formula used was obtained with the help of Peter Thomasson. If we assume that 3C286 is represented by a gaussian of angular size theta_s, and represent the resolving power of the given baseline as a function of frequency f and antenna separation L by theta_b(f,L), then the reduction in central flux density A(0) due to the finite theta_s is given by
+    #
+    #                               1
+    #                -----------------------------------
+    #     A'(0)       2 pi (theta_b(f,L)^2 + theta_s^2)
+    #    ------- = --------------------------------------- ,
+    #     A(0)                      1
+    #                       ---------------------
+    #                        2 pi theta_b(f,L)^2
+    #
+    #                   1
+    #            = -------------- ,
+    #               1 + rho(f,L)
+    #
+    # where the resolved fraction rho(f,L) is given by
+    #
+    #                  theta_s^2
+    #    rho(f,L) = ---------------- .
+    #                theta_b(f,L)^2
+    #
+    # Use of theta_b(f,L) = k/(fL) allows this to be written
+    #
+    #               (   f*L     )^2
+    #    rho(f,L) = (-----------)   * rho_ref .
+    #               (f_ref*L_ref)
+    #
+    # The reference value of rho is fixed at 0.04 for the MK-TA baseline at 5 GHz (Peter Thomasson).
 
-	# Another useful quantity is the resolved percentage:
-	#
-	resolved_percent = 100.0 * rho / (1.0 + rho)
-	caution_res_pc = 10.0
+    ref_bl_length = 11236.79 # MK-TA separation in metres.
+    ref_freq = 5000.0
+    ref_rho = 0.04
+    thisbl = "this baseline (Mk-Ta)"
 
-	return vlaflux, merlinflux, resolved_percent, caution_res_pc, thisbl
+    bl_length = baseline
+    # bl_str = sprintf "%8.2f", $ref_bl_length;
+
+
+    frac = (freq / ref_freq) * (bl_length / ref_bl_length)
+    rho = frac * frac * ref_rho
+    merlinflux = vlaflux / (1.0 + rho)
+
+    # Another useful quantity is the resolved percentage:
+    #
+    resolved_percent = 100.0 * rho / (1.0 + rho)
+    caution_res_pc = 10.0
+
+    return vlaflux, merlinflux, resolved_percent, caution_res_pc, thisbl
