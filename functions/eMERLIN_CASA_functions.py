@@ -209,6 +209,8 @@ def run_importfitsIDI(data_dir,vis, setorder=False):
     ms.writehistory(message='eMER_CASA_Pipeline: Fixed uv coordinates & remove autocorr',msname=vis)
     logger.info('End flagdata_autocorr')
     logger.debug('You have been transformed from an ugly UVFITS to beautiful MS')
+    listobs(vis=vis, listfile=vis+'.listobs')
+    logger.info('Listobs file in: {0}'.format(vis+'.listobs'))
     return
 
 ##Hanning smoothing and flag of autocorrelations, will delete original and rename
@@ -455,6 +457,8 @@ def run_split(msfile, fields, width, timebin, datacolumn='data'):
     logger.info('Data column: {0}'.format(datacolumn))
     split(vis=msfile, outputvis=outputmsfile, field=fields, width=width,
           timebin=timebin, datacolumn=datacolumn, keepflags=False)
+    listobs(vis=outputmsfile, listfile=outputmsfile+'.listobs')
+    logger.info('Listobs file in: {0}'.format(outputmsfile+'.listobs'))
     logger.info('End split')
 
 
