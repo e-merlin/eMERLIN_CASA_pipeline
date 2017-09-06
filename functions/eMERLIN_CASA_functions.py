@@ -678,7 +678,7 @@ def initial_bp_cal(msfile, caltables, previous_cal, bpcal):
     caltables[caltable_name]['field'] = bpcal
     caltables[caltable_name]['gaintype'] = 'K'
     caltables[caltable_name]['calmode'] = 'p'
-    caltables[caltable_name]['solint'] = '120s'
+    caltables[caltable_name]['solint'] = '180s'
     caltables[caltable_name]['interp'] = 'linear'
     caltables[caltable_name]['spwmap'] = [0]*caltables['num_spw']
     caltables[caltable_name]['combine'] = 'spw'
@@ -725,7 +725,7 @@ def initial_bp_cal(msfile, caltables, previous_cal, bpcal):
     caltables[caltable_name]['field'] = bpcal
     caltables[caltable_name]['gaintype'] = 'G'
     caltables[caltable_name]['calmode'] = 'ap'
-    caltables[caltable_name]['solint'] = '120s'
+    caltables[caltable_name]['solint'] = '180s'
     caltables[caltable_name]['interp'] = 'linear'
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
@@ -740,11 +740,11 @@ def initial_bp_cal(msfile, caltables, previous_cal, bpcal):
     caltableplot_phs = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
     plotcal(caltable=caltable,xaxis='time',yaxis='phase',subplot=321,iteration='antenna',
             showgui=False,figfile=caltableplot_phs,fontsize=8, plotrange=[-1,-1,-180,180])
-    logger.info('Bandpass0 phase calibration plot: {0}'.format(caltableplot_phs))
+    logger.info('Bandpass0 amplitude calibration plot: {0}'.format(caltableplot_phs))
     caltableplot_amp = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_amp.png'
     plotcal(caltable=caltable,xaxis='time',yaxis='amp',subplot=321,iteration='antenna',
             showgui=False,figfile=caltableplot_amp,fontsize=8, plotrange=[-1,-1,-1,-1])
-    logger.info('Bandpass0 phase calibration plot: {0}'.format(caltableplot_amp))
+    logger.info('Bandpass0 amplitude calibration plot: {0}'.format(caltableplot_amp))
 
     # 3 Bandpass calibration
     caltable_name = 'bpcal.B0'
@@ -857,6 +857,7 @@ def initial_gaincal(msfile, caltables, previous_cal, calsources, phscals):
     logger.info('End initial_gaincal')
     return caltables
 
+
 def find_anten_fluxscale(antennas):
     # This function tries to remove Lo and De from the fluxscale determination.
     # But only if there are enough antennas to have at least 4 of them.
@@ -949,6 +950,41 @@ def bandpass_sp(msfile, caltables, previous_cal, bpcal):
             fontsize = 8, plotrange = [-1,-1,-1,-1])
     logger.info('Bandpass1 BP phase plot: {0}'.format(bptableplot_amp))
     logger.info('End bandpass_sp')
+    return caltables
+
+
+def sp_amp_gaincal(msfile, caltables, previous_cal, calsources):
+    logger.info('Start gaincal_amp_sp')
+
+    # 1 Amplitude calibration
+    caltable_name = 'allcal_ap.G3'
+    caltables[caltable_name] = {}
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['field'] = calsources
+    caltables[caltable_name]['gaintype'] = 'G'
+    caltables[caltable_name]['calmode'] = 'ap'
+    caltables[caltable_name]['solint'] = '180s'
+    caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['spwmap'] = []
+    caltables[caltable_name]['combine'] = ''
+    caltables[caltable_name]['spw'] = ''
+    caltable = caltables[caltable_name]['table']
+    # Calibration
+    run_gaincal(msfile, caltables, caltable_name, previous_cal)
+    logger.info('Gain amplitude calibration {0}: {1}'.format(caltable_name,caltable))
+#    smooth_caltable(msfile=msfile, plotdir=plotdir, tablein=caltable2, caltable='', field='', smoothtype='median', smoothtime=60*20.)
+    # Plots
+    caltableplot_phs = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
+    plotcal(caltable=caltable,xaxis='time',yaxis='phase',subplot=321,iteration='antenna',
+            showgui=False,figfile=caltableplot_phs,fontsize=8,plotrange=[-1,-1,-180,180])
+    logger.info('Amplitude gain calibration plot: {0}'.format(caltableplot_phs))
+    caltableplot_amp = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_amp.png'
+    plotcal(caltable=caltable,xaxis='time',yaxis='amp',subplot=321,iteration='antenna',
+            showgui=False,figfile=caltableplot_amp,fontsize=8,plotrange=[-1,-1,-1,-1])
+    logger.info('Amplitude gain calibration plot: {0}'.format(caltableplot_amp))
+
+    logger.info('End gaincal_amp_sp')
     return caltables
 
 
