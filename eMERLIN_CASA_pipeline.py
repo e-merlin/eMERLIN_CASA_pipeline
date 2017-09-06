@@ -142,23 +142,23 @@ if refant not in antennas:
 
 
 ### Run AOflagger
-if inputs['flagdata0_aoflagger'] == 1:
+if inputs['flag_0_aoflagger'] == 1:
     flags = em.run_aoflagger_fields(vis=msfile, flags=flags, fields='all', pipeline_path = pipeline_path)
 
 
 ### Produce some initial plots ###
-if inputs['do_prediag'] == 1:
+if inputs['prediag'] == 1:
 	em.do_prediagnostics(msfile,plots_dir)
 
 
 ### A-priori flagdata: Lo&Mk2, edge channels, standard quack
-if inputs['flagdata1_apriori'] == 1:
+if inputs['flag_1_apriori'] == 1:
     flags = em.flagdata1_apriori(msfile=msfile, sources=sources, flags=flags,
                                  antennas=antennas, do_quack=True)
 
 
 ### Average data ###
-if inputs['do_average1'] == 1:
+if inputs['average_1'] == 1:
     em.run_split(msfile, fields=sources['allsources'], width=4, timebin='2s')
 
 # Check if averaged data already generated
@@ -193,7 +193,7 @@ except:
     logger.info('New caltables dictionary created. Saved to: {0}'.format(calib_dir+'caltables.pkl'))
 
 ### Initialize models ###
-if inputs['do_initialize_models'] == 1:  # Need to add parameter to GUI
+if inputs['init_models'] == 1:  # Need to add parameter to GUI
     models_path = pipeline_path+'calibrator_models/'
     em.run_initialize_models(msfile=msfile, fluxcal=sources['fluxcal'],
                              models_path=models_path,
@@ -201,20 +201,20 @@ if inputs['do_initialize_models'] == 1:  # Need to add parameter to GUI
 
 
 ### Initial BandPass calibration ###
-if inputs['do_initial_bandpass'] > 0:
+if inputs['bandpass_0'] > 0:
     caltables = em.initial_bp_cal(msfile=msfile, caltables=caltables,
                                   previous_cal=[], bpcal=sources['bpcal'])
     save_obj(caltables, calib_dir+'caltables')
     save_obj(caltables, calib_dir+'caltables_bandpass0')
-    if inputs['do_initial_bandpass'] == 2:
+    if inputs['bandpass_0'] == 2:
         em.run_applycal(msfile=msfile, caltables=caltables, sources=sources,
            previous_cal=['bpcal.B0'],
            previous_cal_targets=['bpcal.B0'])
 
 ### Flagdata using TFCROP and bandpass shape B0
-if inputs['flagdata2_tfcropBP'] == 1:
+if inputs['flag_2_tfcropBP'] == 1:
     # If B0 has not been applied before, do it now
-    if inputs['do_initial_bandpass'] != 2:
+    if inputs['bandpass_0'] != 2:
         em.run_applycal(msfile=msfile, caltables=caltables, sources=sources,
            previous_cal=['bpcal.B0'],
            previous_cal_targets=['bpcal.B0'])
@@ -222,57 +222,58 @@ if inputs['flagdata2_tfcropBP'] == 1:
 
 
 ### Delay calibration ###
-if inputs['do_delay'] > 0:
+if inputs['delay'] > 0:
     caltables = em.solve_delays(msfile=msfile, caltables=caltables,
                                 previous_cal=['bpcal.B0'], calsources=sources['calsources'])
     # Should the previous_cal be bpcal.B0? Probably better delay fit, but later
     # delay.K1 is applied without bpcal.B0, when bpcal_sp.B1 is computed
     save_obj(caltables, calib_dir+'caltables')
     save_obj(caltables, calib_dir+'caltables_delay')
-    if inputs['do_delay'] == 2:
+    if inputs['delay'] == 2:
         em.run_applycal(msfile=msfile, caltables=caltables, sources=sources,
            previous_cal=['bpcal.B0','delay.K1'],
            previous_cal_targets=['bpcal.B0','delay.K1'])
 
 
-### Gain calibration ###
-if inputs['do_gain_calibration'] > 0:
+### Initial gain calibration ###
+if inputs['gain_0_p_ap'] > 0:
     caltables = em.initial_gaincal(msfile=msfile, caltables=caltables,
                                   previous_cal=['delay.K1', 'bpcal.B0'],
                                   calsources=sources['calsources'], phscals=sources['phscals'])
     save_obj(caltables, calib_dir+'caltables')
     save_obj(caltables, calib_dir+'caltables_gaincal')
-    if inputs['do_gain_calibration'] == 2:
+    if inputs['gain_0_p_ap'] == 2:
         em.run_applycal(msfile=msfile, caltables=caltables, sources=sources,
            previous_cal=['delay.K1','allcal_p.G0','allcal_ap.G1','bpcal.B0'],
            previous_cal_targets=['delay.K1','phscal_p_scan.G2','allcal_ap.G1','bpcal.B0'])
 
 ### Flux scale ###
-if inputs['do_fluxscale'] > 0:
+if inputs['fluxscale'] > 0:
     caltables = em.eM_fluxscale(msfile=msfile, caltables=caltables,
                                 sources=sources,
                                 ampcal_table='allcal_ap.G1', antennas=antennas)
     save_obj(caltables, calib_dir+'caltables')
     save_obj(caltables, calib_dir+'caltables_fluxscale')
-    if inputs['do_fluxscale'] == 2:
+    if inputs['fluxscale'] == 2:
         em.run_applycal(msfile=msfile, caltables=caltables, sources=sources,
            previous_cal=['delay.K1','allcal_p.G0','allcal_ap.G1_fluxscaled','bpcal.B0'],
            previous_cal_targets=['delay.K1','phscal_p_scan.G2','allcal_ap.G1_fluxscaled','bpcal.B0'])
 
-### BandPass calibration ###
-if inputs['do_bandpass_sp'] > 0:
+### BandPass calibration with spectral index information###
+if inputs['bandpass_1_sp'] > 0:
     caltables = em.bandpass_sp(msfile=msfile, caltables=caltables,
                                previous_cal=['delay.K1','allcal_p.G0','allcal_ap.G1_fluxscaled'],
                                bpcal=sources['bpcal'])
     save_obj(caltables, calib_dir+'caltables')
     save_obj(caltables, calib_dir+'caltables_bandpass_sp')
-    if inputs['do_bandpass_sp'] == 2:
+    if inputs['bandpass_1_sp'] == 2:
         em.run_applycal(msfile=msfile, caltables=caltables, sources=sources,
            previous_cal=['delay.K1','allcal_p.G0','allcal_ap.G1_fluxscaled','bpcal_sp.B1'],
            previous_cal_targets=['delay.K1','phscal_p_scan.G2','allcal_ap.G1_fluxscaled','bpcal_sp.B1'])
 
+
 ### Apply calibration  ###
-if inputs['do_applycal_all'] > 0:
+if inputs['applycal_all'] > 0:
     em.run_applycal(msfile=msfile, caltables=caltables, sources=sources,
        previous_cal=['delay.K1','allcal_p.G0','allcal_ap.G1_fluxscaled','bpcal_sp.B1'],
        previous_cal_targets=['delay.K1','phscal_p_scan.G2','allcal_ap.G1_fluxscaled','bpcal_sp.B1'])
