@@ -156,6 +156,12 @@ if inputs['flag_1_apriori'] == 1:
     flags = em.flagdata1_apriori(msfile=msfile, sources=sources, flags=flags,
                                  antennas=antennas, do_quack=True)
 
+### Load manual flagging file
+if inputs['flag_2a_manual'] == 1:
+    flags = em.flagdata2_manual(msfile=msfile, inpfile=inputs['manual_flags_a'], flags=flags)
+
+
+
 
 ### Average data ###
 if inputs['average_1'] == 1:
@@ -171,6 +177,9 @@ else:
 
 logger.info('Using MS file: {0}'.format(msfile))
 
+### Load manual flagging file
+if inputs['flag_2b_manual'] == 1:
+    flags = em.flagdata2_manual(msfile=msfile, inpfile=inputs['manual_flags_b'], flags=flags)
 
 
 ###################
@@ -212,13 +221,13 @@ if inputs['bandpass_0'] > 0:
            previous_cal_targets=['bpcal.B0'])
 
 ### Flagdata using TFCROP and bandpass shape B0
-if inputs['flag_2_tfcropBP'] == 1:
+if inputs['flag_3_tfcropBP'] == 1:
     # If B0 has not been applied before, do it now
     if inputs['bandpass_0'] != 2:
         em.run_applycal(msfile=msfile, caltables=caltables, sources=sources,
            previous_cal=['bpcal.B0'],
            previous_cal_targets=['bpcal.B0'])
-    flags = em.flagdata2_tfcropBP(msfile=msfile, sources=sources, flags=flags)
+    flags = em.flagdata3_tfcropBP(msfile=msfile, sources=sources, flags=flags)
 
 
 ### Delay calibration ###
@@ -259,7 +268,7 @@ if inputs['fluxscale'] > 0:
            previous_cal=['delay.K1','allcal_p.G0','allcal_ap.G1_fluxscaled','bpcal.B0'],
            previous_cal_targets=['delay.K1','phscal_p_scan.G2','allcal_ap.G1_fluxscaled','bpcal.B0'])
 
-### BandPass calibration with spectral index information###
+### BandPass calibration with spectral index information ###
 if inputs['bandpass_1_sp'] > 0:
     caltables = em.bandpass_sp(msfile=msfile, caltables=caltables,
                                previous_cal=['delay.K1','allcal_p.G0','allcal_ap.G1_fluxscaled'],
@@ -271,7 +280,7 @@ if inputs['bandpass_1_sp'] > 0:
            previous_cal=['delay.K1','allcal_p.G0','allcal_ap.G1_fluxscaled','bpcal_sp.B1'],
            previous_cal_targets=['delay.K1','phscal_p_scan.G2','allcal_ap.G1_fluxscaled','bpcal_sp.B1'])
 
-### Initial gain calibration ###
+### Amplitude calibration including spectral information ###
 if inputs['gain_1_amp_sp'] > 0:
     caltables = em.sp_amp_gaincal(msfile=msfile, caltables=caltables,
                                   previous_cal=['delay.K1','allcal_p.G0','bpcal_sp.B1'],

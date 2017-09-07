@@ -387,13 +387,13 @@ field=x[i], antenna='*&*', averagedata=True, avgtime=time, iteraxis='baseline', 
 
 
 def flagdata1_apriori(msfile, sources, flags, antennas, do_quack=True):
+    logger.info('Start flagdata1_apriori')
     # Find number of channels in MS:
     ms.open(msfile)
     d = ms.getdata(['axis_info'],ifraxis=True)
     ms.close()
     nchan = len(d['axis_info']['freq_axis']['chan_freq'][:,0])
 
-    logger.info('Start flagdata1_apriori')
     # Flag Lo-Mk2
     if 'Lo' in antennas and 'Mk2' in antennas:
         logger.info('Flagging Lo-Mk2 baseline')
@@ -415,8 +415,16 @@ def flagdata1_apriori(msfile, sources, flags, antennas, do_quack=True):
     logger.info('End flagdata1_apriori')
     return flags
 
-def flagdata2_tfcropBP(msfile, sources, flags):
-    logger.info('Start flagdata2_tfcropBP')
+def flagdata2_manual(msfile, inpfile, flags):
+    logger.info('Start flagdata_manual')
+    logger.info('Applying manual flags from file: {0}'.format(inpfile))
+    flagdata(vis=msfile, mode='list', inpfile=inpfile)
+    flag_applied(flags, 'flagdata_manual')
+    logger.info('End flagdata_manual')
+    return flags
+
+def flagdata3_tfcropBP(msfile, sources, flags):
+    logger.info('Start flagdata3_tfcropBP')
     logger.info("Running flagdata, mode = 'tfcrop'")
     logger.info("correlation='ABS_ALL'")
     logger.info("ntime='90min', combinescans=True, datacolumn='corrected'")
@@ -428,8 +436,8 @@ def flagdata2_tfcropBP(msfile, sources, flags):
              winsize=3, timecutoff=4.0, freqcutoff=3.0, maxnpieces=1,
              usewindowstats='sum', halfwin=3, extendflags=True,
              action='apply', display='', flagbackup=True)
-    flag_applied(flags, 'flagdata2_tfcropBP')
-    logger.info('End flagdata2_tfcropBP')
+    flag_applied(flags, 'flagdata3_tfcropBP')
+    logger.info('End flagdata3_tfcropBP')
     return flags
 
 def flag_applied(flags, new_flag):
@@ -450,6 +458,8 @@ def run_split(msfile, fields, width, timebin, datacolumn='data'):
     exte = ''.join(msfile.split('.')[-1])
     outputmsfile = name+'_avg.'+exte
     rmdir(outputmsfile)
+    rmdir(outputmsfile+'.flagversions')
+    rmdir(outputmsfile+'.listobs')
     logger.info('Input MS: {0}'.format(msfile))
     logger.info('Output MS: {0}'.format(outputmsfile))
     logger.info('width={0}, timebin={1}'.format(width, timebin,))

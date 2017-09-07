@@ -11,6 +11,10 @@ bpcal= 'OQ208'
 ptcal= '3C345'
 refant= 'Mk2'
 
+manual_flags_a=./inputfg_a.flags
+manual_flags_b=./inputfg_b_avg.flags
+
+
 # processes (0=don't run, 1=run; 2=run and apply calib)
 run_importfits  = 1
 hanning         = 0
@@ -19,10 +23,12 @@ ms2mms          = 0
 flag_0_aoflagger= 0
 prediag         = 0
 flag_1_apriori  = 0
+flag_2a_manual  = 0
 average_1       = 0
+flag_2b_manual  = 0
 init_models     = 0
 bandpass_0      = 0
-flag_2_tfcropBP = 0
+flag_3_tfcropBP = 0
 delay           = 0
 gain_0_p_ap     = 0
 fluxscale       = 0
