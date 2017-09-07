@@ -454,7 +454,7 @@ def flag_applied(flags, new_flag):
 
 def run_split(msfile, fields, width, timebin, datacolumn='data'):
     logger.info('Start split')
-    name = ''.join(msfile.split('.')[:-1])
+    name = '.'.join(msfile.split('.')[:-1])
     exte = ''.join(msfile.split('.')[-1])
     outputmsfile = name+'_avg.'+exte
     rmdir(outputmsfile)
