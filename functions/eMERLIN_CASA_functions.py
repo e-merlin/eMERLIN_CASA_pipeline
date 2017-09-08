@@ -200,7 +200,7 @@ def run_importfitsIDI(data_dir,vis, setorder=False):
     ms.writehistory(message='eMER_CASA_Pipeline: setToCasaOrder, complete',msname=vis)
     logger.info('End importfitsIDI')
     logger.info('Start UVFIX')
-    fixvis(vis=vis,outputvis=vis+'.uvfix')
+    fixvis(vis=vis,outputvis=vis+'.uvfix',reuse=False)
     logger.info('End UVFIX')
     os.system('rm -r {0}'.format(vis))
     os.system('mv {0} {1}'.format(vis+'.uvfix', vis))
