@@ -108,6 +108,7 @@ if inputs['run_importfits'] == 1:
     em.check_mixed_mode(msfile,mode='split')
 
 
+sources['msfile_fields'] = vishead(msfile,mode='list',listitems='field')['field'][0]
 
 
 if inputs['hanning'] == 1:
@@ -165,7 +166,7 @@ if inputs['flag_2a_manual'] == 1:
 
 ### Average data ###
 if inputs['average_1'] == 1:
-    em.run_split(msfile, fields=sources['allsources'], width=4, timebin='2s')
+    em.run_split(msfile, fields=sources['allsources'], sources=sources, width=4, timebin='2s')
 
 # Check if averaged data already generated
 if os.path.isdir('./'+inputs['inbase']+'_avg.mms') == True:

@@ -452,8 +452,14 @@ def flag_applied(flags, new_flag):
 
 ### Run CASA calibration functions
 
-def run_split(msfile, fields, width, timebin, datacolumn='data'):
+def run_split(msfile, fields, sources, width, timebin, datacolumn='data'):
     logger.info('Start split')
+    # Check that all sources are there:
+    sources_not_in_msfile = [s for s in sources['allsources'].split(',') if s not in sources['msfile_fields']]
+    if len(sources_not_in_msfile) > 0:
+        fields = ','.join(sources['msfile_fields'])
+        logger.warning('Fields {} not present in MS but listed in inputs file.'.format(','.join(sources_not_in_msfile)))
+        logger.warning('All fields will be included in the averaged MS.')
     name = '.'.join(msfile.split('.')[:-1])
     exte = ''.join(msfile.split('.')[-1])
     outputmsfile = name+'_avg.'+exte
@@ -467,7 +473,7 @@ def run_split(msfile, fields, width, timebin, datacolumn='data'):
     logger.info('Data column: {0}'.format(datacolumn))
     split(vis=msfile, outputvis=outputmsfile, field=fields, width=width,
           timebin=timebin, datacolumn=datacolumn, keepflags=False)
-    listobs(vis=outputmsfile, listfile=outputmsfile+'.listobs')
+    listobs(vis=outputmsfile, listfile=outputmsfile+'.listobs',overwrite=True)
     logger.info('Listobs file in: {0}'.format(outputmsfile+'.listobs'))
     logger.info('End split')
 
