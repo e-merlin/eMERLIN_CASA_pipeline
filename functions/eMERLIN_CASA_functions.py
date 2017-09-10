@@ -383,6 +383,7 @@ field=x[i], antenna='*&*', averagedata=True, avgtime=time, iteraxis='baseline', 
     #vishead(vis=vis,listfile=directory+vis+'.listobs')
     #plotants(vis=vis,figfile=directory+vis+'.plotants.png')
     ## Amplitude vs Time:
+    os.system('mv ./'+plot_dir+'/*pdf ./'+plot_dir+'/pre-calibration')
     logger.info('End prediagnostics')
 
 
