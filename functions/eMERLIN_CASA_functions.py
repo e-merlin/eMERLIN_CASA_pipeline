@@ -281,16 +281,20 @@ def run_aoflagger_fields(vis, flags, fields='all', pipeline_path='./'):
 def check_aoflagger_version():
     logger.info('Checking AOflagger version')
     from subprocess import Popen, PIPE
-    process = Popen(['aoflagger'], stdout=PIPE)
-    (output, err) = process.communicate()
-    exit_code = process.wait()
-    version = output.split()[1]
-    version_list = version.split('.')
-    if (version_list[0] == '2') and (int(version_list[1]) < 9):
-        old_aoflagger = True
-    else:
+    try:
+        process = Popen(['aoflagger'], stdout=PIPE)
+        (output, err) = process.communicate()
+        exit_code = process.wait()
+        version = output.split()[1]
+        version_list = version.split('.')
+        if (version_list[0] == '2') and (int(version_list[1]) < 9):
+            old_aoflagger = True
+        else:
+            old_aoflagger = False
+        logger.info('AOflagger version is {0}'.format(version))
+    except:
+        logger.info('AOflagger not available in this computer.')
         old_aoflagger = False
-    logger.info('AOflagger version is {0}'.format(version))
     return old_aoflagger
 
 def ms2mms(vis,mode):
