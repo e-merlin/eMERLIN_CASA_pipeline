@@ -70,15 +70,15 @@ def headless(inputfile):
             param = param.strip()
             param = space.sub(r'', param)
             value = newline.sub(r'', value)
-            value = value.strip()
-            valuelist = value.split(', ')
+            value = value.replace(' ','').strip()
+            valuelist = value.split(',')
             if len(valuelist) == 1:
                 if valuelist[0] == '0' or valuelist[0]=='1' or valuelist[0]=='2':
                     control[param] = int(valuelist[0])
                 else:
                     control[param] = str(valuelist[0])
             else:
-                control[param] = str(valuelist)
+                control[param] = ','.join(valuelist)
     return control
 
 def Tkinter_select():
@@ -453,6 +453,62 @@ def flag_applied(flags, new_flag):
     logger.info('Current flags applied: {0}'.format(flags))
     save_obj(flags, './flags')
     return flags
+
+def find_refant(msfile, field, antennas='', spws='', scan=''):
+    logger.info('Searching refant automatically')
+    ms.open(msfile)
+    d = ms.getdata(['axis_info'],ifraxis=True)
+    ms.close()
+    if len(antennas)==0:
+        antennas = np.unique('-'.join(d['axis_info']['ifr_axis']['ifr_name']).split('-'))
+    else:
+        antennas = np.array(antennas.strip(' ').split(','))
+    nchan = len(d['axis_info']['freq_axis']['chan_freq'][:,0])
+    num_spw = len(vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
+    channels = ':{0}~{1}'.format(nchan - 3*nchan/4, nchan - 1*nchan/4)
+    if spws == '':
+        spws = range(num_spw)
+    else:
+        spws = spws.strip(' ').split(',')
+
+    logger.info('Searching best antenna among {0}'.format(','.join(antennas)))
+    logger.info('Considering best S/N for spw {0}, channels {1}, field {2}'.format(','.join(spws), channels, field))
+
+    snr = np.zeros((2, len(antennas), len(spws)))
+    for i, corr in enumerate(['RR', 'LL']):
+        for j, anten in enumerate(antennas):
+            print('Checking antenna {0}, corr {1}'.format(anten, corr))
+            for k, spw in enumerate(spws):
+                snrj = []
+                for basel in antennas:
+                    if basel != anten:
+                        d2 = visstat(msfile, antenna='{}&{}'.format(anten, basel),
+                                     field=field, axis='amplitude', scan=scan,
+                                     spw=str(spw)+channels, correlation=corr)
+                        snrj.append(d2['DATA']['median']/d2['DATA']['stddev'])
+                snr[i, j, k] = np.mean(snrj)
+
+    # Sorting antennas by average S/N, averaged in polarization and spw.
+    snr_avg = np.mean(snr, axis=(0,2))
+    pref_ant = antennas[np.argsort(snr_avg)][::-1]
+    snr_avg_sorted = snr_avg[np.argsort(snr_avg)][::-1]
+
+    logger.info('Average S/N on baselines to each antenna:')
+    for p, s in zip(pref_ant, snr_avg_sorted):
+        logger.info('{0:3s}  {1:4.1f}'.format(p, s))
+
+    # This will check if Mk2, Pi or Da are part of the best three antennas and give them
+    # priority. Then, it will add any other except Lo.
+    u, ind = np.unique([a for a  in pref_ant[:3] if a in ['Mk2','Pi','Da']] +\
+    [a for a  in pref_ant if a in ['Mk2','Pi','Da','Kn', 'Cm', 'De']], return_index=True)
+
+    refant = ','.join(u[np.argsort(ind)])
+    refant_pref = {}
+    refant_pref['snr'] = snr
+    refant_pref['pref_ant'] = pref_ant
+    refant_pref['snr_avg_sorted'] = snr_avg_sorted
+    logger.info('Preference antennas refant = {0}'.format(refant))
+    return refant, refant_pref
 
 
 ### Run CASA calibration functions
