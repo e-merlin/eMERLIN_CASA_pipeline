@@ -47,20 +47,24 @@ def load_obj(name):
         return pickle.load(f)
 
 
+def join_lists(x=[]):
+    x1 = ','.join(x)
+    x2 = set(x1.split(','))
+    return ','.join(x2)
+
 # Sources to process
 sources = {}
-sources['targets'] = inputs['targets'].replace(' ','')
-sources['phscals'] = inputs['phscals'].replace(' ','')
+sources['targets'] = inputs['targets']
+sources['phscals'] = inputs['phscals']
 sources['fluxcal'] = inputs['fluxcal']
 sources['bpcal']   = inputs['bpcal']
 sources['ptcal']   = inputs['ptcal']
-sources['calsources'] = ','.join(set([sources['phscals'], sources['fluxcal'],
-                                  sources['bpcal'], sources['ptcal']]))
-sources['maincal'] = ','.join([sources['fluxcal'],sources['bpcal'], sources['ptcal']])
-sources['allsources'] = sources['calsources'] +','+ sources['targets']
+sources['calsources'] = join_lists([sources['phscals'], sources['fluxcal'],sources['bpcal'], sources['ptcal']])
+sources['maincal'] = join_lists([sources['fluxcal'],sources['bpcal'], sources['ptcal']])
+sources['allsources'] = join_lists([sources['calsources'], sources['targets']])
 sources['no_fluxcal'] = sources['allsources'].replace(sources['fluxcal'], '').replace(',,',',').strip(',')
 sources['cals_no_fluxcal'] = sources['calsources'].replace(sources['fluxcal'], '').replace(',,',',').strip(',')
-sources['targets_phscals'] = sources['targets']+','+sources['phscals']
+sources['targets_phscals'] = join_lists([sources['targets'],sources['phscals']])
 
 logger.info('Targets:   {0}'.format(sources['targets']))
 logger.info('Phasecals: {0}'.format(sources['phscals']))
@@ -108,9 +112,6 @@ if inputs['run_importfits'] == 1:
     em.check_mixed_mode(msfile,mode='split')
 
 
-sources['msfile_fields'] = vishead(msfile,mode='list',listitems='field')['field'][0]
-
-
 if inputs['hanning'] == 1:
 	em.hanning(inputvis=msfile,deloriginal=True)
 
@@ -127,20 +128,6 @@ if inputs['ms2mms'] == 1:
 ## check for parallelisation
 if os.path.isdir('./'+inputs['inbase']+'.mms') == True:
     msfile = inputs['inbase']+'.mms'
-
-### Retrieve MS information
-# Antenna list and reference antenna
-ms.open(msfile)
-d = ms.getdata(['axis_info'],ifraxis=True)
-ms.close()
-antennas = np.unique('-'.join(d['axis_info']['ifr_axis']['ifr_name']).split('-'))
-
-logger.info('Antennas in MS: {0}'.format(antennas))
-refant = inputs['refant']
-logger.info('Refant: {}'.format(refant))
-if refant not in antennas:
-    logger.warning('Selected reference antenna {0} not in MS!'.format(refant))
-
 
 ### Run AOflagger
 if inputs['flag_0_aoflagger'] == 1:
@@ -162,8 +149,6 @@ if inputs['flag_2a_manual'] == 1:
     flags = em.flagdata2_manual(msfile=msfile, inpfile=inputs['manual_flags_a'], flags=flags)
 
 
-
-
 ### Average data ###
 if inputs['average_1'] == 1:
     em.run_split(msfile, fields=sources['allsources'], sources=sources, width=4, timebin='2s')
@@ -178,9 +163,41 @@ else:
 
 logger.info('Using MS file: {0}'.format(msfile))
 
+
+
 ### Load manual flagging file
 if inputs['flag_2b_manual'] == 1:
     flags = em.flagdata2_manual(msfile=msfile, inpfile=inputs['manual_flags_b'], flags=flags)
+
+# Sources in the MS
+sources['msfile_fields'] = ','.join(vishead(msfile,mode='list',listitems='field')['field'][0])
+logger.info('Sources in MS {0}: {1}'.format(msfile, sources['msfile_fields']))
+
+### Retrieve MS information
+# Antenna list and reference antenna
+ms.open(msfile)
+d = ms.getdata(['axis_info'],ifraxis=True)
+ms.close()
+antennas = np.unique('-'.join(d['axis_info']['ifr_axis']['ifr_name']).split('-'))
+
+logger.info('Antennas in MS: {0}'.format(antennas))
+
+# Defining reference antenna
+refant = inputs['refant']
+refant_user = refant.replace(' ', '').split(',')
+refant_in_ms = (np.array([ri in antennas for ri in refant_user])).all()
+
+if not refant_in_ms:
+    if refant != '':
+        logger.warning('Selected reference antenna(s) {0} not in MS! User\
+                       selection will be ignored'.format(refant))
+    # Finding best antennas for refant
+    refant, refant_pref = em.find_refant(msfile, field=sources['bpcal'],
+                                         antennas='Mk2,Pi,Da,Kn', spws='2,3', scan='')
+else:
+    refant = ','.join(refant_user)
+
+logger.info('Refant: {}'.format(refant))
 
 
 ###################
