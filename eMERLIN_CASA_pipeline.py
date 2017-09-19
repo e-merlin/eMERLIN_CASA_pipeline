@@ -319,6 +319,15 @@ if inputs['applycal_all'] > 0:
        previous_cal_targets=['delay.K1','bpcal_sp.B1','phscal_p_scan.G2','allcal_ap.G3'])
 
 
+### Run monitoring for bright sources:
+try:
+    if inputs['monitoring'] == 1:
+        flags, caltables = em.monitoring(msfile=msfile, sources=sources, flags=flags,
+                      caltables=caltables, previous_cal=[''],
+                      calsources=sources['calsources'])
+except:
+    pass
+
 
 logger.info('Pipeline finished')
 logger.info('#################')

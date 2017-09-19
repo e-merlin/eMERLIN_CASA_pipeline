@@ -445,6 +445,23 @@ def flagdata3_tfcropBP(msfile, sources, flags):
     logger.info('End flagdata3_tfcropBP')
     return flags
 
+def flagdata_tfcrop_bright(msfile, sources, flags, datacolumn='DATA'):
+    logger.info('Start flagdata_tfcrop_bright')
+    logger.info("Running flagdata, mode = 'tfcrop'")
+    logger.info("correlation='ABS_ALL'")
+    logger.info("ntime='90min', combinescans=True, datacolumn='{}'".format(datacolumn))
+    logger.info("winsize=3, timecutoff=4.0, freqcutoff=3.0, maxnpieces=5")
+    logger.info("usewindowstats='sum', halfwin=3, extendflags=True")
+    flagdata(vis=msfile, mode='tfcrop', field=sources['allsources'],
+             antenna='', scan='',spw='', correlation='ABS_ALL',
+             ntime='90min', combinescans=True, datacolumn=datacolumn,
+             winsize=3, timecutoff=4.0, freqcutoff=3.0, maxnpieces=1,
+             usewindowstats='sum', halfwin=3, extendflags=True,
+             action='apply', display='', flagbackup=True)
+    flag_applied(flags, 'flagdata_tfcrop_bright')
+    logger.info('End flagdata_tfcrop_bright')
+    return flags
+
 def flag_applied(flags, new_flag):
     if new_flag in flags:
         logger.warning('Flags from {0} were already applied by the pipeline! They are applied more than once.'.format(new_flag))
@@ -1063,6 +1080,18 @@ def sp_amp_gaincal(msfile, caltables, previous_cal, calsources):
 
     logger.info('End gaincal_amp_sp')
     return caltables
+
+
+def monitoring(msfile, sources, flags, caltables, previous_cal, calsources):
+    logger.info('Start monitoring')
+    flags = flagdata_tfcrop_bright(msfile=msfile, sources=sources, flags=flags)
+    caltables = solve_delays(msfile=msfile, caltables=caltables,
+                   previous_cal=[], calsources=sources['calsources'])
+    run_applycal(msfile=msfile, caltables=caltables, sources=sources,
+                    previous_cal=['delay.K1'],
+                    previous_cal_targets=['delay.K1'])
+    logger.info('End monitoring')
+    return flags, caltables
 
 
 def dfluxpy(freq,baseline):
