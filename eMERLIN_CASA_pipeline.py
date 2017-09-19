@@ -15,6 +15,8 @@ sys.path.append(pipeline_path)
 import functions.eMERLIN_CASA_functions as em
 import functions.eMERLIN_CASA_GUI as emGUI
 
+casalog.setlogfile('casa_eMCP.log')
+
 # Setup logger
 logger = logging.getLogger('logger')
 logger.setLevel(logging.INFO)
@@ -164,16 +166,16 @@ else:
 logger.info('Using MS file: {0}'.format(msfile))
 
 
-
 ### Load manual flagging file
 if inputs['flag_2b_manual'] == 1:
     flags = em.flagdata2_manual(msfile=msfile, inpfile=inputs['manual_flags_b'], flags=flags)
 
+
+### Retrieve MS information
 # Sources in the MS
 sources['msfile_fields'] = ','.join(vishead(msfile,mode='list',listitems='field')['field'][0])
 logger.info('Sources in MS {0}: {1}'.format(msfile, sources['msfile_fields']))
 
-### Retrieve MS information
 # Antenna list and reference antenna
 ms.open(msfile)
 d = ms.getdata(['axis_info'],ifraxis=True)
@@ -189,8 +191,7 @@ refant_in_ms = (np.array([ri in antennas for ri in refant_user])).all()
 
 if not refant_in_ms:
     if refant != '':
-        logger.warning('Selected reference antenna(s) {0} not in MS! User\
-                       selection will be ignored'.format(refant))
+        logger.warning('Selected reference antenna(s) {0} not in MS! User selection will be ignored'.format(refant))
     # Finding best antennas for refant
     refant, refant_pref = em.find_refant(msfile, field=sources['bpcal'],
                                          antennas='Mk2,Pi,Da,Kn', spws='2,3', scan='')
