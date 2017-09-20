@@ -140,6 +140,14 @@ if inputs['flag_0_aoflagger'] == 1:
 if inputs['prediag'] == 1:
 	em.do_prediagnostics(msfile,plots_dir)
 
+# Antenna list and reference antenna
+ms.open(msfile)
+d = ms.getdata(['axis_info'],ifraxis=True)
+ms.close()
+antennas = np.unique('-'.join(d['axis_info']['ifr_axis']['ifr_name']).split('-'))
+
+logger.info('Antennas in MS: {0}'.format(antennas))
+
 
 ### A-priori flagdata: Lo&Mk2, edge channels, standard quack
 if inputs['flag_1_apriori'] == 1:
@@ -322,9 +330,9 @@ if inputs['applycal_all'] > 0:
 ### Run monitoring for bright sources:
 try:
     if inputs['monitoring'] == 1:
-        flags, caltables = em.monitoring(msfile=msfile, sources=sources, flags=flags,
-                      caltables=caltables, previous_cal=[''],
-                      calsources=sources['calsources'])
+        flags, caltables = em.monitoring(msfile=msfile, data_dir=data_dir, sources=sources,
+                      flags=flags, caltables=caltables, previous_cal=[''],
+                      calsources=sources['calsources'], antennas=antennas)
 except:
     pass
 

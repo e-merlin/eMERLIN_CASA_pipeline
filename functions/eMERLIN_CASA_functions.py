@@ -15,6 +15,7 @@ from eMERLIN_CASA_GUI import GUI_pipeline
 from tasks import *
 from casa import *
 from recipes.setOrder import setToCasaOrder
+import datetime
 
 import logging
 logger = logging.getLogger('logger')
@@ -180,6 +181,29 @@ def check_band(msfile):
     if (freq > 22) and (freq < 24):
         band = 'K'
     return band
+
+def get_baselines(msfile):
+    ms.open(msfile)
+    baselines0 = ms.getdata(['axis_info'],ifraxis=True)['axis_info']['ifr_axis']['ifr_name']
+    ms.close()
+    baselines = []
+    for bsl_name in baselines0:
+        ant =  bsl_name.split('-')
+        bsl = bsl_name.replace('-', '&')
+        if ant[0] != ant[1]:
+            baselines.append(bsl)
+    return baselines
+
+def get_dates(d):
+    t_mjd   = d['axis_info']['time_axis']['MJDseconds']/60./60./24.
+    t = np.array([mjdtodate(timei) for timei in t_mjd])
+    return t_mjd, t
+
+
+def mjdtodate(mjd):
+    origin = datetime.datetime(1858,11,17)
+    date = origin + datetime.timedelta(mjd)
+    return date
 
 def run_importfitsIDI(data_dir,vis, setorder=False):
     logger.info('Starting importfitsIDI procedure')
@@ -455,9 +479,11 @@ def flagdata_tfcrop_bright(msfile, sources, flags, datacolumn='DATA'):
     flagdata(vis=msfile, mode='tfcrop', field=sources['allsources'],
              antenna='', scan='',spw='', correlation='ABS_ALL',
              ntime='90min', combinescans=True, datacolumn=datacolumn,
-             winsize=3, timecutoff=4.0, freqcutoff=3.0, maxnpieces=1,
+             winsize=3, timecutoff=3.6, freqcutoff=3.6, maxnpieces=2,
              usewindowstats='sum', halfwin=3, extendflags=True,
              action='apply', display='', flagbackup=True)
+    flagdata(vis=msfile, mode='extend', ntime='90min', extendpols=False,
+             growtime=50, growfreq=0)
     flag_applied(flags, 'flagdata_tfcrop_bright')
     logger.info('End flagdata_tfcrop_bright')
     return flags
@@ -727,7 +753,7 @@ def run_applycal(msfile, caltables, sources, previous_cal, previous_cal_targets=
 
 ### Calibration steps
 
-def solve_delays(msfile, caltables, previous_cal, calsources):
+def solve_delays(msfile, caltables, previous_cal, calsources, solint='600s'):
     logger.info('Start solve_delays')
     caltable_name = 'delay.K1'
     caltables[caltable_name] = {}
@@ -736,7 +762,7 @@ def solve_delays(msfile, caltables, previous_cal, calsources):
     caltables[caltable_name]['field'] = calsources
     caltables[caltable_name]['gaintype'] = 'K'
     caltables[caltable_name]['calmode'] = 'p'
-    caltables[caltable_name]['solint'] = '600s'
+    caltables[caltable_name]['solint'] = solint
     caltables[caltable_name]['interp'] = 'linear'
     caltables[caltable_name]['spwmap'] = [0]*caltables['num_spw']
     caltables[caltable_name]['combine'] = 'spw'
@@ -1081,17 +1107,94 @@ def sp_amp_gaincal(msfile, caltables, previous_cal, calsources):
     logger.info('End gaincal_amp_sp')
     return caltables
 
+def compile_statistics(msfile, tablename=''):
+    logger.info('Start compile_stats')
+    # Num of spw and baselines
+    num_spw = len(vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
+    baselines = get_baselines(msfile)
+    # Date and time of observation
+    ms.open(msfile)
+    axis_info = ms.getdata(['axis_info'],ifraxis=True)
+    ms.close()
+    vis_field = vishead(msfile,mode='list',listitems='field')['field'][0][0] # Only one expected
+    t_mjd, t = get_dates(axis_info)
+    freq_ini = np.min(axis_info['axis_info']['freq_axis']['chan_freq'])/1e9
+    freq_end = np.max(axis_info['axis_info']['freq_axis']['chan_freq'])/1e9
+    chan_res = np.mean(axis_info['axis_info']['freq_axis']['resolution'])/1e9
+    band = check_band(msfile)
+    data_stats = []
+    for bsl in baselines:
+        print('Processing baseline: {}'.format(bsl))
+        for spw in range(num_spw):
+            for corr in ['RR', 'LL']:
+                d = visstat(msfile, antenna=bsl, axis='amplitude',
+                            spw=str(spw)+':100~400', correlation=corr)
+                data_stats.append([t[0],
+                                   t[-1],
+                                   np.mean(t_mjd),
+                                   band,
+                                   freq_ini,
+                                   freq_end,
+                                   chan_res,
+                                   vis_field,
+                                   bsl,
+                                   spw,
+                                   corr,
+                                   d['DATA']['mean'],
+                                   d['DATA']['npts'],
+                                   d['DATA']['median'],
+                                   d['DATA']['stddev']])
+                print t[0], vis_field, bsl, spw, corr, d['DATA']['median'], d['DATA']['stddev']
+    data_stats = np.asarray(data_stats)
+    ini_date = str(t[0]).replace('-', '').replace(':','').replace(' ','_').split('.')[0]
+    outname = '{0}_{1}_{2}.npy'.format(ini_date, vis_field, band)
+    np.save('data_'+outname, data_stats)
+    logger.info('Data statistics saved to: {0}'.format(outname))
+    if tablename != '':
+       compile_delays(tablename, outname)
+    logger.info('End compile_stats')
 
-def monitoring(msfile, sources, flags, caltables, previous_cal, calsources):
-    logger.info('Start monitoring')
+
+def compile_delays(tablename, outname):
+    tb.open(tablename+'/ANTENNA')
+    antennas = tb.getcol('NAME')
+    tb.close()
+    tb.open(tablename)
+    a = tb.getcol('ANTENNA1')
+    times  = tb.getcol('TIME')
+    delays = tb.getcol('FPARAM')
+    tb.close()
+    delay_stats = []
+    for i in range(len(times)):
+        delay_stats.append([antennas[a[i]], 'RR', delays[0,0,i]])
+        delay_stats.append([antennas[a[i]], 'LL', delays[1,0,i]])
+    delay_stats = np.asarray(delay_stats)
+    np.save('delay_'+outname, delay_stats)
+    logger.info('Delay statistics saved to: {0}'.format(outname))
+
+
+def monitoring(msfile, data_dir, sources, flags, caltables, previous_cal,
+               calsources, antennas):
+    # This is intented to run in a single-source file for daily monitoring on
+    # unaveraged data
+    logger.info('Starting monitoring')
+    band = check_band(msfile)
+    if band == 'L':
+        hanning(inputvis=msfile,deloriginal=True)
+
+    flags = flagdata1_apriori(msfile=msfile, sources=sources, flags=flags,
+                                 antennas=antennas, do_quack=True)
+
     flags = flagdata_tfcrop_bright(msfile=msfile, sources=sources, flags=flags)
     caltables = solve_delays(msfile=msfile, caltables=caltables,
-                   previous_cal=[], calsources=sources['calsources'])
+                   previous_cal=[], calsources=sources['calsources'],
+                             solint='60s')
     run_applycal(msfile=msfile, caltables=caltables, sources=sources,
                     previous_cal=['delay.K1'],
                     previous_cal_targets=['delay.K1'])
-    logger.info('End monitoring')
+    compile_statistics(msfile, tablename=caltables['delay.K1']['table'])
     return flags, caltables
+
 
 
 def dfluxpy(freq,baseline):
