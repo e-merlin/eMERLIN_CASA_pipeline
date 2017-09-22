@@ -262,9 +262,10 @@ def ms_sources(msfile):
     logger.info('Sources in MS {0}: {1}'.format(msfile, mssources))
     return mssources
 
-def get_msinfo(msfile, inputs, doprint=False):
-    logger.info('Reading ms file information')
+def get_msinfo(msfile, inputs, doprint=True):
+    logger.info('Reading ms file information for MS: {0}'.format(msfile))
     msinfo = {}
+    msinfo['msfile'] = msfile
     msinfo['sources'] = user_sources(inputs)
     msinfo['mssources'] = ms_sources(msfile)
     msinfo['antennas'] = get_antennas(msfile)
@@ -575,6 +576,22 @@ def flag_applied(flags, new_flag):
     logger.info('Current flags applied: {0}'.format(flags))
     save_obj(flags, './flags')
     return flags
+
+def define_refant(msfile, msinfo, inputs):
+    refant0 = inputs['refant']
+    refant_user = refant0.replace(' ', '').split(',')
+    refant_in_ms = (np.array([ri in msinfo['antennas'] for ri in refant_user])).all()
+    if not refant_in_ms:
+        if refant0 != '':
+            logger.warning('Selected reference antenna(s) {0} not in MS! User selection will be ignored'.format(refant0))
+        # Finding best antennas for refant
+        refant, refant_pref = find_refant(msfile, field=msinfo['sources']['bpcal'],
+                                             antennas='Mk2,Pi,Da,Kn', spws='2,3', scan='')
+    else:
+        refant = ','.join(refant_user)
+    logger.info('Refant: {}'.format(refant))
+    return refant
+
 
 def find_refant(msfile, field, antennas='', spws='', scan=''):
     logger.info('Searching refant automatically')

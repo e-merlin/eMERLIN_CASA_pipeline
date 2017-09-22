@@ -152,40 +152,17 @@ else:
 
 logger.info('Using MS file: {0}'.format(msfile))
 
+### Create dictionary with ms information.
+if os.path.isdir(msfile):
+    msinfo = em.get_msinfo(msfile, inputs)
 
 ### Load manual flagging file
 if inputs['flag_2b_manual'] == 1:
     flags = em.flagdata2_manual(msfile=msfile, inpfile=inputs['manual_flags_b'], flags=flags)
 
+### Defining reference antenna
+msinfo['refant'] = em.define_refant(msfile, msinfo, inputs)
 
-### Retrieve MS information
-# Sources in the MS
-sources['msfile_fields'] = ','.join(vishead(msfile,mode='list',listitems='field')['field'][0])
-logger.info('Sources in MS {0}: {1}'.format(msfile, sources['msfile_fields']))
-
-# Antenna list and reference antenna
-ms.open(msfile)
-d = ms.getdata(['axis_info'],ifraxis=True)
-ms.close()
-antennas = np.unique('-'.join(d['axis_info']['ifr_axis']['ifr_name']).split('-'))
-
-logger.info('Antennas in MS: {0}'.format(antennas))
-
-# Defining reference antenna
-refant = inputs['refant']
-refant_user = refant.replace(' ', '').split(',')
-refant_in_ms = (np.array([ri in antennas for ri in refant_user])).all()
-
-if not refant_in_ms:
-    if refant != '':
-        logger.warning('Selected reference antenna(s) {0} not in MS! User selection will be ignored'.format(refant))
-    # Finding best antennas for refant
-    refant, refant_pref = em.find_refant(msfile, field=sources['bpcal'],
-                                         antennas='Mk2,Pi,Da,Kn', spws='2,3', scan='')
-else:
-    refant = ','.join(refant_user)
-
-logger.info('Refant: {}'.format(refant))
 
 
 ###################
@@ -204,7 +181,7 @@ except:
     caltables['plots_dir'] = plots_dir
     caltables['calib_dir'] = calib_dir
     caltables['num_spw'] = num_spw
-    caltables['refant'] = refant
+    caltables['refant'] = msinfo['refant']
     logger.info('New caltables dictionary created. Saved to: {0}'.format(calib_dir+'caltables.pkl'))
 
 ### Initialize models ###
