@@ -211,13 +211,6 @@ def join_lists(x=[]):
     return ','.join(x2)
 
 def user_sources(inputs):
-    """Task to read sources specified by the user and write a dictionary with
-     different combinations of sources.
-     Args:
-        inputs: pipeline inputs dictionary
-    Returns:
-        dict: dictionary listing sources and groups of sources.
-     """
     sources = {}
     sources['targets'] = inputs['targets']
     sources['phscals'] = inputs['phscals']
@@ -236,6 +229,59 @@ def user_sources(inputs):
     logger.info('Bandpass:  {0}'.format(sources['bpcal']))
     logger.info('Pointcal:  {0}'.format(sources['ptcal']))
     return sources
+
+def get_antennas(msfile):
+    # Antenna list 
+    ms.open(msfile)
+    d = ms.getdata(['axis_info'],ifraxis=True)
+    ms.close()
+    antennas = np.unique('-'.join(d['axis_info']['ifr_axis']['ifr_name']).split('-'))
+    logger.info('Antennas in MS {0}: {1}'.format(msfile, antennas))
+    return antennas
+
+def prt_dict(d):
+    for key in d.keys():
+        if type(d[key]) == dict:
+            prt_dict(d[key])
+        else:
+            print('{0:20s} {1}'.format(key, d[key]))
+
+def get_timefreq(msfile):
+    # Date and time of observation
+    ms.open(msfile)
+    axis_info = ms.getdata(['axis_info'],ifraxis=True)
+    ms.close()
+    t_mjd, t = get_dates(axis_info)
+    freq_ini = np.min(axis_info['axis_info']['freq_axis']['chan_freq'])/1e9
+    freq_end = np.max(axis_info['axis_info']['freq_axis']['chan_freq'])/1e9
+    chan_res = np.mean(axis_info['axis_info']['freq_axis']['resolution'])/1e9
+    return t[0], t[-1], freq_ini, freq_end, chan_res
+
+def ms_sources(msfile):
+    mssources = ','.join(vishead(msfile,mode='list',listitems='field')['field'][0])
+    logger.info('Sources in MS {0}: {1}'.format(msfile, mssources))
+    return mssources
+
+def get_msinfo(msfile, inputs, doprint=False):
+    logger.info('Reading ms file information')
+    msinfo = {}
+    msinfo['sources'] = user_sources(inputs)
+    msinfo['mssources'] = ms_sources(msfile)
+    msinfo['antennas'] = get_antennas(msfile)
+    msinfo['band'] = check_band(msfile)
+    msinfo['baselines'] = get_baselines(msfile)
+    msinfo['num_spw'] = len(vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
+    t_ini, t_end, freq_ini, freq_end, chan_res = get_timefreq(msfile)
+    msinfo['t_ini'] = t_ini
+    msinfo['t_end'] = t_end
+    msinfo['freq_ini'] = freq_ini
+    msinfo['freq_end'] = freq_end
+    msinfo['chan_res'] = chan_res
+    save_obj(msinfo, msfile)
+    logger.info('Saving information of MS {0} in: {1}'.format(msfile, msfile+'.pkl'))
+    if doprint:
+        prt_dict(msinfo)
+    return msinfo
 
 
 def run_importfitsIDI(data_dir,vis, setorder=False):
@@ -589,14 +635,18 @@ def find_refant(msfile, field, antennas='', spws='', scan=''):
 
 ### Run CASA calibration functions
 
-def run_split(msfile, fields, sources, width, timebin, datacolumn='data'):
+def run_split(msfile, msinfo, width, timebin, datacolumn='data'):
     logger.info('Start split')
     # Check that all sources are there:
-    sources_not_in_msfile = [s for s in sources['allsources'].split(',') if s not in sources['msfile_fields']]
+    sources_not_in_msfile = [s for s in
+                             msinfo['sources']['allsources'].split(',')
+                             if s not in msinfo['mssources'].split(',')]
     if len(sources_not_in_msfile) > 0:
-        fields = ','.join(sources['msfile_fields'])
+        fields = msinfo['mssources']
         logger.warning('Fields {} not present in MS but listed in inputs file.'.format(','.join(sources_not_in_msfile)))
         logger.warning('All fields will be included in the averaged MS.')
+    else:
+        fields = msinfo['sources']['allsources']
     name = '.'.join(msfile.split('.')[:-1])
     exte = ''.join(msfile.split('.')[-1])
     outputmsfile = name+'_avg.'+exte

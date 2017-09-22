@@ -49,9 +49,6 @@ def load_obj(name):
         return pickle.load(f)
 
 
-# Sources specified by user
-sources = em.user_sources(inputs)
-
 # Flags applied to the data by the pipeline
 try:
     flags = load_obj('./flags')
@@ -73,8 +70,6 @@ if inputs['quit'] == 1: #Check from GUI if quit is needed
 fitsfile = inputs['inbase']+'.fits'
 msfile = inputs['inbase']+'.ms'
 
-save_obj(sources, 'sources')
-
 ## Check for measurement sets in current directory otherwise drag from defined data directory
 if os.path.isdir(inputs['inbase']+'.ms') == False and os.path.isdir(inputs['inbase']+'.mms') == False:
 	if os.path.isdir(data_dir+inputs['inbase']+'.mms') == True:
@@ -86,11 +81,15 @@ if os.path.isdir(inputs['inbase']+'.ms') == False and os.path.isdir(inputs['inba
 else:
 	logger.info('Measurement set found: {}. Continuing with your inputs'.format(msfile))
 
+
+#################################
+### LOAD AND PREPROCESS DATA  ###
+#################################
+
 ## Pipeline processes, inputs are read from the inputs dictionary
 if inputs['run_importfits'] == 1:
     em.run_importfitsIDI(data_dir,msfile)
     em.check_mixed_mode(msfile,mode='split')
-
 
 if inputs['hanning'] == 1:
 	em.hanning(inputvis=msfile,deloriginal=True)
@@ -105,32 +104,34 @@ if inputs['ms2mms'] == 1:
     else:
         em.ms2mms(vis=msfile,mode='parallel')
 
-## check for parallelisation
+### check for parallelisation
 if os.path.isdir('./'+inputs['inbase']+'.mms') == True:
     msfile = inputs['inbase']+'.mms'
+
+### Create dictionary with ms information.
+# It will try to remake the msinfo dictionary from the msfile. If the msfile is
+# not there, it will try to load the pkl file. If nothing there (means that we
+# don't care about the unaveraged data), nothing is done.
+if os.path.isdir(msfile):
+    msinfo = em.get_msinfo(msfile, inputs)
+else:
+    try:
+        msinfo = load_ob(msfile)
+    except:
+        pass
 
 ### Run AOflagger
 if inputs['flag_0_aoflagger'] == 1:
     flags = em.run_aoflagger_fields(vis=msfile, flags=flags, fields='all', pipeline_path = pipeline_path)
 
-
 ### Produce some initial plots ###
 if inputs['prediag'] == 1:
 	em.do_prediagnostics(msfile,plots_dir)
 
-# Antenna list and reference antenna
-ms.open(msfile)
-d = ms.getdata(['axis_info'],ifraxis=True)
-ms.close()
-antennas = np.unique('-'.join(d['axis_info']['ifr_axis']['ifr_name']).split('-'))
-
-logger.info('Antennas in MS: {0}'.format(antennas))
-
-
 ### A-priori flagdata: Lo&Mk2, edge channels, standard quack
 if inputs['flag_1_apriori'] == 1:
-    flags = em.flagdata1_apriori(msfile=msfile, sources=sources, flags=flags,
-                                 antennas=antennas, do_quack=True)
+    flags = em.flagdata1_apriori(msfile=msfile, sources=msinfo['sources'], flags=flags,
+                                 antennas=msinfo['antennas'], do_quack=True)
 
 ### Load manual flagging file
 if inputs['flag_2a_manual'] == 1:
@@ -139,7 +140,7 @@ if inputs['flag_2a_manual'] == 1:
 
 ### Average data ###
 if inputs['average_1'] == 1:
-    em.run_split(msfile, fields=sources['allsources'], sources=sources, width=4, timebin='2s')
+    em.run_split(msfile, msinfo, width=4, timebin='2s')
 
 # Check if averaged data already generated
 if os.path.isdir('./'+inputs['inbase']+'_avg.mms') == True:
