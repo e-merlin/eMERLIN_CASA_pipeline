@@ -262,7 +262,7 @@ def ms_sources(msfile):
     logger.info('Sources in MS {0}: {1}'.format(msfile, mssources))
     return mssources
 
-def get_msinfo(msfile, inputs, doprint=True):
+def get_msinfo(msfile, inputs, doprint=False):
     logger.info('Reading ms file information for MS: {0}'.format(msfile))
     msinfo = {}
     msinfo['msfile'] = msfile
@@ -504,7 +504,7 @@ def flagdata1_apriori(msfile, msinfo, flags, do_quack=True):
     nchan = len(d['axis_info']['freq_axis']['chan_freq'][:,0])
 
     # Flag Lo-Mk2
-    if 'Lo' in antennas and 'Mk2' in msinfo['antennas']:
+    if 'Lo' in msinfo['antennas'] and 'Mk2' in msinfo['antennas']:
         logger.info('Flagging Lo-Mk2 baseline')
         flagdata(vis=msfile, mode='manual', field=msinfo['sources']['allsources'], antenna='Lo*&Mk2*')
     # Subband edges
@@ -1273,23 +1273,21 @@ def compile_delays(tablename, outname):
     logger.info('Delay statistics saved to: {0}'.format(outname))
 
 
-def monitoring(msfile, data_dir, sources, flags, caltables, previous_cal,
-               calsources, antennas):
-    # This is intented to run in a single-source file for daily monitoring on
+def monitoring(msfile, msinfo, flags, caltables, previous_cal):
+    # This is intented to run on a single-source file for daily monitoring on
     # unaveraged data
     logger.info('Starting monitoring')
     band = check_band(msfile)
     if band == 'L':
         hanning(inputvis=msfile,deloriginal=True)
 
-    flags = flagdata1_apriori(msfile=msfile, sources=sources, flags=flags,
-                                 antennas=antennas, do_quack=True)
+    flags = flagdata1_apriori(msfile=msfile, msinfo=msinfo, flags=flags, do_quack=True)
 
-    flags = flagdata_tfcrop_bright(msfile=msfile, sources=sources, flags=flags)
+    flags = flagdata_tfcrop_bright(msfile=msfile, sources=msinfo['sources'], flags=flags)
     caltables = solve_delays(msfile=msfile, caltables=caltables,
-                   previous_cal=[], calsources=sources['calsources'],
+                   previous_cal=[], calsources=msinfo['sources']['calsources'],
                              solint='60s')
-    run_applycal(msfile=msfile, caltables=caltables, sources=sources,
+    run_applycal(msfile=msfile, caltables=caltables, sources=msinfo['sources'],
                     previous_cal=['delay.K1'],
                     previous_cal_targets=['delay.K1'])
     compile_statistics(msfile, tablename=caltables['delay.K1']['table'])

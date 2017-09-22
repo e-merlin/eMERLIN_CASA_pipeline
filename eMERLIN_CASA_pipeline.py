@@ -285,14 +285,13 @@ if inputs['applycal_all'] > 0:
 
 
 ### Run monitoring for bright sources:
-try:
-    if inputs['monitoring'] == 1:
-        flags, caltables = em.monitoring(msfile=msfile, data_dir=data_dir,
-                                         msinfo=msinfo,
+#try:
+if inputs['monitoring'] == 1:
+        flags, caltables = em.monitoring(msfile=msfile, msinfo=msinfo,
                                          flags=flags, caltables=caltables,
                                          previous_cal=[''])
-except:
-    pass
+#except:
+#    pass
 
 
 logger.info('Pipeline finished')
