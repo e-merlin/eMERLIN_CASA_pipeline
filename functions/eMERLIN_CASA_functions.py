@@ -495,7 +495,7 @@ field=x[i], antenna='*&*', averagedata=True, avgtime=time, iteraxis='baseline', 
     logger.info('End prediagnostics')
 
 
-def flagdata1_apriori(msfile, sources, flags, antennas, do_quack=True):
+def flagdata1_apriori(msfile, msinfo, flags, do_quack=True):
     logger.info('Start flagdata1_apriori')
     # Find number of channels in MS:
     ms.open(msfile)
@@ -504,21 +504,21 @@ def flagdata1_apriori(msfile, sources, flags, antennas, do_quack=True):
     nchan = len(d['axis_info']['freq_axis']['chan_freq'][:,0])
 
     # Flag Lo-Mk2
-    if 'Lo' in antennas and 'Mk2' in antennas:
+    if 'Lo' in antennas and 'Mk2' in msinfo['antennas']:
         logger.info('Flagging Lo-Mk2 baseline')
-        flagdata(vis=msfile, mode='manual', field=sources['allsources'], antenna='Lo*&Mk2*')
+        flagdata(vis=msfile, mode='manual', field=msinfo['sources']['allsources'], antenna='Lo*&Mk2*')
     # Subband edges
     channels_to_flag = '*:0~{0};{1}~{2}'.format(nchan/128-1, nchan-nchan/128, nchan-1)
     logger.info('MS has {} channels'.format(nchan))
     logger.info('Flagging edge channels {0}'.format(channels_to_flag))
-    flagdata(vis=msfile, mode='manual', field=sources['allsources'], spw=channels_to_flag)
+    flagdata(vis=msfile, mode='manual', field=msinfo['sources']['allsources'], spw=channels_to_flag)
     # Slewing (typical):
     # Main calibrators, 5 min
     logger.info('Flagging 5 min from bright calibrators')
-    flagdata(vis=msfile, field=sources['maincal'], mode='quack', quackinterval=300)
+    flagdata(vis=msfile, field=msinfo['sources']['maincal'], mode='quack', quackinterval=300)
     # Target and phase reference, 20 sec
     logger.info('Flagging first 20 sec of target and phasecal')
-    flagdata(vis=msfile, field=sources['targets_phscals'], mode='quack', quackinterval=20)
+    flagdata(vis=msfile, field=msinfo['sources']['targets_phscals'], mode='quack', quackinterval=20)
     # We can add more (Lo is slower, etc).
     flag_applied(flags, 'flagdata1_apriori')
     logger.info('End flagdata1_apriori')
@@ -532,14 +532,14 @@ def flagdata2_manual(msfile, inpfile, flags):
     logger.info('End flagdata_manual')
     return flags
 
-def flagdata3_tfcropBP(msfile, sources, flags):
+def flagdata3_tfcropBP(msfile, msinfo, flags):
     logger.info('Start flagdata3_tfcropBP')
     logger.info("Running flagdata, mode = 'tfcrop'")
     logger.info("correlation='ABS_ALL'")
     logger.info("ntime='90min', combinescans=True, datacolumn='corrected'")
     logger.info("winsize=3, timecutoff=4.0, freqcutoff=3.0, maxnpieces=1")
     logger.info("usewindowstats='sum', halfwin=3, extendflags=True")
-    flagdata(vis=msfile, mode='tfcrop', field=sources['allsources'],
+    flagdata(vis=msfile, mode='tfcrop', field=msinfo['sources']['allsources'],
              antenna='', scan='',spw='', correlation='ABS_ALL',
              ntime='90min', combinescans=True, datacolumn='corrected',
              winsize=3, timecutoff=4.0, freqcutoff=3.0, maxnpieces=1,
