@@ -49,30 +49,8 @@ def load_obj(name):
         return pickle.load(f)
 
 
-def join_lists(x=[]):
-    x1 = ','.join(x)
-    x2 = set(x1.split(','))
-    return ','.join(x2)
-
-# Sources to process
-sources = {}
-sources['targets'] = inputs['targets']
-sources['phscals'] = inputs['phscals']
-sources['fluxcal'] = inputs['fluxcal']
-sources['bpcal']   = inputs['bpcal']
-sources['ptcal']   = inputs['ptcal']
-sources['calsources'] = join_lists([sources['phscals'], sources['fluxcal'],sources['bpcal'], sources['ptcal']])
-sources['maincal'] = join_lists([sources['fluxcal'],sources['bpcal'], sources['ptcal']])
-sources['allsources'] = join_lists([sources['calsources'], sources['targets']])
-sources['no_fluxcal'] = sources['allsources'].replace(sources['fluxcal'], '').replace(',,',',').strip(',')
-sources['cals_no_fluxcal'] = sources['calsources'].replace(sources['fluxcal'], '').replace(',,',',').strip(',')
-sources['targets_phscals'] = join_lists([sources['targets'],sources['phscals']])
-
-logger.info('Targets:   {0}'.format(sources['targets']))
-logger.info('Phasecals: {0}'.format(sources['phscals']))
-logger.info('Fluxcal:   {0}'.format(sources['fluxcal']))
-logger.info('Bandpass:  {0}'.format(sources['bpcal']))
-logger.info('Pointcal:  {0}'.format(sources['ptcal']))
+# Sources specified by user
+sources = em.user_sources(inputs)
 
 # Flags applied to the data by the pipeline
 try:
