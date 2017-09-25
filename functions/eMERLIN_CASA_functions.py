@@ -621,10 +621,13 @@ def find_refant(msfile, field, antennas='', spws='', scan=''):
                 snrj = []
                 for basel in antennas:
                     if basel != anten:
-                        d2 = visstat(msfile, antenna='{}&{}'.format(anten, basel),
-                                     field=field, axis='amplitude', scan=scan,
-                                     spw=str(spw)+channels, correlation=corr)
-                        snrj.append(d2['DATA']['median']/d2['DATA']['stddev'])
+                        try:
+                            d2 = visstat(msfile, antenna='{}&{}'.format(anten, basel),
+                                         field=field, axis='amplitude', scan=scan,
+                                         spw=str(spw)+channels, correlation=corr)
+                            snrj.append(d2['DATA']['median']/d2['DATA']['stddev'])
+                        except:
+                            snrj.append(0.0)
                 snr[i, j, k] = np.mean(snrj)
 
     # Sorting antennas by average S/N, averaged in polarization and spw.
