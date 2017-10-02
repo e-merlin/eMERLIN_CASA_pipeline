@@ -49,31 +49,6 @@ def load_obj(name):
         return pickle.load(f)
 
 
-def join_lists(x=[]):
-    x1 = ','.join(x)
-    x2 = set(x1.split(','))
-    return ','.join(x2)
-
-# Sources to process
-sources = {}
-sources['targets'] = inputs['targets']
-sources['phscals'] = inputs['phscals']
-sources['fluxcal'] = inputs['fluxcal']
-sources['bpcal']   = inputs['bpcal']
-sources['ptcal']   = inputs['ptcal']
-sources['calsources'] = join_lists([sources['phscals'], sources['fluxcal'],sources['bpcal'], sources['ptcal']])
-sources['maincal'] = join_lists([sources['fluxcal'],sources['bpcal'], sources['ptcal']])
-sources['allsources'] = join_lists([sources['calsources'], sources['targets']])
-sources['no_fluxcal'] = sources['allsources'].replace(sources['fluxcal'], '').replace(',,',',').strip(',')
-sources['cals_no_fluxcal'] = sources['calsources'].replace(sources['fluxcal'], '').replace(',,',',').strip(',')
-sources['targets_phscals'] = join_lists([sources['targets'],sources['phscals']])
-
-logger.info('Targets:   {0}'.format(sources['targets']))
-logger.info('Phasecals: {0}'.format(sources['phscals']))
-logger.info('Fluxcal:   {0}'.format(sources['fluxcal']))
-logger.info('Bandpass:  {0}'.format(sources['bpcal']))
-logger.info('Pointcal:  {0}'.format(sources['ptcal']))
-
 # Flags applied to the data by the pipeline
 try:
     flags = load_obj('./flags')
@@ -95,8 +70,6 @@ if inputs['quit'] == 1: #Check from GUI if quit is needed
 fitsfile = inputs['inbase']+'.fits'
 msfile = inputs['inbase']+'.ms'
 
-save_obj(sources, 'sources')
-
 ## Check for measurement sets in current directory otherwise drag from defined data directory
 if os.path.isdir(inputs['inbase']+'.ms') == False and os.path.isdir(inputs['inbase']+'.mms') == False:
 	if os.path.isdir(data_dir+inputs['inbase']+'.mms') == True:
@@ -108,11 +81,15 @@ if os.path.isdir(inputs['inbase']+'.ms') == False and os.path.isdir(inputs['inba
 else:
 	logger.info('Measurement set found: {}. Continuing with your inputs'.format(msfile))
 
+
+#################################
+### LOAD AND PREPROCESS DATA  ###
+#################################
+
 ## Pipeline processes, inputs are read from the inputs dictionary
 if inputs['run_importfits'] == 1:
     em.run_importfitsIDI(data_dir,msfile)
     em.check_mixed_mode(msfile,mode='split')
-
 
 if inputs['hanning'] == 1:
 	em.hanning(inputvis=msfile,deloriginal=True)
@@ -127,24 +104,33 @@ if inputs['ms2mms'] == 1:
     else:
         em.ms2mms(vis=msfile,mode='parallel')
 
-## check for parallelisation
+### check for parallelisation
 if os.path.isdir('./'+inputs['inbase']+'.mms') == True:
     msfile = inputs['inbase']+'.mms'
+
+### Create dictionary with ms information.
+# It will try to remake the msinfo dictionary from the msfile. If the msfile is
+# not there, it will try to load the pkl file. If nothing there (means that we
+# don't care about the unaveraged data), nothing is done.
+if os.path.isdir(msfile):
+    msinfo = em.get_msinfo(msfile, inputs)
+else:
+    try:
+        msinfo = load_ob(msfile)
+    except:
+        pass
 
 ### Run AOflagger
 if inputs['flag_0_aoflagger'] == 1:
     flags = em.run_aoflagger_fields(vis=msfile, flags=flags, fields='all', pipeline_path = pipeline_path)
 
-
 ### Produce some initial plots ###
 if inputs['prediag'] == 1:
 	em.do_prediagnostics(msfile,plots_dir)
 
-
 ### A-priori flagdata: Lo&Mk2, edge channels, standard quack
 if inputs['flag_1_apriori'] == 1:
-    flags = em.flagdata1_apriori(msfile=msfile, sources=sources, flags=flags,
-                                 antennas=antennas, do_quack=True)
+    flags = em.flagdata1_apriori(msfile=msfile, msinfo=msinfo, flags=flags, do_quack=True)
 
 ### Load manual flagging file
 if inputs['flag_2a_manual'] == 1:
@@ -153,7 +139,7 @@ if inputs['flag_2a_manual'] == 1:
 
 ### Average data ###
 if inputs['average_1'] == 1:
-    em.run_split(msfile, fields=sources['allsources'], sources=sources, width=4, timebin='2s')
+    em.run_split(msfile, msinfo, width=4, timebin='2s')
 
 # Check if averaged data already generated
 if os.path.isdir('./'+inputs['inbase']+'_avg.mms') == True:
@@ -165,40 +151,17 @@ else:
 
 logger.info('Using MS file: {0}'.format(msfile))
 
+### Create dictionary with ms information.
+if os.path.isdir(msfile):
+    msinfo = em.get_msinfo(msfile, inputs)
 
 ### Load manual flagging file
 if inputs['flag_2b_manual'] == 1:
     flags = em.flagdata2_manual(msfile=msfile, inpfile=inputs['manual_flags_b'], flags=flags)
 
+### Defining reference antenna
+msinfo['refant'] = em.define_refant(msfile, msinfo, inputs)
 
-### Retrieve MS information
-# Sources in the MS
-sources['msfile_fields'] = ','.join(vishead(msfile,mode='list',listitems='field')['field'][0])
-logger.info('Sources in MS {0}: {1}'.format(msfile, sources['msfile_fields']))
-
-# Antenna list and reference antenna
-ms.open(msfile)
-d = ms.getdata(['axis_info'],ifraxis=True)
-ms.close()
-antennas = np.unique('-'.join(d['axis_info']['ifr_axis']['ifr_name']).split('-'))
-
-logger.info('Antennas in MS: {0}'.format(antennas))
-
-# Defining reference antenna
-refant = inputs['refant']
-refant_user = refant.replace(' ', '').split(',')
-refant_in_ms = (np.array([ri in antennas for ri in refant_user])).all()
-
-if not refant_in_ms:
-    if refant != '':
-        logger.warning('Selected reference antenna(s) {0} not in MS! User selection will be ignored'.format(refant))
-    # Finding best antennas for refant
-    refant, refant_pref = em.find_refant(msfile, field=sources['bpcal'],
-                                         antennas='Mk2,Pi,Da,Kn', spws='2,3', scan='')
-else:
-    refant = ','.join(refant_user)
-
-logger.info('Refant: {}'.format(refant))
 
 
 ###################
@@ -211,54 +174,52 @@ try:
     caltables = load_obj(calib_dir+'caltables')
     logger.info('Loaded previous calibration tables from: {0}'.format(calib_dir+'caltables.pkl'))
 except:
-    num_spw = len(vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
     caltables = {}
     caltables['inbase'] = inputs['inbase']
     caltables['plots_dir'] = plots_dir
     caltables['calib_dir'] = calib_dir
-    caltables['num_spw'] = num_spw
-    caltables['refant'] = refant
+    caltables['num_spw'] = msinfo['num_spw']
+    caltables['refant'] = msinfo['refant']
     logger.info('New caltables dictionary created. Saved to: {0}'.format(calib_dir+'caltables.pkl'))
 
 ### Initialize models ###
 if inputs['init_models'] == 1:  # Need to add parameter to GUI
     models_path = pipeline_path+'calibrator_models/'
-    em.run_initialize_models(msfile=msfile, fluxcal=sources['fluxcal'],
+    em.run_initialize_models(msfile=msfile, fluxcal=msinfo['sources']['fluxcal'],
                              models_path=models_path,
-                             delmod_sources=sources['no_fluxcal'])
+                             delmod_sources=msinfo['sources']['no_fluxcal'])
 
 
 ### Initial BandPass calibration ###
 if inputs['bandpass_0'] > 0:
     caltables = em.initial_bp_cal(msfile=msfile, caltables=caltables,
-                                  previous_cal=[], bpcal=sources['bpcal'])
+                                  previous_cal=[], bpcal=msinfo['sources']['bpcal'])
     save_obj(caltables, calib_dir+'caltables')
     save_obj(caltables, calib_dir+'caltables_bandpass0')
     if inputs['bandpass_0'] == 2:
-        em.run_applycal(msfile=msfile, caltables=caltables, sources=sources,
-           previous_cal=['bpcal.B0'],
-           previous_cal_targets=['bpcal.B0'])
+        em.run_applycal(msfile=msfile, caltables=caltables,
+                        sources=msinfo['sources'], previous_cal=['bpcal.B0'],
+                        previous_cal_targets=['bpcal.B0'])
 
 ### Flagdata using TFCROP and bandpass shape B0
 if inputs['flag_3_tfcropBP'] == 1:
     # If B0 has not been applied before, do it now
     if inputs['bandpass_0'] != 2:
-        em.run_applycal(msfile=msfile, caltables=caltables, sources=sources,
-           previous_cal=['bpcal.B0'],
-           previous_cal_targets=['bpcal.B0'])
-    flags = em.flagdata3_tfcropBP(msfile=msfile, sources=sources, flags=flags)
+        em.run_applycal(msfile=msfile, caltables=caltables, sources=msinfo['sources'],
+           previous_cal=['bpcal.B0'], previous_cal_targets=['bpcal.B0'])
+    flags = em.flagdata3_tfcropBP(msfile=msfile, msinfo=msinfo, flags=flags)
 
 
 ### Delay calibration ###
 if inputs['delay'] > 0:
     caltables = em.solve_delays(msfile=msfile, caltables=caltables,
-                                previous_cal=['bpcal.B0'], calsources=sources['calsources'])
+                                previous_cal=['bpcal.B0'], calsources=msinfo['sources']['calsources'])
     # Should the previous_cal be bpcal.B0? Probably better delay fit, but later
     # delay.K1 is applied without bpcal.B0, when bpcal_sp.B1 is computed
     save_obj(caltables, calib_dir+'caltables')
     save_obj(caltables, calib_dir+'caltables_delay')
     if inputs['delay'] == 2:
-        em.run_applycal(msfile=msfile, caltables=caltables, sources=sources,
+        em.run_applycal(msfile=msfile, caltables=caltables, sources=msinfo['sources'],
            previous_cal=['bpcal.B0','delay.K1'],
            previous_cal_targets=['bpcal.B0','delay.K1'])
 
@@ -266,36 +227,39 @@ if inputs['delay'] > 0:
 ### Initial gain calibration ###
 if inputs['gain_0_p_ap'] > 0:
     caltables = em.initial_gaincal(msfile=msfile, caltables=caltables,
-                                  previous_cal=['delay.K1', 'bpcal.B0'],
-                                  calsources=sources['calsources'], phscals=sources['phscals'])
+                                   previous_cal=['delay.K1', 'bpcal.B0'],
+                                   calsources=msinfo['sources']['calsources'],
+                                   phscals=msinfo['sources']['phscals'])
     save_obj(caltables, calib_dir+'caltables')
     save_obj(caltables, calib_dir+'caltables_gaincal')
     if inputs['gain_0_p_ap'] == 2:
-        em.run_applycal(msfile=msfile, caltables=caltables, sources=sources,
+        em.run_applycal(msfile=msfile, caltables=caltables, sources=msinfo['sources'],
            previous_cal=['delay.K1','allcal_p.G0','allcal_ap.G1','bpcal.B0'],
            previous_cal_targets=['delay.K1','phscal_p_scan.G2','allcal_ap.G1','bpcal.B0'])
 
 ### Flux scale ###
 if inputs['fluxscale'] > 0:
     caltables = em.eM_fluxscale(msfile=msfile, caltables=caltables,
-                                sources=sources,
-                                ampcal_table='allcal_ap.G1', antennas=antennas)
+                                sources=msinfo['sources'],
+                                ampcal_table='allcal_ap.G1',
+                                antennas=msinfo['antennas'])
     save_obj(caltables, calib_dir+'caltables')
     save_obj(caltables, calib_dir+'caltables_fluxscale')
     if inputs['fluxscale'] == 2:
-        em.run_applycal(msfile=msfile, caltables=caltables, sources=sources,
-           previous_cal=['delay.K1','allcal_p.G0','allcal_ap.G1_fluxscaled','bpcal.B0'],
-           previous_cal_targets=['delay.K1','phscal_p_scan.G2','allcal_ap.G1_fluxscaled','bpcal.B0'])
+        em.run_applycal(msfile=msfile, caltables=caltables,
+                        sources=msinfo['sources'],
+                        previous_cal=['delay.K1','allcal_p.G0','allcal_ap.G1_fluxscaled','bpcal.B0'],
+                        previous_cal_targets=['delay.K1','phscal_p_scan.G2','allcal_ap.G1_fluxscaled','bpcal.B0'])
 
 ### BandPass calibration with spectral index information ###
 if inputs['bandpass_1_sp'] > 0:
     caltables = em.bandpass_sp(msfile=msfile, caltables=caltables,
                                previous_cal=['delay.K1','allcal_p.G0','allcal_ap.G1_fluxscaled'],
-                               bpcal=sources['bpcal'])
+                               bpcal=msinfo['sources']['bpcal'])
     save_obj(caltables, calib_dir+'caltables')
     save_obj(caltables, calib_dir+'caltables_bandpass_sp')
     if inputs['bandpass_1_sp'] == 2:
-        em.run_applycal(msfile=msfile, caltables=caltables, sources=sources,
+        em.run_applycal(msfile=msfile, caltables=caltables, sources=msinfo['sources'],
            previous_cal=['delay.K1','allcal_p.G0','allcal_ap.G1_fluxscaled','bpcal_sp.B1'],
            previous_cal_targets=['delay.K1','phscal_p_scan.G2','allcal_ap.G1_fluxscaled','bpcal_sp.B1'])
 
@@ -303,21 +267,31 @@ if inputs['bandpass_1_sp'] > 0:
 if inputs['gain_1_amp_sp'] > 0:
     caltables = em.sp_amp_gaincal(msfile=msfile, caltables=caltables,
                                   previous_cal=['delay.K1','allcal_p.G0','bpcal_sp.B1'],
-                                  calsources=sources['calsources'])
+                                  calsources=msinfo['sources']['calsources'])
     save_obj(caltables, calib_dir+'caltables')
     save_obj(caltables, calib_dir+'caltables_gaincal')
     if inputs['gain_1_amp_sp'] == 2:
-        em.run_applycal(msfile=msfile, caltables=caltables, sources=sources,
-           previous_cal=['delay.K1','bpcal_sp.B1','allcal_p.G0','allcal_ap.G3'],
-           previous_cal_targets=['delay.K1','bpcal_sp.B1','phscal_p_scan.G2','allcal_ap.G3'])
+        em.run_applycal(msfile=msfile, caltables=caltables,
+                        sources=msinfo['sources'],
+                        previous_cal=['delay.K1','bpcal_sp.B1','allcal_p.G0','allcal_ap.G3'],
+                        previous_cal_targets=['delay.K1','bpcal_sp.B1','phscal_p_scan.G2','allcal_ap.G3'])
 
 
 ### Apply calibration  ###
 if inputs['applycal_all'] > 0:
-    em.run_applycal(msfile=msfile, caltables=caltables, sources=sources,
+    em.run_applycal(msfile=msfile, caltables=caltables, sources=msinfo['sources'],
        previous_cal=['delay.K1','bpcal_sp.B1','allcal_p.G0','allcal_ap.G3'],
        previous_cal_targets=['delay.K1','bpcal_sp.B1','phscal_p_scan.G2','allcal_ap.G3'])
 
+
+### Run monitoring for bright sources:
+try:
+    if inputs['monitoring'] == 1:
+        flags, caltables = em.monitoring(msfile=msfile, msinfo=msinfo,
+                                         flags=flags, caltables=caltables,
+                                         previous_cal=[''])
+except:
+    pass
 
 
 logger.info('Pipeline finished')
