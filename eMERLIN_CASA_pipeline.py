@@ -73,17 +73,6 @@ if inputs['quit'] == 1: #Check from GUI if quit is needed
 fitsfile = inputs['inbase']+'.fits'
 msfile = inputs['inbase']+'.ms'
 
-## Check for measurement sets in current directory otherwise drag from defined data directory
-if os.path.isdir(inputs['inbase']+'.ms') == False and os.path.isdir(inputs['inbase']+'.mms') == False:
-	if os.path.isdir(data_dir+inputs['inbase']+'.mms') == True:
-		os.system('rsync -ar --progress {0} ./'.format(data_dir+inputs['inbase']+'.mms'))
-	elif os.path.isdir(data_dir+inputs['inbase']+'.ms') == True:
-		os.system('rsync -ar --progress {0} ./'.format(data_dir+inputs['inbase']+'.ms'))
-	else:
-		logger.info('No measurement set found, assuming you need to importfits or change data dir')
-else:
-	logger.info('Measurement set found: {}. Continuing with your inputs'.format(msfile))
-
 
 #################################
 ### LOAD AND PREPROCESS DATA  ###
