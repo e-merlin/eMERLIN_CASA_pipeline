@@ -1,7 +1,5 @@
 #!/usr/local/python
 import os
-from casa import table as tb
-from casa import ms
 import numpy as np
 import pickle
 from Tkinter import *
@@ -9,13 +7,13 @@ import tkMessageBox
 import sys, shutil
 import copy
 import getopt
-#from task_importfitsidi import *
-from eMERLIN_CASA_GUI import GUI_pipeline
-# Need to be in this order:
-from tasks import *
-from casa import *
-from recipes.setOrder import setToCasaOrder
 import datetime
+from eMERLIN_CASA_GUI import GUI_pipeline
+
+# CASA imports
+from taskinit import *
+from tasks import *
+from recipes.setOrder import setToCasaOrder
 
 import logging
 logger = logging.getLogger('logger')

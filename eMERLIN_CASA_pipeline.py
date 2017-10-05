@@ -3,11 +3,14 @@
 import os,sys,math
 import numpy as np
 import pickle
-from casa import table as tb
-from casa import ms
 from Tkinter import *
 import getopt
 import logging
+
+# CASA imports
+from taskinit import *
+from tasks import *
+
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 pipeline_path = os.path.dirname(sys.argv[np.where(np.asarray(sys.argv)=='-c')[0][0] + 1]) + '/'
