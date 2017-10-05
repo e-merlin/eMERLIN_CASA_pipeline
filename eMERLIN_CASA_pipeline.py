@@ -51,16 +51,16 @@ def run_pipeline(inputs=None, inputs_path=''):
     logger.info('Starting pipeline')
     logger.info('Running pipeline from: {}'.format(pipeline_path))
 
-    # Paths to use
-    data_dir = em.backslash_check(inputs['data_dir'])
-    plots_dir = em.backslash_check(inputs['plots_dir'])
-    calib_dir = em.backslash_check(inputs['calib_dir'])
-
     # Inputs
     if inputs_path == '': # Running pipeline
         inputs = em.check_in(pipeline_path)
     else: # Running pipeline from within CASA
         inputs = em.headless(inputs_path)
+
+    # Paths to use
+    data_dir = em.backslash_check(inputs['data_dir'])
+    plots_dir = em.backslash_check(inputs['plots_dir'])
+    calib_dir = em.backslash_check(inputs['calib_dir'])
 
     # Flags applied to the data by the pipeline
     try:
@@ -311,6 +311,6 @@ try:
 except:
     # Running the pipeline from inside CASA
     print('Pipeline initialized. To run the pipeline within CASA use:')
-    print('inputs, caltables, msinfo = run_pipeline(inputs_path=<inputs_path>)')
+    print('inputs, caltables, msinfo = run_pipeline(inputs_path=<input file>)')
 
 
