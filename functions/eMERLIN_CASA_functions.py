@@ -170,7 +170,7 @@ def check_mixed_mode(vis,mode):
 def check_band(msfile):
     # Take first frequency in the MS
     ms.open(msfile)
-    freq = ms.getdata(['axis_info'],ifraxis=True)['axis_info']['freq_axis']['chan_freq'][0][0]/1e9
+    freq = ms.getdata2(['axis_info'],ifraxis=True)['axis_info']['freq_axis']['chan_freq'][0][0]/1e9
     ms.close()
     band = ''
     if (freq > 1.2) and (freq < 1.7):
@@ -183,7 +183,7 @@ def check_band(msfile):
 
 def get_baselines(msfile):
     ms.open(msfile)
-    baselines0 = ms.getdata(['axis_info'],ifraxis=True)['axis_info']['ifr_axis']['ifr_name']
+    baselines0 = ms.getdata2(['axis_info'],ifraxis=True)['axis_info']['ifr_axis']['ifr_name']
     ms.close()
     baselines = []
     for bsl_name in baselines0:
@@ -232,7 +232,7 @@ def user_sources(inputs):
 def get_antennas(msfile):
     # Antenna list 
     ms.open(msfile)
-    d = ms.getdata(['axis_info'],ifraxis=True)
+    d = ms.getdata2(['axis_info'],ifraxis=True)
     ms.close()
     antennas = np.unique('-'.join(d['axis_info']['ifr_axis']['ifr_name']).split('-'))
     logger.info('Antennas in MS {0}: {1}'.format(msfile, antennas))
@@ -248,7 +248,7 @@ def prt_dict(d):
 def get_timefreq(msfile):
     # Date and time of observation
     ms.open(msfile)
-    axis_info = ms.getdata(['axis_info'],ifraxis=True)
+    axis_info = ms.getdata2(['axis_info'],ifraxis=True)
     ms.close()
     t_mjd, t = get_dates(axis_info)
     freq_ini = np.min(axis_info['axis_info']['freq_axis']['chan_freq'])/1e9
@@ -498,7 +498,7 @@ def flagdata1_apriori(msfile, msinfo, flags, do_quack=True):
     logger.info('Start flagdata1_apriori')
     # Find number of channels in MS:
     ms.open(msfile)
-    d = ms.getdata(['axis_info'],ifraxis=True)
+    d = ms.getdata2(['axis_info'],ifraxis=True)
     ms.close()
     nchan = len(d['axis_info']['freq_axis']['chan_freq'][:,0])
 
@@ -595,7 +595,7 @@ def define_refant(msfile, msinfo, inputs):
 def find_refant(msfile, field, antennas='', spws='', scan=''):
     logger.info('Searching refant automatically')
     ms.open(msfile)
-    d = ms.getdata(['axis_info'],ifraxis=True)
+    d = ms.getdata2(['axis_info'],ifraxis=True)
     ms.close()
     if len(antennas)==0:
         antennas = np.unique('-'.join(d['axis_info']['ifr_axis']['ifr_name']).split('-'))
@@ -1306,7 +1306,7 @@ def compile_statistics(msfile, tablename=''):
     baselines = get_baselines(msfile)
     # Date and time of observation
     ms.open(msfile)
-    axis_info = ms.getdata(['axis_info'],ifraxis=True)
+    axis_info = ms.getdata2(['axis_info'],ifraxis=True)
     ms.close()
     vis_field = vishead(msfile,mode='list',listitems='field')['field'][0][0] # Only one expected
     t_mjd, t = get_dates(axis_info)
