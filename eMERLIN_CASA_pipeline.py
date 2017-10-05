@@ -213,9 +213,17 @@ def run_pipeline(inputs=None, inputs_path=''):
 
 
     ### Delay calibration ###
+    use_fringefit = False
     if inputs['delay'] > 0:
-        caltables = em.solve_delays(msfile=msfile, caltables=caltables,
-                                    previous_cal=['bpcal.B0'], calsources=msinfo['sources']['calsources'])
+        if not use_fringefit:
+            caltables = em.solve_delays(msfile=msfile, caltables=caltables,
+                                        previous_cal=['bpcal.B0'],
+                                        calsources=msinfo['sources']['calsources'])
+        else:
+            logger.info('Full fringe fit selected.')
+            caltables = em.delay_fringefit(msfile=msfile, caltables=caltables,
+                                           previous_cal=['bpcal.B0'],
+                                           calsources=msinfo['sources']['calsources'])
         # Should the previous_cal be bpcal.B0? Probably better delay fit, but later
         # delay.K1 is applied without bpcal.B0, when bpcal_sp.B1 is computed
         save_obj(caltables, calib_dir+'caltables')

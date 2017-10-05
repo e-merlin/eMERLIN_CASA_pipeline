@@ -708,6 +708,43 @@ def run_initialize_models(msfile, fluxcal, models_path, delmod_sources):
     delmod(vis=msfile, field=delmod_sources)
     logger.info('End init_models')
 
+def run_fringefit(msfile, caltables, caltable_name, previous_cal, minblperant=3, minsnr=2, smodel=[]):
+    rmdir(caltables[caltable_name]['table'])
+    logger.info('Running fringefit to generate: {0}'.format(caltables[caltable_name]['name']))
+    logger.info('Field(s) = {0}, zerorates = {1}'.format(
+                caltables[caltable_name]['field'],
+                caltables[caltable_name]['zerorates']))
+    logger.info('solint = {0}, spw = {1},  combine = {2}'.format(
+                caltables[caltable_name]['solint'],
+                caltables[caltable_name]['spw'],
+                caltables[caltable_name]['combine']))
+    # Previous calibration
+    gaintable = [caltables[p]['table'] for p in previous_cal]
+    interp    = [caltables[p]['interp'] for p in previous_cal]
+    spwmap    = [caltables[p]['spwmap'] for p in previous_cal]
+    gainfield = [caltables[p]['field'] if len(np.atleast_1d(caltables[p]['field'].split(',')))<2 else '' for p in previous_cal]
+    logger.info('Previous calibration applied: {0}'.format(str(previous_cal)))
+    logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
+    logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
+    logger.info('Previous calibration interp: {0}'.format(str(interp)))
+    logger.info('Generating calibration table: {0}'.format(caltables[caltable_name]['table']))
+    # Run CASA task fringefit
+    fringefit(vis=msfile,
+            caltable  = caltables[caltable_name]['table'],
+            field     = caltables[caltable_name]['field'],
+            solint    = caltables[caltable_name]['solint'],
+            combine   = caltables[caltable_name]['combine'],
+            spw       = caltables[caltable_name]['spw'],
+            refant    = caltables['refant'],
+            antenna   = '*&*',
+            gaintable = gaintable,
+            gainfield = gainfield,
+            interp    = interp,
+            spwmap    = spwmap,
+            zerorates = caltables[caltable_name]['zerorates'])
+    logger.info('caltable {0} in {1}'.format(caltables[caltable_name]['name'],
+                                              caltables[caltable_name]['table']))
+
 
 def run_gaincal(msfile, caltables, caltable_name, previous_cal, minblperant=3, minsnr=2):
     rmdir(caltables[caltable_name]['table'])
@@ -855,7 +892,7 @@ def run_applycal(msfile, caltables, sources, previous_cal, previous_cal_targets=
 
 ### Calibration steps
 
-def solve_delays(msfile, caltables, previous_cal, calsources, solint='600s'):
+def solve_delays(msfile, caltables, previous_cal, calsources, solint='300s'):
     logger.info('Start solve_delays')
     caltable_name = 'delay.K1'
     caltables[caltable_name] = {}
@@ -886,6 +923,59 @@ def solve_delays(msfile, caltables, previous_cal, calsources, solint='600s'):
             showgui=False,figfile=caltableplot, fontsize = 8, plotrange = [-1,-1,-20,20])
     logger.info('Delay calibration plot: {0}'.format(caltableplot))
     logger.info('End solve_delays')
+    return caltables
+
+def delay_fringefit(msfile, caltables, previous_cal, calsources):
+    # Currently does not combine spws because that is not correctly implemented
+    # in the pre-release version of task fringefit
+    logger.info('Start delay_fringefit')
+    caltable_name = 'delay.K1'
+    caltables[caltable_name] = {}
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['field'] = calsources
+    caltables[caltable_name]['solint'] = '300s'
+    caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['spwmap'] = []
+    caltables[caltable_name]['combine'] = ''
+    caltables[caltable_name]['spw'] = ''
+    caltables[caltable_name]['zerorates'] = True
+
+    caltable = caltables[caltable_name]['table']
+    # Calibration
+    run_fringefit(msfile, caltables, caltable_name, previous_cal)
+    logger.info('Fringe calibration {0}: {1}'.format(caltable_name, caltable))
+    # Plots
+    # 1 Phases
+    caltableplot =  caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
+    plotcal(caltable=caltable,xaxis='time',yaxis='phase',subplot=321,iteration='antenna',
+            showgui=False,figfile=caltableplot, fontsize = 8, plotrange =
+            [-1,-1,-180,-180])
+    logger.info('Fringe calibration (phases) plot in: {0}'.format(caltableplot))
+    # 2 Delays
+    caltableplot = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_dela.png'
+    plotcal(caltable=caltable,xaxis='time',yaxis='delay',subplot=321,iteration='antenna',
+            showgui=False,figfile=caltableplot, fontsize = 8, plotrange =
+            [-1,-1,-1,-1])
+    logger.info('Fringe calibration (delays) plot in: {0}'.format(caltableplot))
+    caltableplot =  caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_dela2.png'
+    plotcal(caltable=caltable,xaxis='time',yaxis='delay',subplot=321,iteration='antenna',
+            showgui=False,figfile=caltableplot, fontsize = 8, plotrange =
+            [-1,-1,-20,-20])
+    logger.info('Fringe calibration (delays range) plot in: {0}'.format(caltableplot))
+    ## 3 Rates (they are zeroed)
+    #caltableplot = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_rate.png'
+    #plotcal(caltable=caltable,xaxis='time',yaxis='rate',subplot=321,iteration='antenna',
+    #        showgui=False,figfile=caltableplot, fontsize = 8, plotrange =
+    #        [-1,-1,-1,-1])
+    #logger.info('Fringe calibration (rates) plot in: {0}'.format(caltableplot))
+
+    # 2 Only show typical delay values: from -20 to 20 nanosec
+    caltableplot = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_2.png'
+    plotcal(caltable=caltable,xaxis='time',yaxis='delay',subplot=321,iteration='antenna',
+            showgui=False,figfile=caltableplot, fontsize = 8, plotrange = [-1,-1,-20,20])
+    logger.info('Delay calibration plot: {0}'.format(caltableplot))
+    logger.info('End delay_fringefit')
     return caltables
 
 
