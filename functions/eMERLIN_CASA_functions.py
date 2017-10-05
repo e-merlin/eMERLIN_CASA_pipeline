@@ -30,7 +30,8 @@ def check_in(pipeline_path):
         if o in ('-i','--input'):
             inputs = headless(a) ## read input file
             inputs['quit'] = 0 ##needed to add to be compatible with GUI
-            logger.info('inputs from file: {}'.format(inputs))
+            logger.info('Inputs from file: {}'.format(a))
+            logger.info('Inputs used: {}'.format(inputs))
         elif o in ('-g','--gui'):
             inputs = GUI_pipeline(pipeline_path).confirm_parameters() ## read input file
             logger.info('inputs from GUI: {}'.format(inputs))
