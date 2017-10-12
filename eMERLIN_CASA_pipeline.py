@@ -44,6 +44,7 @@ def get_pipeline_version(pipeline_path):
 def run_pipeline(inputs=None, inputs_path=''):
     # Setup logger
     logger = logging.getLogger('logger')
+    logging.Formatter.converter = time.gmtime
     logger.setLevel(logging.INFO)
     handler = logging.FileHandler('eMCP.log', mode = 'a') # create a file handler
     handler.setLevel(logging.INFO)
@@ -62,6 +63,7 @@ def run_pipeline(inputs=None, inputs_path=''):
     logger.info('Running pipeline from: {}'.format(pipeline_path))
     logger.info('Using github branch: {}'.format(branch))
     logger.info('github last commit: {}'.format(short_commit))
+    logger.info('This log uses UTC times')
 
     # Inputs
     if inputs_path == '': # Running pipeline
