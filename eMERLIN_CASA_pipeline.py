@@ -34,6 +34,12 @@ def load_obj(name):
     with open(name + '.pkl', 'rb') as f:
         return pickle.load(f)
 
+def get_pipeline_version(pipeline_path):
+    headfile = pipeline_path + '.git/HEAD'
+    branch = open(headfile, 'rb').readlines()[0].strip().split('/')[-1]
+    commit = open(pipeline_path + '.git/refs/heads/'+branch, 'rb').readlines()[0].strip()
+    short_commit = commit[:7]
+    return branch, short_commit
 
 def run_pipeline(inputs=None, inputs_path=''):
     # Setup logger
@@ -48,8 +54,14 @@ def run_pipeline(inputs=None, inputs_path=''):
     consoleHandler.setFormatter(formatter)
     logger.addHandler(consoleHandler)
 
+    try:
+        branch, short_commit = get_pipeline_version(pipeline_path)
+    except:
+        branch, short_commit = 'unknown', 'unknown'
     logger.info('Starting pipeline')
     logger.info('Running pipeline from: {}'.format(pipeline_path))
+    logger.info('Using github branch: {}'.format(branch))
+    logger.info('github last commit: {}'.format(short_commit))
 
     # Inputs
     if inputs_path == '': # Running pipeline
