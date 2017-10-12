@@ -3,7 +3,7 @@ This is the CASA pipeline for e-MERLIN data, it is designed to be fully parallel
 
 ## Dependencies ##
 - CASA v5.0+ (see https://casa.nrao.edu/)
-- aoflagger v2.9+ (v2.7+ accepted but not recommended) (see https://sourceforge.net/projects/aoflagger/)
+- aoflagger v2.9+ (see https://sourceforge.net/projects/aoflagger/). v2.7+ accepted but not recommended, will be deprecated.
 - python2.7
 
 ## Download ##
@@ -26,5 +26,8 @@ To execute the pipeline from within CASA:
 > inputs, caltables, msinfo = run_pipeline(inputs_path=<input file>)
 ~~~~
 
+## Additional information ##
 
+[Wiki pages](https://github.com/e-merlin/CASA_eMERLIN_pipeline/wiki)
+[Summary of procedures, pdf](https://github.com/e-merlin/CASA_eMERLIN_pipeline/wiki/files/summary.pdf)
 
