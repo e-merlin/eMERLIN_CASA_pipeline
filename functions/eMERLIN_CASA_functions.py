@@ -808,6 +808,7 @@ def run_bandpass(msfile, caltables, caltable_name, previous_cal, minblperant=3, 
                  caltables[caltable_name]['spw'],
                  caltables[caltable_name]['combine'],
                  caltables[caltable_name]['solnorm']))
+    logger.info('uvrange = {0}'.format(caltables[caltable_name]['uvrange']))
     # Previous calibration
     gaintable = [caltables[p]['table'] for p in previous_cal]
     interp    = [caltables[p]['interp'] for p in previous_cal]
@@ -826,6 +827,7 @@ def run_bandpass(msfile, caltables, caltable_name, previous_cal, minblperant=3, 
              combine   = caltables[caltable_name]['combine'],
              spw       = caltables[caltable_name]['spw'],
              solnorm   = caltables[caltable_name]['solnorm'],
+             uvrange   = caltables[caltable_name]['uvrange'],
              fillgaps  = 16,
              refant    = caltables['refant'],
              gaintable = gaintable,
@@ -1082,6 +1084,7 @@ def initial_bp_cal(msfile, caltables, previous_cal, bpcal):
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
     caltables[caltable_name]['spw'] = ''
+    caltables[caltable_name]['uvrange'] = '>15km'
     caltables[caltable_name]['solnorm'] = True
     bptable = caltables[caltable_name]['table']
     previous_cal_ap_bp = previous_cal_ap + ['bpcal_ap.G1']
@@ -1258,6 +1261,7 @@ def bandpass_sp(msfile, caltables, previous_cal, bpcal):
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
     caltables[caltable_name]['spw'] = ''
+    caltables[caltable_name]['uvrange'] = '>15km'
     caltables[caltable_name]['solnorm'] = False
     bptable = caltables[caltable_name]['table']
     # Calibration
