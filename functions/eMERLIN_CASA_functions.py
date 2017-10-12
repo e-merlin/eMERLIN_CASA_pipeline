@@ -109,20 +109,33 @@ def makedir(pathdir):
         pass
 
 def rmdir(pathdir,message='Deleted:'):
-    try:
-        shutil.rmtree(pathdir)
-        logger.info('{0} {1}'.format(message, pathdir))
-    except:
-        logger.debug('Could not delete: {0} {1}'.format(message, pathdir))
-        pass
+    if os.path.exists(pathdir):
+        try:
+            shutil.rmtree(pathdir)
+            logger.info('{0} {1}'.format(message, pathdir))
+        except:
+            logger.debug('Could not delete: {0} {1}'.format(message, pathdir))
+            pass
 
 def rmfile(pathdir,message='Deleted:'):
-    try:
-        os.remove(pathdir)
-        logger.info('{0} {1}'.format(message, pathdir))
-    except:
-        logger.debug('Could not delete: {0} {1}'.format(message, pathdir))
-        pass
+    if os.path.exists(pathdir):
+        try:
+            os.remove(pathdir)
+            logger.info('{0} {1}'.format(message, pathdir))
+        except:
+            logger.debug('Could not delete: {0} {1}'.format(message, pathdir))
+            pass
+
+def mvdir(pathdir, outpudir):
+    if os.path.exists(pathdir):
+        try:
+            shutil.move(pathdir, outpudir)
+            logger.info('Moved: {0} {1}'.format(pathdir, outpudir))
+        except:
+            logger.debug('Could not move: {0} {1}'.format(pathdir, outpudir))
+            pass
+
+
 
 # Functions to save and load dictionaries
 def save_obj(obj, name):
@@ -286,7 +299,7 @@ def get_msinfo(msfile, inputs, doprint=False):
 
 def run_importfitsIDI(data_dir,vis, setorder=False):
     logger.info('Starting importfitsIDI procedure')
-    os.system('rm -r '+vis)
+    rmdir(vis)
     fitsfiles =[]
     for file in os.listdir(data_dir):
         if file.endswith('fits') or file.endswith('FITS'):
@@ -297,16 +310,16 @@ def run_importfitsIDI(data_dir,vis, setorder=False):
     ms.writehistory(message='eMER_CASA_Pipeline: Import fitsidi to ms, complete',msname=vis)
     if setorder:
         logger.info('Setting MS order with setToCasaOrder')
-        os.system('mv {0} {1}'.format(vis, vis+'_noorder'))
+        mvdir(vis, vis+'_noorder')
         setToCasaOrder(inputMS=vis+'_noorder', outputMS=vis)
-        os.system('rm -r {0}'.format(vis+'_noorder'))
+        rmdir(vis+'_noorder')
     ms.writehistory(message='eMER_CASA_Pipeline: setToCasaOrder, complete',msname=vis)
     logger.info('End importfitsIDI')
     logger.info('Start UVFIX')
     fixvis(vis=vis,outputvis=vis+'.uvfix',reuse=False)
     logger.info('End UVFIX')
-    os.system('rm -r {0}'.format(vis))
-    os.system('mv {0} {1}'.format(vis+'.uvfix', vis))
+    rmdir(vis)
+    mvdir(vis+'.uvfix', vis)
     logger.info('Start flagdata_autocorr')
     flagdata(vis=vis,mode='manual',autocorr=True)
     ms.writehistory(message='eMER_CASA_Pipeline: Fixed uv coordinates & remove autocorr',msname=vis)
@@ -321,20 +334,20 @@ def hanning(inputvis,deloriginal):
     logger.info('Start hanning')
     if inputvis[-3:].lower() == '.ms':
         outputvis = inputvis[:-3]+'_hanning'+inputvis[-3:]
-        os.system('rm -r '+outputvis)
+        rmdir(outputvis)
         hanningsmooth(vis=inputvis,outputvis=outputvis,datacolumn='data')
     elif inputvis[-3:].lower() == 'mms':
         outputvis = inputvis[:-4]+'_hanning'+inputvis[-4:]
-        os.system('rm -r '+outputvis)
+        rmdir(outputvis)
         mstransform(vis=inputvis,outputvis=outputvis,hanning=True,datacolumn='data')
     if deloriginal==True:
-        os.system('rm -r {0}'.format(inputvis))
-        os.system('rm -r {0}.flagversions'.format(inputvis))
+        rmdir(inputvis)
+        rmdir(inputvis+'.flagversions')
     else:
-        os.system('mv {0} {1}'.format(inputvis, inputvis+'_prehanning'))
-        os.system('mv {0}.flagversions {1}.flagversions'.format(inputvis, inputvis+'_prehanning'))
-    os.system('mv {0} {1}'.format(outputvis, inputvis))
-    os.system('mv {0}.flagversions {1}.flagversions'.format(outputvis, inputvis))
+        mvdir(inputvis, inputvis+'_prehanning')
+        mvdir(inputvis+'.flagversions', inputvis+'_prehanning.flagversions')
+    mvdir(outputvis, inputvis)
+    mvdir(outputvis+'.flagversions', inputvis+'.flagversions')
     ms.writehistory(message='eMER_CASA_Pipeline: Hanning smoothed data, complete',msname=inputvis)
     logger.info('End hanning')
     return
@@ -407,8 +420,8 @@ def ms2mms(vis,mode):
 "all",field="",spw="",scan="",antenna="",correlation="",timerange="",intent="",array="",uvrange="",observation="",feed="",disableparallel=None,ddistart=None
 ,taql=None)
         if os.path.isdir(vis[:-3]+'.mms') == True:
-            os.system('rm -r '+vis)
-            os.system('rm -r '+vis+'.flagversions')
+            rmdir(vis)
+            rmdir(vis+'.flagversions')
         ms.writehistory(message='eMER_CASA_Pipeline: Converted MS to MMS for parallelisation',msname=vis[:-3]+'.mms')
 
     ## Need to use single if you need to aoflag the data later
@@ -417,8 +430,8 @@ def ms2mms(vis,mode):
 "all",field="",spw="",scan="",antenna="",correlation="",timerange="",intent="",array="",uvrange="",observation="",feed="",disableparallel=None,ddistart=None
 ,taql=None)
         if os.path.isdir(vis[:-3]+'.ms') == True:
-            os.system('rm -r '+vis)
-            os.system('rm -r '+vis+'.flagversions')
+           rmdir(vis)
+           rmdir(vis+'.flagversions')
     logger.info('End ms2mms')
 
 def ms2mms_fields(msfile):
@@ -439,8 +452,8 @@ def ms2mms_fields(msfile):
     else:
         logger.critical('No MMS files found.')
     if os.path.isdir(msfile) == True:
-        os.system('rm -r '+msfile)
-        os.system('rm -r '+msfile+'.flagversions')
+        rmdir(msfile)
+        rmdir(msfile+'.flagversions')
     logger.info('End ms2mms_fields')
 
 def do_prediagnostics(vis,plot_dir):
