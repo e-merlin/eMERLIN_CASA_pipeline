@@ -261,7 +261,7 @@ def prt_dict(d):
 def get_timefreq(msfile):
     # Date and time of observation
     ms.open(msfile)
-    axis_info = ms.getdata(['axis_info'])
+    axis_info = ms.getdata(['axis_info'], ifraxis=True)
     ms.close()
     t_mjd, t = get_dates(axis_info)
     freq_ini = np.min(axis_info['axis_info']['freq_axis']['chan_freq'])/1e9
@@ -1082,7 +1082,7 @@ def initial_bp_cal(msfile, caltables, previous_cal, bpcal):
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
     caltables[caltable_name]['spw'] = ''
-    caltables[caltable_name]['uvrange'] = '>15km'
+    caltables[caltable_name]['uvrange'] = ''
     caltables[caltable_name]['solnorm'] = True
     bptable = caltables[caltable_name]['table']
     previous_cal_ap_bp = previous_cal_ap + ['bpcal_ap.G1']
@@ -1259,7 +1259,8 @@ def bandpass_sp(msfile, caltables, previous_cal, bpcal):
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
     caltables[caltable_name]['spw'] = ''
-    caltables[caltable_name]['uvrange'] = '>15km'
+    #caltables[caltable_name]['uvrange'] = '>15km'
+    caltables[caltable_name]['uvrange'] = ''
     caltables[caltable_name]['solnorm'] = False
     bptable = caltables[caltable_name]['table']
     # Calibration
