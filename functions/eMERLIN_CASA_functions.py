@@ -183,7 +183,7 @@ def check_mixed_mode(vis,mode):
 def check_band(msfile):
     # Take first frequency in the MS
     ms.open(msfile)
-    freq = ms.getdata2(['axis_info'],ifraxis=True)['axis_info']['freq_axis']['chan_freq'][0][0]/1e9
+    freq = ms.getdata(['axis_info'])['axis_info']['freq_axis']['chan_freq'][0][0]/1e9
     ms.close()
     band = ''
     if (freq > 1.2) and (freq < 1.7):
@@ -196,7 +196,7 @@ def check_band(msfile):
 
 def get_baselines(msfile):
     ms.open(msfile)
-    baselines0 = ms.getdata2(['axis_info'],ifraxis=True)['axis_info']['ifr_axis']['ifr_name']
+    baselines0 = ms.getdata(['axis_info'],ifraxis=True)['axis_info']['ifr_axis']['ifr_name']
     ms.close()
     baselines = []
     for bsl_name in baselines0:
@@ -245,7 +245,7 @@ def user_sources(inputs):
 def get_antennas(msfile):
     # Antenna list 
     ms.open(msfile)
-    d = ms.getdata2(['axis_info'],ifraxis=True)
+    d = ms.getdata(['axis_info'],ifraxis=True)
     ms.close()
     antennas = np.unique('-'.join(d['axis_info']['ifr_axis']['ifr_name']).split('-'))
     logger.info('Antennas in MS {0}: {1}'.format(msfile, antennas))
@@ -261,13 +261,14 @@ def prt_dict(d):
 def get_timefreq(msfile):
     # Date and time of observation
     ms.open(msfile)
-    axis_info = ms.getdata2(['axis_info'],ifraxis=True)
+    axis_info = ms.getdata(['axis_info'])
     ms.close()
     t_mjd, t = get_dates(axis_info)
     freq_ini = np.min(axis_info['axis_info']['freq_axis']['chan_freq'])/1e9
     freq_end = np.max(axis_info['axis_info']['freq_axis']['chan_freq'])/1e9
     chan_res = np.mean(axis_info['axis_info']['freq_axis']['resolution'])/1e9
-    return t[0], t[-1], freq_ini, freq_end, chan_res
+    nchan = len(axis_info['axis_info']['freq_axis']['chan_freq'][:,0])
+    return t[0], t[-1], freq_ini, freq_end, chan_res, nchan
 
 def ms_sources(msfile):
     mssources = ','.join(vishead(msfile,mode='list',listitems='field')['field'][0])
@@ -284,12 +285,13 @@ def get_msinfo(msfile, inputs, doprint=False):
     msinfo['band'] = check_band(msfile)
     msinfo['baselines'] = get_baselines(msfile)
     msinfo['num_spw'] = len(vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
-    t_ini, t_end, freq_ini, freq_end, chan_res = get_timefreq(msfile)
+    t_ini, t_end, freq_ini, freq_end, chan_res, nchan = get_timefreq(msfile)
     msinfo['t_ini'] = t_ini
     msinfo['t_end'] = t_end
     msinfo['freq_ini'] = freq_ini
     msinfo['freq_end'] = freq_end
     msinfo['chan_res'] = chan_res
+    msinfo['nchan'] = nchan
     save_obj(msinfo, msfile)
     logger.info('Saving information of MS {0} in: {1}'.format(msfile, msfile+'.pkl'))
     if doprint:
@@ -510,11 +512,7 @@ field=x[i], antenna='*&*', averagedata=True, avgtime=time, iteraxis='baseline', 
 def flagdata1_apriori(msfile, msinfo, flags, do_quack=True):
     logger.info('Start flagdata1_apriori')
     # Find number of channels in MS:
-    ms.open(msfile)
-    d = ms.getdata2(['axis_info'],ifraxis=True)
-    ms.close()
-    nchan = len(d['axis_info']['freq_axis']['chan_freq'][:,0])
-
+    nchan = msinfo['nchan']
     # Flag Lo-Mk2
     if 'Lo' in msinfo['antennas'] and 'Mk2' in msinfo['antennas']:
         logger.info('Flagging Lo-Mk2 baseline')
