@@ -195,8 +195,9 @@ def run_pipeline(inputs=None, inputs_path=''):
         caltables['plots_dir'] = plots_dir
         caltables['calib_dir'] = calib_dir
         caltables['num_spw'] = msinfo['num_spw']
-        caltables['refant'] = msinfo['refant']
         logger.info('New caltables dictionary created. Saved to: {0}'.format(calib_dir+'caltables.pkl'))
+
+    caltables['refant'] = msinfo['refant']
 
     ### Initialize models ###
     if inputs['init_models'] == 1:  # Need to add parameter to GUI
