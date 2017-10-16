@@ -302,17 +302,21 @@ def run_pipeline(inputs=None, inputs_path=''):
                             previous_cal_targets=['delay.K1','bpcal_sp.B1','phscal_p_scan.G2','allcal_ap.G3'])
 
 
-    ### RFLAG automatic flagging ###
-    if inputs['flag_4_rflag'] == 1:
-        flags = em.flagdata4_rflag(msfile=msfile, msinfo=msinfo, flags=flags)
-
-
     ### Apply calibration  ###
     if inputs['applycal_all'] > 0:
         em.run_applycal(msfile=msfile, caltables=caltables, sources=msinfo['sources'],
            previous_cal=['delay.K1','bpcal_sp.B1','allcal_p.G0','allcal_ap.G3'],
            previous_cal_targets=['delay.K1','bpcal_sp.B1','phscal_p_scan.G2','allcal_ap.G3'])
+        msinfo['applycal_all'] = True
 
+    ### RFLAG automatic flagging ###
+    if inputs['flag_4_rflag'] == 1:
+        try:
+            msinfo['applycal_all'] == True
+            flags = em.flagdata4_rflag(msfile=msfile, msinfo=msinfo, flags=flags)
+        except:
+            logger.warning('flag_4_rflag selected but applycal_all has not been run. RFLAG only works on calibrated data!')
+            logger.warning('flag_4_rflag will not be executed.')
 
     ### Run monitoring for bright sources:
     try:

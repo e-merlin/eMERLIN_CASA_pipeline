@@ -34,5 +34,5 @@ gain_0_p_ap     = 0
 fluxscale       = 0
 bandpass_1_sp   = 0
 gain_1_amp_sp   = 0
-flag_4_rflag	= 0
 applycal_all    = 0
+flag_4_rflag	= 0
