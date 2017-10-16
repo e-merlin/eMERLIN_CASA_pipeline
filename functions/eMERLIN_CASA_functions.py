@@ -578,6 +578,24 @@ def flagdata_tfcrop_bright(msfile, sources, flags, datacolumn='DATA'):
     logger.info('End flagdata_tfcrop_bright')
     return flags
 
+def flagdata4_rflag(msfile, msinfo, flags):
+    timedevscale = 5
+    freqdevscale = 5
+    logger.info('Start flagdata4_rflag')
+    logger.info("Running flagdata, mode = 'rflag'")
+    logger.info("ntime='90min', combinescans=True, datacolumn='corrected'")
+    logger.info("timedevscale = {0}, freqdevscale = {1}".format(timedevscale,
+                                                                freqdevscale))
+    flagdata(vis=msfile, mode='rflag', field=msinfo['sources']['allsources'],
+             antenna='', scan='',spw='', correlation='',
+             ntime='90min', combinescans=True, datacolumn='corrected',
+             timedevscale=timedevscale, freqdevscale=freqdevscale,
+             action='apply', display='', flagbackup=True)
+    flag_applied(flags, 'flagdata3_rflag')
+    logger.info('End flagdata3_rflag')
+    return flags
+
+
 def flag_applied(flags, new_flag):
     if new_flag in flags:
         logger.warning('Flags from {0} were already applied by the pipeline! They are applied more than once.'.format(new_flag))
@@ -1050,7 +1068,7 @@ def initial_bp_cal(msfile, caltables, previous_cal, bpcal):
     caltables[caltable_name]['field'] = bpcal
     caltables[caltable_name]['gaintype'] = 'G'
     caltables[caltable_name]['calmode'] = 'ap'
-    caltables[caltable_name]['solint'] = '180s'
+    caltables[caltable_name]['solint'] = '32s'
     caltables[caltable_name]['interp'] = 'linear'
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
@@ -1137,7 +1155,7 @@ def initial_gaincal(msfile, caltables, previous_cal, calsources, phscals):
     caltables[caltable_name]['field'] = calsources
     caltables[caltable_name]['gaintype'] = 'G'
     caltables[caltable_name]['calmode'] = 'ap'
-    caltables[caltable_name]['solint'] = '120s'
+    caltables[caltable_name]['solint'] = '32s'
     caltables[caltable_name]['interp'] = 'linear'
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
@@ -1292,7 +1310,7 @@ def sp_amp_gaincal(msfile, caltables, previous_cal, calsources):
     caltables[caltable_name]['field'] = calsources
     caltables[caltable_name]['gaintype'] = 'G'
     caltables[caltable_name]['calmode'] = 'ap'
-    caltables[caltable_name]['solint'] = '180s'
+    caltables[caltable_name]['solint'] = '32s'
     caltables[caltable_name]['interp'] = 'linear'
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''

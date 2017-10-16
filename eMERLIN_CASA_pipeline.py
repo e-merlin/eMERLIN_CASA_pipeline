@@ -302,6 +302,11 @@ def run_pipeline(inputs=None, inputs_path=''):
                             previous_cal_targets=['delay.K1','bpcal_sp.B1','phscal_p_scan.G2','allcal_ap.G3'])
 
 
+    ### RFLAG automatic flagging ###
+    if inputs['flag_4_rflag'] == 1:
+        flags = em.flagdata4_rflag(msfile=msfile, msinfo=msinfo, flags=flags)
+
+
     ### Apply calibration  ###
     if inputs['applycal_all'] > 0:
         em.run_applycal(msfile=msfile, caltables=caltables, sources=msinfo['sources'],
