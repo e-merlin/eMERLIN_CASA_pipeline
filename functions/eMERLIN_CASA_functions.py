@@ -1237,7 +1237,8 @@ def eM_fluxscale(msfile, caltables, ampcal_table, sources, antennas):
     logger.info('Spectrum information: {0}'.format(caltables[caltable_name]['table']+'_fluxes.txt'))
     ### VERY IMPORTANT! THIS VALUE NEEDS TO BE COMPUTED USING FUNCTION dfluxpy
     ### THIS VALUE IS JUST ONLY TEMPORARY
-    eMfactor =  0.99987
+    #eMfactor =  0.99987
+    eMfactor = calc_eMfactor(msfile, field=fluxcal)
     # Get fitted flux density and spectral index, correctly scaled for e-MERLIN
     eMcalfluxes = {}
     for k in calfluxes.keys():
@@ -1420,8 +1421,53 @@ def monitoring(msfile, msinfo, flags, caltables, previous_cal):
     return flags, caltables
 
 
+def calc_eMfactor(msfile, field='1331+305'):
+    logger.info('Computing eMfactor')
+    if field != '1331+305'
+        logger.warning('Scaling flux assuming 3C286 is the flux calibrator. Your flux calibrator is: {}. Scaling is probably wrong.'.format(field))
+    tb.open(msfile+'/FIELD')
+    names = tb.getcol('NAME')
+    field_id = np.argwhere(names == field)[0][0]
+    tb.close()
+
+    tb.open(msfile+'/ANTENNA')
+    anten = tb.getcol('NAME')
+    tb.close()
+
+    tb.open(msfile)
+    uvw = tb.getcol('UVW')
+    a1 = tb.getcol('ANTENNA1')
+    a2 = tb.getcol('ANTENNA2')
+    field = tb.getcol('FIELD_ID')
+    flags = tb.getcol('FLAG')
+    tb.close()
+
+    uvdist = np.sqrt(uvw[0]**2+uvw[1]**2)
+    allflag = np.sum(flags, axis=(0,1))
+    flags_entries = flags.shape[0]*flags.shape[1]
+
+    mask = (uvdist==0) | (allflag==flags_entries) | field!=field_id
+    uvdist_nonzero = np.ma.array(uvdist, mask=mask)
+
+    n = np.argmin(uvdist_nonzero)
+
+    tb.open(msfile+'/SPECTRAL_WINDOW')
+    chan_freq = tb.getcol('CHAN_FREQ')
+    tb.close()
+
+    shortest_baseline = uvdist_nonzero[n] # Shortest baseline in m
+    center_freq = np.mean(chan_freq)/1e6 # Center frequency in MHz
+    dfluxpy_output = dfluxpy(center_freq, shortest_baseline)
+    eMfactor = dfluxpy_output[1]/dfluxpy_output[0]
+    logger.info('Shortest projected baseline: {0} [{1}] - {2} [{3}] {4:10.2f}m'.format(
+        anten[a1[n]], a1[n], anten[a2[n]], a2[n], uvdist_nonzero[n]))
+    logger.info('Central frequency of the MS: {0} MHz'.format(center_freq))
+    logger.info('eMfactor: {0}'.format(eMfactor))
+    return eMfactor
+
 
 def dfluxpy(freq,baseline):
+    import math
     #######
     # Python version of 3C286 flux calculation program (original author unknown)
     # ..............................
@@ -1517,3 +1563,4 @@ def dfluxpy(freq,baseline):
     caution_res_pc = 10.0
 
     return vlaflux, merlinflux, resolved_percent, caution_res_pc, thisbl
+
