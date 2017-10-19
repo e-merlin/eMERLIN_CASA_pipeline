@@ -339,12 +339,11 @@ def run_pipeline(inputs=None, inputs_path=''):
 
 # The  __name__ == "__main__" does not work for CASA.
 try:
-    # Runnig the pipeline externally
+    if run_in_casa == True:
+        # Running the pipeline from inside CASA
+        print('Pipeline initialized. To run the pipeline within CASA use:')
+        print('inputs, caltables, msinfo = run_pipeline(inputs_path=<input file>)')
+except:
     inputs = em.check_in(pipeline_path)
     run_pipeline(inputs=inputs)
-except:
-    # Running the pipeline from inside CASA
-    print('Pipeline initialized. To run the pipeline within CASA use:')
-    print('inputs, caltables, msinfo = run_pipeline(inputs_path=<input file>)')
-
 

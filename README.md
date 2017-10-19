@@ -21,6 +21,7 @@ To run the parallelized version using MPI in CASA you can use:
 
 To execute the pipeline from within CASA:
 ~~~~
+> run_in_casa = True
 > pipeline_path = '/path/to/pipeline_path/'   # You need to define this variable explicitly
 > execfile(pipeline_path + 'eMERLIN_CASA_pipeline.py')
 > inputs, caltables, msinfo = run_pipeline(inputs_path=<input file>)
@@ -28,6 +29,7 @@ To execute the pipeline from within CASA:
 
 ## Additional information ##
 
-[Wiki pages](https://github.com/e-merlin/CASA_eMERLIN_pipeline/wiki)
-[Summary of procedures, pdf](https://github.com/e-merlin/CASA_eMERLIN_pipeline/wiki/files/summary.pdf)
+- [Summary of procedures, pdf](https://github.com/e-merlin/CASA_eMERLIN_pipeline/wiki/files/summary.pdf)
+- [Wiki pages](https://github.com/e-merlin/CASA_eMERLIN_pipeline/wiki)
+
 
