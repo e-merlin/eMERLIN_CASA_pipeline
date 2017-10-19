@@ -1233,27 +1233,26 @@ def eM_fluxscale(msfile, caltables, ampcal_table, sources, antennas):
                           caltable  = caltables[ampcal_table]['table'],
                           fluxtable = caltables[caltable_name]['table'],
                           listfile  = caltables[caltable_name]['table']+'_fluxes.txt')
-    # Include a note in the fluxes.txt file warning that the values in that
-    # file should be corrected by eMfactor
-    with open(caltables[caltable_name]['table']+'_fluxes.txt', 'a') as file:
-        file.write('The real flux densities on the data are the values in this files multiplied by eMfactor={0:6.4f}'.format(eMfactor))
     logger.info('Modified caltable: {0}'.format(caltables[caltable_name]['table']))
     logger.info('Spectrum information: {0}'.format(caltables[caltable_name]['table']+'_fluxes.txt'))
     # Compute correction to scale the flux density of 3C286 according to
     # resolution provided by the shortest available baseline of e-MERLIN
     eMfactor = calc_eMfactor(msfile, field=fluxcal)
+    # Include a note in the fluxes.txt file warning that the values in that
+    # file should be corrected by eMfactor
+    with open(caltables[caltable_name]['table']+'_fluxes.txt', 'a') as file:
+        file.write('# WARNING: All flux densities in this file need to be multiplied by eMfactor={0:6.4f} to match the corrections that have been applied to the data.'.format(eMfactor))
     # Get fitted flux density and spectral index, correctly scaled for e-MERLIN
     eMcalfluxes = {}
     for k in calfluxes.keys():
         if len(calfluxes[k]) > 4:
             try:
                 a=[]
-                print(k, calfluxes[k])
                 a.append(calfluxes[k]['fitFluxd']*eMfactor)
                 a.append(calfluxes[k]['spidx'][1])
                 a.append(calfluxes[k]['fitRefFreq'])
                 eMcalfluxes[calfluxes[k]['fieldName']]=a
-                logger.info('Spectrum for {0:>9s}: Flux density ={1:6.3f}+/-{2:6.3f}, spidx ={3:5.2f}+/-{4:5.2f}'.format(calfluxes[k]['fieldName'],
+                logger.info('Spectrum for {0:>9s}: Flux density ={1:6.3f} +/-{2:6.3f}, spidx ={3:5.2f}+/-{4:5.2f}'.format(calfluxes[k]['fieldName'],
                     calfluxes[k]['fitFluxd']*eMfactor, calfluxes[k]['fitFluxdErr']*eMfactor,
                     calfluxes[k]['spidx'][1], calfluxes[k]['spidxerr'][1]))
             except:
