@@ -1235,9 +1235,13 @@ def eM_fluxscale(msfile, caltables, ampcal_table, sources, antennas):
                           listfile  = caltables[caltable_name]['table']+'_fluxes.txt')
     logger.info('Modified caltable: {0}'.format(caltables[caltable_name]['table']))
     logger.info('Spectrum information: {0}'.format(caltables[caltable_name]['table']+'_fluxes.txt'))
-    ### VERY IMPORTANT! THIS VALUE NEEDS TO BE COMPUTED USING FUNCTION dfluxpy
-    ### THIS VALUE IS JUST ONLY TEMPORARY
-    eMfactor =  0.99987
+    # Compute correction to scale the flux density of 3C286 according to
+    # resolution provided by the shortest available baseline of e-MERLIN
+    eMfactor = calc_eMfactor(msfile, field=fluxcal)
+    # Include a note in the fluxes.txt file warning that the values in that
+    # file should be corrected by eMfactor
+    with open(caltables[caltable_name]['table']+'_fluxes.txt', 'a') as file:
+        file.write('# WARNING: All flux densities in this file need to be multiplied by eMfactor={0:6.4f} to match the corrections that have been applied to the data.'.format(eMfactor))
     # Get fitted flux density and spectral index, correctly scaled for e-MERLIN
     eMcalfluxes = {}
     for k in calfluxes.keys():
@@ -1248,8 +1252,8 @@ def eM_fluxscale(msfile, caltables, ampcal_table, sources, antennas):
                 a.append(calfluxes[k]['spidx'][1])
                 a.append(calfluxes[k]['fitRefFreq'])
                 eMcalfluxes[calfluxes[k]['fieldName']]=a
-                logger.info('Spectrum for {0:>9s}: Flux density ={1:6.3f}+/-{2:6.3f}, spidx ={3:5.2f}+/-{4:5.2f}'.format(calfluxes[k]['fieldName'],
-                    calfluxes[k]['fitFluxd'], calfluxes[k]['fitFluxdErr'],
+                logger.info('Spectrum for {0:>9s}: Flux density ={1:6.3f} +/-{2:6.3f}, spidx ={3:5.2f}+/-{4:5.2f}'.format(calfluxes[k]['fieldName'],
+                    calfluxes[k]['fitFluxd']*eMfactor, calfluxes[k]['fitFluxdErr']*eMfactor,
                     calfluxes[k]['spidx'][1], calfluxes[k]['spidxerr'][1]))
             except:
                 pass
@@ -1420,8 +1424,53 @@ def monitoring(msfile, msinfo, flags, caltables, previous_cal):
     return flags, caltables
 
 
+def calc_eMfactor(msfile, field='1331+305'):
+    logger.info('Computing eMfactor')
+    if field != '1331+305':
+        logger.warning('Scaling flux assuming 3C286 is the flux calibrator. Your flux calibrator is: {}. Scaling is probably wrong.'.format(field))
+    tb.open(msfile+'/FIELD')
+    names = tb.getcol('NAME')
+    field_id = np.argwhere(names == field)[0][0]
+    tb.close()
+
+    tb.open(msfile+'/ANTENNA')
+    anten = tb.getcol('NAME')
+    tb.close()
+
+    tb.open(msfile)
+    uvw = tb.getcol('UVW')
+    a1 = tb.getcol('ANTENNA1')
+    a2 = tb.getcol('ANTENNA2')
+    field = tb.getcol('FIELD_ID')
+    flags = tb.getcol('FLAG')
+    tb.close()
+
+    uvdist = np.sqrt(uvw[0]**2+uvw[1]**2)
+    allflag = np.sum(flags, axis=(0,1))
+    flags_entries = flags.shape[0]*flags.shape[1]
+
+    mask = (uvdist==0) | (allflag==flags_entries) | field!=field_id
+    uvdist_nonzero = np.ma.array(uvdist, mask=mask)
+
+    n = np.argmin(uvdist_nonzero)
+
+    tb.open(msfile+'/SPECTRAL_WINDOW')
+    chan_freq = tb.getcol('CHAN_FREQ')
+    tb.close()
+
+    shortest_baseline = uvdist_nonzero[n] # Shortest baseline in m
+    center_freq = np.mean(chan_freq)/1e6 # Center frequency in MHz
+    dfluxpy_output = dfluxpy(center_freq, shortest_baseline)
+    eMfactor = dfluxpy_output[1]/dfluxpy_output[0]
+    logger.info('Shortest projected baseline: {0} [{1}] - {2} [{3}] {4:10.2f}m'.format(
+        anten[a1[n]], a1[n], anten[a2[n]], a2[n], uvdist_nonzero[n]))
+    logger.info('Central frequency of the MS: {0} MHz'.format(center_freq))
+    logger.info('eMfactor: {0:6.4f}'.format(eMfactor))
+    return eMfactor
+
 
 def dfluxpy(freq,baseline):
+    import math
     #######
     # Python version of 3C286 flux calculation program (original author unknown)
     # ..............................
@@ -1436,26 +1485,10 @@ def dfluxpy(freq,baseline):
     # Reworked to use the 1999 VLA flux formula, and a 2nd formula to give a continuous estimate of the resolved fraction, by Ian Stewart, JBO, 8 Aug 2007.
     # Minor changes by amsr, 8 Aug 2007
 
-    # my $program_name = 'dflux'; # $0 returns the './' prefix if this is used.
-
     lowest_freq = 300.0;
     highest_freq = 50000.0;
     if (freq < lowest_freq or freq > highest_freq):
         print "Frequency must be between $lowest_freq and $highest_freq MHz. \n"
-
-    # Old values for 3C286
-    # A = 1.23734
-    # B = -0.43276
-    # C = -0.14223
-    # D = 0.00345
-
-    # New values taken from AIPS SETJY 31DEC11
-    # Values as of 2010
-
-    # A = 1.2361
-    # B = -0.4127
-    # C = -0.1864
-    # D = 0.0294
 
     # Perley & Butler 2012 values
     A = 1.2515
@@ -1466,9 +1499,6 @@ def dfluxpy(freq,baseline):
     log10f = (math.log(freq)/2.3025851) - 3.0; # Why the -3? Because freq has to be GHz for the formula to work.
     log_flux = A + B*log10f + C*log10f*log10f + D*log10f*log10f*log10f
     vlaflux = math.pow(10.0,log_flux)
-
-
-
 
     # The VLA flux must now be corrected to account for the higher resolving power of merlin. The formula used was obtained with the help of Peter Thomasson. If we assume that 3C286 is represented by a gaussian of angular size theta_s, and represent the resolving power of the given baseline as a function of frequency f and antenna separation L by theta_b(f,L), then the reduction in central flux density A(0) due to the finite theta_s is given by
     #
@@ -1504,16 +1534,14 @@ def dfluxpy(freq,baseline):
     thisbl = "this baseline (Mk-Ta)"
 
     bl_length = baseline
-    # bl_str = sprintf "%8.2f", $ref_bl_length;
-
 
     frac = (freq / ref_freq) * (bl_length / ref_bl_length)
     rho = frac * frac * ref_rho
     merlinflux = vlaflux / (1.0 + rho)
 
     # Another useful quantity is the resolved percentage:
-    #
     resolved_percent = 100.0 * rho / (1.0 + rho)
     caution_res_pc = 10.0
 
     return vlaflux, merlinflux, resolved_percent, caution_res_pc, thisbl
+
