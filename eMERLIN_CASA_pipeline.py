@@ -11,6 +11,7 @@ import logging
 from taskinit import *
 from tasks import *
 
+pipeline_version = 'v0.5.1'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -61,6 +62,7 @@ def run_pipeline(inputs=None, inputs_path=''):
         branch, short_commit = 'unknown', 'unknown'
     logger.info('Starting pipeline')
     logger.info('Running pipeline from: {}'.format(pipeline_path))
+    logger.info('Pipeline version: {}'.format(pipeline_version))
     logger.info('Using github branch: {}'.format(branch))
     logger.info('github last commit: {}'.format(short_commit))
     logger.info('This log uses UTC times')
