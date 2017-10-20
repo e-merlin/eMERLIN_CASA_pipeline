@@ -173,7 +173,6 @@ def run_pipeline(inputs=None, inputs_path=''):
     if os.path.isdir(msfile):
         msinfo = em.get_msinfo(msfile, inputs)
 
-    print('AA', msfile)
     ### Load manual flagging file
     if inputs['flag_2b_manual'] == 1:
         flags = em.flagdata2_manual(msfile=msfile, inpfile=inputs['manual_flags_b'], flags=flags)
@@ -212,8 +211,8 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     ### Initial BandPass calibration ###
     if inputs['bandpass_0'] > 0:
-        caltables = em.initial_bp_cal(msfile=msfile, caltables=caltables,
-                                      previous_cal=[], bpcal=msinfo['sources']['bpcal'])
+        caltables = em.initial_bp_cal(msfile=msfile, msinfo=msinfo, caltables=caltables,
+                                      previous_cal=[])
         save_obj(caltables, calib_dir+'caltables')
         save_obj(caltables, calib_dir+'caltables_bandpass0')
         if inputs['bandpass_0'] == 2:
@@ -234,14 +233,12 @@ def run_pipeline(inputs=None, inputs_path=''):
     use_fringefit = False
     if inputs['delay'] > 0:
         if not use_fringefit:
-            caltables = em.solve_delays(msfile=msfile, caltables=caltables,
-                                        previous_cal=['bpcal.B0'],
-                                        calsources=msinfo['sources']['calsources'])
+            caltables = em.solve_delays(msfile=msfile, msinfo=msinfo, caltables=caltables,
+                                        previous_cal=['bpcal.B0'])
         else:
             logger.info('Full fringe fit selected.')
-            caltables = em.delay_fringefit(msfile=msfile, caltables=caltables,
-                                           previous_cal=['bpcal.B0'],
-                                           calsources=msinfo['sources']['calsources'])
+            caltables = em.delay_fringefit(msfile=msfile, msinfo=msinfo, caltables=caltables,
+                                           previous_cal=['bpcal.B0'])
         # Should the previous_cal be bpcal.B0? Probably better delay fit, but later
         # delay.K1 is applied without bpcal.B0, when bpcal_sp.B1 is computed
         save_obj(caltables, calib_dir+'caltables')
@@ -279,9 +276,8 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     ### BandPass calibration with spectral index information ###
     if inputs['bandpass_1_sp'] > 0:
-        caltables = em.bandpass_sp(msfile=msfile, caltables=caltables,
-                                   previous_cal=['delay.K1','allcal_p.G0','allcal_p_jitter.G0','allcal_ap.G1_fluxscaled'],
-                                   bpcal=msinfo['sources']['bpcal'])
+        caltables = em.bandpass_sp(msfile=msfile, msinfo=msinfo, caltables=caltables,
+                                   previous_cal=['delay.K1','allcal_p.G0','allcal_p_jitter.G0','allcal_ap.G1_fluxscaled'])
         save_obj(caltables, calib_dir+'caltables')
         save_obj(caltables, calib_dir+'caltables_bandpass_sp')
         if inputs['bandpass_1_sp'] == 2:

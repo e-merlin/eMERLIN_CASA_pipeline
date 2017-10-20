@@ -292,6 +292,7 @@ def get_msinfo(msfile, inputs, doprint=False):
     msinfo['freq_end'] = freq_end
     msinfo['chan_res'] = chan_res
     msinfo['nchan'] = nchan
+    msinfo['innerchan'] = '{0:.0f}~{1:.0f}'.format(0.1*(nchan-nchan/512.), 0.9*(nchan-nchan/512.))
     save_obj(msinfo, msfile)
     logger.info('Saving information of MS {0} in: {1}'.format(msfile, msfile+'.pkl'))
     if doprint:
@@ -925,20 +926,20 @@ def run_applycal(msfile, caltables, sources, previous_cal, previous_cal_targets=
 
 ### Calibration steps
 
-def solve_delays(msfile, caltables, previous_cal, calsources, solint='300s'):
+def solve_delays(msfile, msinfo, caltables, previous_cal, solint='300s'):
     logger.info('Start solve_delays')
     caltable_name = 'delay.K1'
     caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
-    caltables[caltable_name]['field'] = calsources
+    caltables[caltable_name]['field'] = msinfo['sources']['calsources']
     caltables[caltable_name]['gaintype'] = 'K'
     caltables[caltable_name]['calmode'] = 'p'
     caltables[caltable_name]['solint'] = solint
     caltables[caltable_name]['interp'] = 'linear'
     caltables[caltable_name]['spwmap'] = [0]*caltables['num_spw']
     caltables[caltable_name]['combine'] = 'spw'
-    caltables[caltable_name]['spw'] = ''
+    caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
 
     caltable = caltables[caltable_name]['table']
     # Calibration
@@ -958,7 +959,7 @@ def solve_delays(msfile, caltables, previous_cal, calsources, solint='300s'):
     logger.info('End solve_delays')
     return caltables
 
-def delay_fringefit(msfile, caltables, previous_cal, calsources):
+def delay_fringefit(msfile, msinfo, caltables, previous_cal):
     # Currently does not combine spws because that is not correctly implemented
     # in the pre-release version of task fringefit
     logger.info('Start delay_fringefit')
@@ -966,12 +967,12 @@ def delay_fringefit(msfile, caltables, previous_cal, calsources):
     caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
-    caltables[caltable_name]['field'] = calsources
+    caltables[caltable_name]['field'] = msinfo['sources']['calsources']
     caltables[caltable_name]['solint'] = '180s'
     caltables[caltable_name]['interp'] = 'linear'
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
-    caltables[caltable_name]['spw'] = ''
+    caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
     caltables[caltable_name]['zerorates'] = True
 
     caltable = caltables[caltable_name]['table']
@@ -1012,7 +1013,7 @@ def delay_fringefit(msfile, caltables, previous_cal, calsources):
     return caltables
 
 
-def initial_bp_cal(msfile, caltables, previous_cal, bpcal):
+def initial_bp_cal(msfile, msinfo, caltables, previous_cal):
     logger.info('Start initial_bp_cal')
 
     # 0 Delay calibration of bpcal
@@ -1020,14 +1021,14 @@ def initial_bp_cal(msfile, caltables, previous_cal, bpcal):
     caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
-    caltables[caltable_name]['field'] = bpcal
+    caltables[caltable_name]['field'] = msinfo['sources']['bpcal']
     caltables[caltable_name]['gaintype'] = 'K'
     caltables[caltable_name]['calmode'] = 'p'
     caltables[caltable_name]['solint'] = '180s'
     caltables[caltable_name]['interp'] = 'linear'
     caltables[caltable_name]['spwmap'] = [0]*caltables['num_spw']
     caltables[caltable_name]['combine'] = 'spw'
-    caltables[caltable_name]['spw'] = ''
+    caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
     caltable = caltables[caltable_name]['table']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name, previous_cal)
@@ -1043,14 +1044,14 @@ def initial_bp_cal(msfile, caltables, previous_cal, bpcal):
     caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
-    caltables[caltable_name]['field'] = bpcal
+    caltables[caltable_name]['field'] = msinfo['sources']['bpcal']
     caltables[caltable_name]['gaintype'] = 'G'
     caltables[caltable_name]['calmode'] = 'p'
     caltables[caltable_name]['solint'] = 'int'
     caltables[caltable_name]['interp'] = 'linear'
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
-    caltables[caltable_name]['spw'] = ''
+    caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
     caltable = caltables[caltable_name]['table']
     previous_cal_p = previous_cal + ['bpcal_d.K0']
     # Calibration
@@ -1067,14 +1068,14 @@ def initial_bp_cal(msfile, caltables, previous_cal, bpcal):
     caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
-    caltables[caltable_name]['field'] = bpcal
+    caltables[caltable_name]['field'] = msinfo['sources']['bpcal']
     caltables[caltable_name]['gaintype'] = 'G'
     caltables[caltable_name]['calmode'] = 'ap'
     caltables[caltable_name]['solint'] = '32s'
     caltables[caltable_name]['interp'] = 'linear'
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
-    caltables[caltable_name]['spw'] = ''
+    caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
     caltable = caltables[caltable_name]['table']
     previous_cal_ap = previous_cal_p + ['bpcal_p.G0']
     # Calibration
@@ -1096,7 +1097,7 @@ def initial_bp_cal(msfile, caltables, previous_cal, bpcal):
     caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
-    caltables[caltable_name]['field'] = bpcal
+    caltables[caltable_name]['field'] = msinfo['sources']['bpcal']
     caltables[caltable_name]['solint'] = 'inf'
     caltables[caltable_name]['interp'] = 'nearest,linear'
     caltables[caltable_name]['spwmap'] = []
@@ -1124,7 +1125,7 @@ def initial_bp_cal(msfile, caltables, previous_cal, bpcal):
     return caltables
 
 
-def initial_gaincal(msfile, msinfo, caltables, previous_cal, calsources, phscals):
+def initial_gaincal(msfile, msinfo, caltables, previous_cal):
     logger.info('Start initial_gaincal')
 
     # 1 Phase calibration
@@ -1139,7 +1140,7 @@ def initial_gaincal(msfile, msinfo, caltables, previous_cal, calsources, phscals
     caltables[caltable_name]['interp'] = 'linear'
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
-    caltables[caltable_name]['spw'] = ''
+    caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
     caltable = caltables[caltable_name]['table']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name, previous_cal)
@@ -1161,7 +1162,7 @@ def initial_gaincal(msfile, msinfo, caltables, previous_cal, calsources, phscals
     caltables[caltable_name]['interp'] = 'linear'
     caltables[caltable_name]['spwmap'] = [0]*caltables['num_spw']
     caltables[caltable_name]['combine'] = 'spw'
-    caltables[caltable_name]['spw'] = ''
+    caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
     caltable = caltables[caltable_name]['table']
     previous_cal_p = previous_cal + ['allcal_p.G0']
     # Calibration
@@ -1180,7 +1181,7 @@ def initial_gaincal(msfile, msinfo, caltables, previous_cal, calsources, phscals
     caltables[caltable_name]['interp'] = 'linear'
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
-    caltables[caltable_name]['spw'] = ''
+    caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
     caltable = caltables[caltable_name]['table']
     previous_cal_ap = previous_cal_p + ['allcal_p_jitter.G0']
     # Calibration
@@ -1209,7 +1210,7 @@ def initial_gaincal(msfile, msinfo, caltables, previous_cal, calsources, phscals
     caltables[caltable_name]['interp'] = 'linear'
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
-    caltables[caltable_name]['spw'] = ''
+    caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
     caltable = caltables[caltable_name]['table']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name, previous_cal)
@@ -1289,14 +1290,14 @@ def eM_fluxscale(msfile, caltables, ampcal_table, sources, antennas):
     logger.info('End eM_fluxscale')
     return caltables
 
-def bandpass_sp(msfile, caltables, previous_cal, bpcal):
+def bandpass_sp(msfile, msinfo, caltables, previous_cal):
     logger.info('Start bandpass_sp')
     # Bandpass calibration
     caltable_name = 'bpcal_sp.B1'
     caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
-    caltables[caltable_name]['field'] = bpcal
+    caltables[caltable_name]['field'] = msinfo['sources']['bpcal']
     caltables[caltable_name]['solint'] = 'inf'
     caltables[caltable_name]['interp'] = 'nearest,linear'
     caltables[caltable_name]['spwmap'] = []
@@ -1339,7 +1340,7 @@ def sp_amp_gaincal(msfile, msinfo, caltables, previous_cal):
     caltables[caltable_name]['interp'] = 'linear'
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
-    caltables[caltable_name]['spw'] = ''
+    caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
     caltable = caltables[caltable_name]['table']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name, previous_cal)
@@ -1367,7 +1368,7 @@ def sp_amp_gaincal(msfile, msinfo, caltables, previous_cal):
     caltables[caltable_name]['interp'] = 'linear'
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
-    caltables[caltable_name]['spw'] = ''
+    caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
     caltable = caltables[caltable_name]['table']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name, previous_cal)
