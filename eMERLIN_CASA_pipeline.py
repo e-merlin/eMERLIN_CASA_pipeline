@@ -127,16 +127,17 @@ def run_pipeline(inputs=None, inputs_path=''):
         msfile = inputs['inbase']+'.mms'
 
     ### Create dictionary with ms information.
-    # It will try to remake the msinfo dictionary from the msfile. If the msfile is
-    # not there, it will try to load the pkl file. If nothing there (means that we
-    # don't care about the unaveraged data), nothing is done.
-    if os.path.isdir(msfile):
+    # It will try to load the msfile if it is there. If not, it will try to
+    # remake it. If the MS file is missing, nothing is done (we ignore
+    # unaveraged data set).
+    if os.path.isfile(msfile+'.msinfo'):
+        msinfo = load_obj(msfile+'.msinfo')
+    elif os.path.isdir(msfile):
         msinfo = em.get_msinfo(msfile, inputs)
+        save_obj(msfile, msfile+'.msinfo')
     else:
-        try:
-            msinfo = load_ob(msfile)
-        except:
-            pass
+        logger.info('No unaveraged data or msinfo found. Pre-processing will not work.')
+        pass
 
     ### Run AOflagger
     if inputs['flag_0_aoflagger'] == 1:
@@ -169,9 +170,15 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     logger.info('Using MS file: {0}'.format(msfile))
 
-    ### Create dictionary with ms information.
-    if os.path.isdir(msfile):
+    ### Load or create dictionary with ms information.
+    if os.path.isfile(msfile+'.msinfo'):
+        msinfo = load_obj(msfile+'.msinfo')
+    elif os.path.isdir(msfile):
         msinfo = em.get_msinfo(msfile, inputs)
+        save_obj(msfile, msfile+'.msinfo')
+    else:
+        logger.info('No unaveraged data or msinfo found. Pre-processing will not work.')
+        pass
 
     ### Load manual flagging file
     if inputs['flag_2b_manual'] == 1:
@@ -179,7 +186,7 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     ### Defining reference antenna
     msinfo['refant'] = em.define_refant(msfile, msinfo, inputs)
-
+    save_obj(msfile, msfile+'.msinfo')
 
 
     ###################
@@ -200,6 +207,7 @@ def run_pipeline(inputs=None, inputs_path=''):
         logger.info('New caltables dictionary created. Saved to: {0}'.format(calib_dir+'caltables.pkl'))
 
     caltables['refant'] = msinfo['refant']
+    save_obj(caltables, calib_dir+'caltables')
 
     ### Initialize models ###
     if inputs['init_models'] == 1:  # Need to add parameter to GUI
@@ -304,6 +312,8 @@ def run_pipeline(inputs=None, inputs_path=''):
            previous_cal=['delay.K1','bpcal_sp.B1','allcal_p.G0','allcal_p_jitter.G0','allcal_ap.G3'],
            previous_cal_targets=['delay.K1','bpcal_sp.B1','phscal_p_scan.G2','allcal_ap_scan.G3'])
         msinfo['applycal_all'] = True
+        save_obj(msfile, msfile+'.msinfo')
+
 
     ### RFLAG automatic flagging ###
     if inputs['flag_4_rflag'] == 1:

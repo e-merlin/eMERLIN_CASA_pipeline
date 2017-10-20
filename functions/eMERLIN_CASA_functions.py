@@ -594,8 +594,8 @@ def flagdata4_rflag(msfile, msinfo, flags):
              ntime='90min', combinescans=True, datacolumn='corrected',
              timedevscale=timedevscale, freqdevscale=freqdevscale,
              action='apply', display='', flagbackup=True)
-    flag_applied(flags, 'flagdata3_rflag')
-    logger.info('End flagdata3_rflag')
+    flag_applied(flags, 'flagdata4_rflag')
+    logger.info('End flagdata4_rflag')
     return flags
 
 
