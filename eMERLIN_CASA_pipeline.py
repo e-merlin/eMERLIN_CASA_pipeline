@@ -173,6 +173,7 @@ def run_pipeline(inputs=None, inputs_path=''):
     if os.path.isdir(msfile):
         msinfo = em.get_msinfo(msfile, inputs)
 
+    print('AA', msfile)
     ### Load manual flagging file
     if inputs['flag_2b_manual'] == 1:
         flags = em.flagdata2_manual(msfile=msfile, inpfile=inputs['manual_flags_b'], flags=flags)

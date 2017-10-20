@@ -525,7 +525,9 @@ def flagdata1_apriori(msfile, msinfo, flags, do_quack=True):
     # Slewing (typical):
     # Main calibrators, 5 min
     logger.info('Flagging 5 min from bright calibrators')
-    flagdata(vis=msfile, field=msinfo['sources']['maincal'], mode='quack', quackinterval=300)
+    bright_cal = join_lists([si for si in ['1331+305','1407+284','0319+415'] if si in
+                  msinfo['sources']['maincal']])
+    flagdata(vis=msfile, field=bright_cal, mode='quack', quackinterval=300)
     # Target and phase reference, 20 sec
     logger.info('Flagging first 20 sec of target and phasecal')
     flagdata(vis=msfile, field=msinfo['sources']['targets_phscals'], mode='quack', quackinterval=20)
