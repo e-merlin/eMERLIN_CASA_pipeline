@@ -965,7 +965,7 @@ def delay_fringefit(msfile, caltables, previous_cal, calsources):
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
     caltables[caltable_name]['field'] = calsources
-    caltables[caltable_name]['solint'] = '300s'
+    caltables[caltable_name]['solint'] = '180s'
     caltables[caltable_name]['interp'] = 'linear'
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
@@ -1044,7 +1044,7 @@ def initial_bp_cal(msfile, caltables, previous_cal, bpcal):
     caltables[caltable_name]['field'] = bpcal
     caltables[caltable_name]['gaintype'] = 'G'
     caltables[caltable_name]['calmode'] = 'p'
-    caltables[caltable_name]['solint'] = '8s'
+    caltables[caltable_name]['solint'] = 'int'
     caltables[caltable_name]['interp'] = 'linear'
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
@@ -1113,16 +1113,16 @@ def initial_bp_cal(msfile, caltables, previous_cal, bpcal):
     plotcal(caltable=bptable, xaxis='freq', yaxis='phase',
             subplot=321,iteration='antenna', showgui=False,
             figfile=bptableplot_phs, fontsize = 8, plotrange = [-1,-1,-180,180])
-    logger.info('Bandpass0 BP phase plot: {0}'.format(caltableplot_phs))
+    logger.info('Bandpass0 BP phase plot: {0}'.format(bptableplot_phs))
     plotcal(caltable=bptable, xaxis='freq', yaxis='amp',  subplot=321,
             iteration='antenna', showgui=False, figfile=bptableplot_amp,
             fontsize = 8, plotrange = [-1,-1,-1,-1])
-    logger.info('Bandpass0 BP phase plot: {0}'.format(caltableplot_amp))
+    logger.info('Bandpass0 BP phase plot: {0}'.format(bptableplot_amp))
     logger.info('End initial_bp_cal')
     return caltables
 
 
-def initial_gaincal(msfile, caltables, previous_cal, calsources, phscals):
+def initial_gaincal(msfile, msinfo, caltables, previous_cal, calsources, phscals):
     logger.info('Start initial_gaincal')
 
     # 1 Phase calibration
@@ -1130,10 +1130,10 @@ def initial_gaincal(msfile, caltables, previous_cal, calsources, phscals):
     caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
-    caltables[caltable_name]['field'] = calsources
+    caltables[caltable_name]['field'] = msinfo['sources']['calsources']
     caltables[caltable_name]['gaintype'] = 'G'
     caltables[caltable_name]['calmode'] = 'p'
-    caltables[caltable_name]['solint'] = '8s'
+    caltables[caltable_name]['solint'] = '16s'
     caltables[caltable_name]['interp'] = 'linear'
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
@@ -1147,12 +1147,31 @@ def initial_gaincal(msfile, caltables, previous_cal, calsources, phscals):
     plotcal(caltable=caltable,xaxis='time',yaxis='phase',subplot=321,iteration='antenna',showgui=False,figfile=caltableplot, fontsize = 8, plotrange = [-1,-1,-180, 180])
     logger.info('Gain phase calibration plot: {0}'.format(caltableplot))
 
+    # 1b Phase jitter correction
+    caltable_name = 'allcal_p_jitter.G0'
+    caltables[caltable_name] = {}
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['field'] = msinfo['sources']['calsources']
+    caltables[caltable_name]['gaintype'] = 'G'
+    caltables[caltable_name]['calmode'] = 'p'
+    caltables[caltable_name]['solint'] = 'int'
+    caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['spwmap'] = [0]*caltables['num_spw']
+    caltables[caltable_name]['combine'] = 'spw'
+    caltables[caltable_name]['spw'] = ''
+    caltable = caltables[caltable_name]['table']
+    previous_cal_p = previous_cal + ['allcal_p.G0']
+    # Calibration
+    run_gaincal(msfile, caltables, caltable_name, previous_cal_p)
+    logger.info('Gain phase calibration {0}: {1}'.format(caltable_name,caltable))
+
     # 2 Amplitude calibration
     caltable_name = 'allcal_ap.G1'
     caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
-    caltables[caltable_name]['field'] = calsources
+    caltables[caltable_name]['field'] = msinfo['sources']['calsources']
     caltables[caltable_name]['gaintype'] = 'G'
     caltables[caltable_name]['calmode'] = 'ap'
     caltables[caltable_name]['solint'] = '32s'
@@ -1161,7 +1180,7 @@ def initial_gaincal(msfile, caltables, previous_cal, calsources, phscals):
     caltables[caltable_name]['combine'] = ''
     caltables[caltable_name]['spw'] = ''
     caltable = caltables[caltable_name]['table']
-    previous_cal_ap = previous_cal + ['allcal_p.G0']
+    previous_cal_ap = previous_cal_p + ['allcal_p_jitter.G0']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name, previous_cal_ap)
     logger.info('Gain amplitude calibration {0}: {1}'.format(caltable_name,caltable))
@@ -1181,7 +1200,7 @@ def initial_gaincal(msfile, caltables, previous_cal, calsources, phscals):
     caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
-    caltables[caltable_name]['field'] = phscals
+    caltables[caltable_name]['field'] = msinfo['sources']['phscals']
     caltables[caltable_name]['gaintype'] = 'G'
     caltables[caltable_name]['calmode'] = 'p'
     caltables[caltable_name]['solint'] = 'inf'
@@ -1303,7 +1322,7 @@ def bandpass_sp(msfile, caltables, previous_cal, bpcal):
     return caltables
 
 
-def sp_amp_gaincal(msfile, caltables, previous_cal, calsources):
+def sp_amp_gaincal(msfile, msinfo, caltables, previous_cal):
     logger.info('Start gaincal_amp_sp')
 
     # 1 Amplitude calibration
@@ -1311,7 +1330,7 @@ def sp_amp_gaincal(msfile, caltables, previous_cal, calsources):
     caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
-    caltables[caltable_name]['field'] = calsources
+    caltables[caltable_name]['field'] = msinfo['sources']['calsources']
     caltables[caltable_name]['gaintype'] = 'G'
     caltables[caltable_name]['calmode'] = 'ap'
     caltables[caltable_name]['solint'] = '32s'
@@ -1334,6 +1353,28 @@ def sp_amp_gaincal(msfile, caltables, previous_cal, calsources):
             showgui=False,figfile=caltableplot_amp,fontsize=8,plotrange=[-1,-1,-1,-1])
     logger.info('Amplitude gain calibration plot: {0}'.format(caltableplot_amp))
 
+    # 2 Amplitude calibration on phasecal: scan-averaged amplitude solutions
+    caltable_name = 'allcal_ap_scan.G3'
+    caltables[caltable_name] = {}
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['field'] = msinfo['sources']['phscals']
+    caltables[caltable_name]['gaintype'] = 'G'
+    caltables[caltable_name]['calmode'] = 'ap'
+    caltables[caltable_name]['solint'] = 'inf'
+    caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['spwmap'] = []
+    caltables[caltable_name]['combine'] = ''
+    caltables[caltable_name]['spw'] = ''
+    caltable = caltables[caltable_name]['table']
+    # Calibration
+    run_gaincal(msfile, caltables, caltable_name, previous_cal)
+    logger.info('Gain phase calibration {0}: {1}'.format(caltable_name,caltable))
+    # Plots
+    caltableplot = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_amp.png'
+    plotcal(caltable=caltable,xaxis='time',yaxis='amp',subplot=321,iteration='antenna',
+            showgui=False,figfile=caltableplot,fontsize=8,plotrange=[-1,-1,-1,-1])
+    logger.info('Gain amplitude scan calibration plot: {0}'.format(caltableplot))
     logger.info('End gaincal_amp_sp')
     return caltables
 
