@@ -1101,7 +1101,7 @@ def initial_bp_cal(msfile, msinfo, caltables, previous_cal):
     caltables[caltable_name]['solint'] = 'inf'
     caltables[caltable_name]['interp'] = 'nearest,linear'
     caltables[caltable_name]['spwmap'] = []
-    caltables[caltable_name]['combine'] = ''
+    caltables[caltable_name]['combine'] = 'field,scan'
     caltables[caltable_name]['spw'] = ''
     caltables[caltable_name]['uvrange'] = ''
     caltables[caltable_name]['solnorm'] = True
@@ -1109,6 +1109,9 @@ def initial_bp_cal(msfile, msinfo, caltables, previous_cal):
     previous_cal_ap_bp = previous_cal_ap + ['bpcal_ap.G1']
     # Calibration
     run_bandpass(msfile, caltables, caltable_name, previous_cal_ap_bp)
+    # If solved for more than one source, it still needs to apply only to the
+    # first one:
+    caltables[caltable_name]['field'] = caltables[caltable_name]['field'].split(',')[0]
     logger.info('Bandpass0 BP {0}: {1}'.format(caltable_name,bptable))
     # Plots
     bptableplot_phs = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
@@ -1301,7 +1304,7 @@ def bandpass_sp(msfile, msinfo, caltables, previous_cal):
     caltables[caltable_name]['solint'] = 'inf'
     caltables[caltable_name]['interp'] = 'nearest,linear'
     caltables[caltable_name]['spwmap'] = []
-    caltables[caltable_name]['combine'] = ''
+    caltables[caltable_name]['combine'] = 'field,scan'
     caltables[caltable_name]['spw'] = ''
     #caltables[caltable_name]['uvrange'] = '>15km'
     caltables[caltable_name]['uvrange'] = ''
@@ -1309,6 +1312,9 @@ def bandpass_sp(msfile, msinfo, caltables, previous_cal):
     bptable = caltables[caltable_name]['table']
     # Calibration
     run_bandpass(msfile, caltables, caltable_name, previous_cal)
+    # If solved for more than one source, because combine='field' it will only
+    # use the name of the first calibrator, so we change it before it is applied
+    caltables[caltable_name]['field'] = caltables[caltable_name]['field'].split(',')[0]
     logger.info('Bandpass1 BP {0}: {1}'.format(caltable_name,bptable))
     # Plots
     bptableplot_phs = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
