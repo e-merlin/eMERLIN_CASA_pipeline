@@ -299,6 +299,18 @@ def get_msinfo(msfile, inputs, doprint=False):
         prt_dict(msinfo)
     return msinfo
 
+def get_unique_field(caltable):
+    # If more than one field was used to generate the caltable but
+    # combine='field' was used, only one field is included in the table. This
+    # function will find which was actually used.
+    tb.open(caltable)
+    field_id = np.unique(tb.getcol('FIELD_ID'))[0]
+    tb.close()
+    tb.open(caltable+'/FIELD')
+    unique_field = tb.getcol('NAME')[field_id]
+    tb.close()
+    return unique_field
+
 
 def run_importfitsIDI(data_dir,vis, setorder=False):
     logger.info('Starting importfitsIDI procedure')
@@ -754,7 +766,7 @@ def run_fringefit(msfile, caltables, caltable_name, previous_cal, minblperant=3,
     gaintable = [caltables[p]['table'] for p in previous_cal]
     interp    = [caltables[p]['interp'] for p in previous_cal]
     spwmap    = [caltables[p]['spwmap'] for p in previous_cal]
-    gainfield = [caltables[p]['field'] if len(np.atleast_1d(caltables[p]['field'].split(',')))<2 else '' for p in previous_cal]
+    gainfield = [caltables[p]['gainfield'] if len(np.atleast_1d(caltables[p]['gainfield'].split(',')))<2 else '' for p in previous_cal]
     logger.info('Previous calibration applied: {0}'.format(str(previous_cal)))
     logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
     logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
@@ -793,7 +805,7 @@ def run_gaincal(msfile, caltables, caltable_name, previous_cal, minblperant=3, m
     gaintable = [caltables[p]['table'] for p in previous_cal]
     interp    = [caltables[p]['interp'] for p in previous_cal]
     spwmap    = [caltables[p]['spwmap'] for p in previous_cal]
-    gainfield = [caltables[p]['field'] if len(np.atleast_1d(caltables[p]['field'].split(',')))<2 else '' for p in previous_cal]
+    gainfield = [caltables[p]['gainfield'] if len(np.atleast_1d(caltables[p]['gainfield'].split(',')))<2 else '' for p in previous_cal]
     logger.info('Previous calibration applied: {0}'.format(str(previous_cal)))
     logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
     logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
@@ -832,7 +844,7 @@ def run_bandpass(msfile, caltables, caltable_name, previous_cal, minblperant=3, 
     gaintable = [caltables[p]['table'] for p in previous_cal]
     interp    = [caltables[p]['interp'] for p in previous_cal]
     spwmap    = [caltables[p]['spwmap'] for p in previous_cal]
-    gainfield = [caltables[p]['field'] if len(np.atleast_1d(caltables[p]['field'].split(',')))<2 else '' for p in previous_cal]
+    gainfield = [caltables[p]['gainfield'] if len(np.atleast_1d(caltables[p]['gainfield'].split(',')))<2 else '' for p in previous_cal]
     logger.info('Previous calibration applied: {0}'.format(str(previous_cal)))
     logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
     logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
@@ -885,7 +897,7 @@ def run_applycal(msfile, caltables, sources, previous_cal, previous_cal_targets=
     gaintable = [caltables[p]['table'] for p in previous_cal]
     interp    = [caltables[p]['interp'] for p in previous_cal]
     spwmap    = [caltables[p]['spwmap'] for p in previous_cal]
-    gainfield = [caltables[p]['field'] if len(np.atleast_1d(caltables[p]['field'].split(',')))<2 else '' for p in previous_cal]
+    gainfield = [caltables[p]['gainfield'] if len(np.atleast_1d(caltables[p]['gainfield'].split(',')))<2 else '' for p in previous_cal]
     logger.info('Previous calibration applied: {0}'.format(str(previous_cal)))
     logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
     logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
@@ -909,7 +921,7 @@ def run_applycal(msfile, caltables, sources, previous_cal, previous_cal_targets=
             gaintable = [caltables[p]['table'] for p in previous_cal_targets]
             interp    = [caltables[p]['interp'] for p in previous_cal_targets]
             spwmap    = [caltables[p]['spwmap'] for p in previous_cal_targets]
-            gainfield = [caltables[p]['field'] if len(np.atleast_1d(caltables[p]['field'].split(',')))<2 else phscal for p in previous_cal_targets]
+            gainfield = [caltables[p]['gainfield'] if len(np.atleast_1d(caltables[p]['gainfield'].split(',')))<2 else phscal for p in previous_cal_targets]
             logger.info('Field: {0}. Phase calibrator: {1}'.format(s, phscal))
             logger.info('Previous calibration applied: {0}'.format(str(previous_cal_targets)))
             logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
@@ -937,6 +949,7 @@ def solve_delays(msfile, msinfo, caltables, previous_cal, solint='300s'):
     caltables[caltable_name]['calmode'] = 'p'
     caltables[caltable_name]['solint'] = solint
     caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
     caltables[caltable_name]['spwmap'] = [0]*caltables['num_spw']
     caltables[caltable_name]['combine'] = 'spw'
     caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
@@ -970,6 +983,7 @@ def delay_fringefit(msfile, msinfo, caltables, previous_cal):
     caltables[caltable_name]['field'] = msinfo['sources']['calsources']
     caltables[caltable_name]['solint'] = '180s'
     caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
     caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
@@ -1026,6 +1040,7 @@ def initial_bp_cal(msfile, msinfo, caltables, previous_cal):
     caltables[caltable_name]['calmode'] = 'p'
     caltables[caltable_name]['solint'] = '180s'
     caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['gainfield'] = msinfo['sources']['bpcal']
     caltables[caltable_name]['spwmap'] = [0]*caltables['num_spw']
     caltables[caltable_name]['combine'] = 'spw'
     caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
@@ -1049,6 +1064,7 @@ def initial_bp_cal(msfile, msinfo, caltables, previous_cal):
     caltables[caltable_name]['calmode'] = 'p'
     caltables[caltable_name]['solint'] = 'int'
     caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['gainfield'] = msinfo['sources']['bpcal']
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
     caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
@@ -1073,6 +1089,7 @@ def initial_bp_cal(msfile, msinfo, caltables, previous_cal):
     caltables[caltable_name]['calmode'] = 'ap'
     caltables[caltable_name]['solint'] = '32s'
     caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['gainfield'] = msinfo['sources']['bpcal']
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
     caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
@@ -1109,9 +1126,7 @@ def initial_bp_cal(msfile, msinfo, caltables, previous_cal):
     previous_cal_ap_bp = previous_cal_ap + ['bpcal_ap.G1']
     # Calibration
     run_bandpass(msfile, caltables, caltable_name, previous_cal_ap_bp)
-    # If solved for more than one source, it still needs to apply only to the
-    # first one:
-    caltables[caltable_name]['field'] = caltables[caltable_name]['field'].split(',')[0]
+    caltables[caltable_name]['gainfield'] = get_unique_field(caltables[caltable_name]['table'])
     logger.info('Bandpass0 BP {0}: {1}'.format(caltable_name,bptable))
     # Plots
     bptableplot_phs = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
@@ -1141,6 +1156,7 @@ def initial_gaincal(msfile, msinfo, caltables, previous_cal):
     caltables[caltable_name]['calmode'] = 'p'
     caltables[caltable_name]['solint'] = '16s'
     caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
     caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
@@ -1163,6 +1179,7 @@ def initial_gaincal(msfile, msinfo, caltables, previous_cal):
     caltables[caltable_name]['calmode'] = 'p'
     caltables[caltable_name]['solint'] = 'int'
     caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
     caltables[caltable_name]['spwmap'] = [0]*caltables['num_spw']
     caltables[caltable_name]['combine'] = 'spw'
     caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
@@ -1182,6 +1199,7 @@ def initial_gaincal(msfile, msinfo, caltables, previous_cal):
     caltables[caltable_name]['calmode'] = 'ap'
     caltables[caltable_name]['solint'] = '32s'
     caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
     caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
@@ -1211,6 +1229,7 @@ def initial_gaincal(msfile, msinfo, caltables, previous_cal):
     caltables[caltable_name]['calmode'] = 'p'
     caltables[caltable_name]['solint'] = 'inf'
     caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['gainfield'] = msinfo['sources']['phscals']
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
     caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
@@ -1312,9 +1331,7 @@ def bandpass_sp(msfile, msinfo, caltables, previous_cal):
     bptable = caltables[caltable_name]['table']
     # Calibration
     run_bandpass(msfile, caltables, caltable_name, previous_cal)
-    # If solved for more than one source, because combine='field' it will only
-    # use the name of the first calibrator, so we change it before it is applied
-    caltables[caltable_name]['field'] = caltables[caltable_name]['field'].split(',')[0]
+    caltables[caltable_name]['gainfield'] = get_unique_field(caltables[caltable_name]['table'])
     logger.info('Bandpass1 BP {0}: {1}'.format(caltable_name,bptable))
     # Plots
     bptableplot_phs = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
@@ -1344,6 +1361,7 @@ def sp_amp_gaincal(msfile, msinfo, caltables, previous_cal):
     caltables[caltable_name]['calmode'] = 'ap'
     caltables[caltable_name]['solint'] = '32s'
     caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
     caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
@@ -1372,6 +1390,7 @@ def sp_amp_gaincal(msfile, msinfo, caltables, previous_cal):
     caltables[caltable_name]['calmode'] = 'ap'
     caltables[caltable_name]['solint'] = 'inf'
     caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['gainfield'] = msinfo['sources']['phscals']
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
     caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
