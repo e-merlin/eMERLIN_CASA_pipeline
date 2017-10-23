@@ -311,6 +311,29 @@ def get_unique_field(caltable):
     tb.close()
     return unique_field
 
+def backup_table(caltable):
+    try:
+        shutil.rmtree(caltable+'_backup_missing')
+    except OSError:
+        pass
+    shutil.copytree(caltable, caltable+'_backup_missing')
+    logger.info('Backup of table {0} to {1}'.format(caltable, caltable+'_backup_missing'))
+
+def remove_missing_scans(caltable, scans2flag):
+    # Backup original table
+    backup_table(caltable)
+    tb.open(caltable+'/ANTENNA')
+    anten = tb.getcol('NAME')
+    tb.close()
+    anten_Lo = np.argwhere('Lo')[0][0]
+    tb.open(caltable, nomodify=False)
+    scan_number = tb.getcol('SCAN_NUMBER')
+    antenna1 = tb.getcol('ANTENNA1') == anten_Lo
+    missing_rows = np.array([str(r) in scans2flag.replace(' ','').split(',') for r in scan_number])
+    index_missing_rows = np.where(antenna1*missing_rows)[0]
+    tb.removerows(index_missing_rows)
+    logger.info('Removing Lo solutions for dropout scans from {0}: {1}'.format(caltable, scans2flag))
+    tb.close()
 
 def run_importfitsIDI(data_dir,vis, setorder=False):
     logger.info('Starting importfitsIDI procedure')
@@ -545,6 +568,10 @@ def flagdata1_apriori(msfile, msinfo, flags, do_quack=True):
     logger.info('Flagging first 20 sec of target and phasecal')
     flagdata(vis=msfile, field=msinfo['sources']['targets_phscals'], mode='quack', quackinterval=20)
     # We can add more (Lo is slower, etc).
+    if msinfo['Lo_dropout_scans'] == None:
+        logger.info('Flagging Lo dropout scans: {}'.format(msinfo['Lo_dropout_scans']))
+        flagdata(vis=msfile, antenna='Lo', field=msinfo['phscals'], scan=msinfo['Lo_dropout_scans'])
+
     flag_applied(flags, 'flagdata1_apriori')
     logger.info('End flagdata1_apriori')
     return flags
@@ -957,6 +984,8 @@ def solve_delays(msfile, msinfo, caltables, previous_cal, solint='300s'):
     caltable = caltables[caltable_name]['table']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name, previous_cal)
+    if msinfo['Lo_dropout_scans'] != None:
+        remove_missing_scans(caltable, msinfo['Lo_dropout_scans'])
     logger.info('Delay calibration {0}: {1}'.format(caltable_name, caltable))
     # Plots
     # 1 No range
@@ -992,6 +1021,8 @@ def delay_fringefit(msfile, msinfo, caltables, previous_cal):
     caltable = caltables[caltable_name]['table']
     # Calibration
     run_fringefit(msfile, caltables, caltable_name, previous_cal)
+    if msinfo['Lo_dropout_scans'] != None:
+        remove_missing_scans(caltable, msinfo['Lo_dropout_scans'])
     logger.info('Fringe calibration {0}: {1}'.format(caltable_name, caltable))
     # Plots
     # 1 Phases
@@ -1047,6 +1078,8 @@ def initial_bp_cal(msfile, msinfo, caltables, previous_cal):
     caltable = caltables[caltable_name]['table']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name, previous_cal)
+    if msinfo['Lo_dropout_scans'] != None:
+        remove_missing_scans(caltable, msinfo['Lo_dropout_scans'])
     logger.info('Delay calibration of bpcal {0}: {1}'.format(caltable_name, caltable))
     # Plots
     caltableplot = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_1.png'
@@ -1072,6 +1105,8 @@ def initial_bp_cal(msfile, msinfo, caltables, previous_cal):
     previous_cal_p = previous_cal + ['bpcal_d.K0']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name, previous_cal_p)
+    if msinfo['Lo_dropout_scans'] != None:
+        remove_missing_scans(caltable, msinfo['Lo_dropout_scans'])
     logger.info('Bandpass0 phase calibration {0}: {1}'.format(caltable_name,caltable))
     # Plots
     caltableplot = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
@@ -1097,6 +1132,8 @@ def initial_bp_cal(msfile, msinfo, caltables, previous_cal):
     previous_cal_ap = previous_cal_p + ['bpcal_p.G0']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name, previous_cal_ap)
+    if msinfo['Lo_dropout_scans'] != None:
+        remove_missing_scans(caltable, msinfo['Lo_dropout_scans'])
     logger.info('Bandpass0 amplitude calibration {0}: {1}'.format(caltable_name,caltable))
 #    smooth_caltable(msfile=msfile, plotdir=plotdir, tablein=caltable2, caltable='', field='', smoothtype='median', smoothtime=60*20.)
     # Plots
@@ -1163,6 +1200,8 @@ def initial_gaincal(msfile, msinfo, caltables, previous_cal):
     caltable = caltables[caltable_name]['table']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name, previous_cal)
+    if msinfo['Lo_dropout_scans'] != None:
+        remove_missing_scans(caltable, msinfo['Lo_dropout_scans'])
     logger.info('Gain phase calibration {0}: {1}'.format(caltable_name,caltable))
     # Plots
     caltableplot = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
@@ -1187,6 +1226,8 @@ def initial_gaincal(msfile, msinfo, caltables, previous_cal):
     previous_cal_p = previous_cal + ['allcal_p.G0']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name, previous_cal_p)
+    if msinfo['Lo_dropout_scans'] != None:
+        remove_missing_scans(caltable, msinfo['Lo_dropout_scans'])
     logger.info('Gain phase calibration {0}: {1}'.format(caltable_name,caltable))
 
     # 2 Amplitude calibration
@@ -1207,6 +1248,8 @@ def initial_gaincal(msfile, msinfo, caltables, previous_cal):
     previous_cal_ap = previous_cal_p + ['allcal_p_jitter.G0']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name, previous_cal_ap)
+    if msinfo['Lo_dropout_scans'] != None:
+        remove_missing_scans(caltable, msinfo['Lo_dropout_scans'])
     logger.info('Gain amplitude calibration {0}: {1}'.format(caltable_name,caltable))
 #    smooth_caltable(msfile=msfile, plotdir=plotdir, tablein=caltable2, caltable='', field='', smoothtype='median', smoothtime=60*20.)
     # Plots
@@ -1236,6 +1279,8 @@ def initial_gaincal(msfile, msinfo, caltables, previous_cal):
     caltable = caltables[caltable_name]['table']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name, previous_cal)
+    if msinfo['Lo_dropout_scans'] != None:
+        remove_missing_scans(caltable, msinfo['Lo_dropout_scans'])
     logger.info('Gain phase calibration {0}: {1}'.format(caltable_name,caltable))
     # Plots
     caltableplot = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
@@ -1368,6 +1413,8 @@ def sp_amp_gaincal(msfile, msinfo, caltables, previous_cal):
     caltable = caltables[caltable_name]['table']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name, previous_cal)
+    if msinfo['Lo_dropout_scans'] != None:
+        remove_missing_scans(caltable, msinfo['Lo_dropout_scans'])
     logger.info('Gain amplitude calibration {0}: {1}'.format(caltable_name,caltable))
 #    smooth_caltable(msfile=msfile, plotdir=plotdir, tablein=caltable2, caltable='', field='', smoothtype='median', smoothtime=60*20.)
     # Plots
@@ -1397,6 +1444,8 @@ def sp_amp_gaincal(msfile, msinfo, caltables, previous_cal):
     caltable = caltables[caltable_name]['table']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name, previous_cal)
+    if msinfo['Lo_dropout_scans'] != None:
+        remove_missing_scans(caltable, msinfo['Lo_dropout_scans'])
     logger.info('Gain phase calibration {0}: {1}'.format(caltable_name,caltable))
     # Plots
     caltableplot = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_amp.png'

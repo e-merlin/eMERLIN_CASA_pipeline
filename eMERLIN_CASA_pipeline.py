@@ -91,7 +91,6 @@ def run_pipeline(inputs=None, inputs_path=''):
     em.makedir(plots_dir)
     em.makedir(calib_dir)
 
-
     if inputs['quit'] == 1: #Check from GUI if quit is needed
         logger.debug('Pipeline exit')
         sys.exit()
@@ -139,6 +138,16 @@ def run_pipeline(inputs=None, inputs_path=''):
         logger.info('No unaveraged data or msinfo found. Pre-processing will not work.')
         pass
 
+    # Include Lo_dropout_scans if it is not defined:
+    try:
+        msinfo
+        try:
+            msinfo['Lo_dropout_scans'] = inputs['Lo_dropout_scans']
+        except:
+            msinfo['Lo_dropout_scans'] = None
+    except:
+        pass
+
     ### Run AOflagger
     if inputs['flag_0_aoflagger'] == 1:
         flags = em.run_aoflagger_fields(vis=msfile, flags=flags, fields='all', pipeline_path = pipeline_path)
@@ -180,13 +189,25 @@ def run_pipeline(inputs=None, inputs_path=''):
         logger.info('No unaveraged data or msinfo found. Pre-processing will not work.')
         pass
 
-    ### Load manual flagging file
-    if inputs['flag_2b_manual'] == 1:
-        flags = em.flagdata2_manual(msfile=msfile, inpfile=inputs['manual_flags_b'], flags=flags)
+    # Include Lo_dropout_scans if it is not defined:
+    try:
+        msinfo
+        try:
+            msinfo['Lo_dropout_scans'] = inputs['Lo_dropout_scans']
+        except:
+            msinfo['Lo_dropout_scans'] = None
+    except:
+        pass
 
     ### Defining reference antenna
     msinfo['refant'] = em.define_refant(msfile, msinfo, inputs)
     save_obj(msfile, msfile+'.msinfo')
+
+
+    ### Load manual flagging file
+    if inputs['flag_2b_manual'] == 1:
+        flags = em.flagdata2_manual(msfile=msfile, inpfile=inputs['manual_flags_b'], flags=flags)
+
 
 
     ###################
