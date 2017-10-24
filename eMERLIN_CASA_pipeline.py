@@ -133,19 +133,10 @@ def run_pipeline(inputs=None, inputs_path=''):
         msinfo = load_obj(msfile+'.msinfo')
     elif os.path.isdir(msfile):
         msinfo = em.get_msinfo(msfile, inputs)
+        msinfo['Lo_dropout_scans'] = inputs['Lo_dropout_scans']
         save_obj(msfile, msfile+'.msinfo')
     else:
         logger.info('No unaveraged data or msinfo found. Pre-processing will not work.')
-        pass
-
-    # Include Lo_dropout_scans if it is not defined:
-    try:
-        msinfo
-        try:
-            msinfo['Lo_dropout_scans'] = inputs['Lo_dropout_scans']
-        except:
-            msinfo['Lo_dropout_scans'] = None
-    except:
         pass
 
     ### Run AOflagger
@@ -184,20 +175,12 @@ def run_pipeline(inputs=None, inputs_path=''):
         msinfo = load_obj(msfile+'.msinfo')
     elif os.path.isdir(msfile):
         msinfo = em.get_msinfo(msfile, inputs)
+        msinfo['Lo_dropout_scans'] = inputs['Lo_dropout_scans']
         save_obj(msfile, msfile+'.msinfo')
     else:
         logger.info('No unaveraged data or msinfo found. Pre-processing will not work.')
         pass
 
-    # Include Lo_dropout_scans if it is not defined:
-    try:
-        msinfo
-        try:
-            msinfo['Lo_dropout_scans'] = inputs['Lo_dropout_scans']
-        except:
-            msinfo['Lo_dropout_scans'] = None
-    except:
-        pass
 
     ### Defining reference antenna
     msinfo['refant'] = em.define_refant(msfile, msinfo, inputs)

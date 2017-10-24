@@ -11,7 +11,7 @@ bpcal= 'OQ208'
 ptcal= '3C345'
 refant= 'Mk2'
 
-Lo_dropout_scans = None
+Lo_dropout_scans = ''
 manual_flags_a=./inputfg_a.flags
 manual_flags_b=./inputfg_b_avg.flags
 
