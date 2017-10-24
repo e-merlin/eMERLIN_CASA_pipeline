@@ -37,3 +37,4 @@ bandpass_1_sp   = 0
 gain_1_amp_sp   = 0
 applycal_all    = 0
 flag_4_rflag	= 0
+weblog		= 0

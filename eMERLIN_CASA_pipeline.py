@@ -21,7 +21,8 @@ except:
 
 sys.path.append(pipeline_path)
 import functions.eMERLIN_CASA_functions as em
-import functions.eMERLIN_CASA_GUI as emGUI
+import functions.weblog as wlog
+#import functions.eMERLIN_CASA_GUI as emGUI
 
 casalog.setlogfile('casa_eMCP.log')
 
@@ -327,6 +328,11 @@ def run_pipeline(inputs=None, inputs_path=''):
         except:
             logger.warning('flag_4_rflag selected but applycal_all has not been run. RFLAG only works on calibrated data!')
             logger.warning('flag_4_rflag will not be executed.')
+
+
+    if inputs['weblog'] == 1:
+        wlog.make_uvplot(msfile, msinfo, inputs['plots_dir'])
+        wlog.start_weblog(msinfo)
 
     ### Run monitoring for bright sources:
     try:

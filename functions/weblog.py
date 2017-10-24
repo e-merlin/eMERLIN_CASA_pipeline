@@ -1,4 +1,11 @@
 import os
+import numpy as np
+from taskinit import *
+from tasks import *
+
+
+import logging
+logger = logging.getLogger('logger')
 
 
 def weblog_header(wlog, section):
@@ -72,26 +79,28 @@ def weblog_index(msinfo):
 def makedir(pathdir):
     try:
         os.mkdir(pathdir)
-#        logger.info('Create directory: {}'.format(pathdir))
+        logger.info('Create directory: {}'.format(pathdir))
     except:
-#        logger.debug('Cannot create directory: {}'.format(pathdir))
+        logger.debug('Cannot create directory: {}'.format(pathdir))
         pass
 
 
 
 def start_weblog(msinfo):
+    logger.info('Start weblog')
     ###  Start weblog  ###
     try: os.mkdir('weblog')
     except: pass
 
     weblog_index(msinfo)
+    logger.info('End weblog')
 
 
 def make_uvplot(msfile, msinfo, plot_dir):
+    logger.info('Generating UV-plots for all sources')
     uvplt_dir = plot_dir+'/uvplt/'
     makedir(uvplt_dir)
     for f in msinfo['mssources'].split(','):
-        print(f)
         outname = '{0}{1}_{2}_{3}.png'.format(uvplt_dir, msinfo['run'], 'uvplt', f)
         plotuv(vis=msfile, field=f, figfile=outname, symb='.')
 
