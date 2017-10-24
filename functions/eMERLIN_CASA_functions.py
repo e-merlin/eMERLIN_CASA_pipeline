@@ -275,10 +275,25 @@ def ms_sources(msfile):
     logger.info('Sources in MS {0}: {1}'.format(msfile, mssources))
     return mssources
 
+def get_project(msfile):
+    tb.open(msfile+'/OBSERVATION')
+    project = tb.getcol('PROJECT')
+    tb.close()
+    return project[0]
+
+def get_polarization(msfile):
+    tb.open(msfile+'/FEED')
+    polarization = tb.getcol('POLARIZATION_TYPE')
+    tb.close()
+    return ', '.join(polarization[:,0])
+
+
 def get_msinfo(msfile, inputs, doprint=False):
     logger.info('Reading ms file information for MS: {0}'.format(msfile))
     msinfo = {}
     msinfo['msfile'] = msfile
+    msinfo['project'] = get_project(msfile)
+    msinfo['run'] = inputs['inbase']
     msinfo['sources'] = user_sources(inputs)
     msinfo['mssources'] = ms_sources(msfile)
     msinfo['antennas'] = get_antennas(msfile)
@@ -293,6 +308,7 @@ def get_msinfo(msfile, inputs, doprint=False):
     msinfo['chan_res'] = chan_res
     msinfo['nchan'] = nchan
     msinfo['innerchan'] = '{0:.0f}~{1:.0f}'.format(0.1*(nchan-nchan/512.), 0.9*(nchan-nchan/512.))
+    msinfo['polarizations'] = get_polarization(msfile)
     save_obj(msinfo, msfile)
     logger.info('Saving information of MS {0} in: {1}'.format(msfile, msfile+'.pkl'))
     if doprint:
