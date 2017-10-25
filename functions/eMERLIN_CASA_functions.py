@@ -1237,7 +1237,8 @@ def initial_gaincal(msfile, msinfo, caltables, previous_cal):
     caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
     caltables[caltable_name]['spwmap'] = [0]*caltables['num_spw']
     caltables[caltable_name]['combine'] = 'spw'
-    caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
+    #caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
+    caltables[caltable_name]['spw'] = ''  # Needs all channels. Check issue #70
     caltable = caltables[caltable_name]['table']
     previous_cal_p = previous_cal + ['allcal_p.G0']
     # Calibration
