@@ -1,4 +1,3 @@
-## v0.00001 of an eMERLIN CASA pipeline ##
 ##Dependencies##
 import os,sys,math
 import numpy as np
