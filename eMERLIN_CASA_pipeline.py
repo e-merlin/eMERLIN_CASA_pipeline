@@ -130,14 +130,16 @@ def run_pipeline(inputs=None, inputs_path=''):
     # It will try to load the msfile if it is there. If not, it will try to
     # remake it. If the MS file is missing, nothing is done (we ignore
     # unaveraged data set).
-    if os.path.isfile(msfile+'.msinfo'):
+    if os.path.isfile(msfile+'.msinfo.pkl'):
+        logger.info('Loading msinfo from: {}'.format(msfile+'.msinfo.pkl'))
         msinfo = load_obj(msfile+'.msinfo')
     elif os.path.isdir(msfile):
         msinfo = em.get_msinfo(msfile, inputs)
         msinfo['Lo_dropout_scans'] = inputs['Lo_dropout_scans']
         msinfo['msfile'] = msfile
         msinfo['plots_dir'] = plots_dir
-        save_obj(msfile, msfile+'.msinfo')
+        logger.info('Saving msinfo to: {}'.format(msfile+'.msinfo.pkl'))
+        save_obj(msinfo, msfile+'.msinfo')
     else:
         logger.info('No unaveraged data or msinfo found. Pre-processing will not work.')
         pass
@@ -174,28 +176,30 @@ def run_pipeline(inputs=None, inputs_path=''):
     logger.info('Using MS file: {0}'.format(msfile))
 
     ### Load or create dictionary with ms information.
-    if os.path.isfile(msfile+'.msinfo'):
+    if os.path.isfile(msfile+'.msinfo.pkl'):
+        logger.info('Loading msinfo from: {}'.format(msfile+'.msinfo.pkl'))
         msinfo = load_obj(msfile+'.msinfo')
-    elif os.path.isdir(msfile):
+        logger.info('Elevation and uvcov plots will not be created again as long as the msinfo.pkl file exists.')
+     elif os.path.isdir(msfile):
         msinfo = em.get_msinfo(msfile, inputs)
         msinfo['Lo_dropout_scans'] = inputs['Lo_dropout_scans']
         msinfo['msfile'] = msfile
         msinfo['plots_dir'] = plots_dir
-        save_obj(msfile, msfile+'.msinfo')
+        ### Defining reference antenna
+        msinfo['refant'] = em.define_refant(msfile, msinfo, inputs)
+        save_obj(msinfo, msfile+'.msinfo')
+        logger.info('Saving msinfo to: {}'.format(msfile+'.msinfo.pkl'))
+        ### Produce basic observation plots
+        emplt.make_elevation(msfile, msinfo)
+        emplt.make_uvcov(msfile, msinfo)
     else:
-        logger.info('No unaveraged data or msinfo found. Pre-processing will not work.')
+        logger.info('No data or msinfo found. Calibration will not work.')
         pass
 
-
-    ### Defining reference antenna
-    msinfo['refant'] = em.define_refant(msfile, msinfo, inputs)
-    save_obj(msfile, msfile+'.msinfo')
 
     ### Produce some plots ###
     if inputs['plot_data'] == 1:
         emplt.make_4plots(msfile, msinfo, datacolumn='data')
-        emplt.make_uvcov(msfile, msinfo)
-        emplt.make_elevation(msfile, msinfo)
 
     ### Load manual flagging file
     if inputs['flag_2b_manual'] == 1:
@@ -326,7 +330,7 @@ def run_pipeline(inputs=None, inputs_path=''):
            previous_cal=['delay.K1','bpcal_sp.B1','allcal_p.G0','allcal_p_jitter.G0','allcal_ap.G3'],
            previous_cal_targets=['delay.K1','bpcal_sp.B1','phscal_p_scan.G2','allcal_ap_scan.G3'])
         msinfo['applycal_all'] = True
-        save_obj(msfile, msfile+'.msinfo')
+        save_obj(msinfo, msfile+'.msinfo')
 
 
     ### RFLAG automatic flagging ###
@@ -338,9 +342,13 @@ def run_pipeline(inputs=None, inputs_path=''):
             logger.warning('flag_4_rflag selected but applycal_all has not been run. RFLAG only works on calibrated data!')
             logger.warning('flag_4_rflag will not be executed.')
 
+    ### Produce some plots ###
+    if inputs['plot_corrected'] == 1:
+        emplt.make_4plots(msfile, msinfo, datacolumn='corrected')
 
+    ### Write weblog ###
     if inputs['weblog'] == 1:
-        wlog.start_weblog(msinfo)
+        emwlog.start_weblog(msinfo)
 
     ### Run monitoring for bright sources:
     try:

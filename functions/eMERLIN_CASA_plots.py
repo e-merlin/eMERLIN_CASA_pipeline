@@ -30,6 +30,18 @@ def get_scans(msfile, field):
     ms.close()
     return num_scans, scans
 
+def get_freqs(msfile, allfreqs=False):
+    ms.open(msfile)
+    axis_info = ms.getdata2(['axis_info'],ifraxis=True)
+    ms.close()
+    if allfreqs:
+        channels = axis_info['axis_info']['freq_axis']['chan_freq']
+        freqs=np.sort(axis_info['axis_info']['freq_axis']['chan_freq'].flatten())[::len(channels)/4]
+    else:
+        freqs = axis_info['axis_info']['freq_axis']['chan_freq'].mean(axis=0)
+    return freqs
+
+
 def single_4plot(msfile, field, baseline, datacolumn, plot_file):
     logger.info('Baseline: {0:6s}, Output: {1}'.format(baseline, plot_file))
     tb.open(msfile+'/SPECTRAL_WINDOW')
@@ -39,46 +51,50 @@ def single_4plot(msfile, field, baseline, datacolumn, plot_file):
     showgui=False
     avgtime = '300'
 
-    plotms(vis=msfile, xaxis='time', yaxis='amp', title='Amp vs Time (color spw)',
+    plotms(vis=msfile, xaxis='time', yaxis='amp', title='Amp vs Time {0} (color=spw)'.format(baseline),
     gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=0, plotindex=0,
     xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
     antenna=baseline, field=field,
     averagedata = True, avgchannel = nchan, #avgtime='16',
-    xselfscale = True, xsharedaxis = True, coloraxis = 'spw',
+    xselfscale = True, xsharedaxis = True, coloraxis = 'spw', plotrange=[-1,-1,0,-1],
     plotfile = '', expformat = 'png', customsymbol = True, symbolshape = 'circle',
     overwrite=True,  showgui=showgui, symbolsize=4)
 
-    plotms(vis=msfile, xaxis='time', yaxis='phase', title='Amp vs Time (color spw)',
-
+    plotms(vis=msfile, xaxis='time', yaxis='phase', title='Amp vs Time {0} (color=spw)'.format(baseline),
     gridrows=gridrows, gridcols=gridcols, rowindex=1, colindex=0, plotindex=1,
     xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
     antenna=baseline, field=field,
     averagedata = True, avgchannel = nchan, #avgtime='16',
-    xselfscale = True, xsharedaxis = True, coloraxis   = 'spw', clearplots=False,
+    xselfscale = True, xsharedaxis = True, coloraxis   = 'spw', plotrange=[-1,-1,-180,180],
     plotfile = '', expformat = 'png', customsymbol = True, symbolshape = 'circle',
-    overwrite=True,  showgui=showgui, symbolsize=4)
+    overwrite=True,  showgui=showgui, symbolsize=4, clearplots=False)
 
-    plotms(vis=msfile, xaxis='freq', yaxis='amp', title='Amp vs Frequency (color corr)',
+    plotms(vis=msfile, xaxis='freq', yaxis='amp', title='Amp vs Frequency {0} (color=corr)'.format(baseline),
     gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=1, plotindex=2,
     xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
     antenna=baseline, field=field,
     averagedata = True, avgtime=avgtime,
-    xselfscale = True, xsharedaxis = True, coloraxis   = 'corr', clearplots=False,
+    xselfscale = True, xsharedaxis = True, coloraxis   = 'corr', plotrange=[-1,-1,0,-1],
     plotfile = '', expformat = 'png', customsymbol = True, symbolshape = 'circle',
-    overwrite=True,  showgui=showgui, symbolsize=4)
+    overwrite=True,  showgui=showgui, symbolsize=4, clearplots=False)
 
-    plotms(vis=msfile, xaxis='freq', yaxis='phase', title='Phase vs Frequency (color corr)',
+
+    plotms(vis=msfile, xaxis='freq', yaxis='phase', title='Phase vs Frequency {0} (color=corr)'.format(baseline),
     gridrows=gridrows, gridcols=gridcols, rowindex=1, colindex=1, plotindex=3,
     xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
     antenna=baseline, field=field,
     averagedata = True, avgtime=avgtime,
-    xselfscale = True, xsharedaxis = True, coloraxis   = 'corr', clearplots=False,
+    xselfscale = True, xsharedaxis = True, coloraxis   = 'corr', plotrange=[-1,-1,-180,180],
     plotfile = plot_file, expformat = 'png', customsymbol = True, symbolshape = 'circle',
-    width=2600, height=1200, symbolsize=4,
-    overwrite=True,  showgui=showgui)
+    width=2600, height=1200, symbolsize=4,clearplots=False, overwrite=True, showgui=showgui)
 
 def make_4plots(msfile, msinfo, datacolumn='data'):
-    plots_data_dir = msinfo['plots_dir']+'plots_data/'
+    if datacolumn == 'data':
+        plots_data_dir = msinfo['plots_dir']+'plots_data/'
+    elif datacolumn == 'corrected':
+        plots_data_dir = msinfo['plots_dir']+'plots_corrected/'
+    else:
+        plots_data_dir = msinfo['plots_dir']
     makedir(plots_data_dir)
     for f in msinfo['sources']['allsources'].split(','):
         logger.info('Generating plot for msfile: {0}, field: {1}, column: {2}'.format(
@@ -133,26 +149,14 @@ def single_uvcov(msfile, field, plot_file, freqs):
     ax.set_ylim(-main_lim, +main_lim)
     fig.savefig(plot_file, dpi=120, bbox_inches='tight')
 
-def get_freqs(msfile, allfreqs=False):
-    ms.open(msfile)
-    axis_info = ms.getdata2(['axis_info'],ifraxis=True)
-    ms.close()
-    if allfreqs:
-        channels = axis_info['axis_info']['freq_axis']['chan_freq']
-        freqs=np.sort(axis_info['axis_info']['freq_axis']['chan_freq'].flatten())[::len(channels)/4]
-    else:
-        freqs = axis_info['axis_info']['freq_axis']['chan_freq'].mean(axis=0)
-    return freqs
-
 def make_uvcov(msfile, msinfo):
+    logger.info('Plotting uv-coverage for all sources'.format())
     plots_obs_dir = msinfo['plots_dir']+'plots_observation/'
     makedir(plots_obs_dir)
     freqs = get_freqs(msfile, allfreqs=True)
     for f in msinfo['sources']['allsources'].split(','):
         plot_file = plots_obs_dir+'{0}_uvcov_{1}.png'.format(msinfo['run'],f)
         single_uvcov(msfile, f, plot_file, freqs)
-
-
 
 
 def make_elevation(msfile, msinfo):

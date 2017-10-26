@@ -765,7 +765,7 @@ def run_split(msfile, msinfo, width, timebin, datacolumn='data'):
     logger.info('Fields: {0}'.format(fields))
     logger.info('Data column: {0}'.format(datacolumn))
     split(vis=msfile, outputvis=outputmsfile, field=fields, width=width,
-          timebin=timebin, datacolumn=datacolumn, keepflags=True)
+          timebin=timebin, datacolumn=datacolumn, keepflags=False)
     listobs(vis=outputmsfile, listfile=outputmsfile+'.listobs',overwrite=True)
     logger.info('Listobs file in: {0}'.format(outputmsfile+'.listobs'))
     logger.info('End split')

@@ -1,20 +1,20 @@
 import os
 import numpy as np
+import glob
 from taskinit import *
 from tasks import *
-
 
 import logging
 logger = logging.getLogger('logger')
 
 
-def weblog_header(wlog, section):
+def weblog_header(wlog, section, project):
     wlog.write('<html>\n')
     wlog.write('<head>\n')
-    wlog.write('<title>e-MERLIN Pipeline Web Log</title>\n')
+    wlog.write('<title>{} - e-MERLIN Pipeline Web Log</title>\n'.format(project))
     wlog.write('</head>\n')
     wlog.write('<body>\n')
-    wlog.write('<h5>e-MERLIN Pipeline Web Log</h5>\n')
+    wlog.write('<h4>e-MERLIN Pipeline Web Log<br>{}</h4>\n'.format(project))
     wlog.write('<form>\n')
     wlog.write('<input type="button" value="Home"  onclick="window.location.href=\'./index.html\'">\n')
     wlog.write('<input type="button" value="Observation summary"  onclick="window.location.href=\'./obs_summary.html\'">\n')
@@ -22,17 +22,17 @@ def weblog_header(wlog, section):
     wlog.write('<input type="button" value="Files"  onclick="window.location.href=\'./files.html\'">\n')
     wlog.write('</form>\n')
     #wlog.write('<br>\n')
-    wlog.write('<h1>{0}</h1>\n'.format(section))
+    wlog.write('<h2>{0}</h2>\n'.format(section))
     wlog.write('<hr>\n')
 
 
 def weblog_foot(wlog):
     wlog.write('<hr><br>\n')
-    wlog.write('<small><a href="http://www.e-merlin.ac.uk/observe/pipeline/">e-MERLIN Pipeline</a><br>\n')
-    wlog.write('<a href="https://github.com/mkargo/pipeline">e-MERLIN Pipeline Github</a><br>\n')
+    wlog.write('<small>')
+    wlog.write('<a href="https://github.com/e-merlin/CASA_eMERLIN_pipeline">e-MERLIN Pipeline Github</a><br>\n')
     wlog.write('<a href="http://www.e-merlin.ac.uk/">e-MERLIN</a><br>\n')
     wlog.write('<a href="http://www.e-merlin.ac.uk/data_red/">User support and data reduction for e-MERLIN</a><br>\n')
-    wlog.write('<a href="http://www.jive.nl/jivewiki/doku.php?id=parseltongue:parseltongue">Parseltongue</a></small><br>\n')
+    wlog.write('<a href="https://casa.nrao.edu/">CASA</a></small><br>\n')
     wlog.write('<hr>\n')
     wlog.write('</body>\n')
     wlog.write('</html>\n')
@@ -41,8 +41,8 @@ def write_link_txt(wlog, infile, intext):
     wlog.write('{0}: <a href="{1}" target="_blank">txt</a><br>\n'.format(intext, infile))
 
 def weblog_index(msinfo):
-    wlog = open("weblog/index.html","w")
-    weblog_header(wlog, 'Home')
+    wlog = open("./weblog/index.html","w")
+    weblog_header(wlog, 'Home', msinfo['run'])
     #------------------------------------------
     wlog.write('<table bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:30%">\n')
     wlog.write('<tr><td>Project </td>   <td> {}</td>\n'.format(msinfo['project']))
@@ -76,6 +76,89 @@ def weblog_index(msinfo):
     wlog.close()
 
 
+def weblog_obssum(msinfo):
+    ###### Observation summary page
+    wlog = open("./weblog/obs_summary.html","w")
+    weblog_header(wlog, 'Observation summary', msinfo['run'])
+    #------------------------------------------
+    wlog.write('<h3>Summary:</h3>\n')
+    write_link_txt(wlog, '../{}'.format(msinfo['msfile']+'.listobs'), 'Summary of the observation (listobs)')
+    wlog.write('<h3>Sources:</h3>\n')
+    for source in msinfo['sources']['allsources'].split(','):
+        if source in msinfo['sources']['targets'].split(','):
+            extra_txt = '(target)'
+        elif source in msinfo['sources']['phscals'].split(','):
+            extra_txt = '(phasecal)'
+        else:
+            extra_txt = ''
+        wlog.write("{0} {1}</br>\n".format(source, extra_txt))
+    wlog.write('<h3>Antennas:</h3>\n')
+    wlog.write('<pre>\n')
+    for a in msinfo['antennas']:
+        wlog.write("{0}\n".format(a))
+    wlog.write('</pre>\n')
+    wlog.write('<h3>Source elevation:</h3>\n')
+    try:
+        elev_plot = glob.glob('./plots/plots_observation/*_elevation.png')
+        wlog.write('<a href = ".{0}"><img style="max-width:700px" src=".{0}"></a><br>\n'.format(elev_plot[0]))
+    except:
+        pass
+    wlog.write('<br><h3>UV coverage:</h3>\n')
+    try:
+        uvcov = np.sort(glob.glob('./plots/plots_observation/*_uvcov_*.png'))
+        for u in uvcov:
+            wlog.write('<a href = ".{0}"><img style="max-width:700px" src=".{0}"></a><br>\n'.format(u))
+            wlog.write('<hr>\n')
+    except:
+        pass
+    #------------------------------------------
+    weblog_foot(wlog)
+    wlog.close()
+
+def create_pnghtml_baselines(plots_path, source, subtitle, msinfo):
+    page_path = "./weblog/"+plots_path+'_'+source+".html"
+    wlog = open(page_path,"w")
+    weblog_header(wlog, source, msinfo['run'])
+    wlog.write('<h3>{0}</h3>\n'.format(subtitle))
+    #------------------------------------------
+    for bsl in msinfo['baselines']:
+        try:
+            b1, b2 = bsl.split('&')
+            png = np.sort(glob.glob('./plots/{0}/*{1}_{2}-{3}*png'.format(
+                                                            plots_path, source,
+                                                            b1, b2)))[0]
+            wlog.write('<h5>{0}-{1}</h5>\n'.format(b1,b2))
+            wlog.write('<a href = ".{0}"><img style="max-width:960px" src=".{0}"></a><br>\n'.format(png))
+            wlog.write('<hr>')
+        except:
+            pass
+    #------------------------------------------
+    weblog_foot(wlog)
+    wlog.close()
+    return page_path
+
+
+def weblog_plots(msinfo):
+    ###### Plots page
+    wlog = open("./weblog/plots.html","w")
+    weblog_header(wlog, 'Plots', msinfo['run'])
+    #------------------------------------------
+    if os.listdir('./plots/plots_data/'):
+        wlog.write('<h3>Uncalibrated visibilities</h3>\n')
+        for source in msinfo['sources']['allsources'].split(','):
+            page_path = create_pnghtml_baselines('plots_data', source, 'Uncalibrated amplitude and phase against time and frequency.', msinfo)
+            wlog.write('{0} <a href=".{1}" target="_blank">plots</a><br>\n'.format(source, page_path))
+
+    if os.listdir('./plots/plots_corrected/'):
+        wlog.write('<h3>Calibrated visibilities</h3>\n')
+        for source in msinfo['sources']['allsources'].split(','):
+            page_path = create_pnghtml_baselines('plots_corrected', source, 'Calibrated amplitude and phase against time and frequency.', msinfo)
+            wlog.write('{0} <a href=".{1}" target="_blank">plots</a><br>\n'.format(source, page_path))
+    #------------------------------------------
+    weblog_foot(wlog)
+    wlog.close()
+
+
 def makedir(pathdir):
     try:
         os.mkdir(pathdir)
@@ -93,6 +176,8 @@ def start_weblog(msinfo):
     except: pass
 
     weblog_index(msinfo)
+    weblog_obssum(msinfo)
+    weblog_plots(msinfo)
     logger.info('End weblog')
 
 
