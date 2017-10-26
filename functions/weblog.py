@@ -96,13 +96,5 @@ def start_weblog(msinfo):
     logger.info('End weblog')
 
 
-def make_uvplot(msfile, msinfo, plot_dir):
-    logger.info('Generating UV-plots for all sources')
-    uvplt_dir = plot_dir+'/uvplt/'
-    makedir(uvplt_dir)
-    for f in msinfo['mssources'].split(','):
-        outname = '{0}{1}_{2}_{3}.png'.format(uvplt_dir, msinfo['run'], 'uvplt', f)
-        plotuv(vis=msfile, field=f, figfile=outname, symb='.')
-
 
 

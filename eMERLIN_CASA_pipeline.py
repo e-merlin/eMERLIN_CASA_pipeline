@@ -192,8 +192,10 @@ def run_pipeline(inputs=None, inputs_path=''):
     save_obj(msfile, msfile+'.msinfo')
 
     ### Produce some plots ###
-#    if inputs['plot_data'] == 1:
-#        emplt.make_4plots(msfile, msinfo, datacolumn='data')
+    if inputs['plot_data'] == 1:
+        emplt.make_4plots(msfile, msinfo, datacolumn='data')
+        emplt.make_uvcov(msfile, msinfo)
+        emplt.make_elevation(msfile, msinfo)
 
     ### Load manual flagging file
     if inputs['flag_2b_manual'] == 1:
@@ -337,9 +339,7 @@ def run_pipeline(inputs=None, inputs_path=''):
             logger.warning('flag_4_rflag will not be executed.')
 
 
-    emplt.make_uvcov(msfile, msinfo)
     if inputs['weblog'] == 1:
-        wlog.make_uvplot(msfile, msinfo, inputs['plots_dir'])
         wlog.start_weblog(msinfo)
 
     ### Run monitoring for bright sources:

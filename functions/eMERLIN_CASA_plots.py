@@ -145,12 +145,25 @@ def get_freqs(msfile, allfreqs=False):
     return freqs
 
 def make_uvcov(msfile, msinfo):
-    plots_uvcov_dir = msinfo['plots_dir']+'plots_uvcov/'
-    makedir(plots_uvcov_dir)
+    plots_obs_dir = msinfo['plots_dir']+'plots_observation/'
+    makedir(plots_obs_dir)
     freqs = get_freqs(msfile, allfreqs=True)
     for f in msinfo['sources']['allsources'].split(','):
-        plot_file = plots_uvcov_dir+'{0}_uvcov_{1}.png'.format(msinfo['run'],f)
+        plot_file = plots_obs_dir+'{0}_uvcov_{1}.png'.format(msinfo['run'],f)
         single_uvcov(msfile, f, plot_file, freqs)
 
 
+
+
+def make_elevation(msfile, msinfo):
+    plots_obs_dir = msinfo['plots_dir']+'plots_observation/'
+    makedir(plots_obs_dir)
+    plot_file = plots_obs_dir+'{0}_elevation.png'.format(msinfo['run'])
+    logger.info('Plotting elevation to: {}'.format(plot_file))
+    avgtime = '32'
+    showgui = False
+    plotms(vis=msfile, xaxis='time', yaxis='elevation', correlation = 'RR',
+    spw='0', coloraxis = 'field', width=900, symbolsize=5, plotrange=[-1,-1,0,90],
+    plotfile = plot_file, expformat = 'png', customsymbol = True, symbolshape = 'circle',
+    overwrite=True,  showgui=showgui)
 
