@@ -20,7 +20,8 @@ except:
 
 sys.path.append(pipeline_path)
 import functions.eMERLIN_CASA_functions as em
-import functions.weblog as wlog
+import functions.weblog as emwlog
+import functions.eMERLIN_CASA_plots as emplt
 #import functions.eMERLIN_CASA_GUI as emGUI
 
 casalog.setlogfile('casa_eMCP.log')
@@ -134,6 +135,8 @@ def run_pipeline(inputs=None, inputs_path=''):
     elif os.path.isdir(msfile):
         msinfo = em.get_msinfo(msfile, inputs)
         msinfo['Lo_dropout_scans'] = inputs['Lo_dropout_scans']
+        msinfo['msfile'] = msfile
+        msinfo['plots_dir'] = plots_dir
         save_obj(msfile, msfile+'.msinfo')
     else:
         logger.info('No unaveraged data or msinfo found. Pre-processing will not work.')
@@ -176,6 +179,8 @@ def run_pipeline(inputs=None, inputs_path=''):
     elif os.path.isdir(msfile):
         msinfo = em.get_msinfo(msfile, inputs)
         msinfo['Lo_dropout_scans'] = inputs['Lo_dropout_scans']
+        msinfo['msfile'] = msfile
+        msinfo['plots_dir'] = plots_dir
         save_obj(msfile, msfile+'.msinfo')
     else:
         logger.info('No unaveraged data or msinfo found. Pre-processing will not work.')
@@ -186,6 +191,9 @@ def run_pipeline(inputs=None, inputs_path=''):
     msinfo['refant'] = em.define_refant(msfile, msinfo, inputs)
     save_obj(msfile, msfile+'.msinfo')
 
+    ### Produce some plots ###
+#    if inputs['plot_data'] == 1:
+#        emplt.make_4plots(msfile, msinfo, datacolumn='data')
 
     ### Load manual flagging file
     if inputs['flag_2b_manual'] == 1:
@@ -329,6 +337,7 @@ def run_pipeline(inputs=None, inputs_path=''):
             logger.warning('flag_4_rflag will not be executed.')
 
 
+    emplt.make_uvcov(msfile, msinfo)
     if inputs['weblog'] == 1:
         wlog.make_uvplot(msfile, msinfo, inputs['plots_dir'])
         wlog.start_weblog(msinfo)
