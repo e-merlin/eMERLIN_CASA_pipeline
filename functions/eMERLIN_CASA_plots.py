@@ -50,7 +50,7 @@ def single_4plot(msfile, field, baseline, datacolumn, plot_file):
     showgui=False
     avgtime = '300'
 
-    plotms(vis=msfile, xaxis='time', yaxis='amp', title='Amp vs Time {0} (color=spw)'.format(baseline),
+    plotms(vis=msfile, xaxis='time', yaxis='amp', title='Amp vs Time {0} {1} (color=spw)'.format(field, baseline),
     gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=0, plotindex=0,
     xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
     antenna=baseline, field=field,
@@ -59,7 +59,7 @@ def single_4plot(msfile, field, baseline, datacolumn, plot_file):
     plotfile = '', expformat = 'png', customsymbol = True, symbolshape = 'circle',
     overwrite=True,  showgui=showgui, symbolsize=4)
 
-    plotms(vis=msfile, xaxis='time', yaxis='phase', title='Amp vs Time {0} (color=spw)'.format(baseline),
+    plotms(vis=msfile, xaxis='time', yaxis='phase', title='Amp vs Time {0} {1} (color=spw)'.format(field, baseline),
     gridrows=gridrows, gridcols=gridcols, rowindex=1, colindex=0, plotindex=1,
     xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
     antenna=baseline, field=field,
@@ -68,7 +68,7 @@ def single_4plot(msfile, field, baseline, datacolumn, plot_file):
     plotfile = '', expformat = 'png', customsymbol = True, symbolshape = 'circle',
     overwrite=True,  showgui=showgui, symbolsize=4, clearplots=False)
 
-    plotms(vis=msfile, xaxis='freq', yaxis='amp', title='Amp vs Frequency {0} (color=corr)'.format(baseline),
+    plotms(vis=msfile, xaxis='freq', yaxis='amp', title='Amp vs Frequency {0} {1} (color=corr)'.format(field, baseline),
     gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=1, plotindex=2,
     xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
     antenna=baseline, field=field,
@@ -77,7 +77,7 @@ def single_4plot(msfile, field, baseline, datacolumn, plot_file):
     plotfile = '', expformat = 'png', customsymbol = True, symbolshape = 'circle',
     overwrite=True,  showgui=showgui, symbolsize=4, clearplots=False)
 
-    plotms(vis=msfile, xaxis='freq', yaxis='phase', title='Phase vs Frequency {0} (color=corr)'.format(baseline),
+    plotms(vis=msfile, xaxis='freq', yaxis='phase', title='Phase vs Frequency {0} {1} (color=corr)'.format(field, baseline),
     gridrows=gridrows, gridcols=gridcols, rowindex=1, colindex=1, plotindex=3,
     xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
     antenna=baseline, field=field,

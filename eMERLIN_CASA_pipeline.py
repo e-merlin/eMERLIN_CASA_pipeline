@@ -216,7 +216,8 @@ def run_pipeline(inputs=None, inputs_path=''):
             caltables['calib_dir'] = calib_dir
             caltables['num_spw'] = msinfo['num_spw']
             logger.info('New caltables dictionary created. Saved to: {0}'.format(calib_dir+'caltables.pkl'))
-
+        caltables['Lo_dropout_scans'] = inputs['Lo_dropout_scans']
+        caltables['refant'] = inputs['refant']
         if inputs['refant'] == '':
             logger.info('Estimating best reference antenna. To avoid this, set a reference antenna in the inputs file.')
             caltables['refant'] = em.define_refant(msfile, msinfo, inputs)

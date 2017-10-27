@@ -124,9 +124,9 @@ def create_pnghtml_baselines(plots_path, source, subtitle, msinfo):
     for bsl in msinfo['baselines']:
         try:
             b1, b2 = bsl.split('&')
-            png = np.sort(glob.glob('./plots/{0}/{1}_4plot_{2}_{3}-{4}_*.png'.format(
+            png = np.sort(glob.glob('./plots/{0}/{1}_4plot_{2}_{3}-{4}_*.png'.format(plots_path,
                                                             msinfo['msfilename'],
-                                                            plots_path, source,
+                                                            source,
                                                             b1, b2)))[0]
             wlog.write('<h5>{0}-{1}</h5>\n'.format(b1,b2))
             wlog.write('<a href = ".{0}"><img style="max-width:960px" src=".{0}"></a><br>\n'.format(png))
