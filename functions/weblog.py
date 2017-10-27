@@ -44,7 +44,7 @@ def weblog_index(msinfo):
     wlog = open("./weblog/index.html","w")
     weblog_header(wlog, 'Home', msinfo['run'])
     #------------------------------------------
-    wlog.write('<table bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:30%">\n')
+    wlog.write('<table bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:40%">\n')
     wlog.write('<tr><td>Project </td>   <td> {}</td>\n'.format(msinfo['project']))
     wlog.write('<tr><td>Run </td>   <td> {}</td>\n'.format(msinfo['run']))
     #wlog.write('<tr><td>Date observed </td>  <td> {0} </td>\n'.format(msinfo['t_ini'].date()))
@@ -138,23 +138,54 @@ def create_pnghtml_baselines(plots_path, source, subtitle, msinfo):
     wlog.close()
     return page_path
 
+def plots_data(msinfo, wlog):
+    for source in msinfo['sources']['allsources'].split(','):
+        page_path = create_pnghtml_baselines('plots_data', source, 'Uncalibrated amplitude and phase against time and frequency.', msinfo)
+        wlog.write('{0} <a href=".{1}" target="_blank">plots</a><br>\n'.format(source, page_path))
+
+
+def plots_corrected(msinfo, wlog):
+    for source in msinfo['sources']['allsources'].split(','):
+        page_path = create_pnghtml_baselines('plots_corrected', source, 'Calibrated amplitude and phase against time and frequency.', msinfo)
+        wlog.write('{0} <a href=".{1}" target="_blank">plots</a><br>\n'.format(source, page_path))
+
+def plots_caltables(msinfo, wlog):
+    all_plots = np.sort(glob.glob('./plots/caltables/*png'))
+    for p in all_plots:
+        wlog.write('<a href=".{1}" target="_blank">{0}</a><br>\n'.format(os.path.basename(p), p))
+
+def plots_uvplt(msinfo, wlog):
+    all_plots = np.sort(glob.glob('./plots/plots_uvplt/*png'))
+    for p in all_plots:
+        source_name = os.path.splitext(p)[0].split('_')[-1]
+        wlog.write('<h4>{0}</h4>\n'.format(source_name))
+        wlog.write('<a href = ".{0}"><img style="max-width:700px" src=".{0}"></a><br>\n'.format(p))
+        wlog.write('<hr>\n')
+
+
 
 def weblog_plots(msinfo):
     ###### Plots page
     wlog = open("./weblog/plots.html","w")
     weblog_header(wlog, 'Plots', msinfo['run'])
     #------------------------------------------
+    wlog.write('<h3>Uncalibrated visibilities</h3>\n')
     if (os.path.isdir('./plots/plots_data/')) and (os.listdir('./plots/plots_data/')):
-        wlog.write('<h3>Uncalibrated visibilities</h3>\n')
-        for source in msinfo['sources']['allsources'].split(','):
-            page_path = create_pnghtml_baselines('plots_data', source, 'Uncalibrated amplitude and phase against time and frequency.', msinfo)
-            wlog.write('{0} <a href=".{1}" target="_blank">plots</a><br>\n'.format(source, page_path))
+        plots_data(msinfo, wlog)
 
+    wlog.write('<h3>Calibrated visibilities</h3>\n')
     if (os.path.isdir('./plots/plots_corrected/')) and (os.listdir('./plots/plots_corrected/')):
-        wlog.write('<h3>Calibrated visibilities</h3>\n')
-        for source in msinfo['sources']['allsources'].split(','):
-            page_path = create_pnghtml_baselines('plots_corrected', source, 'Calibrated amplitude and phase against time and frequency.', msinfo)
-            wlog.write('{0} <a href=".{1}" target="_blank">plots</a><br>\n'.format(source, page_path))
+        plots_corrected(msinfo, wlog)
+
+    wlog.write('<h3>Calibration tables</h3>\n')
+    if (os.path.isdir('./plots/caltables/')) and (os.listdir('./plots/caltables/')):
+        plots_caltables(msinfo, wlog)
+
+    wlog.write('<h3>Calibrated UVplots</h3>\n')
+    if (os.path.isdir('./plots/plots_uvplt/')) and (os.listdir('./plots/plots_uvplt/')):
+        plots_uvplt(msinfo, wlog)
+
+
     #------------------------------------------
     weblog_foot(wlog)
     wlog.close()

@@ -89,9 +89,9 @@ def single_4plot(msfile, field, baseline, datacolumn, plot_file):
 
 def make_4plots(msfile, msinfo, datacolumn='data'):
     if datacolumn == 'data':
-        plots_data_dir = '.plots/plots_data/'
+        plots_data_dir = './plots/plots_data/'
     elif datacolumn == 'corrected':
-        plots_data_dir = '.plots/plots_corrected/'
+        plots_data_dir = './plots/plots_corrected/'
     else:
         plots_data_dir = './plots/'
     makedir(plots_data_dir)
@@ -99,10 +99,46 @@ def make_4plots(msfile, msinfo, datacolumn='data'):
         logger.info('Generating plot for msfile: {0}, field: {1}, column: {2}'.format(
                                                     (msfile), f, datacolumn))
         for baseline in msinfo['baselines']:
-            plot_file = plots_data_dir+'{0}_4plot_{1}_{2}_{3}.png'.format(msinfo['run'], f,
+            plot_file = plots_data_dir+'{0}_4plot_{1}_{2}_{3}.png'.format(
+                                                         msinfo['msfilename'], f,
                                                          baseline.replace('&','-'),
                                                          datacolumn)
             single_4plot(msfile, f, baseline, datacolumn, plot_file)
+
+def single_uvplt(msinfo, field, plot_file):
+    msfile = msinfo['msfile']
+    nchan = msinfo['nchan']
+    datacolumn='corrected'
+    avgtime = '16'
+    showgui = False
+    gridrows = 1
+    gridcols = 2
+    plotms(vis=msfile, xaxis='UVwave', yaxis='amp', title='Amplitude vs UVWave {0} (color=spw)'.format(field),
+    gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=0, plotindex=0,
+    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR,LL',
+    antenna='*&*', field=field,
+    averagedata = True, avgtime=avgtime, avgchannel = str(nchan),
+    xselfscale = True, xsharedaxis = True, coloraxis   = 'spw',
+    plotfile = '', expformat = 'png', customsymbol = True, symbolshape = 'circle',
+    symbolsize=4, clearplots=True, overwrite=True, showgui=showgui)
+
+    plotms(vis=msfile, xaxis='UVwave', yaxis='phase', title='Phase vs UVWave {0} (color=spw)'.format(field),
+    gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=1, plotindex=1,
+    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR,LL',
+    antenna='*&*', field=field,
+    averagedata = True, avgtime=avgtime, avgchannel = str(nchan),
+    xselfscale = True, xsharedaxis = True, coloraxis   = 'spw', plotrange=[-1,-1,-180,180],
+    plotfile = plot_file, expformat = 'png', customsymbol = True, symbolshape = 'circle',
+    width=1200, height=573, symbolsize=4, clearplots=False, overwrite=True, showgui=showgui)
+
+
+def make_uvplt(msinfo):
+    plots_data_dir = './plots/plots_uvplt/'
+    makedir(plots_data_dir)
+    for f in msinfo['sources']['allsources'].split(','):
+        plot_file =  plots_data_dir+'{0}_uvplt_{1}.png'.format(msinfo['msfilename'], f)
+        logger.info('Plotting uvplt for {0}: {1}'.format(f, plot_file))
+        single_uvplt(msinfo, f, plot_file)
 
 
 def single_uvcov(field, u, v, freqs, plot_file):
@@ -135,9 +171,10 @@ def single_uvcov(field, u, v, freqs, plot_file):
     ax.set_ylim(-main_lim, +main_lim)
     fig.savefig(plot_file, dpi=120, bbox_inches='tight')
 
-def read_uvw(msfile, field_id):
+def read_uvw(msfile, field):
     ms.open(msfile)
-    ms.msselect({'spw':'0', 'field_id':field_id})
+    staql={'field':field, 'spw':'0'}
+    ms.msselect(staql)
     uv = ms.getdata(['u', 'v'])
     ms.close()
     u = uv['u']
@@ -155,9 +192,8 @@ def make_uvcov(msfile, msinfo):
     for f in msinfo['sources']['allsources'].split(','):
         if f in fields_ms:
             plot_file = plots_obs_dir+'{0}_uvcov_{1}.png'.format(msinfo['msfilename'],f)
-            f_id = np.argwhere(fields_ms==f)[0][0]
-            logger.info('Plotting uvcov for {0} [{1}]: {2}'.format(f, f_id, plot_file))
-            u, v = read_uvw(msfile, f_id)
+            logger.info('Plotting uvcov for {0}: {1}'.format(f, plot_file))
+            u, v = read_uvw(msfile, f)
             single_uvcov(f, u, v, freqs, plot_file)
         else:
             logger.info('Cannot plot uvcov for {0}. Source not in ms.'.format(f))

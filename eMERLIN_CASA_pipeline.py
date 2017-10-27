@@ -75,7 +75,7 @@ def run_pipeline(inputs=None, inputs_path=''):
         inputs = em.headless(inputs_path)
 
     # Paths to use
-    raw_fits_path = em.backslash_check(inputs['raw_fits_path'])
+    fits_path = em.backslash_check(inputs['fits_path'])
     calib_dir = './calib/'
     plots_dir = './plots/'
     logs_dir  = './logs/'
@@ -109,7 +109,7 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     ## Pipeline processes, inputs are read from the inputs dictionary
     if inputs['run_importfits'] == 1:
-        em.run_importfitsIDI(raw_fits_path, msfile)
+        em.run_importfitsIDI(fits_path, msfile)
         em.check_mixed_mode(msfile,mode='split')
 
     ### Write summary weblog ###
@@ -123,6 +123,8 @@ def run_pipeline(inputs=None, inputs_path=''):
             msinfo = em.get_msinfo(msfile, inputs)
             emplt.make_elevation(msfile, msinfo)
             emplt.make_uvcov(msfile, msinfo)
+            save_obj(msinfo, msfile+'.msinfo')
+            logger.info('Saving information of MS {0} in: {1}'.format(msfile, msfile+'.pkl'))
         emwlog.start_weblog(msinfo)
 
     if inputs['hanning'] == 1:
@@ -180,6 +182,8 @@ def run_pipeline(inputs=None, inputs_path=''):
         ### Produce basic observation plots
         emplt.make_elevation(msfile, msinfo)
         emplt.make_uvcov(msfile, msinfo)
+        save_obj(msinfo, msfile+'.msinfo')
+        logger.info('Saving information of MS {0} in: {1}'.format(msfile, msfile+'.pkl'))
     else:
         logger.info('No data or msinfo found. Calibration will not work.')
         pass
@@ -192,7 +196,6 @@ def run_pipeline(inputs=None, inputs_path=''):
     ### Load manual flagging file
     if inputs['flag_2b_manual'] == 1:
         flags = em.flagdata2_manual(msfile=msfile, inpfile=inputs['manual_flags_b'], flags=flags)
-
 
 
     ###################
@@ -337,6 +340,7 @@ def run_pipeline(inputs=None, inputs_path=''):
     ### Produce some visibility plots ###
     if inputs['plot_corrected'] == 1:
         emplt.make_4plots(msfile, msinfo, datacolumn='corrected')
+        emplt.make_uvplt(msinfo)
 
     ### Write weblog ###
     if inputs['weblog'] == 1:
