@@ -112,11 +112,21 @@ def run_pipeline(inputs=None, inputs_path=''):
         em.run_importfitsIDI(raw_fits_path, msfile)
         em.check_mixed_mode(msfile,mode='split')
 
+    ### Write summary weblog ###
+    if inputs['summary_weblog'] == 1:
+        logger.info('Starting summary weblog')
+        if os.path.isfile(msfile+'.msinfo.pkl'):
+            logger.info('Loading msinfo from: {}'.format(msfile+'.msinfo.pkl'))
+            msinfo = load_obj(msfile+'.msinfo')
+            logger.info('Elevation and uvcov plots will not be created again as long as the {}.pkl file exists.'.format(msfile+'.msinfo'))
+        elif os.path.isdir(msfile):
+            msinfo = em.get_msinfo(msfile, inputs)
+            emplt.make_elevation(msfile, msinfo)
+            emplt.make_uvcov(msfile, msinfo)
+        emwlog.start_weblog(msinfo)
+
     if inputs['hanning'] == 1:
         em.hanning(inputvis=msfile,deloriginal=True)
-
-#    if inputs['rfigui'] == 1:
-#        em.run_rfigui(msfile)
 
     ### Convert MS to MMS ###
     if inputs['ms2mms'] == 1:
@@ -129,36 +139,16 @@ def run_pipeline(inputs=None, inputs_path=''):
     if os.path.isdir('./'+inputs['inbase']+'.mms') == True:
         msfile = inputs['inbase']+'.mms'
 
-    ### Create dictionary with ms information.
-    # It will try to load the msfile if it is there. If not, it will try to
-    # remake it. If the MS file is missing, nothing is done (we ignore
-    # unaveraged data set).
-    if os.path.isfile(msfile+'.msinfo.pkl'):
-        logger.info('Loading msinfo from: {}'.format(msfile+'.msinfo.pkl'))
-        msinfo = load_obj(msfile+'.msinfo')
-    elif os.path.isdir(msfile):
-        msinfo = em.get_msinfo(msfile, inputs)
-        msinfo['Lo_dropout_scans'] = inputs['Lo_dropout_scans']
-        msinfo['msfile'] = msfile
-        msinfo['plots_dir'] = plots_dir
-        logger.info('Saving msinfo to: {}'.format(msfile+'.msinfo.pkl'))
-        save_obj(msinfo, msfile+'.msinfo')
-    else:
-        logger.info('No unaveraged data or msinfo found. Pre-processing will not work.')
-        pass
-
     ### Run AOflagger
     if inputs['flag_0_aoflagger'] == 1:
         flags = em.run_aoflagger_fields(vis=msfile, flags=flags, fields='all', pipeline_path = pipeline_path)
 
-# To be removed
-#    ### Produce some initial plots ###
-#    if inputs['prediag'] == 1:
-#        em.do_prediagnostics(msfile,plots_dir)
-
     ### A-priori flagdata: Lo&Mk2, edge channels, standard quack
     if inputs['flag_1_apriori'] == 1:
-        flags = em.flagdata1_apriori(msfile=msfile, msinfo=msinfo, flags=flags, do_quack=True)
+        sources = em.user_sources(inputs)
+        Lo_dropout_scans =inputs['Lo_dropout_scans']
+        flags = em.flagdata1_apriori(msfile=msfile, sources=sources,
+                                     Lo_dropout_scans=Lo_dropout_scans, flags=flags, do_quack=True)
 
     ### Load manual flagging file
     if inputs['flag_2a_manual'] == 1:
@@ -167,7 +157,8 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     ### Average data ###
     if inputs['average_1'] == 1:
-        em.run_split(msfile, msinfo, width=4, timebin='2s')
+        sources = em.user_sources(inputs)
+        em.run_split(msfile, sources=sources, width=4, timebin='2s')
 
     # Check if averaged data already generated
     if os.path.isdir('./'+inputs['inbase']+'_avg.mms') == True:
@@ -183,17 +174,9 @@ def run_pipeline(inputs=None, inputs_path=''):
     if os.path.isfile(msfile+'.msinfo.pkl'):
         logger.info('Loading msinfo from: {}'.format(msfile+'.msinfo.pkl'))
         msinfo = load_obj(msfile+'.msinfo')
-        msinfo['refant'] = em.define_refant(msfile, msinfo, inputs)
         logger.info('Elevation and uvcov plots will not be created again as long as the {}.pkl file exists.'.format(msfile+'.msinfo'))
     elif os.path.isdir(msfile):
         msinfo = em.get_msinfo(msfile, inputs)
-        msinfo['Lo_dropout_scans'] = inputs['Lo_dropout_scans']
-        msinfo['msfile'] = msfile
-        msinfo['plots_dir'] = plots_dir
-        ### Defining reference antenna
-        msinfo['refant'] = em.define_refant(msfile, msinfo, inputs)
-        save_obj(msinfo, msfile+'.msinfo')
-        logger.info('Saving msinfo to: {}'.format(msfile+'.msinfo.pkl'))
         ### Produce basic observation plots
         emplt.make_elevation(msfile, msinfo)
         emplt.make_uvcov(msfile, msinfo)
@@ -218,19 +201,23 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     # All the calibration steps will be saved in the dictionary caltables.pkl
     # located in the calib directory. If it does not exist a new one is created.
-    try:
-        caltables = load_obj(calib_dir+'caltables')
-        logger.info('Loaded previous calibration tables from: {0}'.format(calib_dir+'caltables.pkl'))
-    except:
-        caltables = {}
-        caltables['inbase'] = inputs['inbase']
-        caltables['plots_dir'] = plots_dir
-        caltables['calib_dir'] = calib_dir
-        caltables['num_spw'] = msinfo['num_spw']
-        logger.info('New caltables dictionary created. Saved to: {0}'.format(calib_dir+'caltables.pkl'))
+    all_calsteps = ['bandpass_0', 'delay', 'gain_0_p_ap', 'fluxscale','bandpass_1_sp','gain_1_amp_sp']
+    if np.array([inputs[cal]>0 for cal in all_calsteps]).any():
+        try:
+            caltables = load_obj(calib_dir+'caltables')
+            logger.info('Loaded previous calibration tables from: {0}'.format(calib_dir+'caltables.pkl'))
+        except:
+            caltables = {}
+            caltables['inbase'] = inputs['inbase']
+            caltables['plots_dir'] = plots_dir
+            caltables['calib_dir'] = calib_dir
+            caltables['num_spw'] = msinfo['num_spw']
+            logger.info('New caltables dictionary created. Saved to: {0}'.format(calib_dir+'caltables.pkl'))
 
-    caltables['refant'] = msinfo['refant']
-    save_obj(caltables, calib_dir+'caltables')
+        if inputs['refant'] == '':
+            logger.info('Estimating best reference antenna. To avoid this, set a reference antenna in the inputs file.')
+            caltables['refant'] = em.define_refant(msfile, msinfo, inputs)
+            save_obj(caltables, calib_dir+'caltables')
 
     ### Initialize models ###
     if inputs['init_models'] == 1:  # Need to add parameter to GUI
@@ -364,11 +351,14 @@ def run_pipeline(inputs=None, inputs_path=''):
     except:
         pass
 
-    os.system('mv casa-*.log *.last ./logs')
+    try:
+        os.system('mv casa-*.log *.last ./logs')
+    except:
+        pass
     logger.info('Pipeline finished')
     logger.info('#################')
 
-    return inputs, caltables, msinfo
+    return inputs, msinfo
 
 
 

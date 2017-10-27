@@ -99,13 +99,13 @@ def weblog_obssum(msinfo):
     wlog.write('</pre>\n')
     wlog.write('<h3>Source elevation:</h3>\n')
     try:
-        elev_plot = glob.glob('./plots/plots_observation/*_elevation.png')
+        elev_plot = glob.glob('./plots/plots_observation/{0}_elevation.png'.format(msinfo['msfilename']))
         wlog.write('<a href = ".{0}"><img style="max-width:700px" src=".{0}"></a><br>\n'.format(elev_plot[0]))
     except:
         pass
     wlog.write('<br><h3>UV coverage:</h3>\n')
     try:
-        uvcov = np.sort(glob.glob('./plots/plots_observation/*_uvcov_*.png'))
+        uvcov = np.sort(glob.glob('./plots/plots_observation/{0}_uvcov_*.png'.format(msinfo['msfilename'])))
         for u in uvcov:
             wlog.write('<a href = ".{0}"><img style="max-width:700px" src=".{0}"></a><br>\n'.format(u))
             wlog.write('<hr>\n')
@@ -124,7 +124,8 @@ def create_pnghtml_baselines(plots_path, source, subtitle, msinfo):
     for bsl in msinfo['baselines']:
         try:
             b1, b2 = bsl.split('&')
-            png = np.sort(glob.glob('./plots/{0}/*{1}_{2}-{3}*png'.format(
+            png = np.sort(glob.glob('./plots/{0}/{1}_4plot_{2}_{3}-{4}_*.png'.format(
+                                                            msinfo['msfilename'],
                                                             plots_path, source,
                                                             b1, b2)))[0]
             wlog.write('<h5>{0}-{1}</h5>\n'.format(b1,b2))

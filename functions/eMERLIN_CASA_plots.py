@@ -86,13 +86,14 @@ def single_4plot(msfile, field, baseline, datacolumn, plot_file):
     plotfile = plot_file, expformat = 'png', customsymbol = True, symbolshape = 'circle',
     width=2600, height=1200, symbolsize=4,clearplots=False, overwrite=True, showgui=showgui)
 
+
 def make_4plots(msfile, msinfo, datacolumn='data'):
     if datacolumn == 'data':
-        plots_data_dir = msinfo['plots_dir']+'plots_data/'
+        plots_data_dir = '.plots/plots_data/'
     elif datacolumn == 'corrected':
-        plots_data_dir = msinfo['plots_dir']+'plots_corrected/'
+        plots_data_dir = '.plots/plots_corrected/'
     else:
-        plots_data_dir = msinfo['plots_dir']
+        plots_data_dir = './plots/'
     makedir(plots_data_dir)
     for f in msinfo['sources']['allsources'].split(','):
         logger.info('Generating plot for msfile: {0}, field: {1}, column: {2}'.format(
@@ -145,7 +146,7 @@ def read_uvw(msfile, field_id):
 
 def make_uvcov(msfile, msinfo):
     logger.info('Plotting uv-coverage for all sources'.format())
-    plots_obs_dir = msinfo['plots_dir']+'plots_observation/'
+    plots_obs_dir = './plots/plots_observation/'
     makedir(plots_obs_dir)
     freqs = get_freqs(msfile, allfreqs=True)
     tb.open(msfile+'/FIELD')
@@ -153,9 +154,9 @@ def make_uvcov(msfile, msinfo):
     tb.close()
     for f in msinfo['sources']['allsources'].split(','):
         if f in fields_ms:
-            plot_file = plots_obs_dir+'{0}_uvcov_{1}.png'.format(msinfo['run'],f)
+            plot_file = plots_obs_dir+'{0}_uvcov_{1}.png'.format(msinfo['msfilename'],f)
             f_id = np.argwhere(fields_ms==f)[0][0]
-            logger.info('Plotting uvcov for {0}[{1}]: {2}'.format(f, f_id, plot_file))
+            logger.info('Plotting uvcov for {0} [{1}]: {2}'.format(f, f_id, plot_file))
             u, v = read_uvw(msfile, f_id)
             single_uvcov(f, u, v, freqs, plot_file)
         else:
@@ -163,9 +164,9 @@ def make_uvcov(msfile, msinfo):
 
 
 def make_elevation(msfile, msinfo):
-    plots_obs_dir = msinfo['plots_dir']+'plots_observation/'
+    plots_obs_dir = './plots/plots_observation/'
     makedir(plots_obs_dir)
-    plot_file = plots_obs_dir+'{0}_elevation.png'.format(msinfo['run'])
+    plot_file = plots_obs_dir+'{0}_elevation.png'.format(msinfo['msfilename'])
     logger.info('Plotting elevation to: {}'.format(plot_file))
     avgtime = '32'
     showgui = False

@@ -294,6 +294,7 @@ def get_msinfo(msfile, inputs, doprint=False):
     logger.info('Reading ms file information for MS: {0}'.format(msfile))
     msinfo = {}
     msinfo['msfile'] = msfile
+    msinfo['msfilename'] = os.path.splitext(msfile)[0].split('/')[-1]
     msinfo['project'] = get_project(msfile)
     msinfo['run'] = inputs['inbase']
     msinfo['sources'] = user_sources(inputs)
@@ -311,7 +312,7 @@ def get_msinfo(msfile, inputs, doprint=False):
     msinfo['nchan'] = nchan
     msinfo['innerchan'] = '{0:.0f}~{1:.0f}'.format(0.1*(nchan-nchan/512.), 0.9*(nchan-nchan/512.))
     msinfo['polarizations'] = get_polarization(msfile)
-    save_obj(msinfo, msfile)
+    save_obj(msinfo, msfile+'.msinfo')
     logger.info('Saving information of MS {0} in: {1}'.format(msfile, msfile+'.pkl'))
     if doprint:
         prt_dict(msinfo)
@@ -381,7 +382,7 @@ def run_importfitsIDI(data_dir,vis, setorder=False):
     ms.writehistory(message='eMER_CASA_Pipeline: Fixed uv coordinates & remove autocorr',msname=vis)
     logger.info('End flagdata_autocorr')
     logger.debug('You have been transformed from an ugly UVFITS to beautiful MS')
-    listobs(vis=vis, listfile=vis+'.listobs')
+    listobs(vis=vis, listfile=vis+'.listobs', overwrite=True)
     logger.info('Listobs file in: {0}'.format(vis+'.listobs'))
     return
 
@@ -563,32 +564,36 @@ def ms2mms_fields(msfile):
 #    logger.info('End prediagnostics')
 #
 
-def flagdata1_apriori(msfile, msinfo, flags, do_quack=True):
+def flagdata1_apriori(msfile, sources, Lo_dropout_scans, flags, do_quack=True):
     logger.info('Start flagdata1_apriori')
+    antennas = get_antennas(msfile)
     # Find number of channels in MS:
-    nchan = msinfo['nchan']
+    ms.open(msfile)
+    axis_info = ms.getdata(['axis_info'], ifraxis=True)
+    ms.close()
+    nchan = len(axis_info['axis_info']['freq_axis']['chan_freq'][:,0])
     # Flag Lo-Mk2
-    if 'Lo' in msinfo['antennas'] and 'Mk2' in msinfo['antennas']:
+    if 'Lo' in antennas and 'Mk2' in antennas:
         logger.info('Flagging Lo-Mk2 baseline')
-        flagdata(vis=msfile, mode='manual', field=msinfo['sources']['allsources'], antenna='Lo*&Mk2*')
+        flagdata(vis=msfile, mode='manual', field=sources['allsources'], antenna='Lo*&Mk2*')
     # Subband edges
     channels_to_flag = '*:0~{0};{1}~{2}'.format(nchan/128-1, nchan-nchan/128, nchan-1)
     logger.info('MS has {} channels'.format(nchan))
     logger.info('Flagging edge channels {0}'.format(channels_to_flag))
-    flagdata(vis=msfile, mode='manual', field=msinfo['sources']['allsources'], spw=channels_to_flag)
+    flagdata(vis=msfile, mode='manual', field=sources['allsources'], spw=channels_to_flag)
     # Slewing (typical):
     # Main calibrators, 5 min
     logger.info('Flagging 5 min from bright calibrators')
     bright_cal = join_lists([si for si in ['1331+305','1407+284','0319+415'] if si in
-                  msinfo['sources']['maincal']])
+                  sources['maincal']])
     flagdata(vis=msfile, field=bright_cal, mode='quack', quackinterval=300)
     # Target and phase reference, 20 sec
     logger.info('Flagging first 20 sec of target and phasecal')
-    flagdata(vis=msfile, field=msinfo['sources']['targets_phscals'], mode='quack', quackinterval=20)
+    flagdata(vis=msfile, field=sources['targets_phscals'], mode='quack', quackinterval=20)
     # We can add more (Lo is slower, etc).
-    if msinfo['Lo_dropout_scans'] != '':
-        logger.info('Flagging Lo dropout scans: {}'.format(msinfo['Lo_dropout_scans']))
-        flagdata(vis=msfile, antenna='Lo', field=msinfo['sources']['phscals'], scan=msinfo['Lo_dropout_scans'])
+    if Lo_dropout_scans != '':
+        logger.info('Flagging Lo dropout scans: {0}. Assuming phasecal is: {1}'.format(Lo_dropout_scans, sources['phscals']))
+        flagdata(vis=msfile, antenna='Lo', field=sources['phscals'], scan=Lo_dropout_scans)
 
     flag_applied(flags, 'flagdata1_apriori')
     logger.info('End flagdata1_apriori')
@@ -743,18 +748,19 @@ def find_refant(msfile, field, antennas='', spws='', scan=''):
 
 ### Run CASA calibration functions
 
-def run_split(msfile, msinfo, width, timebin, datacolumn='data'):
+def run_split(msfile, sources, width, timebin, datacolumn='data'):
     logger.info('Start split')
+    mssources = ms_sources(msfile)
     # Check that all sources are there:
     sources_not_in_msfile = [s for s in
-                             msinfo['sources']['allsources'].split(',')
-                             if s not in msinfo['mssources'].split(',')]
+                             sources['allsources'].split(',')
+                             if s not in mssources]
     if len(sources_not_in_msfile) > 0:
-        fields = msinfo['mssources']
+        fields = ','.join(mssources)
         logger.warning('Fields {} not present in MS but listed in inputs file.'.format(','.join(sources_not_in_msfile)))
         logger.warning('All fields will be included in the averaged MS.')
     else:
-        fields = msinfo['sources']['allsources']
+        fields = sources['allsources']
     name = '.'.join(msfile.split('.')[:-1])
     exte = ''.join(msfile.split('.')[-1])
     outputmsfile = name+'_avg.'+exte
@@ -1481,7 +1487,7 @@ def compile_statistics(msfile, tablename=''):
     baselines = get_baselines(msfile)
     # Date and time of observation
     ms.open(msfile)
-    axis_info = ms.getdata2(['axis_info'],ifraxis=True)
+    axis_info = ms.getdata(['axis_info'],ifraxis=True)
     ms.close()
     vis_field = vishead(msfile,mode='list',listitems='field')['field'][0][0] # Only one expected
     t_mjd, t = get_dates(axis_info)

@@ -1,12 +1,12 @@
 # Inputs for CASA e-MERLIN pipeline:
-raw_fits_path=./data/
-inbase = 'project_name'
-targets= '1111+2222'
-phscals= '3333+4444'
-fluxcal= '3C84'
-bpcal= 'OQ208'
-ptcal= '3C345'
-refant= 'Mk2'
+fits_path = ./data/
+inbase    = 'project_name'
+targets   = '1111+2222'
+phscals   = '3333+4444'
+fluxcal   = '3C84'
+bpcal     = 'OQ208'
+ptcal     = '3C345'
+refant    = 'Mk2'
 
 Lo_dropout_scans = ''
 manual_flags_a = ./inputfg_a.flags
@@ -15,6 +15,7 @@ manual_flags_b = ./inputfg_b_avg.flags
 
 # Pre-processing (0=don't run, 1=run):
 run_importfits  = 1
+summary_weblog	= 1
 hanning         = 0
 ms2mms          = 0
 flag_0_aoflagger= 0

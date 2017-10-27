@@ -24,7 +24,7 @@ To execute the pipeline from within CASA:
 > run_in_casa = True
 > pipeline_path = '/path/to/pipeline_path/'   # You need to define this variable explicitly
 > execfile(pipeline_path + 'eMERLIN_CASA_pipeline.py')
-> inputs, caltables, msinfo = run_pipeline(inputs_path=<input file>)
+> inputs, msinfo = run_pipeline(inputs_path=<input file>)
 ~~~~
 
 ## Additional information ##
