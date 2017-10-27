@@ -684,7 +684,7 @@ def define_refant(msfile, msinfo, inputs):
 def find_refant(msfile, field, antennas='', spws='', scan=''):
     logger.info('Searching refant automatically')
     ms.open(msfile)
-    d = ms.getdata2(['axis_info'],ifraxis=True)
+    d = ms.getdata(['axis_info'],ifraxis=True)
     ms.close()
     if len(antennas)==0:
         antennas = np.unique('-'.join(d['axis_info']['ifr_axis']['ifr_name']).split('-'))

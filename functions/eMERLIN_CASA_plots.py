@@ -31,7 +31,7 @@ def get_scans(msfile, field):
 
 def get_freqs(msfile, allfreqs=False):
     ms.open(msfile)
-    axis_info = ms.getdata2(['axis_info'],ifraxis=True)
+    axis_info = ms.getdata(['axis_info'],ifraxis=True)
     ms.close()
     if allfreqs:
         channels = axis_info['axis_info']['freq_axis']['chan_freq']
@@ -104,32 +104,21 @@ def make_4plots(msfile, msinfo, datacolumn='data'):
             single_4plot(msfile, f, baseline, datacolumn, plot_file)
 
 
-def single_uvcov(msfile, field, plot_file, freqs):
+def single_uvcov(field, u, v, freqs, plot_file):
     c = 299792458.
     # Color scale:
     norm = matplotlib.colors.Normalize(vmin=np.min(freqs/1e9),
                                        vmax=np.max(freqs/1e9))
     cmap = matplotlib.cm.get_cmap('Spectral')
-
-    tb.open(msfile)
-    uvw = tb.getcol('UVW')
-    u = uvw[0,:]; v = uvw[1,:];
-    fields = tb.getcol('FIELD_ID')
-    tb.close()
-    tb.open(msfile+'/FIELD')
-    unique_field = tb.getcol('NAME')
-    tb.close()
-    field_id = np.argwhere(unique_field==field)[0][0]
-    sel = (fields == field_id)
     fig = plt.figure()
     ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
     ax1 = fig.add_axes([0.8, 0.1, 0.02, 0.8])
     for i, freqi in enumerate(freqs):
         col= cmap(norm(freqi/1e9)) #color
         fc = freqi/c/1e6
-        ax.plot(+u[sel]*fc, +v[sel]*fc, marker='.', ms=0.01, ls='',
+        ax.plot(+u*fc, +v*fc, marker='.', ms=0.01, ls='',
                  color=col, mec=col, label='{0:4.1f}GHz'.format(freqi/1e9))
-        ax.plot(-u[sel]*fc, -v[sel]*fc, marker='.', ms=0.01, ls='',
+        ax.plot(-u*fc, -v*fc, marker='.', ms=0.01, ls='',
                  color=col, mec=col)
     #lgnd = ax.legend(numpoints=1, markerscale=6, frameon=False, ncol=2, prop={'size':8})
     cb1 = matplotlib.colorbar.ColorbarBase(ax1, cmap=cmap,
@@ -145,14 +134,33 @@ def single_uvcov(msfile, field, plot_file, freqs):
     ax.set_ylim(-main_lim, +main_lim)
     fig.savefig(plot_file, dpi=120, bbox_inches='tight')
 
+def read_uvw(msfile, field_id):
+    ms.open(msfile)
+    ms.msselect({'spw':'0', 'field_id':field_id})
+    uv = ms.getdata(['u', 'v'])
+    ms.close()
+    u = uv['u']
+    v = uv['v']
+    return u, v
+
 def make_uvcov(msfile, msinfo):
     logger.info('Plotting uv-coverage for all sources'.format())
     plots_obs_dir = msinfo['plots_dir']+'plots_observation/'
     makedir(plots_obs_dir)
     freqs = get_freqs(msfile, allfreqs=True)
+    tb.open(msfile+'/FIELD')
+    fields_ms = tb.getcol('NAME')
+    tb.close()
     for f in msinfo['sources']['allsources'].split(','):
-        plot_file = plots_obs_dir+'{0}_uvcov_{1}.png'.format(msinfo['run'],f)
-        single_uvcov(msfile, f, plot_file, freqs)
+        if f in fields_ms:
+            plot_file = plots_obs_dir+'{0}_uvcov_{1}.png'.format(msinfo['run'],f)
+            f_id = np.argwhere(fields_ms==f)[0][0]
+            logger.info('Plotting uvcov for {0}[{1}]: {2}'.format(f, f_id, plot_file))
+            u, v = read_uvw(msfile, f_id)
+            single_uvcov(f, u, v, freqs, plot_file)
+        else:
+            logger.info('Cannot plot uvcov for {0}. Source not in ms.'.format(f))
+
 
 def make_elevation(msfile, msinfo):
     plots_obs_dir = msinfo['plots_dir']+'plots_observation/'
