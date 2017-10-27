@@ -21,7 +21,6 @@ def makedir(pathdir):
         logger.debug('Cannot create directory: {}'.format(pathdir))
         pass
 
-
 def get_scans(msfile, field):
     ms.open(msfile)
     ms.msselect({'field':field})
@@ -78,7 +77,6 @@ def single_4plot(msfile, field, baseline, datacolumn, plot_file):
     plotfile = '', expformat = 'png', customsymbol = True, symbolshape = 'circle',
     overwrite=True,  showgui=showgui, symbolsize=4, clearplots=False)
 
-
     plotms(vis=msfile, xaxis='freq', yaxis='phase', title='Phase vs Frequency {0} (color=corr)'.format(baseline),
     gridrows=gridrows, gridcols=gridcols, rowindex=1, colindex=1, plotindex=3,
     xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
@@ -104,8 +102,6 @@ def make_4plots(msfile, msinfo, datacolumn='data'):
                                                          baseline.replace('&','-'),
                                                          datacolumn)
             single_4plot(msfile, f, baseline, datacolumn, plot_file)
-
-
 
 
 def single_uvcov(msfile, field, plot_file, freqs):
@@ -157,7 +153,6 @@ def make_uvcov(msfile, msinfo):
     for f in msinfo['sources']['allsources'].split(','):
         plot_file = plots_obs_dir+'{0}_uvcov_{1}.png'.format(msinfo['run'],f)
         single_uvcov(msfile, f, plot_file, freqs)
-
 
 def make_elevation(msfile, msinfo):
     plots_obs_dir = msinfo['plots_dir']+'plots_observation/'

@@ -143,13 +143,13 @@ def weblog_plots(msinfo):
     wlog = open("./weblog/plots.html","w")
     weblog_header(wlog, 'Plots', msinfo['run'])
     #------------------------------------------
-    if os.listdir('./plots/plots_data/'):
+    if (os.path.isdir('./plots/plots_data/')) and (os.listdir('./plots/plots_data/')):
         wlog.write('<h3>Uncalibrated visibilities</h3>\n')
         for source in msinfo['sources']['allsources'].split(','):
             page_path = create_pnghtml_baselines('plots_data', source, 'Uncalibrated amplitude and phase against time and frequency.', msinfo)
             wlog.write('{0} <a href=".{1}" target="_blank">plots</a><br>\n'.format(source, page_path))
 
-    if os.listdir('./plots/plots_corrected/'):
+    if (os.path.isdir('./plots/plots_corrected/')) and (os.listdir('./plots/plots_corrected/')):
         wlog.write('<h3>Calibrated visibilities</h3>\n')
         for source in msinfo['sources']['allsources'].split(','):
             page_path = create_pnghtml_baselines('plots_corrected', source, 'Calibrated amplitude and phase against time and frequency.', msinfo)

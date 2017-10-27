@@ -75,9 +75,10 @@ def run_pipeline(inputs=None, inputs_path=''):
         inputs = em.headless(inputs_path)
 
     # Paths to use
-    data_dir = em.backslash_check(inputs['data_dir'])
-    plots_dir = em.backslash_check(inputs['plots_dir'])
-    calib_dir = em.backslash_check(inputs['calib_dir'])
+    raw_fits_path = em.backslash_check(inputs['raw_fits_path'])
+    calib_dir = './calib/'
+    plots_dir = './plots/'
+    logs_dir  = './logs/'
 
     # Flags applied to the data by the pipeline
     try:
@@ -91,10 +92,12 @@ def run_pipeline(inputs=None, inputs_path=''):
     ## Create directory structure ##
     em.makedir(plots_dir)
     em.makedir(calib_dir)
+    em.makedir(logs_dir)
+    em.makedir(plots_dir+'caltables')
 
-    if inputs['quit'] == 1: #Check from GUI if quit is needed
-        logger.debug('Pipeline exit')
-        sys.exit()
+#    if inputs['quit'] == 1: #Check from GUI if quit is needed
+#        logger.debug('Pipeline exit')
+#        sys.exit()
 
     fitsfile = inputs['inbase']+'.fits'
     msfile = inputs['inbase']+'.ms'
@@ -106,14 +109,14 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     ## Pipeline processes, inputs are read from the inputs dictionary
     if inputs['run_importfits'] == 1:
-        em.run_importfitsIDI(data_dir,msfile)
+        em.run_importfitsIDI(raw_fits_path, msfile)
         em.check_mixed_mode(msfile,mode='split')
 
     if inputs['hanning'] == 1:
         em.hanning(inputvis=msfile,deloriginal=True)
 
-    if inputs['rfigui'] == 1:
-        em.run_rfigui(msfile)
+#    if inputs['rfigui'] == 1:
+#        em.run_rfigui(msfile)
 
     ### Convert MS to MMS ###
     if inputs['ms2mms'] == 1:
@@ -148,9 +151,10 @@ def run_pipeline(inputs=None, inputs_path=''):
     if inputs['flag_0_aoflagger'] == 1:
         flags = em.run_aoflagger_fields(vis=msfile, flags=flags, fields='all', pipeline_path = pipeline_path)
 
-    ### Produce some initial plots ###
-    if inputs['prediag'] == 1:
-        em.do_prediagnostics(msfile,plots_dir)
+# To be removed
+#    ### Produce some initial plots ###
+#    if inputs['prediag'] == 1:
+#        em.do_prediagnostics(msfile,plots_dir)
 
     ### A-priori flagdata: Lo&Mk2, edge channels, standard quack
     if inputs['flag_1_apriori'] == 1:
@@ -179,8 +183,9 @@ def run_pipeline(inputs=None, inputs_path=''):
     if os.path.isfile(msfile+'.msinfo.pkl'):
         logger.info('Loading msinfo from: {}'.format(msfile+'.msinfo.pkl'))
         msinfo = load_obj(msfile+'.msinfo')
-        logger.info('Elevation and uvcov plots will not be created again as long as the msinfo.pkl file exists.')
-     elif os.path.isdir(msfile):
+        msinfo['refant'] = em.define_refant(msfile, msinfo, inputs)
+        logger.info('Elevation and uvcov plots will not be created again as long as the {}.pkl file exists.'.format(msfile+'.msinfo'))
+    elif os.path.isdir(msfile):
         msinfo = em.get_msinfo(msfile, inputs)
         msinfo['Lo_dropout_scans'] = inputs['Lo_dropout_scans']
         msinfo['msfile'] = msfile
@@ -342,7 +347,7 @@ def run_pipeline(inputs=None, inputs_path=''):
             logger.warning('flag_4_rflag selected but applycal_all has not been run. RFLAG only works on calibrated data!')
             logger.warning('flag_4_rflag will not be executed.')
 
-    ### Produce some plots ###
+    ### Produce some visibility plots ###
     if inputs['plot_corrected'] == 1:
         emplt.make_4plots(msfile, msinfo, datacolumn='corrected')
 
@@ -359,7 +364,7 @@ def run_pipeline(inputs=None, inputs_path=''):
     except:
         pass
 
-
+    os.system('mv casa-*.log *.last ./logs')
     logger.info('Pipeline finished')
     logger.info('#################')
 
@@ -367,7 +372,7 @@ def run_pipeline(inputs=None, inputs_path=''):
 
 
 
-# The  __name__ == "__main__" does not work for CASA.
+# The  __name__ == "__main__" approach does not work for CASA.
 try:
     if run_in_casa == True:
         # Running the pipeline from inside CASA
