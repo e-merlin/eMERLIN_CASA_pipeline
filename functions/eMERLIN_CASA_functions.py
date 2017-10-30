@@ -1,7 +1,5 @@
 #!/usr/local/python
 import os
-from casa import table as tb
-from casa import ms
 import numpy as np
 import pickle
 from Tkinter import *
@@ -9,13 +7,13 @@ import tkMessageBox
 import sys, shutil
 import copy
 import getopt
-#from task_importfitsidi import *
-from eMERLIN_CASA_GUI import GUI_pipeline
-# Need to be in this order:
-from tasks import *
-from casa import *
-from recipes.setOrder import setToCasaOrder
 import datetime
+from eMERLIN_CASA_GUI import GUI_pipeline
+
+# CASA imports
+from taskinit import *
+from tasks import *
+from recipes.setOrder import setToCasaOrder
 
 import logging
 logger = logging.getLogger('logger')
@@ -30,9 +28,9 @@ def check_in(pipeline_path):
     for o,a in opts:
         logger.debug('{0} {1}'.format(o,a))
         if o in ('-i','--input'):
+            logger.info('Inputs from file: {}'.format(a))
             inputs = headless(a) ## read input file
-            inputs['quit'] = 0 ##needed to add to be compatible with GUI
-            logger.info('inputs from file: {}'.format(inputs))
+#            inputs['quit'] = 0 ##needed to add to be compatible with GUI
         elif o in ('-g','--gui'):
             inputs = GUI_pipeline(pipeline_path).confirm_parameters() ## read input file
             logger.info('inputs from GUI: {}'.format(inputs))
@@ -54,6 +52,7 @@ def backslash_check(directory):
 
 def headless(inputfile):
     ''' Parse the list of inputs given in the specified file. (Modified from evn_funcs.py)'''
+    logger.info('Parameters in inputs file:')
     INPUTFILE = open(inputfile, "r")
     control = {}
     # a few useful regular expressions
@@ -75,11 +74,13 @@ def headless(inputfile):
             valuelist = value.split(',')
             if len(valuelist) == 1:
                 if valuelist[0] == '0' or valuelist[0]=='1' or valuelist[0]=='2':
-                    control[param] = int(valuelist[0])
+                    valueout = int(valuelist[0])
                 else:
-                    control[param] = str(valuelist[0])
+                    valueout = str(valuelist[0])
             else:
-                control[param] = ','.join(valuelist)
+                valueout = ','.join(valuelist)
+            control[param] = valueout
+            logger.info('{0:16s}: {1}'.format(param, valueout))
     return control
 
 def Tkinter_select():
@@ -110,20 +111,33 @@ def makedir(pathdir):
         pass
 
 def rmdir(pathdir,message='Deleted:'):
-    try:
-        shutil.rmtree(pathdir)
-        logger.info('{0} {1}'.format(message, pathdir))
-    except:
-        logger.debug('Could not delete: {0} {1}'.format(message, pathdir))
-        pass
+    if os.path.exists(pathdir):
+        try:
+            shutil.rmtree(pathdir)
+            logger.info('{0} {1}'.format(message, pathdir))
+        except:
+            logger.debug('Could not delete: {0} {1}'.format(message, pathdir))
+            pass
 
 def rmfile(pathdir,message='Deleted:'):
-    try:
-        os.remove(pathdir)
-        logger.info('{0} {1}'.format(message, pathdir))
-    except:
-        logger.debug('Could not delete: {0} {1}'.format(message, pathdir))
-        pass
+    if os.path.exists(pathdir):
+        try:
+            os.remove(pathdir)
+            logger.info('{0} {1}'.format(message, pathdir))
+        except:
+            logger.debug('Could not delete: {0} {1}'.format(message, pathdir))
+            pass
+
+def mvdir(pathdir, outpudir):
+    if os.path.exists(pathdir):
+        try:
+            shutil.move(pathdir, outpudir)
+            logger.info('Moved: {0} {1}'.format(pathdir, outpudir))
+        except:
+            logger.debug('Could not move: {0} {1}'.format(pathdir, outpudir))
+            pass
+
+
 
 # Functions to save and load dictionaries
 def save_obj(obj, name):
@@ -171,7 +185,7 @@ def check_mixed_mode(vis,mode):
 def check_band(msfile):
     # Take first frequency in the MS
     ms.open(msfile)
-    freq = ms.getdata(['axis_info'],ifraxis=True)['axis_info']['freq_axis']['chan_freq'][0][0]/1e9
+    freq = ms.getdata(['axis_info'])['axis_info']['freq_axis']['chan_freq'][0][0]/1e9
     ms.close()
     band = ''
     if (freq > 1.2) and (freq < 1.7):
@@ -249,45 +263,98 @@ def prt_dict(d):
 def get_timefreq(msfile):
     # Date and time of observation
     ms.open(msfile)
-    axis_info = ms.getdata(['axis_info'],ifraxis=True)
+    axis_info = ms.getdata(['axis_info'], ifraxis=True)
     ms.close()
     t_mjd, t = get_dates(axis_info)
     freq_ini = np.min(axis_info['axis_info']['freq_axis']['chan_freq'])/1e9
     freq_end = np.max(axis_info['axis_info']['freq_axis']['chan_freq'])/1e9
     chan_res = np.mean(axis_info['axis_info']['freq_axis']['resolution'])/1e9
-    return t[0], t[-1], freq_ini, freq_end, chan_res
+    nchan = len(axis_info['axis_info']['freq_axis']['chan_freq'][:,0])
+    return t[0], t[-1], freq_ini, freq_end, chan_res, nchan
 
 def ms_sources(msfile):
     mssources = ','.join(vishead(msfile,mode='list',listitems='field')['field'][0])
     logger.info('Sources in MS {0}: {1}'.format(msfile, mssources))
     return mssources
 
+def get_project(msfile):
+    tb.open(msfile+'/OBSERVATION')
+    project = tb.getcol('PROJECT')
+    tb.close()
+    return project[0]
+
+def get_polarization(msfile):
+    tb.open(msfile+'/FEED')
+    polarization = tb.getcol('POLARIZATION_TYPE')
+    tb.close()
+    return ', '.join(polarization[:,0])
+
+
 def get_msinfo(msfile, inputs, doprint=False):
     logger.info('Reading ms file information for MS: {0}'.format(msfile))
     msinfo = {}
     msinfo['msfile'] = msfile
+    msinfo['msfilename'] = os.path.splitext(msfile)[0].split('/')[-1]
+    msinfo['project'] = get_project(msfile)
+    msinfo['run'] = inputs['inbase']
     msinfo['sources'] = user_sources(inputs)
     msinfo['mssources'] = ms_sources(msfile)
     msinfo['antennas'] = get_antennas(msfile)
     msinfo['band'] = check_band(msfile)
     msinfo['baselines'] = get_baselines(msfile)
     msinfo['num_spw'] = len(vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
-    t_ini, t_end, freq_ini, freq_end, chan_res = get_timefreq(msfile)
+    t_ini, t_end, freq_ini, freq_end, chan_res, nchan = get_timefreq(msfile)
     msinfo['t_ini'] = t_ini
     msinfo['t_end'] = t_end
     msinfo['freq_ini'] = freq_ini
     msinfo['freq_end'] = freq_end
     msinfo['chan_res'] = chan_res
-    save_obj(msinfo, msfile)
-    logger.info('Saving information of MS {0} in: {1}'.format(msfile, msfile+'.pkl'))
+    msinfo['nchan'] = nchan
+    msinfo['innerchan'] = '{0:.0f}~{1:.0f}'.format(0.1*(nchan-nchan/512.), 0.9*(nchan-nchan/512.))
+    msinfo['polarizations'] = get_polarization(msfile)
     if doprint:
         prt_dict(msinfo)
     return msinfo
 
+def get_unique_field(caltable):
+    # If more than one field was used to generate the caltable but
+    # combine='field' was used, only one field is included in the table. This
+    # function will find which was actually used.
+    tb.open(caltable)
+    field_id = np.unique(tb.getcol('FIELD_ID'))[0]
+    tb.close()
+    tb.open(caltable+'/FIELD')
+    unique_field = tb.getcol('NAME')[field_id]
+    tb.close()
+    return unique_field
+
+def backup_table(caltable):
+    try:
+        shutil.rmtree(caltable+'_backup_missing')
+    except OSError:
+        pass
+    shutil.copytree(caltable, caltable+'_backup_missing')
+    logger.info('Backup of table {0} to {1}'.format(caltable, caltable+'_backup_missing'))
+
+def remove_missing_scans(caltable, scans2flag):
+    # Backup original table
+    backup_table(caltable)
+    tb.open(caltable+'/ANTENNA')
+    anten = tb.getcol('NAME')
+    tb.close()
+    anten_Lo = np.argwhere('Lo')[0][0]
+    tb.open(caltable, nomodify=False)
+    scan_number = tb.getcol('SCAN_NUMBER')
+    antenna1 = tb.getcol('ANTENNA1') == anten_Lo
+    missing_rows = np.array([str(r) in scans2flag.replace(' ','').split(',') for r in scan_number])
+    index_missing_rows = np.where(antenna1*missing_rows)[0]
+    tb.removerows(index_missing_rows)
+    logger.info('Removing Lo solutions for dropout scans from {0}: {1}'.format(caltable, scans2flag))
+    tb.close()
 
 def run_importfitsIDI(data_dir,vis, setorder=False):
     logger.info('Starting importfitsIDI procedure')
-    os.system('rm -r '+vis)
+    rmdir(vis)
     fitsfiles =[]
     for file in os.listdir(data_dir):
         if file.endswith('fits') or file.endswith('FITS'):
@@ -298,22 +365,22 @@ def run_importfitsIDI(data_dir,vis, setorder=False):
     ms.writehistory(message='eMER_CASA_Pipeline: Import fitsidi to ms, complete',msname=vis)
     if setorder:
         logger.info('Setting MS order with setToCasaOrder')
-        os.system('mv {0} {1}'.format(vis, vis+'_noorder'))
+        mvdir(vis, vis+'_noorder')
         setToCasaOrder(inputMS=vis+'_noorder', outputMS=vis)
-        os.system('rm -r {0}'.format(vis+'_noorder'))
+        rmdir(vis+'_noorder')
     ms.writehistory(message='eMER_CASA_Pipeline: setToCasaOrder, complete',msname=vis)
     logger.info('End importfitsIDI')
     logger.info('Start UVFIX')
     fixvis(vis=vis,outputvis=vis+'.uvfix',reuse=False)
     logger.info('End UVFIX')
-    os.system('rm -r {0}'.format(vis))
-    os.system('mv {0} {1}'.format(vis+'.uvfix', vis))
+    rmdir(vis)
+    mvdir(vis+'.uvfix', vis)
     logger.info('Start flagdata_autocorr')
     flagdata(vis=vis,mode='manual',autocorr=True)
     ms.writehistory(message='eMER_CASA_Pipeline: Fixed uv coordinates & remove autocorr',msname=vis)
     logger.info('End flagdata_autocorr')
     logger.debug('You have been transformed from an ugly UVFITS to beautiful MS')
-    listobs(vis=vis, listfile=vis+'.listobs')
+    listobs(vis=vis, listfile=vis+'.listobs', overwrite=True)
     logger.info('Listobs file in: {0}'.format(vis+'.listobs'))
     return
 
@@ -322,20 +389,20 @@ def hanning(inputvis,deloriginal):
     logger.info('Start hanning')
     if inputvis[-3:].lower() == '.ms':
         outputvis = inputvis[:-3]+'_hanning'+inputvis[-3:]
-        os.system('rm -r '+outputvis)
+        rmdir(outputvis)
         hanningsmooth(vis=inputvis,outputvis=outputvis,datacolumn='data')
     elif inputvis[-3:].lower() == 'mms':
         outputvis = inputvis[:-4]+'_hanning'+inputvis[-4:]
-        os.system('rm -r '+outputvis)
+        rmdir(outputvis)
         mstransform(vis=inputvis,outputvis=outputvis,hanning=True,datacolumn='data')
     if deloriginal==True:
-        os.system('rm -r {0}'.format(inputvis))
-        os.system('rm -r {0}.flagversions'.format(inputvis))
+        rmdir(inputvis)
+        rmdir(inputvis+'.flagversions')
     else:
-        os.system('mv {0} {1}'.format(inputvis, inputvis+'_prehanning'))
-        os.system('mv {0}.flagversions {1}.flagversions'.format(inputvis, inputvis+'_prehanning'))
-    os.system('mv {0} {1}'.format(outputvis, inputvis))
-    os.system('mv {0}.flagversions {1}.flagversions'.format(outputvis, inputvis))
+        mvdir(inputvis, inputvis+'_prehanning')
+        mvdir(inputvis+'.flagversions', inputvis+'_prehanning.flagversions')
+    mvdir(outputvis, inputvis)
+    mvdir(outputvis+'.flagversions', inputvis+'.flagversions')
     ms.writehistory(message='eMER_CASA_Pipeline: Hanning smoothed data, complete',msname=inputvis)
     logger.info('End hanning')
     return
@@ -408,8 +475,8 @@ def ms2mms(vis,mode):
 "all",field="",spw="",scan="",antenna="",correlation="",timerange="",intent="",array="",uvrange="",observation="",feed="",disableparallel=None,ddistart=None
 ,taql=None)
         if os.path.isdir(vis[:-3]+'.mms') == True:
-            os.system('rm -r '+vis)
-            os.system('rm -r '+vis+'.flagversions')
+            rmdir(vis)
+            rmdir(vis+'.flagversions')
         ms.writehistory(message='eMER_CASA_Pipeline: Converted MS to MMS for parallelisation',msname=vis[:-3]+'.mms')
 
     ## Need to use single if you need to aoflag the data later
@@ -418,8 +485,8 @@ def ms2mms(vis,mode):
 "all",field="",spw="",scan="",antenna="",correlation="",timerange="",intent="",array="",uvrange="",observation="",feed="",disableparallel=None,ddistart=None
 ,taql=None)
         if os.path.isdir(vis[:-3]+'.ms') == True:
-            os.system('rm -r '+vis)
-            os.system('rm -r '+vis+'.flagversions')
+           rmdir(vis)
+           rmdir(vis+'.flagversions')
     logger.info('End ms2mms')
 
 def ms2mms_fields(msfile):
@@ -440,86 +507,92 @@ def ms2mms_fields(msfile):
     else:
         logger.critical('No MMS files found.')
     if os.path.isdir(msfile) == True:
-        os.system('rm -r '+msfile)
-        os.system('rm -r '+msfile+'.flagversions')
+        rmdir(msfile)
+        rmdir(msfile+'.flagversions')
     logger.info('End ms2mms_fields')
+# To be removed
+#def do_prediagnostics(vis,plot_dir):
+#    ##Pre diagnostics for measurement sets##
+#    ## Includes:
+#    ## - Antenna positions
+#    ## - Amplitude vs. Time
+#    ## - Amplitude vs. Frequency
+#    ## - Phase vs. Time
+#    ## - Phase vs. Frequency
+#    ## - Closures (if task is available)
+#    ## - Listobs summary
+#    logger.info('Start prediagnostics')
+#    if os.path.isdir(plot_dir) == False:
+#        os.system('mkdir '+plot_dir)
+#    if os.path.isdir('./'+plot_dir+'pre-calibration') == False:
+#        os.system('mkdir ./'+plot_dir+'pre-calibration')
+#    directory = plot_dir
+#    ## Get information from ms
+#    x = vishead(vis,mode='list',listitems='field')['field'][0]
+#    tb.open(vis+'/SPECTRAL_WINDOW')
+#    nChan = str(tb.getcol('NUM_CHAN')[0])
+#    time = str(10E6)
+#    for i in range(len(x)):
+#        ## - Amplitude vs. Time
+#        plotms(vis=vis,xaxis='time',yaxis='amplitude',xdatacolumn='data',ydatacolumn='data',\
+#field=x[i], antenna='*&*', averagedata=True, avgchannel=str(nChan), iteraxis='baseline', plotfile=directory+'pre-cal_'+vis+'_'+x[i]+'_amp_vs_time.pdf',highres=True ,dpi=1200,expformat='pdf',exprange='all', showgui=False)
+#        os.system('convert '+directory+'pre-cal_'+vis+'_'+x[i]+'_amp_vs_time_* '+directory+'Pre-cal_amp_vs_time_'+vis+'_'+x[i]+'.pdf')
+#        os.system('rm '+directory+'pre-cal_'+vis+'_'+x[i]+'_amp_vs_time_*')
+#        ## - Amplitude vs frequency
+#        plotms(vis=vis,xaxis='frequency',yaxis='amplitude',xdatacolumn='data',ydatacolumn='data',\
+#field=x[i], antenna='*&*', averagedata=True, avgchannel='1', avgtime=time, iteraxis='baseline', plotfile=directory+'pre-cal_'+vis+'_'+x[i]+'_amp_vs_frequency.pdf',highres=True ,dpi=1200,expformat='pdf',exprange='all', showgui=False)
+#        os.system('convert '+directory+'pre-cal_'+vis+'_'+x[i]+'_amp_vs_frequency_* '+directory+'Pre-cal_amp_vs_frequency_'+vis+'_'+x[i]+'.pdf')
+#        os.system('rm '+directory+'pre-cal_'+vis+'_'+x[i]+'_amp_vs_frequency_*')
+#
+#        ## - Phase vs time
+#        plotms(vis=vis,xaxis='time',yaxis='phase',xdatacolumn='data',ydatacolumn='data',\
+#field=x[i], antenna='*&*', averagedata=True, avgchannel=str(nChan), iteraxis='baseline', plotfile=directory+'pre-cal_'+vis+'_'+x[i]+'_phase_vs_time.pdf', expformat='pdf',highres=True,dpi=1200,exprange='all', showgui=False)
+#        os.system('convert '+directory+'pre-cal_'+vis+'_'+x[i]+'_phase_vs_time_* '+directory+'Pre-cal_phase_vs_time_'+vis+'_'+x[i]+'.pdf')
+#        os.system('rm '+directory+'pre-cal_'+vis+'_'+x[i]+'_phase_vs_time_*')
+#
+#        ## - Phase vs frequency
+#        plotms(vis=vis,xaxis='frequency',yaxis='phase',xdatacolumn='data',ydatacolumn='data',\
+#field=x[i], antenna='*&*', averagedata=True, avgtime=time, iteraxis='baseline', plotfile=directory+'pre-cal_'+vis+'_'+x[i]+'_phase_vs_frequency.pdf', expformat='pdf',highres=True,dpi=1200,exprange='all', showgui=False)
+#        os.system('convert '+directory+'pre-cal_'+vis+'_'+x[i]+'_phase_vs_frequency_* '+directory+'Pre-cal_phase_vs_frequency_'+vis+'_'+x[i]+'.pdf')
+#        os.system('rm '+directory+'pre-cal_'+vis+'_'+x[i]+'_phase_vs_frequency_*')
+#    #vishead(vis=vis,listfile=directory+vis+'.listobs')
+#    #plotants(vis=vis,figfile=directory+vis+'.plotants.png')
+#    ## Amplitude vs Time:
+#    os.system('mv ./'+plot_dir+'/*pdf ./'+plot_dir+'/pre-calibration')
+#    logger.info('End prediagnostics')
+#
 
-def do_prediagnostics(vis,plot_dir):
-    ##Pre diagnostics for measurement sets##
-    ## Includes:
-    ## - Antenna positions
-    ## - Amplitude vs. Time
-    ## - Amplitude vs. Frequency
-    ## - Phase vs. Time
-    ## - Phase vs. Frequency
-    ## - Closures (if task is available)
-    ## - Listobs summary
-    logger.info('Start prediagnostics')
-    if os.path.isdir(plot_dir) == False:
-        os.system('mkdir '+plot_dir)
-    if os.path.isdir('./'+plot_dir+'pre-calibration') == False:
-        os.system('mkdir ./'+plot_dir+'pre-calibration')
-    directory = plot_dir
-    ## Get information from ms
-    x = vishead(vis,mode='list',listitems='field')['field'][0]
-    tb.open(vis+'/SPECTRAL_WINDOW')
-    nChan = str(tb.getcol('NUM_CHAN')[0])
-    time = str(10E6)
-    for i in range(len(x)):
-        ## - Amplitude vs. Time
-        plotms(vis=vis,xaxis='time',yaxis='amplitude',xdatacolumn='data',ydatacolumn='data',\
-field=x[i], antenna='*&*', averagedata=True, avgchannel=str(nChan), iteraxis='baseline', plotfile=directory+'pre-cal_'+vis+'_'+x[i]+'_amp_vs_time.pdf',highres=True ,dpi=1200,expformat='pdf',exprange='all', showgui=False)
-        os.system('convert '+directory+'pre-cal_'+vis+'_'+x[i]+'_amp_vs_time_* '+directory+'Pre-cal_amp_vs_time_'+vis+'_'+x[i]+'.pdf')
-        os.system('rm '+directory+'pre-cal_'+vis+'_'+x[i]+'_amp_vs_time_*')
-        ## - Amplitude vs frequency
-        plotms(vis=vis,xaxis='frequency',yaxis='amplitude',xdatacolumn='data',ydatacolumn='data',\
-field=x[i], antenna='*&*', averagedata=True, avgchannel='1', avgtime=time, iteraxis='baseline', plotfile=directory+'pre-cal_'+vis+'_'+x[i]+'_amp_vs_frequency.pdf',highres=True ,dpi=1200,expformat='pdf',exprange='all', showgui=False)
-        os.system('convert '+directory+'pre-cal_'+vis+'_'+x[i]+'_amp_vs_frequency_* '+directory+'Pre-cal_amp_vs_frequency_'+vis+'_'+x[i]+'.pdf')
-        os.system('rm '+directory+'pre-cal_'+vis+'_'+x[i]+'_amp_vs_frequency_*')
-
-        ## - Phase vs time
-        plotms(vis=vis,xaxis='time',yaxis='phase',xdatacolumn='data',ydatacolumn='data',\
-field=x[i], antenna='*&*', averagedata=True, avgchannel=str(nChan), iteraxis='baseline', plotfile=directory+'pre-cal_'+vis+'_'+x[i]+'_phase_vs_time.pdf', expformat='pdf',highres=True,dpi=1200,exprange='all', showgui=False)
-        os.system('convert '+directory+'pre-cal_'+vis+'_'+x[i]+'_phase_vs_time_* '+directory+'Pre-cal_phase_vs_time_'+vis+'_'+x[i]+'.pdf')
-        os.system('rm '+directory+'pre-cal_'+vis+'_'+x[i]+'_phase_vs_time_*')
-
-        ## - Phase vs frequency
-        plotms(vis=vis,xaxis='frequency',yaxis='phase',xdatacolumn='data',ydatacolumn='data',\
-field=x[i], antenna='*&*', averagedata=True, avgtime=time, iteraxis='baseline', plotfile=directory+'pre-cal_'+vis+'_'+x[i]+'_phase_vs_frequency.pdf', expformat='pdf',highres=True,dpi=1200,exprange='all', showgui=False)
-        os.system('convert '+directory+'pre-cal_'+vis+'_'+x[i]+'_phase_vs_frequency_* '+directory+'Pre-cal_phase_vs_frequency_'+vis+'_'+x[i]+'.pdf')
-        os.system('rm '+directory+'pre-cal_'+vis+'_'+x[i]+'_phase_vs_frequency_*')
-    #vishead(vis=vis,listfile=directory+vis+'.listobs')
-    #plotants(vis=vis,figfile=directory+vis+'.plotants.png')
-    ## Amplitude vs Time:
-    os.system('mv ./'+plot_dir+'/*pdf ./'+plot_dir+'/pre-calibration')
-    logger.info('End prediagnostics')
-
-
-def flagdata1_apriori(msfile, msinfo, flags, do_quack=True):
+def flagdata1_apriori(msfile, sources, Lo_dropout_scans, flags, do_quack=True):
     logger.info('Start flagdata1_apriori')
+    antennas = get_antennas(msfile)
     # Find number of channels in MS:
     ms.open(msfile)
-    d = ms.getdata(['axis_info'],ifraxis=True)
+    axis_info = ms.getdata(['axis_info'], ifraxis=True)
     ms.close()
-    nchan = len(d['axis_info']['freq_axis']['chan_freq'][:,0])
-
+    nchan = len(axis_info['axis_info']['freq_axis']['chan_freq'][:,0])
     # Flag Lo-Mk2
-    if 'Lo' in msinfo['antennas'] and 'Mk2' in msinfo['antennas']:
+    if 'Lo' in antennas and 'Mk2' in antennas:
         logger.info('Flagging Lo-Mk2 baseline')
-        flagdata(vis=msfile, mode='manual', field=msinfo['sources']['allsources'], antenna='Lo*&Mk2*')
+        flagdata(vis=msfile, mode='manual', field=sources['allsources'], antenna='Lo*&Mk2*')
     # Subband edges
     channels_to_flag = '*:0~{0};{1}~{2}'.format(nchan/128-1, nchan-nchan/128, nchan-1)
     logger.info('MS has {} channels'.format(nchan))
     logger.info('Flagging edge channels {0}'.format(channels_to_flag))
-    flagdata(vis=msfile, mode='manual', field=msinfo['sources']['allsources'], spw=channels_to_flag)
+    flagdata(vis=msfile, mode='manual', field=sources['allsources'], spw=channels_to_flag)
     # Slewing (typical):
     # Main calibrators, 5 min
     logger.info('Flagging 5 min from bright calibrators')
-    flagdata(vis=msfile, field=msinfo['sources']['maincal'], mode='quack', quackinterval=300)
+    bright_cal = join_lists([si for si in ['1331+305','1407+284','0319+415'] if si in
+                  sources['maincal']])
+    flagdata(vis=msfile, field=bright_cal, mode='quack', quackinterval=300)
     # Target and phase reference, 20 sec
     logger.info('Flagging first 20 sec of target and phasecal')
-    flagdata(vis=msfile, field=msinfo['sources']['targets_phscals'], mode='quack', quackinterval=20)
+    flagdata(vis=msfile, field=sources['targets_phscals'], mode='quack', quackinterval=20)
     # We can add more (Lo is slower, etc).
+    if Lo_dropout_scans != '':
+        logger.info('Flagging Lo dropout scans: {0}. Assuming phasecal is: {1}'.format(Lo_dropout_scans, sources['phscals']))
+        flagdata(vis=msfile, antenna='Lo', field=sources['phscals'], scan=Lo_dropout_scans)
+
     flag_applied(flags, 'flagdata1_apriori')
     logger.info('End flagdata1_apriori')
     return flags
@@ -567,6 +640,24 @@ def flagdata_tfcrop_bright(msfile, sources, flags, datacolumn='DATA'):
     flag_applied(flags, 'flagdata_tfcrop_bright')
     logger.info('End flagdata_tfcrop_bright')
     return flags
+
+def flagdata4_rflag(msfile, msinfo, flags):
+    timedevscale = 5
+    freqdevscale = 5
+    logger.info('Start flagdata4_rflag')
+    logger.info("Running flagdata, mode = 'rflag'")
+    logger.info("ntime='90min', combinescans=True, datacolumn='corrected'")
+    logger.info("timedevscale = {0}, freqdevscale = {1}".format(timedevscale,
+                                                                freqdevscale))
+    flagdata(vis=msfile, mode='rflag', field=msinfo['sources']['allsources'],
+             antenna='', scan='',spw='', correlation='',
+             ntime='90min', combinescans=True, datacolumn='corrected',
+             timedevscale=timedevscale, freqdevscale=freqdevscale,
+             action='apply', display='', flagbackup=True)
+    flag_applied(flags, 'flagdata4_rflag')
+    logger.info('End flagdata4_rflag')
+    return flags
+
 
 def flag_applied(flags, new_flag):
     if new_flag in flags:
@@ -655,18 +746,19 @@ def find_refant(msfile, field, antennas='', spws='', scan=''):
 
 ### Run CASA calibration functions
 
-def run_split(msfile, msinfo, width, timebin, datacolumn='data'):
+def run_split(msfile, sources, width, timebin, datacolumn='data'):
     logger.info('Start split')
+    mssources = ms_sources(msfile)
     # Check that all sources are there:
     sources_not_in_msfile = [s for s in
-                             msinfo['sources']['allsources'].split(',')
-                             if s not in msinfo['mssources'].split(',')]
+                             sources['allsources'].split(',')
+                             if s not in mssources]
     if len(sources_not_in_msfile) > 0:
-        fields = msinfo['mssources']
+        fields = ','.join(mssources)
         logger.warning('Fields {} not present in MS but listed in inputs file.'.format(','.join(sources_not_in_msfile)))
         logger.warning('All fields will be included in the averaged MS.')
     else:
-        fields = msinfo['sources']['allsources']
+        fields = sources['allsources']
     name = '.'.join(msfile.split('.')[:-1])
     exte = ''.join(msfile.split('.')[-1])
     outputmsfile = name+'_avg.'+exte
@@ -709,6 +801,43 @@ def run_initialize_models(msfile, fluxcal, models_path, delmod_sources):
     delmod(vis=msfile, field=delmod_sources)
     logger.info('End init_models')
 
+def run_fringefit(msfile, caltables, caltable_name, previous_cal, minblperant=3, minsnr=2, smodel=[]):
+    rmdir(caltables[caltable_name]['table'])
+    logger.info('Running fringefit to generate: {0}'.format(caltables[caltable_name]['name']))
+    logger.info('Field(s) = {0}, zerorates = {1}'.format(
+                caltables[caltable_name]['field'],
+                caltables[caltable_name]['zerorates']))
+    logger.info('solint = {0}, spw = {1},  combine = {2}'.format(
+                caltables[caltable_name]['solint'],
+                caltables[caltable_name]['spw'],
+                caltables[caltable_name]['combine']))
+    # Previous calibration
+    gaintable = [caltables[p]['table'] for p in previous_cal]
+    interp    = [caltables[p]['interp'] for p in previous_cal]
+    spwmap    = [caltables[p]['spwmap'] for p in previous_cal]
+    gainfield = [caltables[p]['gainfield'] if len(np.atleast_1d(caltables[p]['gainfield'].split(',')))<2 else '' for p in previous_cal]
+    logger.info('Previous calibration applied: {0}'.format(str(previous_cal)))
+    logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
+    logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
+    logger.info('Previous calibration interp: {0}'.format(str(interp)))
+    logger.info('Generating calibration table: {0}'.format(caltables[caltable_name]['table']))
+    # Run CASA task fringefit
+    fringefit(vis=msfile,
+            caltable  = caltables[caltable_name]['table'],
+            field     = caltables[caltable_name]['field'],
+            solint    = caltables[caltable_name]['solint'],
+            combine   = caltables[caltable_name]['combine'],
+            spw       = caltables[caltable_name]['spw'],
+            refant    = caltables['refant'],
+            antenna   = '*&*',
+            gaintable = gaintable,
+            gainfield = gainfield,
+            interp    = interp,
+            spwmap    = spwmap,
+            zerorates = caltables[caltable_name]['zerorates'])
+    logger.info('caltable {0} in {1}'.format(caltables[caltable_name]['name'],
+                                              caltables[caltable_name]['table']))
+
 
 def run_gaincal(msfile, caltables, caltable_name, previous_cal, minblperant=3, minsnr=2):
     rmdir(caltables[caltable_name]['table'])
@@ -725,7 +854,7 @@ def run_gaincal(msfile, caltables, caltable_name, previous_cal, minblperant=3, m
     gaintable = [caltables[p]['table'] for p in previous_cal]
     interp    = [caltables[p]['interp'] for p in previous_cal]
     spwmap    = [caltables[p]['spwmap'] for p in previous_cal]
-    gainfield = [caltables[p]['field'] if len(np.atleast_1d(caltables[p]['field'].split(',')))<2 else '' for p in previous_cal]
+    gainfield = [caltables[p]['gainfield'] if len(np.atleast_1d(caltables[p]['gainfield'].split(',')))<2 else '' for p in previous_cal]
     logger.info('Previous calibration applied: {0}'.format(str(previous_cal)))
     logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
     logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
@@ -759,11 +888,12 @@ def run_bandpass(msfile, caltables, caltable_name, previous_cal, minblperant=3, 
                  caltables[caltable_name]['spw'],
                  caltables[caltable_name]['combine'],
                  caltables[caltable_name]['solnorm']))
+    logger.info('uvrange = {0}'.format(caltables[caltable_name]['uvrange']))
     # Previous calibration
     gaintable = [caltables[p]['table'] for p in previous_cal]
     interp    = [caltables[p]['interp'] for p in previous_cal]
     spwmap    = [caltables[p]['spwmap'] for p in previous_cal]
-    gainfield = [caltables[p]['field'] if len(np.atleast_1d(caltables[p]['field'].split(',')))<2 else '' for p in previous_cal]
+    gainfield = [caltables[p]['gainfield'] if len(np.atleast_1d(caltables[p]['gainfield'].split(',')))<2 else '' for p in previous_cal]
     logger.info('Previous calibration applied: {0}'.format(str(previous_cal)))
     logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
     logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
@@ -777,6 +907,7 @@ def run_bandpass(msfile, caltables, caltable_name, previous_cal, minblperant=3, 
              combine   = caltables[caltable_name]['combine'],
              spw       = caltables[caltable_name]['spw'],
              solnorm   = caltables[caltable_name]['solnorm'],
+             uvrange   = caltables[caltable_name]['uvrange'],
              fillgaps  = 16,
              refant    = caltables['refant'],
              gaintable = gaintable,
@@ -815,7 +946,7 @@ def run_applycal(msfile, caltables, sources, previous_cal, previous_cal_targets=
     gaintable = [caltables[p]['table'] for p in previous_cal]
     interp    = [caltables[p]['interp'] for p in previous_cal]
     spwmap    = [caltables[p]['spwmap'] for p in previous_cal]
-    gainfield = [caltables[p]['field'] if len(np.atleast_1d(caltables[p]['field'].split(',')))<2 else '' for p in previous_cal]
+    gainfield = [caltables[p]['gainfield'] if len(np.atleast_1d(caltables[p]['gainfield'].split(',')))<2 else '' for p in previous_cal]
     logger.info('Previous calibration applied: {0}'.format(str(previous_cal)))
     logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
     logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
@@ -839,7 +970,7 @@ def run_applycal(msfile, caltables, sources, previous_cal, previous_cal_targets=
             gaintable = [caltables[p]['table'] for p in previous_cal_targets]
             interp    = [caltables[p]['interp'] for p in previous_cal_targets]
             spwmap    = [caltables[p]['spwmap'] for p in previous_cal_targets]
-            gainfield = [caltables[p]['field'] if len(np.atleast_1d(caltables[p]['field'].split(',')))<2 else phscal for p in previous_cal_targets]
+            gainfield = [caltables[p]['gainfield'] if len(np.atleast_1d(caltables[p]['gainfield'].split(',')))<2 else phscal for p in previous_cal_targets]
             logger.info('Field: {0}. Phase calibrator: {1}'.format(s, phscal))
             logger.info('Previous calibration applied: {0}'.format(str(previous_cal_targets)))
             logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
@@ -856,41 +987,100 @@ def run_applycal(msfile, caltables, sources, previous_cal, previous_cal_targets=
 
 ### Calibration steps
 
-def solve_delays(msfile, caltables, previous_cal, calsources, solint='600s'):
+def solve_delays(msfile, msinfo, caltables, previous_cal, solint='300s'):
     logger.info('Start solve_delays')
     caltable_name = 'delay.K1'
     caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
-    caltables[caltable_name]['field'] = calsources
+    caltables[caltable_name]['field'] = msinfo['sources']['calsources']
     caltables[caltable_name]['gaintype'] = 'K'
     caltables[caltable_name]['calmode'] = 'p'
     caltables[caltable_name]['solint'] = solint
     caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
     caltables[caltable_name]['spwmap'] = [0]*caltables['num_spw']
     caltables[caltable_name]['combine'] = 'spw'
-    caltables[caltable_name]['spw'] = ''
+    caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
 
     caltable = caltables[caltable_name]['table']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name, previous_cal)
+    if caltables['Lo_dropout_scans'] != '':
+        remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
     logger.info('Delay calibration {0}: {1}'.format(caltable_name, caltable))
     # Plots
     # 1 No range
-    caltableplot = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_1.png'
+    caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_1.png'
     plotcal(caltable=caltable,xaxis='time',yaxis='delay',subplot=321,iteration='antenna',
             showgui=False,figfile=caltableplot, fontsize = 8, plotrange = [-1,-1,-1,-1])
     logger.info('Delay calibration plot in: {0}'.format(caltableplot))
     # 2 Only show typical delay values: from -20 to 20 nanosec
-    caltableplot = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_2.png'
+    caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_2.png'
     plotcal(caltable=caltable,xaxis='time',yaxis='delay',subplot=321,iteration='antenna',
             showgui=False,figfile=caltableplot, fontsize = 8, plotrange = [-1,-1,-20,20])
     logger.info('Delay calibration plot: {0}'.format(caltableplot))
     logger.info('End solve_delays')
     return caltables
 
+def delay_fringefit(msfile, msinfo, caltables, previous_cal):
+    # Currently does not combine spws because that is not correctly implemented
+    # in the pre-release version of task fringefit
+    logger.info('Start delay_fringefit')
+    caltable_name = 'delay.K1'
+    caltables[caltable_name] = {}
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['field'] = msinfo['sources']['calsources']
+    caltables[caltable_name]['solint'] = '180s'
+    caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
+    caltables[caltable_name]['spwmap'] = []
+    caltables[caltable_name]['combine'] = ''
+    caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
+    caltables[caltable_name]['zerorates'] = True
 
-def initial_bp_cal(msfile, caltables, previous_cal, bpcal):
+    caltable = caltables[caltable_name]['table']
+    # Calibration
+    run_fringefit(msfile, caltables, caltable_name, previous_cal)
+    if caltables['Lo_dropout_scans'] != '':
+        remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
+    logger.info('Fringe calibration {0}: {1}'.format(caltable_name, caltable))
+    # Plots
+    # 1 Phases
+    caltableplot =  caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
+    plotcal(caltable=caltable,xaxis='time',yaxis='phase',subplot=321,iteration='antenna',
+            showgui=False,figfile=caltableplot, fontsize = 8, plotrange =
+            [-1,-1,-180,-180])
+    logger.info('Fringe calibration (phases) plot in: {0}'.format(caltableplot))
+    # 2 Delays
+    caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_dela.png'
+    plotcal(caltable=caltable,xaxis='time',yaxis='delay',subplot=321,iteration='antenna',
+            showgui=False,figfile=caltableplot, fontsize = 8, plotrange =
+            [-1,-1,-1,-1])
+    logger.info('Fringe calibration (delays) plot in: {0}'.format(caltableplot))
+    caltableplot =  caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_dela2.png'
+    plotcal(caltable=caltable,xaxis='time',yaxis='delay',subplot=321,iteration='antenna',
+            showgui=False,figfile=caltableplot, fontsize = 8, plotrange =
+            [-1,-1,-20,-20])
+    logger.info('Fringe calibration (delays range) plot in: {0}'.format(caltableplot))
+    ## 3 Rates (they are zeroed)
+    #caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_rate.png'
+    #plotcal(caltable=caltable,xaxis='time',yaxis='rate',subplot=321,iteration='antenna',
+    #        showgui=False,figfile=caltableplot, fontsize = 8, plotrange =
+    #        [-1,-1,-1,-1])
+    #logger.info('Fringe calibration (rates) plot in: {0}'.format(caltableplot))
+
+    # 2 Only show typical delay values: from -20 to 20 nanosec
+    caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_2.png'
+    plotcal(caltable=caltable,xaxis='time',yaxis='delay',subplot=321,iteration='antenna',
+            showgui=False,figfile=caltableplot, fontsize = 8, plotrange = [-1,-1,-20,20])
+    logger.info('Delay calibration plot: {0}'.format(caltableplot))
+    logger.info('End delay_fringefit')
+    return caltables
+
+
+def initial_bp_cal(msfile, msinfo, caltables, previous_cal):
     logger.info('Start initial_bp_cal')
 
     # 0 Delay calibration of bpcal
@@ -898,20 +1088,23 @@ def initial_bp_cal(msfile, caltables, previous_cal, bpcal):
     caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
-    caltables[caltable_name]['field'] = bpcal
+    caltables[caltable_name]['field'] = msinfo['sources']['bpcal']
     caltables[caltable_name]['gaintype'] = 'K'
     caltables[caltable_name]['calmode'] = 'p'
     caltables[caltable_name]['solint'] = '180s'
     caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['gainfield'] = msinfo['sources']['bpcal']
     caltables[caltable_name]['spwmap'] = [0]*caltables['num_spw']
     caltables[caltable_name]['combine'] = 'spw'
-    caltables[caltable_name]['spw'] = ''
+    caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
     caltable = caltables[caltable_name]['table']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name, previous_cal)
+    if caltables['Lo_dropout_scans'] != '':
+        remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
     logger.info('Delay calibration of bpcal {0}: {1}'.format(caltable_name, caltable))
     # Plots
-    caltableplot = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_1.png'
+    caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_1.png'
     plotcal(caltable=caltable,xaxis='time',yaxis='delay',subplot=321,iteration='antenna',
             showgui=False,figfile=caltableplot, fontsize = 8, plotrange = [-1,-1,-1,-1])
     logger.info('Delay calibration plot in: {0}'.format(caltableplot))
@@ -921,21 +1114,24 @@ def initial_bp_cal(msfile, caltables, previous_cal, bpcal):
     caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
-    caltables[caltable_name]['field'] = bpcal
+    caltables[caltable_name]['field'] = msinfo['sources']['bpcal']
     caltables[caltable_name]['gaintype'] = 'G'
     caltables[caltable_name]['calmode'] = 'p'
-    caltables[caltable_name]['solint'] = '8s'
+    caltables[caltable_name]['solint'] = 'int'
     caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['gainfield'] = msinfo['sources']['bpcal']
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
-    caltables[caltable_name]['spw'] = ''
+    caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
     caltable = caltables[caltable_name]['table']
     previous_cal_p = previous_cal + ['bpcal_d.K0']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name, previous_cal_p)
+    if caltables['Lo_dropout_scans'] != '':
+        remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
     logger.info('Bandpass0 phase calibration {0}: {1}'.format(caltable_name,caltable))
     # Plots
-    caltableplot = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
+    caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
     plotcal(caltable=caltable,xaxis='time',yaxis='phase',subplot=321,iteration='antenna',
             showgui=False,figfile=caltableplot,fontsize=8, plotrange=[-1,-1,-180,180])
     logger.info('Bandpass0 phase calibration plot: {0}'.format(caltableplot))
@@ -945,26 +1141,29 @@ def initial_bp_cal(msfile, caltables, previous_cal, bpcal):
     caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
-    caltables[caltable_name]['field'] = bpcal
+    caltables[caltable_name]['field'] = msinfo['sources']['bpcal']
     caltables[caltable_name]['gaintype'] = 'G'
     caltables[caltable_name]['calmode'] = 'ap'
-    caltables[caltable_name]['solint'] = '180s'
+    caltables[caltable_name]['solint'] = '32s'
     caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['gainfield'] = msinfo['sources']['bpcal']
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
-    caltables[caltable_name]['spw'] = ''
+    caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
     caltable = caltables[caltable_name]['table']
     previous_cal_ap = previous_cal_p + ['bpcal_p.G0']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name, previous_cal_ap)
+    if caltables['Lo_dropout_scans'] != '':
+        remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
     logger.info('Bandpass0 amplitude calibration {0}: {1}'.format(caltable_name,caltable))
 #    smooth_caltable(msfile=msfile, plotdir=plotdir, tablein=caltable2, caltable='', field='', smoothtype='median', smoothtime=60*20.)
     # Plots
-    caltableplot_phs = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
+    caltableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
     plotcal(caltable=caltable,xaxis='time',yaxis='phase',subplot=321,iteration='antenna',
             showgui=False,figfile=caltableplot_phs,fontsize=8, plotrange=[-1,-1,-180,180])
     logger.info('Bandpass0 amplitude calibration plot: {0}'.format(caltableplot_phs))
-    caltableplot_amp = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_amp.png'
+    caltableplot_amp = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_amp.png'
     plotcal(caltable=caltable,xaxis='time',yaxis='amp',subplot=321,iteration='antenna',
             showgui=False,figfile=caltableplot_amp,fontsize=8, plotrange=[-1,-1,-1,-1])
     logger.info('Bandpass0 amplitude calibration plot: {0}'.format(caltableplot_amp))
@@ -974,34 +1173,36 @@ def initial_bp_cal(msfile, caltables, previous_cal, bpcal):
     caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
-    caltables[caltable_name]['field'] = bpcal
+    caltables[caltable_name]['field'] = msinfo['sources']['bpcal']
     caltables[caltable_name]['solint'] = 'inf'
     caltables[caltable_name]['interp'] = 'nearest,linear'
     caltables[caltable_name]['spwmap'] = []
-    caltables[caltable_name]['combine'] = ''
+    caltables[caltable_name]['combine'] = 'field,scan'
     caltables[caltable_name]['spw'] = ''
+    caltables[caltable_name]['uvrange'] = ''
     caltables[caltable_name]['solnorm'] = True
     bptable = caltables[caltable_name]['table']
     previous_cal_ap_bp = previous_cal_ap + ['bpcal_ap.G1']
     # Calibration
     run_bandpass(msfile, caltables, caltable_name, previous_cal_ap_bp)
+    caltables[caltable_name]['gainfield'] = get_unique_field(caltables[caltable_name]['table'])
     logger.info('Bandpass0 BP {0}: {1}'.format(caltable_name,bptable))
     # Plots
-    bptableplot_phs = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
-    bptableplot_amp = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_amp.png'
+    bptableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
+    bptableplot_amp = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_amp.png'
     plotcal(caltable=bptable, xaxis='freq', yaxis='phase',
             subplot=321,iteration='antenna', showgui=False,
             figfile=bptableplot_phs, fontsize = 8, plotrange = [-1,-1,-180,180])
-    logger.info('Bandpass0 BP phase plot: {0}'.format(caltableplot_phs))
+    logger.info('Bandpass0 BP phase plot: {0}'.format(bptableplot_phs))
     plotcal(caltable=bptable, xaxis='freq', yaxis='amp',  subplot=321,
             iteration='antenna', showgui=False, figfile=bptableplot_amp,
             fontsize = 8, plotrange = [-1,-1,-1,-1])
-    logger.info('Bandpass0 BP phase plot: {0}'.format(caltableplot_amp))
+    logger.info('Bandpass0 BP phase plot: {0}'.format(bptableplot_amp))
     logger.info('End initial_bp_cal')
     return caltables
 
 
-def initial_gaincal(msfile, caltables, previous_cal, calsources, phscals):
+def initial_gaincal(msfile, msinfo, caltables, previous_cal):
     logger.info('Start initial_gaincal')
 
     # 1 Phase calibration
@@ -1009,48 +1210,77 @@ def initial_gaincal(msfile, caltables, previous_cal, calsources, phscals):
     caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
-    caltables[caltable_name]['field'] = calsources
+    caltables[caltable_name]['field'] = msinfo['sources']['calsources']
     caltables[caltable_name]['gaintype'] = 'G'
     caltables[caltable_name]['calmode'] = 'p'
-    caltables[caltable_name]['solint'] = '8s'
+    caltables[caltable_name]['solint'] = '16s'
     caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
-    caltables[caltable_name]['spw'] = ''
+    caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
     caltable = caltables[caltable_name]['table']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name, previous_cal)
+    if caltables['Lo_dropout_scans'] != '':
+        remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
     logger.info('Gain phase calibration {0}: {1}'.format(caltable_name,caltable))
     # Plots
-    caltableplot = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
+    caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
     plotcal(caltable=caltable,xaxis='time',yaxis='phase',subplot=321,iteration='antenna',showgui=False,figfile=caltableplot, fontsize = 8, plotrange = [-1,-1,-180, 180])
     logger.info('Gain phase calibration plot: {0}'.format(caltableplot))
+
+    # 1b Phase jitter correction
+    caltable_name = 'allcal_p_jitter.G0'
+    caltables[caltable_name] = {}
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['field'] = msinfo['sources']['calsources']
+    caltables[caltable_name]['gaintype'] = 'G'
+    caltables[caltable_name]['calmode'] = 'p'
+    caltables[caltable_name]['solint'] = 'int'
+    caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
+    caltables[caltable_name]['spwmap'] = [0]*caltables['num_spw']
+    caltables[caltable_name]['combine'] = 'spw'
+    #caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
+    caltables[caltable_name]['spw'] = ''  # Needs all channels. Check issue #70
+    caltable = caltables[caltable_name]['table']
+    previous_cal_p = previous_cal + ['allcal_p.G0']
+    # Calibration
+    run_gaincal(msfile, caltables, caltable_name, previous_cal_p)
+    if caltables['Lo_dropout_scans'] != '':
+        remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
+    logger.info('Gain phase calibration {0}: {1}'.format(caltable_name,caltable))
 
     # 2 Amplitude calibration
     caltable_name = 'allcal_ap.G1'
     caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
-    caltables[caltable_name]['field'] = calsources
+    caltables[caltable_name]['field'] = msinfo['sources']['calsources']
     caltables[caltable_name]['gaintype'] = 'G'
     caltables[caltable_name]['calmode'] = 'ap'
-    caltables[caltable_name]['solint'] = '120s'
+    caltables[caltable_name]['solint'] = '32s'
     caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
-    caltables[caltable_name]['spw'] = ''
+    caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
     caltable = caltables[caltable_name]['table']
-    previous_cal_ap = previous_cal + ['allcal_p.G0']
+    previous_cal_ap = previous_cal_p + ['allcal_p_jitter.G0']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name, previous_cal_ap)
+    if caltables['Lo_dropout_scans'] != '':
+        remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
     logger.info('Gain amplitude calibration {0}: {1}'.format(caltable_name,caltable))
 #    smooth_caltable(msfile=msfile, plotdir=plotdir, tablein=caltable2, caltable='', field='', smoothtype='median', smoothtime=60*20.)
     # Plots
-    caltableplot_phs = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
+    caltableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
     plotcal(caltable=caltable,xaxis='time',yaxis='phase',subplot=321,iteration='antenna',
             showgui=False,figfile=caltableplot_phs,fontsize=8,plotrange=[-1,-1,-180,180])
     logger.info('Bandpass0 phase calibration plot: {0}'.format(caltableplot))
-    caltableplot_amp = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_amp.png'
+    caltableplot_amp = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_amp.png'
     plotcal(caltable=caltable,xaxis='time',yaxis='amp',subplot=321,iteration='antenna',
             showgui=False,figfile=caltableplot_amp,fontsize=8,plotrange=[-1,-1,-1,-1])
     logger.info('Bandpass0 phase calibration plot: {0}'.format(caltableplot))
@@ -1060,20 +1290,23 @@ def initial_gaincal(msfile, caltables, previous_cal, calsources, phscals):
     caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
-    caltables[caltable_name]['field'] = phscals
+    caltables[caltable_name]['field'] = msinfo['sources']['phscals']
     caltables[caltable_name]['gaintype'] = 'G'
     caltables[caltable_name]['calmode'] = 'p'
     caltables[caltable_name]['solint'] = 'inf'
     caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['gainfield'] = msinfo['sources']['phscals']
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
-    caltables[caltable_name]['spw'] = ''
+    caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
     caltable = caltables[caltable_name]['table']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name, previous_cal)
+    if caltables['Lo_dropout_scans'] != '':
+        remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
     logger.info('Gain phase calibration {0}: {1}'.format(caltable_name,caltable))
     # Plots
-    caltableplot = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
+    caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
     plotcal(caltable=caltable,xaxis='time',yaxis='phase',subplot=321,iteration='antenna',
             showgui=False,figfile=caltableplot,fontsize=8,plotrange=[-1,-1,-180,180])
     logger.info('Gain phase calibration plot: {0}'.format(caltableplot))
@@ -1114,9 +1347,13 @@ def eM_fluxscale(msfile, caltables, ampcal_table, sources, antennas):
                           listfile  = caltables[caltable_name]['table']+'_fluxes.txt')
     logger.info('Modified caltable: {0}'.format(caltables[caltable_name]['table']))
     logger.info('Spectrum information: {0}'.format(caltables[caltable_name]['table']+'_fluxes.txt'))
-    ### VERY IMPORTANT! THIS VALUE NEEDS TO BE COMPUTED USING FUNCTION dfluxpy
-    ### THIS VALUE IS JUST ONLY TEMPORARY
-    eMfactor =  0.99987
+    # Compute correction to scale the flux density of 3C286 according to
+    # resolution provided by the shortest available baseline of e-MERLIN
+    eMfactor = calc_eMfactor(msfile, field=fluxcal)
+    # Include a note in the fluxes.txt file warning that the values in that
+    # file should be corrected by eMfactor
+    with open(caltables[caltable_name]['table']+'_fluxes.txt', 'a') as file:
+        file.write('# WARNING: All flux densities in this file need to be multiplied by eMfactor={0:6.4f} to match the corrections that have been applied to the data.'.format(eMfactor))
     # Get fitted flux density and spectral index, correctly scaled for e-MERLIN
     eMcalfluxes = {}
     for k in calfluxes.keys():
@@ -1127,8 +1364,8 @@ def eM_fluxscale(msfile, caltables, ampcal_table, sources, antennas):
                 a.append(calfluxes[k]['spidx'][1])
                 a.append(calfluxes[k]['fitRefFreq'])
                 eMcalfluxes[calfluxes[k]['fieldName']]=a
-                logger.info('Spectrum for {0:>9s}: Flux density ={1:6.3f}+/-{2:6.3f}, spidx ={3:5.2f}+/-{4:5.2f}'.format(calfluxes[k]['fieldName'],
-                    calfluxes[k]['fitFluxd'], calfluxes[k]['fitFluxdErr'],
+                logger.info('Spectrum for {0:>9s}: Flux density ={1:6.3f} +/-{2:6.3f}, spidx ={3:5.2f}+/-{4:5.2f}'.format(calfluxes[k]['fieldName'],
+                    calfluxes[k]['fitFluxd']*eMfactor, calfluxes[k]['fitFluxdErr']*eMfactor,
                     calfluxes[k]['spidx'][1], calfluxes[k]['spidxerr'][1]))
             except:
                 pass
@@ -1143,27 +1380,30 @@ def eM_fluxscale(msfile, caltables, ampcal_table, sources, antennas):
     logger.info('End eM_fluxscale')
     return caltables
 
-def bandpass_sp(msfile, caltables, previous_cal, bpcal):
+def bandpass_sp(msfile, msinfo, caltables, previous_cal):
     logger.info('Start bandpass_sp')
     # Bandpass calibration
     caltable_name = 'bpcal_sp.B1'
     caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
-    caltables[caltable_name]['field'] = bpcal
+    caltables[caltable_name]['field'] = msinfo['sources']['bpcal']
     caltables[caltable_name]['solint'] = 'inf'
     caltables[caltable_name]['interp'] = 'nearest,linear'
     caltables[caltable_name]['spwmap'] = []
-    caltables[caltable_name]['combine'] = ''
+    caltables[caltable_name]['combine'] = 'field,scan'
     caltables[caltable_name]['spw'] = ''
+    #caltables[caltable_name]['uvrange'] = '>15km'
+    caltables[caltable_name]['uvrange'] = ''
     caltables[caltable_name]['solnorm'] = False
     bptable = caltables[caltable_name]['table']
     # Calibration
     run_bandpass(msfile, caltables, caltable_name, previous_cal)
+    caltables[caltable_name]['gainfield'] = get_unique_field(caltables[caltable_name]['table'])
     logger.info('Bandpass1 BP {0}: {1}'.format(caltable_name,bptable))
     # Plots
-    bptableplot_phs = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
-    bptableplot_amp = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_amp.png'
+    bptableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
+    bptableplot_amp = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_amp.png'
     plotcal(caltable=bptable, xaxis='freq', yaxis='phase',
             subplot=321,iteration='antenna', showgui=False,
             figfile=bptableplot_phs, fontsize = 8, plotrange = [-1,-1,-180,180])
@@ -1176,7 +1416,7 @@ def bandpass_sp(msfile, caltables, previous_cal, bpcal):
     return caltables
 
 
-def sp_amp_gaincal(msfile, caltables, previous_cal, calsources):
+def sp_amp_gaincal(msfile, msinfo, caltables, previous_cal):
     logger.info('Start gaincal_amp_sp')
 
     # 1 Amplitude calibration
@@ -1184,29 +1424,57 @@ def sp_amp_gaincal(msfile, caltables, previous_cal, calsources):
     caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
-    caltables[caltable_name]['field'] = calsources
+    caltables[caltable_name]['field'] = msinfo['sources']['calsources']
     caltables[caltable_name]['gaintype'] = 'G'
     caltables[caltable_name]['calmode'] = 'ap'
-    caltables[caltable_name]['solint'] = '180s'
+    caltables[caltable_name]['solint'] = '32s'
     caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
-    caltables[caltable_name]['spw'] = ''
+    caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
     caltable = caltables[caltable_name]['table']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name, previous_cal)
+    if caltables['Lo_dropout_scans'] != '':
+        remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
     logger.info('Gain amplitude calibration {0}: {1}'.format(caltable_name,caltable))
 #    smooth_caltable(msfile=msfile, plotdir=plotdir, tablein=caltable2, caltable='', field='', smoothtype='median', smoothtime=60*20.)
     # Plots
-    caltableplot_phs = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_phs.png'
+    caltableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
     plotcal(caltable=caltable,xaxis='time',yaxis='phase',subplot=321,iteration='antenna',
             showgui=False,figfile=caltableplot_phs,fontsize=8,plotrange=[-1,-1,-180,180])
     logger.info('Amplitude gain calibration plot: {0}'.format(caltableplot_phs))
-    caltableplot_amp = caltables['plots_dir']+caltables['inbase']+'_'+caltable_name+'_amp.png'
+    caltableplot_amp = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_amp.png'
     plotcal(caltable=caltable,xaxis='time',yaxis='amp',subplot=321,iteration='antenna',
             showgui=False,figfile=caltableplot_amp,fontsize=8,plotrange=[-1,-1,-1,-1])
     logger.info('Amplitude gain calibration plot: {0}'.format(caltableplot_amp))
 
+    # 2 Amplitude calibration on phasecal: scan-averaged amplitude solutions
+    caltable_name = 'allcal_ap_scan.G3'
+    caltables[caltable_name] = {}
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['field'] = msinfo['sources']['phscals']
+    caltables[caltable_name]['gaintype'] = 'G'
+    caltables[caltable_name]['calmode'] = 'ap'
+    caltables[caltable_name]['solint'] = 'inf'
+    caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['gainfield'] = msinfo['sources']['phscals']
+    caltables[caltable_name]['spwmap'] = []
+    caltables[caltable_name]['combine'] = ''
+    caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
+    caltable = caltables[caltable_name]['table']
+    # Calibration
+    run_gaincal(msfile, caltables, caltable_name, previous_cal)
+    if caltables['Lo_dropout_scans'] != '':
+        remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
+    logger.info('Gain phase calibration {0}: {1}'.format(caltable_name,caltable))
+    # Plots
+    caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_amp.png'
+    plotcal(caltable=caltable,xaxis='time',yaxis='amp',subplot=321,iteration='antenna',
+            showgui=False,figfile=caltableplot,fontsize=8,plotrange=[-1,-1,-1,-1])
+    logger.info('Gain amplitude scan calibration plot: {0}'.format(caltableplot))
     logger.info('End gaincal_amp_sp')
     return caltables
 
@@ -1297,8 +1565,53 @@ def monitoring(msfile, msinfo, flags, caltables, previous_cal):
     return flags, caltables
 
 
+def calc_eMfactor(msfile, field='1331+305'):
+    logger.info('Computing eMfactor')
+    if field != '1331+305':
+        logger.warning('Scaling flux assuming 3C286 is the flux calibrator. Your flux calibrator is: {}. Scaling is probably wrong.'.format(field))
+    tb.open(msfile+'/FIELD')
+    names = tb.getcol('NAME')
+    field_id = np.argwhere(names == field)[0][0]
+    tb.close()
+
+    tb.open(msfile+'/ANTENNA')
+    anten = tb.getcol('NAME')
+    tb.close()
+
+    tb.open(msfile)
+    uvw = tb.getcol('UVW')
+    a1 = tb.getcol('ANTENNA1')
+    a2 = tb.getcol('ANTENNA2')
+    field = tb.getcol('FIELD_ID')
+    flags = tb.getcol('FLAG')
+    tb.close()
+
+    uvdist = np.sqrt(uvw[0]**2+uvw[1]**2)
+    allflag = np.sum(flags, axis=(0,1))
+    flags_entries = flags.shape[0]*flags.shape[1]
+
+    mask = (uvdist==0) | (allflag==flags_entries) | field!=field_id
+    uvdist_nonzero = np.ma.array(uvdist, mask=mask)
+
+    n = np.argmin(uvdist_nonzero)
+
+    tb.open(msfile+'/SPECTRAL_WINDOW')
+    chan_freq = tb.getcol('CHAN_FREQ')
+    tb.close()
+
+    shortest_baseline = uvdist_nonzero[n] # Shortest baseline in m
+    center_freq = np.mean(chan_freq)/1e6 # Center frequency in MHz
+    dfluxpy_output = dfluxpy(center_freq, shortest_baseline)
+    eMfactor = dfluxpy_output[1]/dfluxpy_output[0]
+    logger.info('Shortest projected baseline: {0} [{1}] - {2} [{3}] {4:10.2f}m'.format(
+        anten[a1[n]], a1[n], anten[a2[n]], a2[n], uvdist_nonzero[n]))
+    logger.info('Central frequency of the MS: {0} MHz'.format(center_freq))
+    logger.info('eMfactor: {0:6.4f}'.format(eMfactor))
+    return eMfactor
+
 
 def dfluxpy(freq,baseline):
+    import math
     #######
     # Python version of 3C286 flux calculation program (original author unknown)
     # ..............................
@@ -1313,26 +1626,10 @@ def dfluxpy(freq,baseline):
     # Reworked to use the 1999 VLA flux formula, and a 2nd formula to give a continuous estimate of the resolved fraction, by Ian Stewart, JBO, 8 Aug 2007.
     # Minor changes by amsr, 8 Aug 2007
 
-    # my $program_name = 'dflux'; # $0 returns the './' prefix if this is used.
-
     lowest_freq = 300.0;
     highest_freq = 50000.0;
     if (freq < lowest_freq or freq > highest_freq):
         print "Frequency must be between $lowest_freq and $highest_freq MHz. \n"
-
-    # Old values for 3C286
-    # A = 1.23734
-    # B = -0.43276
-    # C = -0.14223
-    # D = 0.00345
-
-    # New values taken from AIPS SETJY 31DEC11
-    # Values as of 2010
-
-    # A = 1.2361
-    # B = -0.4127
-    # C = -0.1864
-    # D = 0.0294
 
     # Perley & Butler 2012 values
     A = 1.2515
@@ -1343,9 +1640,6 @@ def dfluxpy(freq,baseline):
     log10f = (math.log(freq)/2.3025851) - 3.0; # Why the -3? Because freq has to be GHz for the formula to work.
     log_flux = A + B*log10f + C*log10f*log10f + D*log10f*log10f*log10f
     vlaflux = math.pow(10.0,log_flux)
-
-
-
 
     # The VLA flux must now be corrected to account for the higher resolving power of merlin. The formula used was obtained with the help of Peter Thomasson. If we assume that 3C286 is represented by a gaussian of angular size theta_s, and represent the resolving power of the given baseline as a function of frequency f and antenna separation L by theta_b(f,L), then the reduction in central flux density A(0) due to the finite theta_s is given by
     #
@@ -1381,16 +1675,14 @@ def dfluxpy(freq,baseline):
     thisbl = "this baseline (Mk-Ta)"
 
     bl_length = baseline
-    # bl_str = sprintf "%8.2f", $ref_bl_length;
-
 
     frac = (freq / ref_freq) * (bl_length / ref_bl_length)
     rho = frac * frac * ref_rho
     merlinflux = vlaflux / (1.0 + rho)
 
     # Another useful quantity is the resolved percentage:
-    #
     resolved_percent = 100.0 * rho / (1.0 + rho)
     caution_res_pc = 10.0
 
     return vlaflux, merlinflux, resolved_percent, caution_res_pc, thisbl
+

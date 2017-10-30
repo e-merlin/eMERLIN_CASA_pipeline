@@ -1,30 +1,30 @@
-#text entries
-quit=0
-data_dir=./data/
-plots_dir=./plots/
-calib_dir=./calib/
-inbase=TEST1_L
-targets= '1111+2222'
-phscals= '3333+4444'
-fluxcal= '3C84'
-bpcal= 'OQ208'
-ptcal= '3C345'
-refant= 'Mk2'
+# Inputs for CASA e-MERLIN pipeline:
+fits_path = ./data/
+inbase    = 'project_name'
+targets   = '1111+2222'
+phscals   = '3333+4444'
+fluxcal   = '3C84'
+bpcal     = 'OQ208'
+ptcal     = '3C345'
+refant    = 'Mk2'
 
-manual_flags_a=./inputfg_a.flags
-manual_flags_b=./inputfg_b_avg.flags
+Lo_dropout_scans = ''
+manual_flags_a = ./inputfg_a.flags
+manual_flags_b = ./inputfg_b_avg.flags
 
 
-# processes (0=don't run, 1=run; 2=run and apply calib)
+# Pre-processing (0=don't run, 1=run):
 run_importfits  = 1
+summary_weblog	= 1
 hanning         = 0
-rfigui          = 0
 ms2mms          = 0
 flag_0_aoflagger= 0
-prediag         = 0
 flag_1_apriori  = 0
 flag_2a_manual  = 0
 average_1       = 0
+plot_data	= 0
+
+# Calibration (0=don't run, 1=run; 2=run and applycal if calibration is produced):
 flag_2b_manual  = 0
 init_models     = 0
 bandpass_0      = 0
@@ -35,3 +35,6 @@ fluxscale       = 0
 bandpass_1_sp   = 0
 gain_1_amp_sp   = 0
 applycal_all    = 0
+flag_4_rflag	= 0
+plot_corrected	= 0
+weblog		= 0

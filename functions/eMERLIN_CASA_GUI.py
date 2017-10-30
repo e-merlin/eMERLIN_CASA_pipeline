@@ -1,12 +1,12 @@
 #!/usr/local/python
 import os
-from casa import *
-from casa import table as tb
-from casa import ms
+
+# CASA imports
+from taskinit import *
+from tasks import *
+
 from Tkinter import *
 import tkMessageBox
-from tasks import *
-from casa import *
 
 class GUI_pipeline:
 	def __init__(self, pipeline_path):
