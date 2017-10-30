@@ -23,9 +23,9 @@ flag_1_apriori  = 0
 flag_2a_manual  = 0
 average_1       = 0
 plot_data	= 0
-flag_2b_manual  = 0
 
 # Calibration (0=don't run, 1=run; 2=run and applycal if calibration is produced):
+flag_2b_manual  = 0
 init_models     = 0
 bandpass_0      = 0
 flag_3_tfcropBP = 0

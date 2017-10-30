@@ -109,7 +109,7 @@ def single_uvplt(msinfo, field, plot_file):
     msfile = msinfo['msfile']
     nchan = msinfo['nchan']
     datacolumn='corrected'
-    avgtime = '16'
+    avgtime = ''
     showgui = False
     gridrows = 1
     gridcols = 2

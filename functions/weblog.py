@@ -56,7 +56,7 @@ def weblog_index(msinfo):
     wlog.write('<tr><td>Frequency </td>  <td> {0:5.2f} - {1:5.2f} GHz </td>\n'.format(
         msinfo['freq_ini'], msinfo['freq_end']))
     wlog.write('<tr><td>Num. spw </td>             <td> {0} </td>\n'.format(msinfo['num_spw']))
-    wlog.write('<tr><td><abbr title="Number of channels per spw after averaging. The raw data may provide more channels">Channels/spw<sup>*</sup></abbr></td><td> {0} </td>\n'.format(msinfo['nchan']))
+    wlog.write('<tr><td><abbr title="Number of channels per spw after  averaging. The raw data may provide up to 512 channels">Channels/spw<sup>*</sup></abbr></td><td> {0} </td>\n'.format(msinfo['nchan']))
     wlog.write('<tr><td>Channel width </td><td> {0:6.2f} MHz</td>\n'.format(msinfo['chan_res']*1000))
     wlog.write('<tr><td>spw bandwidth </td>   <td> {0:6.0f} MHz</td>\n'.format(
     msinfo['chan_res']*1000*msinfo['nchan']))
@@ -68,8 +68,8 @@ def weblog_index(msinfo):
     #wlog.write('<tr><td>Observer </td>       <td> '+uvdata.header['observer']+'</td>\n')
     #wlog.write('<tr><td>Telescope </td>     <td> '+uvdata.header['telescop']+'</td>\n')
     wlog.write('</table><br>\n')
-    write_link_txt(wlog, './{0}.notes.txt', 'Notes and observing comments'.format(msinfo['project']))
-    wlog.write('<br><small>(*) The channel and integration time  displayed are derived from the averaged data that has been processed in the pipeline. Higher time or frequency resolution may be available and can be obtained if required for the science extraction or advanced calibration techniques.  If this is required please contact the e-MERLIN science support team.</small>')
+    write_link_txt(wlog, './{0}.notes.txt'.format(msinfo['run']), 'Notes and observing comments')
+#    wlog.write('<br><small>(*) The channel and integration time  displayed are derived from the averaged data that has been processed in the pipeline. Higher time or frequency resolution may be available and can be obtained if required for the science extraction or advanced calibration techniques.  If this is required please contact the e-MERLIN science support team.</small>')
 
     #------------------------------------------
     weblog_foot(wlog)
@@ -159,7 +159,7 @@ def plots_uvplt(msinfo, wlog):
     for p in all_plots:
         source_name = os.path.splitext(p)[0].split('_')[-1]
         wlog.write('<h4>{0}</h4>\n'.format(source_name))
-        wlog.write('<a href = ".{0}"><img style="max-width:700px" src=".{0}"></a><br>\n'.format(p))
+        wlog.write('<a href = ".{0}"><img style="max-width:960px" src=".{0}"></a><br>\n'.format(p))
         wlog.write('<hr>\n')
 
 
