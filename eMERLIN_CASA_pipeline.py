@@ -117,7 +117,10 @@ def run_pipeline(inputs=None, inputs_path=''):
         logger.info('Starting summary weblog')
         if os.path.isfile(msfile+'.msinfo.pkl'):
             logger.info('Loading msinfo from: {}'.format(msfile+'.msinfo.pkl'))
-            msinfo = load_obj(msfile+'.msinfo')
+            #msinfo = load_obj(msfile+'.msinfo')  I decide to read it again,
+            #because it is very fast, and it is needed if user changes some inputs.
+            msinfo = em.get_msinfo(msfile, inputs)
+            save_obj(msinfo, msfile+'.msinfo')
             logger.info('Elevation and uvcov plots will not be created again as long as the {}.pkl file exists.'.format(msfile+'.msinfo'))
         elif os.path.isdir(msfile):
             msinfo = em.get_msinfo(msfile, inputs)
@@ -125,6 +128,8 @@ def run_pipeline(inputs=None, inputs_path=''):
             emplt.make_uvcov(msfile, msinfo)
             save_obj(msinfo, msfile+'.msinfo')
             logger.info('Saving information of MS {0} in: {1}'.format(msfile, msfile+'.pkl'))
+        else:
+            logger.info('MS nor MS.msinfo.pkl found. Weblog cannot be produced')
         emwlog.start_weblog(msinfo)
 
     if inputs['hanning'] == 1:
@@ -175,7 +180,10 @@ def run_pipeline(inputs=None, inputs_path=''):
     ### Load or create dictionary with ms information.
     if os.path.isfile(msfile+'.msinfo.pkl'):
         logger.info('Loading msinfo from: {}'.format(msfile+'.msinfo.pkl'))
-        msinfo = load_obj(msfile+'.msinfo')
+        #msinfo = load_obj(msfile+'.msinfo')  I decide to read it again,
+        #because it is very fast, and it is needed if user changes some inputs.
+        msinfo = em.get_msinfo(msfile, inputs)
+        save_obj(msinfo, msfile+'.msinfo')
         logger.info('Elevation and uvcov plots will not be created again as long as the {}.pkl file exists.'.format(msfile+'.msinfo'))
     elif os.path.isdir(msfile):
         msinfo = em.get_msinfo(msfile, inputs)

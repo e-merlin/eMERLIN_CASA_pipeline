@@ -189,7 +189,8 @@ def make_uvcov(msfile, msinfo):
     tb.open(msfile+'/FIELD')
     fields_ms = tb.getcol('NAME')
     tb.close()
-    for f in msinfo['sources']['allsources'].split(','):
+    #for f in msinfo['sources']['allsources'].split(','):
+    for f in fields_ms:
         if f in fields_ms:
             plot_file = plots_obs_dir+'{0}_uvcov_{1}.png'.format(msinfo['msfilename'],f)
             logger.info('Plotting uvcov for {0}: {1}'.format(f, plot_file))

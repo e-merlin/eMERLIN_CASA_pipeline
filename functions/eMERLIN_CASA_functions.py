@@ -272,10 +272,15 @@ def get_timefreq(msfile):
     nchan = len(axis_info['axis_info']['freq_axis']['chan_freq'][:,0])
     return t[0], t[-1], freq_ini, freq_end, chan_res, nchan
 
-def ms_sources(msfile):
+def find_mssources(msfile):
     mssources = ','.join(vishead(msfile,mode='list',listitems='field')['field'][0])
     logger.info('Sources in MS {0}: {1}'.format(msfile, mssources))
     return mssources
+
+def find_source_intent(msinfo, cats=['targets', 'phscals', 'bpcal', 'fluxcal']):
+    fields_ms = msinfo['sources']['mssources'].split(',')
+    return {source: ','.join([cat for cat in cats if source in msinfo['sources'][cat].split(',')]) for source in fields_ms}
+
 
 def get_project(msfile):
     tb.open(msfile+'/OBSERVATION')
@@ -298,7 +303,8 @@ def get_msinfo(msfile, inputs, doprint=False):
     msinfo['project'] = get_project(msfile)
     msinfo['run'] = inputs['inbase']
     msinfo['sources'] = user_sources(inputs)
-    msinfo['mssources'] = ms_sources(msfile)
+    msinfo['sources']['mssources'] = find_mssources(msfile)
+    msinfo['sources']['source_intent'] = find_source_intent(msinfo)
     msinfo['antennas'] = get_antennas(msfile)
     msinfo['band'] = check_band(msfile)
     msinfo['baselines'] = get_baselines(msfile)

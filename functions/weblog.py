@@ -52,7 +52,7 @@ def weblog_index(msinfo):
     wlog.write('<tr><td>End </td>    <td> {0} </td>\n'.format(msinfo['t_end'].strftime("%Y-%m-%d %H:%M")))
     wlog.write('<tr><td>Band </td>   <td> {0} </td>\n'.format(msinfo['band']))
     wlog.write('<tr><td>Antennas </td>   <td> {0} </td>\n'.format(', '.join(msinfo['antennas'])))
-    wlog.write('<tr><td>Number of sources </td>   <td> {0} </td>\n'.format(len(msinfo['mssources'].split(','))))
+    wlog.write('<tr><td>Number of sources </td>   <td> {0} </td>\n'.format(len(msinfo['sources']['mssources'].split(','))))
     wlog.write('<tr><td>Frequency </td>  <td> {0:5.2f} - {1:5.2f} GHz </td>\n'.format(
         msinfo['freq_ini'], msinfo['freq_end']))
     wlog.write('<tr><td>Num. spw </td>             <td> {0} </td>\n'.format(msinfo['num_spw']))
@@ -84,14 +84,18 @@ def weblog_obssum(msinfo):
     wlog.write('<h3>Summary:</h3>\n')
     write_link_txt(wlog, '../{}'.format(msinfo['msfile']+'.listobs'), 'Summary of the observation (listobs)')
     wlog.write('<h3>Sources:</h3>\n')
-    for source in msinfo['sources']['allsources'].split(','):
-        if source in msinfo['sources']['targets'].split(','):
-            extra_txt = '(target)'
-        elif source in msinfo['sources']['phscals'].split(','):
-            extra_txt = '(phasecal)'
-        else:
-            extra_txt = ''
-        wlog.write("{0} {1}</br>\n".format(source, extra_txt))
+    wlog.write('<table bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:30%">\n')
+    wlog.write('<tr><td><b>Source in MS</b> </td><td> <b>Intent</b></td>\n')
+    for source in msinfo['sources']['mssources'].split(','):
+        wlog.write('<tr><td>{0} </td><td> {1}</td>\n'.format(source, msinfo['sources']['source_intent'][source]))
+    wlog.write('</table><br>\n')
+    missing_sources = ', '.join([s for s in
+                                 msinfo['sources']['allsources'].split(',') if s not in
+                       msinfo['sources']['mssources']])
+    if missing_sources != '':
+        wlog.write('Sources in inputs file but not in MS: {0}'.format(missing_sources))
+    else:
+        wlog.write('All sources in inputs file are in the MS.')
     wlog.write('<h3>Antennas:</h3>\n')
     wlog.write('<pre>\n')
     for a in msinfo['antennas']:
