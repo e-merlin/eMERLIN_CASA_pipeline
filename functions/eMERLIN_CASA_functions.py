@@ -754,7 +754,7 @@ def find_refant(msfile, field, antennas='', spws='', scan=''):
 
 def run_split(msfile, sources, width, timebin, datacolumn='data'):
     logger.info('Start split')
-    mssources = ms_sources(msfile)
+    mssources = find_mssources(msfile)
     # Check that all sources are there:
     sources_not_in_msfile = [s for s in
                              sources['allsources'].split(',')
