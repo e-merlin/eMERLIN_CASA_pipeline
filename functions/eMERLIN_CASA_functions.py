@@ -582,7 +582,7 @@ def flagdata1_apriori(msfile, sources, Lo_dropout_scans, flags, do_quack=True):
         flagdata(vis=msfile, mode='manual', field=sources['allsources'], antenna='Lo*&Mk2*')
     # Subband edges
     channels_to_flag = '*:0~{0};{1}~{2}'.format(nchan/128-1, nchan-nchan/128, nchan-1)
-    logger.info('MS has {} channels'.format(nchan))
+    logger.info('MS has {} channels/spw'.format(nchan))
     logger.info('Flagging edge channels {0}'.format(channels_to_flag))
     flagdata(vis=msfile, mode='manual', field=sources['allsources'], spw=channels_to_flag)
     # Slewing (typical):
@@ -1244,7 +1244,7 @@ def initial_gaincal(msfile, msinfo, caltables, previous_cal):
     caltables[caltable_name]['field'] = msinfo['sources']['calsources']
     caltables[caltable_name]['gaintype'] = 'G'
     caltables[caltable_name]['calmode'] = 'p'
-    caltables[caltable_name]['solint'] = 'int'
+    caltables[caltable_name]['solint'] = '2s'
     caltables[caltable_name]['interp'] = 'linear'
     caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
     caltables[caltable_name]['spwmap'] = [0]*caltables['num_spw']

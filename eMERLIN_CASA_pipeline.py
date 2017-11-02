@@ -213,7 +213,7 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     # All the calibration steps will be saved in the dictionary caltables.pkl
     # located in the calib directory. If it does not exist a new one is created.
-    all_calsteps = ['bandpass_0', 'delay', 'gain_0_p_ap', 'fluxscale','bandpass_1_sp','gain_1_amp_sp']
+    all_calsteps = ['bandpass_0', 'delay', 'gain_0_p_ap','fluxscale','bandpass_1_sp','gain_1_amp_sp','applycal_all']
     if np.array([inputs[cal]>0 for cal in all_calsteps]).any():
         try:
             caltables = load_obj(calib_dir+'caltables')
