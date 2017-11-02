@@ -758,9 +758,9 @@ def run_split(msfile, sources, width, timebin, datacolumn='data'):
     # Check that all sources are there:
     sources_not_in_msfile = [s for s in
                              sources['allsources'].split(',')
-                             if s not in mssources]
+                             if s not in mssources.split(',')]
     if len(sources_not_in_msfile) > 0:
-        fields = ','.join(mssources)
+        fields = mssources
         logger.warning('Fields {} not present in MS but listed in inputs file.'.format(','.join(sources_not_in_msfile)))
         logger.warning('All fields will be included in the averaged MS.')
     else:
