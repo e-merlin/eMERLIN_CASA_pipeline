@@ -57,6 +57,44 @@ inbase.ms           [MS]
 inbase.ms.listobs   [txt]
 ```
 
+
+- **summary_weblog**
+
+Runs `get_msinfo` (see section 3, below) to get information from the inputs file and also directly from the MS. Ir prepares plots for elevation vs time and uvcov for each individual sources. It produces a weblog with at least:
+
+> Home: Summarizes main information in msinfo dictionary.
+> 
+> Observation summary: listobs, sources in MS and intent in inputs file, antenna list, elevation plot and uvcov plots.
+
+
+- **hanning** Just runs CASA hanning smoothing.
+
+Runs mstransform wuth mode='hanning' on DATA column. It produces a new MS, which substitutes the original ms. It works with MS or MMS. This step is optional, but recommended for L band observations. It is probably not needed for C band datasets.
+
+- **ms2mms** Optional step to transform original MS to a MMS.
+
+This allow CASA to run tasks on the MultiMeasurementSet in parallel transparently. Takes time to convert but later makes calibration and imaging faster. To be tested in detail.
+
+- **flag_0_aoflagger** Uses aoflagger to autoflag data using predefined strategies
+
+
+- **flag_1_apriori** Applies a-priori standard flags.
+
+- **flag_2a_manual** Applies flags from external file with a list of flag commands
+
+- **average_1** Split dataset and average to reduce data volume
+
+- **plot_data** Produce plots of amp/phase vs time/freq for each baseline	plotms
+
+
+## 2. Calibration
+
+
+
+
+## 3. Support functions
+
+
 - **get_msinfo** Internal task that retrieves information from the inputs file and also directly from the MS.
 
 This is an inner funtion used by the pipeline, but the output can be useful. Produces the dictionary `msinfo` that contains: msfile, msfilename, project, run, sources, mssources, antennas, band, baselines, num_spw, t_ini, t_end, freq_ini, freq_end, chan_Res, nchan, innerchan, polarizations. The dictionary is saved with pickle in file `inbase.ms.msinfo.pkl` and `inbase_avg.ms.msinfo.pkl` if average data is produced. `msinfo` can be read with pickle or with:
@@ -106,34 +144,19 @@ baselines           : ['Lo&Kn', 'Lo&De', 'Lo&Pi', 'Lo&Da', 'Lo&Cm', 'Mk2&Kn', 'M
 t_end               : 2015-02-20 10:29:59
 ```
 
-- **summary_weblog**
-
-Runs `get_msinfo` to get information from the inputs file and also directly from the MS. Ir prepares plots for elevation vs time and uvcov for each individual sources. It produces a weblog with at least:
-
-> Home: main information in msinfo dictionary.
-> 
-> Observation summary: listobs, sources in MS and intent in inputs file, antenna list, elevation plot and uvcov plots.
-
-
-
-- **hanning**
-
-
-## 2. Calibration
-
 
 ---
 # Quick summary
 
 ### Pre-processing
 |Procedure        |Summary                                                     | CASA/external tasks                       |Inputs                   |Outputs        |Notes                                                                                          |
-|-----------------|------------------------------------------------------------|------------- -----------------------------|-------------------------|---------------|-----------------------------------------------------------------------------------------------|
+|-----------------|------------------------------------------------------------|-------------------------------------------|-------------------------|---------------|-----------------------------------------------------------------------------------------------|
 |run_importfitsidi| Concatenate all fits-IDI files in a folder to a MS         | importfitsidi, fixvis, flagdata (autocorr)|fits_path                |inbase.ms      | Also produces inbase.ms.listobs                                                               |
 |summary_weblog   | Produces weblog with basic project information and plots   | get_data, plotms                          |                         |               | Info (sources, spw, channels, time, etc), elevation vs time plot and uvcov plots.             |
-| hanning         | Run hanning smoothing                                      | mstransform                               |                         |               | Hanning smoothing helps with RFI removal. Recommended for L band data.                        |                                                                                                                                                                                                                                                                                                                                    | ms2mms          | Convert to mms format to run tasks in parallel             | mstransform                               |                         |inbase.mms     | If this step is executed, inbase.ms will be removed and all other steps will run on inbase.mms|
+| hanning         | Run hanning smoothing                                      | mstransform                               |                         |               | Hanning smoothing helps with RFI removal. Recommended for L band data.                        |                                                                                                                                                                              | ms2mms          | Convert to mms format to run tasks in parallel             | mstransform                               |                         |inbase.mms     | If this step is executed, inbase.ms will be removed and all other steps will run on inbase.mms|
 | flag0_aoflagger | Autoflag data using predefined strategies                  | aoflagger                                 |                         |               | Accepts user strategies per field. Can take very long if low memory available                 |
 | flag1_apriori   | Standard flags: Lo-Mk2, edge channels, slewing, Lo dropouts| flagdata                                  |sources, Lo_dropout_scans|               |                                                                                               |
-| flag_2a_manual  | Applies external file with flag commands                   | flagdata                                  |manual_flags_a           |               | Applies flag commands prepared by the user in external file to unaveraged data                |
+| flag_2a_manual  | Applies flags from external file with a list of flag commands | flagdata                               |manual_flags_a           |               | Applies flag commands prepared by the user in external file to **unaveraged** data            |
 | average_1       | Split dataset and average to reduce data volume            | split                                     |sources                  |inbase_avg.ms  |                                                                                               |
 | plot_data       | Produce plots of amp/phase vs time/freq for each baseline  | plotms                                    |                         |plots (several)| Plots DATA column only.                                                                       |
 
@@ -144,7 +167,8 @@ Runs `get_msinfo` to get information from the inputs file and also directly from
 The calibration steps require `targets`, `phscals`, `fluxcal`, `bpcal`. All calibration steps that produce calibration tables also produce plots of those tables that are saved to `./plots/caltables/`.
 
 |Procedure      |Summary                                                                | CASA/external tasks |Output table(s)                                                | Notes                                                                                                                        |
-|---------------|---------------------------------------------------------------------- |---------------------|---------------------------------------------------------------|------------------------------- |
+|---------------|---------------------------------------------------------------------- |---------------------|---------------------------------------------------------------|------------------------------------------------------------------------------- |
+|flag_2b_manual | Applies flags from external file with a list of flag commands         |flagdata             |manual_flags_b                                                 |Applies flag commands prepared by the user in external file to **averaged** data|
 |init_models    |Initializes MODEL column                                               |setjy                |                                                               |Initialize all other sources to amp=1, phase=0. 1331+305 uses 3C286 models at L and C bands                                   |
 |bandpass_0     |Initial calibration of bandpass calibrator and creates initial BP table|gaincal, bandpass    |bpcal_d.K0, bpcal_p.G0, bpcal_ap.G1, bpcal.B0                  |Performs delay, phase and a&p calibration on bpcal sources. Runs `bandpass` with solnorm=True                                 |
 |flag_3_tfcropBP|Autoflag BP-corrected data                                             |flagdata             |                                                               |Will apply BP cal if not done before in the current pipeline run. Runs fagdata with mode='TFCROP'                             |
