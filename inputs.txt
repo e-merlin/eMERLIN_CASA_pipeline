@@ -1,5 +1,5 @@
 # Inputs for CASA e-MERLIN pipeline:
-fits_path = ./data/
+fits_path = /path/to/fits/files/
 inbase    = 'project_name'
 targets   = ''
 phscals   = ''

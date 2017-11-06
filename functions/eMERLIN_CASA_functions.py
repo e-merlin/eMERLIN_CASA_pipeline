@@ -253,12 +253,13 @@ def get_antennas(msfile):
     logger.info('Antennas in MS {0}: {1}'.format(msfile, antennas))
     return antennas
 
-def prt_dict(d):
+def prt_dict(d, pre=''):
     for key in d.keys():
         if type(d[key]) == dict:
-            prt_dict(d[key])
+            print(key)
+            prt_dict(d[key], pre=pre+'   ')
         else:
-            print('{0:20s} {1}'.format(key, d[key]))
+            print('{0:20s}: {1}'.format(pre+key, d[key]))
 
 def get_timefreq(msfile):
     # Date and time of observation
