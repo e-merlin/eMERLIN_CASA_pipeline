@@ -148,6 +148,18 @@ def load_obj(name):
     with open(name + '.pkl', 'rb') as f:
         return pickle.load(f)
 
+def prt_dict(d, pre=''):
+    subdict = []
+    for key in d.keys():
+        if type(d[key]) == dict:
+            subdict.append(key)
+        else:
+            print('{0:20s}: {1}'.format(pre+key, d[key]))
+    if subdict != []:
+        for key_inner in subdict:
+            print(pre+key_inner)
+            prt_dict(d[key_inner], pre=pre+'   ')
+
 
 def check_mixed_mode(vis,mode):
     logger.info('Check for mixed mode')
@@ -252,14 +264,6 @@ def get_antennas(msfile):
     antennas = np.unique('-'.join(d['axis_info']['ifr_axis']['ifr_name']).split('-'))
     logger.info('Antennas in MS {0}: {1}'.format(msfile, antennas))
     return antennas
-
-def prt_dict(d, pre=''):
-    for key in d.keys():
-        if type(d[key]) == dict:
-            print(key)
-            prt_dict(d[key], pre=pre+'   ')
-        else:
-            print('{0:20s}: {1}'.format(pre+key, d[key]))
 
 def get_timefreq(msfile):
     # Date and time of observation
@@ -846,7 +850,7 @@ def run_fringefit(msfile, caltables, caltable_name, previous_cal, minblperant=3,
                                               caltables[caltable_name]['table']))
 
 
-def run_gaincal(msfile, caltables, caltable_name, previous_cal, minblperant=3, minsnr=2):
+def run_gaincal(msfile, caltables, caltable_name, minblperant=3, minsnr=2):
     rmdir(caltables[caltable_name]['table'])
     logger.info('Running gaincal to generate: {0}'.format(caltables[caltable_name]['name']))
     logger.info('Field(s) = {0}, gaintype = {1}, calmode = {2}'.format(
@@ -858,6 +862,7 @@ def run_gaincal(msfile, caltables, caltable_name, previous_cal, minblperant=3, m
                 caltables[caltable_name]['spw'],
                 caltables[caltable_name]['combine']))
     # Previous calibration
+    previous_cal = caltables[caltable_name]['previous_cal']
     gaintable = [caltables[p]['table'] for p in previous_cal]
     interp    = [caltables[p]['interp'] for p in previous_cal]
     spwmap    = [caltables[p]['spwmap'] for p in previous_cal]
@@ -886,7 +891,7 @@ def run_gaincal(msfile, caltables, caltable_name, previous_cal, minblperant=3, m
     logger.info('caltable {0} in {1}'.format(caltables[caltable_name]['name'],
                                               caltables[caltable_name]['table']))
 
-def run_bandpass(msfile, caltables, caltable_name, previous_cal, minblperant=3, minsnr=2):
+def run_bandpass(msfile, caltables, caltable_name, minblperant=3, minsnr=2):
     rmdir(caltables[caltable_name]['table'])
     logger.info('Running bandpass to generate: {0}'.format(caltables[caltable_name]['name']))
     logger.info('Field(s) {0}, solint = {1}, spw = {2}, combine = {3}, solnorm = {4}'.format(
@@ -897,6 +902,7 @@ def run_bandpass(msfile, caltables, caltable_name, previous_cal, minblperant=3, 
                  caltables[caltable_name]['solnorm']))
     logger.info('uvrange = {0}'.format(caltables[caltable_name]['uvrange']))
     # Previous calibration
+    previous_cal = caltables[caltable_name]['previous_cal']
     gaintable = [caltables[p]['table'] for p in previous_cal]
     interp    = [caltables[p]['interp'] for p in previous_cal]
     spwmap    = [caltables[p]['spwmap'] for p in previous_cal]
@@ -1010,10 +1016,11 @@ def solve_delays(msfile, msinfo, caltables, previous_cal, solint='300s'):
     caltables[caltable_name]['spwmap'] = [0]*caltables['num_spw']
     caltables[caltable_name]['combine'] = 'spw'
     caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
+    caltables[caltable_name]['previous_cal'] = previous_cal
 
     caltable = caltables[caltable_name]['table']
     # Calibration
-    run_gaincal(msfile, caltables, caltable_name, previous_cal)
+    run_gaincal(msfile, caltables, caltable_name)
     if caltables['Lo_dropout_scans'] != '':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
     logger.info('Delay calibration {0}: {1}'.format(caltable_name, caltable))
@@ -1048,10 +1055,11 @@ def delay_fringefit(msfile, msinfo, caltables, previous_cal):
     caltables[caltable_name]['combine'] = ''
     caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
     caltables[caltable_name]['zerorates'] = True
+    caltables[caltable_name]['previous_cal'] = previous_cal
 
     caltable = caltables[caltable_name]['table']
     # Calibration
-    run_fringefit(msfile, caltables, caltable_name, previous_cal)
+    run_fringefit(msfile, caltables, caltable_name)
     if caltables['Lo_dropout_scans'] != '':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
     logger.info('Fringe calibration {0}: {1}'.format(caltable_name, caltable))
@@ -1109,9 +1117,10 @@ def initial_bp_cal(msfile, msinfo, caltables, previous_cal):
     caltables[caltable_name]['spwmap'] = [0]*caltables['num_spw']
     caltables[caltable_name]['combine'] = 'spw'
     caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
+    caltables[caltable_name]['previous_cal'] = previous_cal
     caltable = caltables[caltable_name]['table']
     # Calibration
-    run_gaincal(msfile, caltables, caltable_name, previous_cal)
+    run_gaincal(msfile, caltables, caltable_name)
     if caltables['Lo_dropout_scans'] != '':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
     logger.info('Delay calibration of bpcal {0}: {1}'.format(caltable_name, caltable))
@@ -1136,10 +1145,11 @@ def initial_bp_cal(msfile, msinfo, caltables, previous_cal):
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
     caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
-    caltable = caltables[caltable_name]['table']
     previous_cal_p = previous_cal + ['bpcal_d.K0']
+    caltables[caltable_name]['previous_cal'] = previous_cal_p
+    caltable = caltables[caltable_name]['table']
     # Calibration
-    run_gaincal(msfile, caltables, caltable_name, previous_cal_p)
+    run_gaincal(msfile, caltables, caltable_name)
     if caltables['Lo_dropout_scans'] != '':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
     logger.info('Bandpass0 phase calibration {0}: {1}'.format(caltable_name,caltable))
@@ -1166,8 +1176,9 @@ def initial_bp_cal(msfile, msinfo, caltables, previous_cal):
     caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
     caltable = caltables[caltable_name]['table']
     previous_cal_ap = previous_cal_p + ['bpcal_p.G0']
+    caltables[caltable_name]['previous_cal'] = previous_cal_ap
     # Calibration
-    run_gaincal(msfile, caltables, caltable_name, previous_cal_ap)
+    run_gaincal(msfile, caltables, caltable_name)
     if caltables['Lo_dropout_scans'] != '':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
     logger.info('Bandpass0 amplitude calibration {0}: {1}'.format(caltable_name,caltable))
@@ -1198,8 +1209,9 @@ def initial_bp_cal(msfile, msinfo, caltables, previous_cal):
     caltables[caltable_name]['solnorm'] = True
     bptable = caltables[caltable_name]['table']
     previous_cal_ap_bp = previous_cal_ap + ['bpcal_ap.G1']
+    caltables[caltable_name]['previous_cal'] = previous_cal_ap_bp
     # Calibration
-    run_bandpass(msfile, caltables, caltable_name, previous_cal_ap_bp)
+    run_bandpass(msfile, caltables, caltable_name)
     caltables[caltable_name]['gainfield'] = get_unique_field(caltables[caltable_name]['table'])
     logger.info('Bandpass0 BP {0}: {1}'.format(caltable_name,bptable))
     # Plots
@@ -1236,8 +1248,9 @@ def initial_gaincal(msfile, msinfo, caltables, previous_cal):
     caltables[caltable_name]['combine'] = ''
     caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
     caltable = caltables[caltable_name]['table']
+    caltables[caltable_name]['previous_cal'] = previous_cal
     # Calibration
-    run_gaincal(msfile, caltables, caltable_name, previous_cal)
+    run_gaincal(msfile, caltables, caltable_name)
     if caltables['Lo_dropout_scans'] != '':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
     logger.info('Gain phase calibration {0}: {1}'.format(caltable_name,caltable))
@@ -1264,8 +1277,9 @@ def initial_gaincal(msfile, msinfo, caltables, previous_cal):
     #caltables[caltable_name]['spw'] = ''  # Needs all channels. Check issue #70
     caltable = caltables[caltable_name]['table']
     previous_cal_p = previous_cal + ['allcal_p.G0']
+    caltables[caltable_name]['previous_cal'] = previous_cal_p
     # Calibration
-    run_gaincal(msfile, caltables, caltable_name, previous_cal_p)
+    run_gaincal(msfile, caltables, caltable_name)
     if caltables['Lo_dropout_scans'] != '':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
     caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
@@ -1289,8 +1303,9 @@ def initial_gaincal(msfile, msinfo, caltables, previous_cal):
     caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
     caltable = caltables[caltable_name]['table']
     previous_cal_ap = previous_cal_p + ['allcal_p_jitter.G0']
+    caltables[caltable_name]['previous_cal'] = previous_cal_ap
     # Calibration
-    run_gaincal(msfile, caltables, caltable_name, previous_cal_ap)
+    run_gaincal(msfile, caltables, caltable_name)
     if caltables['Lo_dropout_scans'] != '':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
     logger.info('Gain amplitude calibration {0}: {1}'.format(caltable_name,caltable))
@@ -1321,8 +1336,9 @@ def initial_gaincal(msfile, msinfo, caltables, previous_cal):
     caltables[caltable_name]['combine'] = ''
     caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
     caltable = caltables[caltable_name]['table']
+    caltables[caltable_name]['previous_cal'] = previous_cal
     # Calibration
-    run_gaincal(msfile, caltables, caltable_name, previous_cal)
+    run_gaincal(msfile, caltables, caltable_name)
     if caltables['Lo_dropout_scans'] != '':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
     logger.info('Gain phase calibration {0}: {1}'.format(caltable_name,caltable))
@@ -1418,9 +1434,10 @@ def bandpass_sp(msfile, msinfo, caltables, previous_cal):
     #caltables[caltable_name]['uvrange'] = '>15km'
     caltables[caltable_name]['uvrange'] = ''
     caltables[caltable_name]['solnorm'] = False
+    caltables[caltable_name]['previous_cal'] = previous_cal
     bptable = caltables[caltable_name]['table']
     # Calibration
-    run_bandpass(msfile, caltables, caltable_name, previous_cal)
+    run_bandpass(msfile, caltables, caltable_name)
     caltables[caltable_name]['gainfield'] = get_unique_field(caltables[caltable_name]['table'])
     logger.info('Bandpass1 BP {0}: {1}'.format(caltable_name,bptable))
     # Plots
@@ -1456,9 +1473,10 @@ def sp_amp_gaincal(msfile, msinfo, caltables, previous_cal):
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
     caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
+    caltables[caltable_name]['previous_cal'] = previous_cal
     caltable = caltables[caltable_name]['table']
     # Calibration
-    run_gaincal(msfile, caltables, caltable_name, previous_cal)
+    run_gaincal(msfile, caltables, caltable_name)
     if caltables['Lo_dropout_scans'] != '':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
     logger.info('Gain amplitude calibration {0}: {1}'.format(caltable_name,caltable))
@@ -1488,9 +1506,10 @@ def sp_amp_gaincal(msfile, msinfo, caltables, previous_cal):
     caltables[caltable_name]['spwmap'] = []
     caltables[caltable_name]['combine'] = ''
     caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
+    caltables[caltable_name]['previous_cal'] = previous_cal
     caltable = caltables[caltable_name]['table']
     # Calibration
-    run_gaincal(msfile, caltables, caltable_name, previous_cal)
+    run_gaincal(msfile, caltables, caltable_name)
     if caltables['Lo_dropout_scans'] != '':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
     logger.info('Gain phase calibration {0}: {1}'.format(caltable_name,caltable))

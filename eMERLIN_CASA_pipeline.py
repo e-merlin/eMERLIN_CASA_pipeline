@@ -192,7 +192,7 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     # All the calibration steps will be saved in the dictionary caltables.pkl
     # located in the calib directory. If it does not exist a new one is created.
-    all_calsteps = ['bandpass_0', 'delay', 'gain_0_p_ap','fluxscale','bandpass_1_sp','gain_1_amp_sp','applycal_all']
+    all_calsteps = ['bandpass_0', 'delay', 'flag_3_tfcropBP','gain_0_p_ap','fluxscale','bandpass_1_sp','gain_1_amp_sp','applycal_all']
     if np.array([inputs[cal]>0 for cal in all_calsteps]).any():
         try:
             caltables = load_obj(calib_dir+'caltables')
@@ -203,13 +203,28 @@ def run_pipeline(inputs=None, inputs_path=''):
             caltables['plots_dir'] = plots_dir
             caltables['calib_dir'] = calib_dir
             caltables['num_spw'] = msinfo['num_spw']
+            all_calsteps = [    
+                    'bpcal_d.K0',
+                    'bpcal_p.G0',
+                    'bpcal_ap.G1',
+                    'bpcal.B0',
+                    'delay.K1',
+                    'allcal_p.G0',
+                    'allcal_p_jitter.G0',
+                    'allcal_ap.G1',
+                    'phscal_p_scan.G2',
+                    'allcal_ap.G1_fluxscaled',
+                    'bpcal_sp.B1',
+                    'allcal_ap.G3',
+                    'allcal_ap_scan.G3']
+            caltables['all_calsteps'] = all_calsteps
             logger.info('New caltables dictionary created. Saved to: {0}'.format(calib_dir+'caltables.pkl'))
         caltables['Lo_dropout_scans'] = inputs['Lo_dropout_scans']
         caltables['refant'] = inputs['refant']
         if inputs['refant'] == '':
             logger.info('Estimating best reference antenna. To avoid this, set a reference antenna in the inputs file.')
             caltables['refant'] = em.define_refant(msfile, msinfo, inputs)
-            save_obj(caltables, calib_dir+'caltables')
+        save_obj(caltables, calib_dir+'caltables')
 
     ### Initialize models ###
     if inputs['init_models'] == 1:  # Need to add parameter to GUI

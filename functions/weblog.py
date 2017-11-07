@@ -1,12 +1,17 @@
 import os
 import numpy as np
 import glob
+import pickle
 from taskinit import *
 from tasks import *
 
 import logging
 logger = logging.getLogger('logger')
 
+
+def load_obj(name):
+    with open(name + '.pkl', 'rb') as f:
+        return pickle.load(f)
 
 def weblog_header(wlog, section, project):
     wlog.write('<html>\n')
@@ -18,8 +23,9 @@ def weblog_header(wlog, section, project):
     wlog.write('<form>\n')
     wlog.write('<input type="button" value="Home"  onclick="window.location.href=\'./index.html\'">\n')
     wlog.write('<input type="button" value="Observation summary"  onclick="window.location.href=\'./obs_summary.html\'">\n')
+    wlog.write('<input type="button" value="Calibration"  onclick="window.location.href=\'./calibration.html\'">\n')
     wlog.write('<input type="button" value="Plots"  onclick="window.location.href=\'./plots.html\'">\n')
-    wlog.write('<input type="button" value="Files"  onclick="window.location.href=\'./files.html\'">\n')
+    #wlog.write('<input type="button" value="Files"  onclick="window.location.href=\'./files.html\'">\n')
     wlog.write('</form>\n')
     #wlog.write('<br>\n')
     wlog.write('<h2>{0}</h2>\n'.format(section))
@@ -153,10 +159,10 @@ def plots_corrected(msinfo, wlog):
         page_path = create_pnghtml_baselines('plots_corrected', source, 'Calibrated amplitude and phase against time and frequency.', msinfo)
         wlog.write('{0} <a href=".{1}" target="_blank">plots</a><br>\n'.format(source, page_path))
 
-def plots_caltables(msinfo, wlog):
-    all_plots = np.sort(glob.glob('./plots/caltables/*png'))
-    for p in all_plots:
-        wlog.write('<a href=".{1}" target="_blank">{0}</a><br>\n'.format(os.path.basename(p), p))
+#def plots_caltables(msinfo, wlog):
+#    all_plots = np.sort(glob.glob('./plots/caltables/*png'))
+#    for p in all_plots:
+#        wlog.write('<a href=".{1}" target="_blank">{0}</a><br>\n'.format(os.path.basename(p), p))
 
 def plots_uvplt(msinfo, wlog):
     all_plots = np.sort(glob.glob('./plots/plots_uvplt/*png'))
@@ -166,6 +172,30 @@ def plots_uvplt(msinfo, wlog):
         wlog.write('<a href = ".{0}"><img style="max-width:960px" src=".{0}"></a><br>\n'.format(p))
         wlog.write('<hr>\n')
 
+def write_caltable(caltable, wlog):
+    wlog.write('<h4>{}</h4>\n'.format(caltable['name']))
+    wlog.write('<table bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:40%">\n')
+    #wlog.write('<tr><td>{} </td>   <td>{}</td>\n'.format('Parameter', 'Value'))
+    for k in caltable.keys():
+        wlog.write('<tr><td>{} </td>   <td>{}</td>\n'.format(k, caltable[k]))
+    wlog.write('</table><br>\n')
+
+
+def weblog_calibration(msinfo):
+    ###### Calibration page
+    wlog = open("./weblog/calibration.html","w")
+    weblog_header(wlog, 'Calibration', msinfo['run'])
+    #------------------------------------------
+    caltables = load_obj('./calib/caltables')
+    for calstep in caltables['all_calsteps']:
+        try:
+            write_caltable(caltables[calstep], wlog)
+            all_plots = np.sort(glob.glob('./plots/caltables/*{}*.png'.format(calstep)))
+            for p in all_plots:
+                wlog.write('<a href = ".{0}"><img style="max-width:960px" src=".{0}"></a><br>\n'.format(p))
+                wlog.write('<hr>\n')
+        except:
+            pass
 
 
 def weblog_plots(msinfo):
@@ -181,10 +211,6 @@ def weblog_plots(msinfo):
     if (os.path.isdir('./plots/plots_corrected/')) and (os.listdir('./plots/plots_corrected/')):
         plots_corrected(msinfo, wlog)
 
-    wlog.write('<h3>Calibration tables</h3>\n')
-    if (os.path.isdir('./plots/caltables/')) and (os.listdir('./plots/caltables/')):
-        plots_caltables(msinfo, wlog)
-
     wlog.write('<h3>Calibrated UVplots</h3>\n')
     if (os.path.isdir('./plots/plots_uvplt/')) and (os.listdir('./plots/plots_uvplt/')):
         plots_uvplt(msinfo, wlog)
@@ -193,7 +219,6 @@ def weblog_plots(msinfo):
     #------------------------------------------
     weblog_foot(wlog)
     wlog.close()
-
 
 def makedir(pathdir):
     try:
@@ -204,7 +229,6 @@ def makedir(pathdir):
         pass
 
 
-
 def start_weblog(msinfo):
     logger.info('Start weblog')
     ###  Start weblog  ###
@@ -213,6 +237,7 @@ def start_weblog(msinfo):
 
     weblog_index(msinfo)
     weblog_obssum(msinfo)
+    weblog_calibration(msinfo)
     weblog_plots(msinfo)
     logger.info('End weblog')
 
