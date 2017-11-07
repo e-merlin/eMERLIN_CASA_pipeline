@@ -213,7 +213,6 @@ def run_pipeline(inputs=None, inputs_path=''):
                     'allcal_p_jitter.G0',
                     'allcal_ap.G1',
                     'phscal_p_scan.G2',
-                    'allcal_ap.G1_fluxscaled',
                     'bpcal_sp.B1',
                     'allcal_ap.G3',
                     'allcal_ap_scan.G3']

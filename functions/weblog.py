@@ -110,7 +110,7 @@ def weblog_obssum(msinfo):
     wlog.write('<h3>Source elevation:</h3>\n')
     try:
         elev_plot = glob.glob('./plots/plots_observation/{0}_elevation.png'.format(msinfo['msfilename']))
-        wlog.write('<a href = ".{0}"><img style="max-width:700px" src=".{0}"></a><br>\n'.format(elev_plot[0]))
+        wlog.write('<a href = ".{0}"><img style="max-width:600px" src=".{0}"></a><br>\n'.format(elev_plot[0]))
     except:
         pass
     wlog.write('<br><h3>UV coverage:</h3>\n')
@@ -173,12 +173,11 @@ def plots_uvplt(msinfo, wlog):
         wlog.write('<hr>\n')
 
 def write_caltable(caltable, wlog):
-    wlog.write('<h4>{}</h4>\n'.format(caltable['name']))
     wlog.write('<table bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:40%">\n')
     #wlog.write('<tr><td>{} </td>   <td>{}</td>\n'.format('Parameter', 'Value'))
     for k in caltable.keys():
         wlog.write('<tr><td>{} </td>   <td>{}</td>\n'.format(k, caltable[k]))
-    wlog.write('</table><br>\n')
+    wlog.write('</table></td>\n')
 
 
 def weblog_calibration(msinfo):
@@ -188,14 +187,20 @@ def weblog_calibration(msinfo):
     #------------------------------------------
     caltables = load_obj('./calib/caltables')
     for calstep in caltables['all_calsteps']:
+        wlog.write('<h4>{}</h4>\n'.format(caltables[calstep]['name']))
         try:
+            wlog.write('<table cellspacing = "20" cellpadding = "4px" style="width:40%">\n<tr> <td valign="top">\n')
             write_caltable(caltables[calstep], wlog)
             all_plots = np.sort(glob.glob('./plots/caltables/*{}*.png'.format(calstep)))
             for p in all_plots:
-                wlog.write('<a href = ".{0}"><img style="max-width:960px" src=".{0}"></a><br>\n'.format(p))
-                wlog.write('<hr>\n')
+                wlog.write('<td><a href = ".{0}"><img style="max-width:700px" src=".{0}"></a></td>\n'.format(p))
+            wlog.write('</table><br><br>\n<hr>\n')
+            #for p in all_plots:
+            #    wlog.write('<a href = ".{0}"><img style="max-width:700px" src=".{0}"></a><br><br>\n'.format(p))
+            #    wlog.write('<hr>\n')
         except:
             pass
+            #wlog.write('Problem with step {}\n'.format(calstep))
 
 
 def weblog_plots(msinfo):
