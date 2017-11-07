@@ -1041,7 +1041,7 @@ def solve_delays(msfile, msinfo, caltables, previous_cal, solint='300s'):
 
     caltable = caltables[caltable_name]['table']
     # Calibration
-#r#    run_gaincal(msfile, caltables, caltable_name)
+    run_gaincal(msfile, caltables, caltable_name)
     if caltables['Lo_dropout_scans'] != '':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
     logger.info('Delay calibration {0}: {1}'.format(caltable_name, caltable))
@@ -1128,7 +1128,7 @@ def initial_bp_cal(msfile, msinfo, caltables, previous_cal):
     caltables[caltable_name]['previous_cal'] = previous_cal
     caltable = caltables[caltable_name]['table']
     # Calibration
-#r#    run_gaincal(msfile, caltables, caltable_name)
+    run_gaincal(msfile, caltables, caltable_name)
     if caltables['Lo_dropout_scans'] != '':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
     logger.info('Delay calibration of bpcal {0}: {1}'.format(caltable_name, caltable))
@@ -1156,7 +1156,7 @@ def initial_bp_cal(msfile, msinfo, caltables, previous_cal):
     caltables[caltable_name]['previous_cal'] = previous_cal_p
     caltable = caltables[caltable_name]['table']
     # Calibration
-#r#    run_gaincal(msfile, caltables, caltable_name)
+    run_gaincal(msfile, caltables, caltable_name)
     if caltables['Lo_dropout_scans'] != '':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
     logger.info('Bandpass0 phase calibration {0}: {1}'.format(caltable_name,caltable))
@@ -1184,7 +1184,7 @@ def initial_bp_cal(msfile, msinfo, caltables, previous_cal):
     previous_cal_ap = previous_cal_p + ['bpcal_p.G0']
     caltables[caltable_name]['previous_cal'] = previous_cal_ap
     # Calibration
-#r#    run_gaincal(msfile, caltables, caltable_name)
+    run_gaincal(msfile, caltables, caltable_name)
     if caltables['Lo_dropout_scans'] != '':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
     logger.info('Bandpass0 amplitude calibration {0}: {1}'.format(caltable_name,caltable))
@@ -1216,7 +1216,7 @@ def initial_bp_cal(msfile, msinfo, caltables, previous_cal):
     previous_cal_ap_bp = previous_cal_ap + ['bpcal_ap.G1']
     caltables[caltable_name]['previous_cal'] = previous_cal_ap_bp
     # Calibration
-#r#    run_bandpass(msfile, caltables, caltable_name)
+    run_bandpass(msfile, caltables, caltable_name)
     caltables[caltable_name]['gainfield'] = get_unique_field(caltables[caltable_name]['table'])
     logger.info('Bandpass0 BP {0}: {1}'.format(caltable_name,bptable))
     # Plots
@@ -1252,7 +1252,7 @@ def initial_gaincal(msfile, msinfo, caltables, previous_cal):
     caltable = caltables[caltable_name]['table']
     caltables[caltable_name]['previous_cal'] = previous_cal
     # Calibration
-#r#    run_gaincal(msfile, caltables, caltable_name)
+    run_gaincal(msfile, caltables, caltable_name)
     if caltables['Lo_dropout_scans'] != '':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
     logger.info('Gain phase calibration {0}: {1}'.format(caltable_name,caltable))
@@ -1281,7 +1281,7 @@ def initial_gaincal(msfile, msinfo, caltables, previous_cal):
     previous_cal_p = previous_cal + ['allcal_p.G0']
     caltables[caltable_name]['previous_cal'] = previous_cal_p
     # Calibration
-#r#    run_gaincal(msfile, caltables, caltable_name)
+    run_gaincal(msfile, caltables, caltable_name)
     if caltables['Lo_dropout_scans'] != '':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
     caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
@@ -1307,7 +1307,7 @@ def initial_gaincal(msfile, msinfo, caltables, previous_cal):
     previous_cal_ap = previous_cal_p + ['allcal_p_jitter.G0']
     caltables[caltable_name]['previous_cal'] = previous_cal_ap
     # Calibration
-#r#    run_gaincal(msfile, caltables, caltable_name)
+    run_gaincal(msfile, caltables, caltable_name)
     if caltables['Lo_dropout_scans'] != '':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
     logger.info('Gain amplitude calibration {0}: {1}'.format(caltable_name,caltable))
@@ -1339,7 +1339,7 @@ def initial_gaincal(msfile, msinfo, caltables, previous_cal):
     caltable = caltables[caltable_name]['table']
     caltables[caltable_name]['previous_cal'] = previous_cal
     # Calibration
-#r#    run_gaincal(msfile, caltables, caltable_name)
+    run_gaincal(msfile, caltables, caltable_name)
     if caltables['Lo_dropout_scans'] != '':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
     logger.info('Gain phase calibration {0}: {1}'.format(caltable_name,caltable))
@@ -1437,7 +1437,7 @@ def bandpass_sp(msfile, msinfo, caltables, previous_cal):
     caltables[caltable_name]['previous_cal'] = previous_cal
     bptable = caltables[caltable_name]['table']
     # Calibration
-#r#    run_bandpass(msfile, caltables, caltable_name)
+    run_bandpass(msfile, caltables, caltable_name)
     caltables[caltable_name]['gainfield'] = get_unique_field(caltables[caltable_name]['table'])
     logger.info('Bandpass1 BP {0}: {1}'.format(caltable_name,bptable))
     # Plots
@@ -1473,7 +1473,7 @@ def sp_amp_gaincal(msfile, msinfo, caltables, previous_cal):
     caltables[caltable_name]['previous_cal'] = previous_cal
     caltable = caltables[caltable_name]['table']
     # Calibration
-#r#    run_gaincal(msfile, caltables, caltable_name)
+    run_gaincal(msfile, caltables, caltable_name)
     if caltables['Lo_dropout_scans'] != '':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
     logger.info('Gain amplitude calibration {0}: {1}'.format(caltable_name,caltable))
@@ -1505,7 +1505,7 @@ def sp_amp_gaincal(msfile, msinfo, caltables, previous_cal):
     caltables[caltable_name]['previous_cal'] = previous_cal
     caltable = caltables[caltable_name]['table']
     # Calibration
-#r#    run_gaincal(msfile, caltables, caltable_name)
+    run_gaincal(msfile, caltables, caltable_name)
     if caltables['Lo_dropout_scans'] != '':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
     logger.info('Gain phase calibration {0}: {1}'.format(caltable_name,caltable))
