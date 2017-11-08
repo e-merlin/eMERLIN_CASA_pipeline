@@ -1,27 +1,27 @@
 <!---
-I use grip to convert to html using: grip docs.md --export --title "e-MERLIN CASA pipeline
+I use grip to convert to html using: grip docs.md --export --title "e-MERLIN CASA pipeline"
 It can also be converted to pdf using: http://www.markdowntopdf.com/
 -->
 
-# e-MERLIN CASA pipeline 
+# e-MERLIN CASA pipeline
 ### Documentation for v0.6.4
 
 ---
 # Table of contents
-- [1. How to run the pipeline](#run_the_pipeline)
-- [2. How to reduce e-MERLIN data](#reduce_data)
-- [3. Inputs](#inputs)
-- [4. Procedures](#procedures)
-     - [4.1 Pre-processing data](#pre-processing)
-     - [4.2 Calibration](#calibration)
-- [5. Support functions](#support-functions)
-- [6. Quick summary](#quick-summary)
+- [1. How to run the pipeline](#1-how-to-run-the-pipeline)
+- [2. How to reduce e-MERLIN data](#2-how-to-reduce-e-merlin-data)
+- [3. Inputs](#3-inputs)
+- [4. Procedures](#4-procedures)
+     - [4.1 Pre-processing data](#41-pre-processing)
+     - [4.2 Calibration](#42-calibration)
+- [5. Support functions](#5-support-functions-and-variables)
+- [6. Quick summary](#6-quick-summary)
 
 
 ---
-<a name="run_the_pipeline"></a>
+
 # 1. How to run the pipeline
-----------------------------
+
 
 Download the pipeline from github [e-MERLIN CASA Pipeline](https://github.com/e-merlin/CASA_eMERLIN_pipeline).
 
@@ -44,7 +44,7 @@ inputs, msinfo = run_pipeline(inputs_path=<input file>)
 ~~~~
 
 ---
-<a name="reduce_data"></a>
+
 # 2. How to reduce e-MERLIN data
 
 ### Data preparation
@@ -68,7 +68,7 @@ inputs, msinfo = run_pipeline(inputs_path=<input file>)
 
 
 ---
-<a name="inputs"></a>
+
 # 3. Inputs
 
 There are two types of inputs. The ones at the begining expect a string that will depend on the project, sources, antennas or files needed. The ones in the last two blocks expect an integer that can be 0, 1 or 2 and are used to select which steps to execute.
@@ -137,13 +137,13 @@ Same as `manual_flags_a` but will be applied to the averaged data set `inbase_av
 **Note on the format**: For `[str]` inputs, the use of single quotes is not required. Most inputs accept a list of values in the format of a comma-separated string. Examples: `target = '1111+2222'` or `target = 1111+2222`. For multiple inputs: `phscals = '1111+2222,3333+4444,5555+6666'` is accepted.
 
 ---
-<a name="procedures"></a>
+
 # 4. Procedures
 
-<a name="pre-processing"></a>
+
 ## 4.1 Pre-processing
 
-###4.1.1 run_importfitsidi
+### 4.1.1 run_importfitsidi
 Merge fits-IDI files in `fits_path` to form a MS named `inbase.ms`
 
 Inputs parameters needed:
@@ -165,7 +165,7 @@ At this point the pipeline checks if the observations were observed in mixed mod
 
 
 ---
-###4.1.2 summary_weblog
+### 4.1.2 summary_weblog
 Retrieve basic information from the original MS, produce some plots and compile eveything in the weblog.
 
 Inputs parameters needed:
@@ -180,7 +180,7 @@ inbase.ms.msinfo.pkl    [pickle dictionary]
 Runs `get_msinfo` (see section 3, below) to get information from the inputs file and directly from the MS. It prepares plots for elevation vs time and uvcov for each individual sources. It produces a weblog with the available information. If no `refant` is selected, or the antenna selected is not in the MS, a procedure will try to guess a good refant to use. Please update the inputs file with a suitable refant.
 
 ---
-###4.1.3 hanning
+### 4.1.3 hanning
 Just runs CASA hanning smoothing.
 
 Inputs parameters needed:
@@ -198,7 +198,7 @@ Runs mstransform with mode='hanning' on DATA column. It produces a new MS, which
 
 
 ---
-###4.1.4 ms2mms
+### 4.1.4 ms2mms
 Optional step to transform original MS to a MMS.
 
 Inputs parameters needed:
@@ -215,7 +215,7 @@ This allow CASA to run tasks on the MultiMeasurementSet in parallel transparentl
 
 
 ---
-###4.1.5 flag_0_aoflagger
+### 4.1.5 flag_0_aoflagger
 Uses aoflagger to autoflag data using predefined strategies
 
 Inputs parameters needed:
@@ -232,7 +232,7 @@ It runs [aoflagger](https://sourceforge.net/p/aoflagger/wiki/Home/) on all the f
 
 
 ---
-###4.1.6 flag_1_apriori
+### 4.1.6 flag_1_apriori
 Applies a-priori standard flags.
 
 Inputs parameters needed:
@@ -255,7 +255,7 @@ Different flags are applied to the data:
 
 
 ---
-###4.1.7 flag_2a_manual
+### 4.1.7 flag_2a_manual
 Applies flags from external file with a list of flag commands the unaveraged dataset.
 
 Inputs parameters needed:
@@ -277,7 +277,7 @@ mode='manual' field='1258-2219' antenna='' timerange='12:57:01~12:59:59'
 mode='quack' field='1258-2219,1309-2322' quackinterval=24.
 ```
 ---
-###4.1.8 average_1
+### 4.1.8 average_1
 Split dataset and average to reduce data volume.
 
 Inputs parameters needed:
@@ -303,7 +303,7 @@ It will create a new MS `inbase_avg.ms` (or inbase_avg.mms if working with mms f
 
 
 ---
-###4.1.9 plot_data
+### 4.1.9 plot_data
 Produce plots of amp/phase vs time/freq for each baseline	plotms
 
 Inputs parameters needed:
@@ -327,7 +327,7 @@ Produces plots in png format for the visitibilities in `inbase_avg.ms`. It itera
  - Amp/Phase vs Frequency: averaged every 5 min, colorized by correlation.
 
 ---
-<a name="calibration"></a>
+
 ## 4.2. Calibration
 
 All calibration steps require the following input parameters:
@@ -357,7 +357,7 @@ Also, the **applycal** description at the end of each step shows which tables wi
 `calsources` is a comma-separated list of all calibrator sources.
 
 ---
-###4.2.1 flag_2b_manual
+### 4.2.1 flag_2b_manual
 Applies flags from external file with a list of flag commands to the averaged dataset.
 
 Inputs parameters needed:
@@ -378,12 +378,12 @@ mode='manual' field='1258-2219' antenna='' timerange='12:57:01~12:59:59'
 mode='quack' field='1258-2219,1309-2322' quackinterval=24.
 ```
 ---
-###4.2.2 init_models
+### 4.2.2 init_models
 
 The pipeline will initialize the model column for all sources different from 1331+305 using CASA `delmod`, so setting all amplitudes to 1 and all phases to 0 in the model column. For 1331+305 it will check if the data is L band or C band, and use `setjy` to introduce the correct model of 1331+305 (3C286) into the data column. The models can be found in `pipeline_path+'calibrator_models/'`. Only C and L band models available.
 
 ---
-###4.2.3 bandpass_0
+### 4.2.3 bandpass_0
 
 It runs a delay, phase, and a&p calibration before finding the combined BP table for all sources listed in `bpcals`.
 
@@ -463,7 +463,7 @@ It runs a delay, phase, and a&p calibration before finding the combined BP table
 
 
 ---
-###4.2.4 flag_3_tfcropBP
+### 4.2.4 flag_3_tfcropBP
 
 This task needs the data to be bandpass corrected. So first of all, it will apply the table ['bpcal.B0'] to all sources.
 
@@ -486,7 +486,7 @@ CASA `flagdata`
 | action        | apply  |
 
 ---
-###4.2.5 delay
+### 4.2.5 delay
 
 **bpcal_d.K0** - Delay calibration of all calibrators.
 
@@ -512,7 +512,7 @@ CASA `flagdata`
 
 
 ---
-###4.2.6 gain_0_p_ap
+### 4.2.6 gain_0_p_ap
 
 **allcal_p.G0** - Phase calibration of all calibrators.
 
@@ -594,7 +594,7 @@ CASA `flagdata`
 
 
 ---
-###4.2.7 fluxscale
+### 4.2.7 fluxscale
 
 Runs CASA `fluxscale` to bootstrap the flux density scale of 1331+305 using its model, and forward the corrections to all other sources, updating their model column. Also, a corrected _fluxscale table is derived from the previous amplitude calibration.
 
@@ -625,7 +625,7 @@ Finally, CASA `setjy` is run for each calibrator source (except the fluxcal) to 
 
 
 ---
-###4.2.8 bandpass_1_sp
+### 4.2.8 bandpass_1_sp
 
 **bpcal_sp.B1**
 
@@ -653,7 +653,7 @@ Recalculate the BP table. Now the model columns contain the actual flux density 
 
 
 ---
-###4.2.9 gain_1_amp_sp
+### 4.2.9 gain_1_amp_sp
 
 **allcal_ap.G3**
 
@@ -699,14 +699,14 @@ Recalculate the BP table. Now the model columns contain the actual flux density 
  - On targets: ['delay.K1','bpcal_sp.B1','phscal_p_scan.G2','allcal_ap_scan.G3']
 
 ---
-###4.2.10 applycal_all
+### 4.2.10 applycal_all
 Two runs are executed. One to correct calibrators, using their own solutions when relevant. A second correction is executed for each target, using the solutions from the corresponding phase reference calibrator.
 
  - On calibrators: ['delay.K1','bpcal_sp.B1','allcal_p.G0','allcal_p_jitter.G0','allcal_ap.G3']
  - On targets: ['delay.K1','bpcal_sp.B1','phscal_p_scan.G2','allcal_ap_scan.G3']
 
 ---
-###4.2.11 flag_4_rflag
+### 4.2.11 flag_4_rflag
 
 After calibration, we can run `flagdata` in rflag mode. This mode requires the data to be already calibrated.
 
@@ -725,7 +725,7 @@ CASA `flagdata`
 
 
 ---
-###4.2.12 plot_corrected
+### 4.2.12 plot_corrected
 
 Produce plots of amp/phase vs time/freq for each baseline	plotms using corrected data column.
 
@@ -751,7 +751,7 @@ Produces plots in png format for the visitibilities in `inbase_avg.ms`. It itera
 
 
 ---
-###4.2.13 weblog
+### 4.2.13 weblog
 Update the weblog will all available information and plots.
 
 As the initial `summary_weblog` but the weblog will include all information related to the dataset, the observation, the calibration and the visibilities. There are four different web pages:
@@ -762,9 +762,8 @@ As the initial `summary_weblog` but the weblog will include all information rela
  - Plots. Amp/phase vs time/freq per source and per baseline. Corrected and uncorrected visibilities, and Amp/phase vs uvdist.
 
 ---
-<a name="support-functions"></a>
-## 5. Support functions and variables
 
+# 5. Support functions and variables
 
 ### get_msinfo [function] and msinfo [dict]
 Internal task that retrieves information from the inputs file and also directly from the MS.
@@ -857,10 +856,10 @@ Example:
 
 
 ---
-<a name="quick-summary"></a>
+
 # 6. Quick summary
 
-### Pre-processing
+### Pre-processing summary
 |Procedure        |Summary                                                     | CASA/external tasks                       |Inputs                   |Outputs        |Notes                                                                                          |
 |-----------------|------------------------------------------------------------|-------------------------------------------|-------------------------|---------------|-----------------------------------------------------------------------------------------------|
 |run_importfitsidi| Concatenate all fits-IDI files in a folder to a MS         | importfitsidi, fixvis, flagdata (autocorr)|fits_path                |inbase.ms      | Also produces inbase.ms.listobs                                                               |
@@ -874,7 +873,7 @@ Example:
 
 
 
-### Calibration
+### Calibration summary
 
 The calibration steps require `targets`, `phscals`, `fluxcal`, `bpcal`. All calibration steps that produce calibration tables also produce plots of those tables that are saved to `./plots/caltables/`.
 

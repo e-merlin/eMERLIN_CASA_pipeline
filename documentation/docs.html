@@ -78,24 +78,22 @@
 <h1>
 <a id="user-content-table-of-contents" class="anchor" href="#table-of-contents" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Table of contents</h1>
 <ul>
-<li><a href="#run_the_pipeline">1. How to run the pipeline</a></li>
-<li><a href="#reduce_data">2. How to reduce e-MERLIN data</a></li>
-<li><a href="#inputs">3. Inputs</a></li>
+<li><a href="#1-how-to-run-the-pipeline">1. How to run the pipeline</a></li>
+<li><a href="#2-how-to-reduce-e-merlin-data">2. How to reduce e-MERLIN data</a></li>
+<li><a href="#3-inputs">3. Inputs</a></li>
 <li>
-<a href="#procedures">4. Procedures</a>
+<a href="#4-procedures">4. Procedures</a>
 <ul>
-<li><a href="#pre-processing">4.1 Pre-processing data</a></li>
-<li><a href="#calibration">4.2 Calibration</a></li>
+<li><a href="#41-pre-processing">4.1 Pre-processing data</a></li>
+<li><a href="#42-calibration">4.2 Calibration</a></li>
 </ul>
 </li>
-<li><a href="#support-functions">5. Support functions</a></li>
-<li><a href="#quick-summary">6. Quick summary</a></li>
+<li><a href="#5-support-functions-and-variables">5. Support functions</a></li>
+<li><a href="#6-quick-summary">6. Quick summary</a></li>
 </ul>
 <hr>
-<p><a name="user-content-run_the_pipeline"></a></p>
 <h1>
 <a id="user-content-1-how-to-run-the-pipeline" class="anchor" href="#1-how-to-run-the-pipeline" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>1. How to run the pipeline</h1>
-<hr>
 <p>Download the pipeline from github <a href="https://github.com/e-merlin/CASA_eMERLIN_pipeline">e-MERLIN CASA Pipeline</a>.</p>
 <p>To run the pipeline simply do:</p>
 <pre><code>casa -c /path/to/pipeline/eMERLIN_CASA_pipeline.py -i &lt;input file&gt;
@@ -110,7 +108,6 @@ execfile(pipeline_path + 'eMERLIN_CASA_pipeline.py')
 inputs, msinfo = run_pipeline(inputs_path=&lt;input file&gt;)
 </code></pre>
 <hr>
-<p><a name="user-content-reduce_data"></a></p>
 <h1>
 <a id="user-content-2-how-to-reduce-e-merlin-data" class="anchor" href="#2-how-to-reduce-e-merlin-data" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>2. How to reduce e-MERLIN data</h1>
 <h3>
@@ -136,7 +133,6 @@ inputs, msinfo = run_pipeline(inputs_path=&lt;input file&gt;)
 <li>It is a good practice to redo the calibration once you are happy with your flags and you are sure of all the steps. For that you can rerun <code>average_1</code> to produce from scrath the <code>inbase_avg.ms</code> dataset and repeat all the calibration steps.</li>
 </ul>
 <hr>
-<p><a name="user-content-inputs"></a></p>
 <h1>
 <a id="user-content-3-inputs" class="anchor" href="#3-inputs" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>3. Inputs</h1>
 <p>There are two types of inputs. The ones at the begining expect a string that will depend on the project, sources, antennas or files needed. The ones in the last two blocks expect an integer that can be 0, 1 or 2 and are used to select which steps to execute.</p>
@@ -175,14 +171,13 @@ inputs, msinfo = run_pipeline(inputs_path=&lt;input file&gt;)
 <p>Same as <code>manual_flags_a</code> but will be applied to the averaged data set <code>inbase_avg.ms</code>.</p>
 <p><strong>Note on the format</strong>: For <code>[str]</code> inputs, the use of single quotes is not required. Most inputs accept a list of values in the format of a comma-separated string. Examples: <code>target = '1111+2222'</code> or <code>target = 1111+2222</code>. For multiple inputs: <code>phscals = '1111+2222,3333+4444,5555+6666'</code> is accepted.</p>
 <hr>
-<p><a name="user-content-procedures"></a></p>
 <h1>
 <a id="user-content-4-procedures" class="anchor" href="#4-procedures" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>4. Procedures</h1>
-<p><a name="user-content-pre-processing"></a></p>
 <h2>
 <a id="user-content-41-pre-processing" class="anchor" href="#41-pre-processing" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>4.1 Pre-processing</h2>
-<p>###4.1.1 run_importfitsidi
-Merge fits-IDI files in <code>fits_path</code> to form a MS named <code>inbase.ms</code></p>
+<h3>
+<a id="user-content-411-run_importfitsidi" class="anchor" href="#411-run_importfitsidi" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>4.1.1 run_importfitsidi</h3>
+<p>Merge fits-IDI files in <code>fits_path</code> to form a MS named <code>inbase.ms</code></p>
 <p>Inputs parameters needed:</p>
 <pre><code>fits_path               [str]
 inbase                  [str]
@@ -195,8 +190,9 @@ inbase.ms.sp0           [MS] (only for mixed mode observations)
 <p>First <code>inbase.ms</code> is removed if present (<code>inbase</code> is the parameter in inputs file). All files ending in .fits or .FITS in the folder <code>fits_path</code> are considered for importing and will be merged. The logger shows which files have been found. Several CASA tasks are executed: <code>importfitsidi</code> is executed with <code>constobsid=True, scanreindexgap_s=15.0</code>. Then <code>uvfix</code> with option <code>reuse=False</code> is run to correct UVW values and the output MS replaces <code>inbase.ms</code>. Then <code>flagdata</code> with <code>mode='manual',autocorr=True</code> to remove autocorrelations. Finally, <code>listobs</code> is run and a new listobs file is created in <code>inbase.ms.listobs</code>.</p>
 <p>At this point the pipeline checks if the observations were observed in mixed mode. If so, the spectal spws will be splitted and <code>inbase.ms</code> will contain only the continuum data (broadband, low spectral resolution). The high resolution spw will be splitted in new MS ending with sp0, sp1, etc.</p>
 <hr>
-<p>###4.1.2 summary_weblog
-Retrieve basic information from the original MS, produce some plots and compile eveything in the weblog.</p>
+<h3>
+<a id="user-content-412-summary_weblog" class="anchor" href="#412-summary_weblog" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>4.1.2 summary_weblog</h3>
+<p>Retrieve basic information from the original MS, produce some plots and compile eveything in the weblog.</p>
 <p>Inputs parameters needed:</p>
 <pre><code>inbase                  [str]
 </code></pre>
@@ -205,8 +201,9 @@ Retrieve basic information from the original MS, produce some plots and compile 
 </code></pre>
 <p>Runs <code>get_msinfo</code> (see section 3, below) to get information from the inputs file and directly from the MS. It prepares plots for elevation vs time and uvcov for each individual sources. It produces a weblog with the available information. If no <code>refant</code> is selected, or the antenna selected is not in the MS, a procedure will try to guess a good refant to use. Please update the inputs file with a suitable refant.</p>
 <hr>
-<p>###4.1.3 hanning
-Just runs CASA hanning smoothing.</p>
+<h3>
+<a id="user-content-413-hanning" class="anchor" href="#413-hanning" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>4.1.3 hanning</h3>
+<p>Just runs CASA hanning smoothing.</p>
 <p>Inputs parameters needed:</p>
 <pre><code>inbase                  [str]
 </code></pre>
@@ -215,8 +212,9 @@ Just runs CASA hanning smoothing.</p>
 </code></pre>
 <p>Runs mstransform with mode='hanning' on DATA column. It produces a new MS, which substitutes the <code>inbase.ms</code>. It works with MS or MMS. This step is optional, but recommended for L band observations. It is probably not needed for C band datasets.</p>
 <hr>
-<p>###4.1.4 ms2mms
-Optional step to transform original MS to a MMS.</p>
+<h3>
+<a id="user-content-414-ms2mms" class="anchor" href="#414-ms2mms" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>4.1.4 ms2mms</h3>
+<p>Optional step to transform original MS to a MMS.</p>
 <p>Inputs parameters needed:</p>
 <pre><code>inbase                  [str]
 </code></pre>
@@ -225,8 +223,9 @@ Optional step to transform original MS to a MMS.</p>
 </code></pre>
 <p>This allow CASA to run tasks on the MultiMeasurementSet in parallel transparently. Takes time to convert but later makes calibration and imaging faster. To be tested in detail. Uses CASA task <code>partition</code> with default parameters. <strong>Important</strong>: if ms2mms is executed, it will delete <code>inbase.ms</code> and all the following steps will be run on the new <code>inbase.mms</code>.</p>
 <hr>
-<p>###4.1.5 flag_0_aoflagger
-Uses aoflagger to autoflag data using predefined strategies</p>
+<h3>
+<a id="user-content-415-flag_0_aoflagger" class="anchor" href="#415-flag_0_aoflagger" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>4.1.5 flag_0_aoflagger</h3>
+<p>Uses aoflagger to autoflag data using predefined strategies</p>
 <p>Inputs parameters needed:</p>
 <pre><code>inbase                  [str]
 </code></pre>
@@ -237,8 +236,9 @@ Uses aoflagger to autoflag data using predefined strategies</p>
 <li>/path/to/pipeline/aoflagger_strategies/default/default_faint.rfis</li>
 </ol>
 <hr>
-<p>###4.1.6 flag_1_apriori
-Applies a-priori standard flags.</p>
+<h3>
+<a id="user-content-416-flag_1_apriori" class="anchor" href="#416-flag_1_apriori" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>4.1.6 flag_1_apriori</h3>
+<p>Applies a-priori standard flags.</p>
 <p>Inputs parameters needed:</p>
 <pre><code>inbase                  [str]
 targets                 [str]
@@ -257,8 +257,9 @@ Lo_dropout_scans        [str]
 <li>Scans in <code>Lo_dropout_scans</code> for antenna = 'Lo' and fields in <code>phscals</code>.</li>
 </ul>
 <hr>
-<p>###4.1.7 flag_2a_manual
-Applies flags from external file with a list of flag commands the unaveraged dataset.</p>
+<h3>
+<a id="user-content-417-flag_2a_manual" class="anchor" href="#417-flag_2a_manual" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>4.1.7 flag_2a_manual</h3>
+<p>Applies flags from external file with a list of flag commands the unaveraged dataset.</p>
 <p>Inputs parameters needed:</p>
 <pre><code>inbase                  [str]
 manual_flags_a          [str, path to file]
@@ -272,8 +273,9 @@ mode='manual' field='1258-2219' antenna='' timerange='12:57:01~12:59:59'
 mode='quack' field='1258-2219,1309-2322' quackinterval=24.
 </code></pre>
 <hr>
-<p>###4.1.8 average_1
-Split dataset and average to reduce data volume.</p>
+<h3>
+<a id="user-content-418-average_1" class="anchor" href="#418-average_1" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>4.1.8 average_1</h3>
+<p>Split dataset and average to reduce data volume.</p>
 <p>Inputs parameters needed:</p>
 <pre><code>inbase                  [str]
 targets                 [str]
@@ -290,8 +292,9 @@ inbase_avg.ms.listobs   [txt]
 <hr>
 <p><strong>Important</strong> when the inbase_avg.ms file is produced, all the steps of the pipeline after this one will always work on inbase_avg.ms only, and not the original dataset. At this point <code>get_msinfo</code> is executed again, and the <code>msinfo</code> dictionary is created and saved in <code>inbase_avg.ms.msinfo.pkl</code>. If the averaged dataset does not exist, the pipeline will always use the unaveraged dataset <code>inbase.ms</code>.</p>
 <hr>
-<p>###4.1.9 plot_data
-Produce plots of amp/phase vs time/freq for each baseline	plotms</p>
+<h3>
+<a id="user-content-419-plot_data" class="anchor" href="#419-plot_data" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>4.1.9 plot_data</h3>
+<p>Produce plots of amp/phase vs time/freq for each baseline	plotms</p>
 <p>Inputs parameters needed:</p>
 <pre><code>inbase                  [str]
 targets                 [str]
@@ -309,7 +312,6 @@ ptcal                   [str]
 <li>Amp/Phase vs Frequency: averaged every 5 min, colorized by correlation.</li>
 </ul>
 <hr>
-<p><a name="user-content-calibration"></a></p>
 <h2>
 <a id="user-content-42-calibration" class="anchor" href="#42-calibration" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>4.2. Calibration</h2>
 <p>All calibration steps require the following input parameters:</p>
@@ -333,8 +335,9 @@ Lo_dropout_scans        [str]
 <p>Also, the <strong>applycal</strong> description at the end of each step shows which tables will be applied to calibrators and targets respectively if <code>2</code> is selected for that step in the inputs file.</p>
 <p><code>calsources</code> is a comma-separated list of all calibrator sources.</p>
 <hr>
-<p>###4.2.1 flag_2b_manual
-Applies flags from external file with a list of flag commands to the averaged dataset.</p>
+<h3>
+<a id="user-content-421-flag_2b_manual" class="anchor" href="#421-flag_2b_manual" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>4.2.1 flag_2b_manual</h3>
+<p>Applies flags from external file with a list of flag commands to the averaged dataset.</p>
 <p>Inputs parameters needed:</p>
 <pre><code>manual_flags_b          [str, path to file]
 </code></pre>
@@ -347,10 +350,12 @@ mode='manual' field='1258-2219' antenna='' timerange='12:57:01~12:59:59'
 mode='quack' field='1258-2219,1309-2322' quackinterval=24.
 </code></pre>
 <hr>
-<p>###4.2.2 init_models</p>
+<h3>
+<a id="user-content-422-init_models" class="anchor" href="#422-init_models" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>4.2.2 init_models</h3>
 <p>The pipeline will initialize the model column for all sources different from 1331+305 using CASA <code>delmod</code>, so setting all amplitudes to 1 and all phases to 0 in the model column. For 1331+305 it will check if the data is L band or C band, and use <code>setjy</code> to introduce the correct model of 1331+305 (3C286) into the data column. The models can be found in <code>pipeline_path+'calibrator_models/'</code>. Only C and L band models available.</p>
 <hr>
-<p>###4.2.3 bandpass_0</p>
+<h3>
+<a id="user-content-423-bandpass_0" class="anchor" href="#423-bandpass_0" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>4.2.3 bandpass_0</h3>
 <p>It runs a delay, phase, and a&amp;p calibration before finding the combined BP table for all sources listed in <code>bpcals</code>.</p>
 <p><strong>bpcal_d.K0</strong> - Delay calibration of bandpass calibrator(s)</p>
 <table>
@@ -590,7 +595,8 @@ mode='quack' field='1258-2219,1309-2322' quackinterval=24.
 <li>On targets: ['bpcal.B0']</li>
 </ul>
 <hr>
-<p>###4.2.4 flag_3_tfcropBP</p>
+<h3>
+<a id="user-content-424-flag_3_tfcropbp" class="anchor" href="#424-flag_3_tfcropbp" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>4.2.4 flag_3_tfcropBP</h3>
 <p>This task needs the data to be bandpass corrected. So first of all, it will apply the table ['bpcal.B0'] to all sources.</p>
 <p>CASA <code>flagdata</code></p>
 <table>
@@ -656,7 +662,8 @@ mode='quack' field='1258-2219,1309-2322' quackinterval=24.
 </tbody>
 </table>
 <hr>
-<p>###4.2.5 delay</p>
+<h3>
+<a id="user-content-425-delay" class="anchor" href="#425-delay" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>4.2.5 delay</h3>
 <p><strong>bpcal_d.K0</strong> - Delay calibration of all calibrators.</p>
 <table>
 <thead>
@@ -722,7 +729,8 @@ mode='quack' field='1258-2219,1309-2322' quackinterval=24.
 <li>On targets: ['bpcal.B0','delay.K1']</li>
 </ul>
 <hr>
-<p>###4.2.6 gain_0_p_ap</p>
+<h3>
+<a id="user-content-426-gain_0_p_ap" class="anchor" href="#426-gain_0_p_ap" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>4.2.6 gain_0_p_ap</h3>
 <p><strong>allcal_p.G0</strong> - Phase calibration of all calibrators.</p>
 <table>
 <thead>
@@ -965,7 +973,8 @@ mode='quack' field='1258-2219,1309-2322' quackinterval=24.
 <li>On targets: ['delay.K1','phscal_p_scan.G2','allcal_ap.G1','bpcal.B0']</li>
 </ul>
 <hr>
-<p>###4.2.7 fluxscale</p>
+<h3>
+<a id="user-content-427-fluxscale" class="anchor" href="#427-fluxscale" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>4.2.7 fluxscale</h3>
 <p>Runs CASA <code>fluxscale</code> to bootstrap the flux density scale of 1331+305 using its model, and forward the corrections to all other sources, updating their model column. Also, a corrected _fluxscale table is derived from the previous amplitude calibration.</p>
 <p>CASA <code>fluxscale</code></p>
 <table>
@@ -1015,7 +1024,8 @@ mode='quack' field='1258-2219,1309-2322' quackinterval=24.
 <li>On targets: ['delay.K1','phscal_p_scan.G2','allcal_ap.G1_fluxscaled','bpcal.B0']</li>
 </ul>
 <hr>
-<p>###4.2.8 bandpass_1_sp</p>
+<h3>
+<a id="user-content-428-bandpass_1_sp" class="anchor" href="#428-bandpass_1_sp" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>4.2.8 bandpass_1_sp</h3>
 <p><strong>bpcal_sp.B1</strong></p>
 <p>Recalculate the BP table. Now the model columns contain the actual flux density of the calibrators, so the BP table will include spectral index information. I use <code>allcal_ap.G1_fluxscaled</code> table just because I want to have the right flux scale if applycal is selected for this step.</p>
 <table>
@@ -1082,7 +1092,8 @@ mode='quack' field='1258-2219,1309-2322' quackinterval=24.
 <li>On targets: ['delay.K1','phscal_p_scan.G2','allcal_ap.G1_fluxscaled','bpcal_sp.B1']</li>
 </ul>
 <hr>
-<p>###4.2.9 gain_1_amp_sp</p>
+<h3>
+<a id="user-content-429-gain_1_amp_sp" class="anchor" href="#429-gain_1_amp_sp" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>4.2.9 gain_1_amp_sp</h3>
 <p><strong>allcal_ap.G3</strong></p>
 <table>
 <thead>
@@ -1207,14 +1218,16 @@ mode='quack' field='1258-2219,1309-2322' quackinterval=24.
 <li>On targets: ['delay.K1','bpcal_sp.B1','phscal_p_scan.G2','allcal_ap_scan.G3']</li>
 </ul>
 <hr>
-<p>###4.2.10 applycal_all
-Two runs are executed. One to correct calibrators, using their own solutions when relevant. A second correction is executed for each target, using the solutions from the corresponding phase reference calibrator.</p>
+<h3>
+<a id="user-content-4210-applycal_all" class="anchor" href="#4210-applycal_all" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>4.2.10 applycal_all</h3>
+<p>Two runs are executed. One to correct calibrators, using their own solutions when relevant. A second correction is executed for each target, using the solutions from the corresponding phase reference calibrator.</p>
 <ul>
 <li>On calibrators: ['delay.K1','bpcal_sp.B1','allcal_p.G0','allcal_p_jitter.G0','allcal_ap.G3']</li>
 <li>On targets: ['delay.K1','bpcal_sp.B1','phscal_p_scan.G2','allcal_ap_scan.G3']</li>
 </ul>
 <hr>
-<p>###4.2.11 flag_4_rflag</p>
+<h3>
+<a id="user-content-4211-flag_4_rflag" class="anchor" href="#4211-flag_4_rflag" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>4.2.11 flag_4_rflag</h3>
 <p>After calibration, we can run <code>flagdata</code> in rflag mode. This mode requires the data to be already calibrated.</p>
 <p>CASA <code>flagdata</code></p>
 <table>
@@ -1260,7 +1273,8 @@ Two runs are executed. One to correct calibrators, using their own solutions whe
 </tbody>
 </table>
 <hr>
-<p>###4.2.12 plot_corrected</p>
+<h3>
+<a id="user-content-4212-plot_corrected" class="anchor" href="#4212-plot_corrected" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>4.2.12 plot_corrected</h3>
 <p>Produce plots of amp/phase vs time/freq for each baseline	plotms using corrected data column.</p>
 <p>Inputs parameters needed:</p>
 <pre><code>inbase                  [str]
@@ -1279,8 +1293,9 @@ ptcal                   [str]
 <li>Amp/Phase vs Frequency: averaged every 5 min, colorized by correlation.</li>
 </ul>
 <hr>
-<p>###4.2.13 weblog
-Update the weblog will all available information and plots.</p>
+<h3>
+<a id="user-content-4213-weblog" class="anchor" href="#4213-weblog" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>4.2.13 weblog</h3>
+<p>Update the weblog will all available information and plots.</p>
 <p>As the initial <code>summary_weblog</code> but the weblog will include all information related to the dataset, the observation, the calibration and the visibilities. There are four different web pages:</p>
 <ul>
 <li>Home. Basic dataset information (name, date, antennas, frequency, averaging, etc.)</li>
@@ -1289,9 +1304,8 @@ Update the weblog will all available information and plots.</p>
 <li>Plots. Amp/phase vs time/freq per source and per baseline. Corrected and uncorrected visibilities, and Amp/phase vs uvdist.</li>
 </ul>
 <hr>
-<p><a name="user-content-support-functions"></a></p>
-<h2>
-<a id="user-content-5-support-functions-and-variables" class="anchor" href="#5-support-functions-and-variables" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>5. Support functions and variables</h2>
+<h1>
+<a id="user-content-5-support-functions-and-variables" class="anchor" href="#5-support-functions-and-variables" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>5. Support functions and variables</h1>
 <h3>
 <a id="user-content-get_msinfo-function-and-msinfo-dict" class="anchor" href="#get_msinfo-function-and-msinfo-dict" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>get_msinfo [function] and msinfo [dict]</h3>
 <p>Internal task that retrieves information from the inputs file and also directly from the MS.</p>
@@ -1374,11 +1388,10 @@ sources
 ...
 </code></pre>
 <hr>
-<p><a name="user-content-quick-summary"></a></p>
 <h1>
 <a id="user-content-6-quick-summary" class="anchor" href="#6-quick-summary" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>6. Quick summary</h1>
 <h3>
-<a id="user-content-pre-processing" class="anchor" href="#pre-processing" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Pre-processing</h3>
+<a id="user-content-pre-processing-summary" class="anchor" href="#pre-processing-summary" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Pre-processing summary</h3>
 <table>
 <thead>
 <tr>
@@ -1458,7 +1471,7 @@ sources
 </tbody>
 </table>
 <h3>
-<a id="user-content-calibration" class="anchor" href="#calibration" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Calibration</h3>
+<a id="user-content-calibration-summary" class="anchor" href="#calibration-summary" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Calibration summary</h3>
 <p>The calibration steps require <code>targets</code>, <code>phscals</code>, <code>fluxcal</code>, <code>bpcal</code>. All calibration steps that produce calibration tables also produce plots of those tables that are saved to <code>./plots/caltables/</code>.</p>
 <table>
 <thead>

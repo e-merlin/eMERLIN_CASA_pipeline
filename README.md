@@ -28,8 +28,8 @@ To execute the pipeline from within CASA:
 
 ## Additional information ##
 
-- [Documentation [markdown]](documentation/docs.md)
-- [Documentation [html]](documentation/docs.html)
+- [Documentation [online]](documentation/docs.md)
+#- [Documentation [html]](documentation/docs.html)
 - [Wiki pages](https://github.com/e-merlin/CASA_eMERLIN_pipeline/wiki)
 
 
