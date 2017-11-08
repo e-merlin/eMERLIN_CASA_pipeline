@@ -53,6 +53,7 @@ def weblog_index(msinfo):
     wlog.write('<table bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:40%">\n')
     wlog.write('<tr><td>Project </td>   <td> {}</td>\n'.format(msinfo['project']))
     wlog.write('<tr><td>Run </td>   <td> {}</td>\n'.format(msinfo['run']))
+    wlog.write('<tr><td>MS file </td>   <td> {}</td>\n'.format(msinfo['msfile']))
     #wlog.write('<tr><td>Date observed </td>  <td> {0} </td>\n'.format(msinfo['t_ini'].date()))
     wlog.write('<tr><td>Start </td>  <td> {0} </td>\n'.format(msinfo['t_ini'].strftime("%Y-%m-%d %H:%M")))
     wlog.write('<tr><td>End </td>    <td> {0} </td>\n'.format(msinfo['t_end'].strftime("%Y-%m-%d %H:%M")))
@@ -76,7 +77,6 @@ def weblog_index(msinfo):
     wlog.write('</table><br>\n')
     write_link_txt(wlog, './{0}.notes.txt'.format(msinfo['run']), 'Notes and observing comments')
 #    wlog.write('<br><small>(*) The channel and integration time  displayed are derived from the averaged data that has been processed in the pipeline. Higher time or frequency resolution may be available and can be obtained if required for the science extraction or advanced calibration techniques.  If this is required please contact the e-MERLIN science support team.</small>')
-
     #------------------------------------------
     weblog_foot(wlog)
     wlog.close()
@@ -107,6 +107,7 @@ def weblog_obssum(msinfo):
     for a in msinfo['antennas']:
         wlog.write("{0}\n".format(a))
     wlog.write('</pre>\n')
+    wlog.write('Reference antenna: {}'.format(msinfo['refant']))
     wlog.write('<h3>Source elevation:</h3>\n')
     try:
         elev_plot = glob.glob('./plots/plots_observation/{0}_elevation.png'.format(msinfo['msfilename']))
@@ -149,12 +150,13 @@ def create_pnghtml_baselines(plots_path, source, subtitle, msinfo):
     return page_path
 
 def plots_data(msinfo, wlog):
+    wlog.write('<h3>Uncalibrated visibilities</h3>\n')
     for source in msinfo['sources']['allsources'].split(','):
         page_path = create_pnghtml_baselines('plots_data', source, 'Uncalibrated amplitude and phase against time and frequency.', msinfo)
         wlog.write('{0} <a href=".{1}" target="_blank">plots</a><br>\n'.format(source, page_path))
 
-
 def plots_corrected(msinfo, wlog):
+    wlog.write('<h3>Calibrated visibilities</h3>\n')
     for source in msinfo['sources']['allsources'].split(','):
         page_path = create_pnghtml_baselines('plots_corrected', source, 'Calibrated amplitude and phase against time and frequency.', msinfo)
         wlog.write('{0} <a href=".{1}" target="_blank">plots</a><br>\n'.format(source, page_path))
@@ -165,6 +167,7 @@ def plots_corrected(msinfo, wlog):
 #        wlog.write('<a href=".{1}" target="_blank">{0}</a><br>\n'.format(os.path.basename(p), p))
 
 def plots_uvplt(msinfo, wlog):
+    wlog.write('<h3>Calibrated UVplots</h3>\n')
     all_plots = np.sort(glob.glob('./plots/plots_uvplt/*png'))
     for p in all_plots:
         source_name = os.path.splitext(p)[0].split('_')[-1]
@@ -185,22 +188,19 @@ def weblog_calibration(msinfo):
     wlog = open("./weblog/calibration.html","w")
     weblog_header(wlog, 'Calibration', msinfo['run'])
     #------------------------------------------
-    caltables = load_obj('./calib/caltables')
-    for calstep in caltables['all_calsteps']:
-        wlog.write('<h4>{}</h4>\n'.format(caltables[calstep]['name']))
-        try:
-            wlog.write('<table cellspacing = "20" cellpadding = "4px" style="width:40%">\n<tr> <td valign="top">\n')
-            write_caltable(caltables[calstep], wlog)
-            all_plots = np.sort(glob.glob('./plots/caltables/*{}*.png'.format(calstep)))
-            for p in all_plots:
-                wlog.write('<td><a href = ".{0}"><img style="max-width:700px" src=".{0}"></a></td>\n'.format(p))
-            wlog.write('</table><br><br>\n<hr>\n')
-            #for p in all_plots:
-            #    wlog.write('<a href = ".{0}"><img style="max-width:700px" src=".{0}"></a><br><br>\n'.format(p))
-            #    wlog.write('<hr>\n')
-        except:
-            pass
-            #wlog.write('Problem with step {}\n'.format(calstep))
+    if os.path.isfile('./calib/caltables'):
+        caltables = load_obj('./calib/caltables')
+        for calstep in caltables['all_calsteps']:
+            try:
+                wlog.write('<h4>{}</h4>\n'.format(caltables[calstep]['name']))
+                wlog.write('<table cellspacing = "20" cellpadding = "4px" style="width:40%">\n<tr> <td valign="top">\n')
+                write_caltable(caltables[calstep], wlog)
+                all_plots = np.sort(glob.glob('./plots/caltables/*{}*.png'.format(calstep)))
+                for p in all_plots:
+                    wlog.write('<td><a href = ".{0}"><img style="max-width:700px" src=".{0}"></a></td>\n'.format(p))
+                    wlog.write('</table><br><br>\n<hr>\n')
+            except:
+                pass
 
 
 def weblog_plots(msinfo):
@@ -208,15 +208,10 @@ def weblog_plots(msinfo):
     wlog = open("./weblog/plots.html","w")
     weblog_header(wlog, 'Plots', msinfo['run'])
     #------------------------------------------
-    wlog.write('<h3>Uncalibrated visibilities</h3>\n')
     if (os.path.isdir('./plots/plots_data/')) and (os.listdir('./plots/plots_data/')):
         plots_data(msinfo, wlog)
-
-    wlog.write('<h3>Calibrated visibilities</h3>\n')
     if (os.path.isdir('./plots/plots_corrected/')) and (os.listdir('./plots/plots_corrected/')):
         plots_corrected(msinfo, wlog)
-
-    wlog.write('<h3>Calibrated UVplots</h3>\n')
     if (os.path.isdir('./plots/plots_uvplt/')) and (os.listdir('./plots/plots_uvplt/')):
         plots_uvplt(msinfo, wlog)
 

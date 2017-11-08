@@ -284,10 +284,9 @@ def find_mssources(msfile):
     logger.info('Sources in MS {0}: {1}'.format(msfile, mssources))
     return mssources
 
-def find_source_intent(msinfo, cats=['targets', 'phscals', 'bpcal', 'fluxcal']):
+def find_source_intent(msinfo, cats=['targets', 'phscals', 'bpcal', 'fluxcal', 'ptcal']):
     fields_ms = msinfo['sources']['mssources'].split(',')
     return {source: ','.join([cat for cat in cats if source in msinfo['sources'][cat].split(',')]) for source in fields_ms}
-
 
 def get_project(msfile):
     tb.open(msfile+'/OBSERVATION')
@@ -325,6 +324,7 @@ def get_msinfo(msfile, inputs, doprint=False):
     msinfo['nchan'] = nchan
     msinfo['innerchan'] = '{0:.0f}~{1:.0f}'.format(0.1*(nchan-nchan/512.), 0.9*(nchan-nchan/512.))
     msinfo['polarizations'] = get_polarization(msfile)
+    msinfo['refant'] = define_refant(msfile, msinfo, inputs)
     if doprint:
         prt_dict(msinfo)
     return msinfo
@@ -689,6 +689,7 @@ def define_refant(msfile, msinfo, inputs):
         if refant0 != '':
             logger.warning('Selected reference antenna(s) {0} not in MS! User selection will be ignored'.format(refant0))
         # Finding best antennas for refant
+        logger.info('Estimating best reference antenna. To avoid this, set a reference antenna in the inputs file.')
         refant, refant_pref = find_refant(msfile, field=msinfo['sources']['bpcal'],
                                              antennas='Mk2,Pi,Da,Kn', spws='2,3', scan='')
     else:
