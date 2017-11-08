@@ -99,7 +99,6 @@ def run_pipeline(inputs=None, inputs_path=''):
 #        logger.debug('Pipeline exit')
 #        sys.exit()
 
-    fitsfile = inputs['inbase']+'.fits'
     msfile = inputs['inbase']+'.ms'
     logger.info('Using MS file: {0}'.format(msfile))
 
@@ -115,15 +114,13 @@ def run_pipeline(inputs=None, inputs_path=''):
     ### Write summary weblog ###
     if inputs['summary_weblog'] == 1:
         logger.info('Starting summary weblog')
-        #msinfo = load_obj(msfile+'.msinfo')            
+        if not os.path.isdir(msfile):
+            logger.info('Error finding original data: {0}'.format(msfile))
+            logger.info('summary_weblog cannot be run. Exiting pipeline.')
+            sys.exit()
         msinfo = em.get_msinfo(msfile, inputs)
-        if os.path.isfile(msfile+'.msinfo.pkl'):
-            logger.info('Elevation and uvcov plots will not be created again as long as the {}.pkl file exists.'.format(msfile+'.msinfo'))
-        elif os.path.isdir(msfile):
-            emplt.make_elevation(msfile, msinfo)
-            emplt.make_uvcov(msfile, msinfo)
-        else:
-            logger.info('MS nor MS.msinfo.pkl found. Weblog cannot be produced')
+        emplt.make_elevation(msfile, msinfo)
+        emplt.make_uvcov(msfile, msinfo)
         save_obj(msinfo, msfile+'.msinfo')
         logger.info('Saving information of MS {0} in: {1}'.format(msfile, msfile+'.pkl'))
         emwlog.start_weblog(msinfo)
@@ -168,14 +165,24 @@ def run_pipeline(inputs=None, inputs_path=''):
     # Check if averaged data already generated
     if os.path.isdir('./'+inputs['inbase']+'_avg.mms') == True:
         msfile = './'+inputs['inbase']+'_avg.mms'
+        avg_file = True
     elif os.path.isdir('./'+inputs['inbase']+'_avg.ms') == True:
         msfile = './'+inputs['inbase']+'_avg.ms'
+        avg_file = True
     else:
-        pass
-    logger.info('Using MS file: {0}'.format(msfile))
+        avg_file = False
 
     ### Load or create dictionary with ms information.
-    msinfo = em.get_msinfo(msfile, inputs)
+    if avg_file == True:
+        logger.info('Using MS file: {0}'.format(msfile))
+        msinfo = em.get_msinfo(msfile, inputs)
+        save_obj(msinfo, msfile+'.msinfo')
+    else:
+        try:
+            msinfo   # Don't produce it again if summary_weblog was just executed.
+        except:
+            msinfo = em.get_msinfo(msfile, inputs)
+            save_obj(msinfo, msfile+'.msinfo')
 
     ### Produce some plots ###
     if inputs['plot_data'] == 1:
@@ -192,8 +199,8 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     # All the calibration steps will be saved in the dictionary caltables.pkl
     # located in the calib directory. If it does not exist a new one is created.
-    all_calsteps = ['bandpass_0', 'delay', 'gain_0_p_ap','fluxscale','bandpass_1_sp','gain_1_amp_sp','applycal_all']
-    if np.array([inputs[cal]>0 for cal in all_calsteps]).any():
+    any_calsteps = ['bandpass_0', 'delay', 'flag_3_tfcropBP','gain_0_p_ap','fluxscale','bandpass_1_sp','gain_1_amp_sp','applycal_all', 'weblog']
+    if np.array([inputs[cal]>0 for cal in any_calsteps]).any():
         try:
             caltables = load_obj(calib_dir+'caltables')
             logger.info('Loaded previous calibration tables from: {0}'.format(calib_dir+'caltables.pkl'))
@@ -203,13 +210,24 @@ def run_pipeline(inputs=None, inputs_path=''):
             caltables['plots_dir'] = plots_dir
             caltables['calib_dir'] = calib_dir
             caltables['num_spw'] = msinfo['num_spw']
+            all_calsteps = [    
+                    'bpcal_d.K0',
+                    'bpcal_p.G0',
+                    'bpcal_ap.G1',
+                    'bpcal.B0',
+                    'delay.K1',
+                    'allcal_p.G0',
+                    'allcal_p_jitter.G0',
+                    'allcal_ap.G1',
+                    'phscal_p_scan.G2',
+                    'bpcal_sp.B1',
+                    'allcal_ap.G3',
+                    'allcal_ap_scan.G3']    # This is just used to know which tables to search in weblog
+            caltables['all_calsteps'] = all_calsteps
             logger.info('New caltables dictionary created. Saved to: {0}'.format(calib_dir+'caltables.pkl'))
         caltables['Lo_dropout_scans'] = inputs['Lo_dropout_scans']
-        caltables['refant'] = inputs['refant']
-        if inputs['refant'] == '':
-            logger.info('Estimating best reference antenna. To avoid this, set a reference antenna in the inputs file.')
-            caltables['refant'] = em.define_refant(msfile, msinfo, inputs)
-            save_obj(caltables, calib_dir+'caltables')
+        caltables['refant'] = msinfo['refant']
+        save_obj(caltables, calib_dir+'caltables')
 
     ### Initialize models ###
     if inputs['init_models'] == 1:  # Need to add parameter to GUI
@@ -333,7 +351,6 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     ### Write weblog ###
     if inputs['weblog'] == 1:
-        msinfo = em.get_msinfo(msfile, inputs)
         if os.path.isfile(msfile+'.msinfo.pkl'):
             logger.info('Elevation and uvcov plots will not be created again as long as the {}.pkl file exists.'.format(msfile+'.msinfo'))
         elif os.path.isdir(msfile):
@@ -341,8 +358,7 @@ def run_pipeline(inputs=None, inputs_path=''):
             emplt.make_uvcov(msfile, msinfo)
         else:
             logger.info('MS nor MS.msinfo.pkl found. Weblog cannot be produced')
-        save_obj(msinfo, msfile+'.msinfo')
-        logger.info('Saving information of MS {0} in: {1}'.format(msfile, msfile+'.pkl'))
+            sys.exit()
         emwlog.start_weblog(msinfo)
 
     ### Run monitoring for bright sources:
