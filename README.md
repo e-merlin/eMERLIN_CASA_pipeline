@@ -1,4 +1,3 @@
-## TL;DR ##
 This is the CASA pipeline for e-MERLIN data, it is designed to be fully parallelised. It is, however, very early stages and will progress rapidly. It currently does work but does not do calibration yet. Feel free to change/modify.
 
 ## Dependencies ##
@@ -29,7 +28,7 @@ To execute the pipeline from within CASA:
 
 ## Additional information ##
 
-- [Summary of procedures, pdf](https://github.com/e-merlin/CASA_eMERLIN_pipeline/wiki/files/summary.pdf)
+- [Documentation [online]](documentation/docs.md)
 - [Wiki pages](https://github.com/e-merlin/CASA_eMERLIN_pipeline/wiki)
 
 
