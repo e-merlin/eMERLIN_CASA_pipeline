@@ -1,5 +1,5 @@
 #!/usr/local/python
-import os
+import os, subprocess
 import numpy as np
 import pickle
 from Tkinter import *
@@ -431,6 +431,11 @@ def run_rfigui(vis):
 def run_aoflagger_fields(vis, flags, fields='all', pipeline_path='./'):
     """This version of the autoflagger iterates through the ms within the mms structure selecting individual fields. It uses pre-defined strategies. The np.unique in the loop below is needed for single source files. The mms thinks there are many filds (one per mms). I think it is a bug from virtualconcat."""
     logger.info('Start run_aoflagger_fields')
+    aoflagger_available = check_command('aoflagger')
+    if not aoflagger_available:
+        logger.info('aoflagger requested but not available.')
+        logger.info('Exiting pipeline.')
+        sys.exit()        
     vis_fields = vishead(vis,mode='list',listitems='field')['field'][0]
     fields_num = {f:i for i,f in enumerate(vis_fields)}
     if fields == 'all':
@@ -462,6 +467,15 @@ def run_aoflagger_fields(vis, flags, fields='all', pipeline_path='./'):
     logger.info('End run_aoflagger_fields')
     return flags
 
+def check_command(command):
+    try:
+        devnull = open(os.devnull)
+        subprocess.Popen([command], stdout=devnull, stderr=devnull).communicate()
+    except OSError as e:
+        if e.errno == os.errno.ENOENT:
+            return False
+    return True
+
 def check_aoflagger_version():
     logger.info('Checking AOflagger version')
     from subprocess import Popen, PIPE
@@ -484,7 +498,7 @@ def check_aoflagger_version():
 def ms2mms(vis,mode):
     logger.info('Start ms2mms')
     if mode == 'parallel':
-        partition(vis=vis,outputvis=vis[:-3]+'.mms',createmms=True,separationaxis="baseline",numsubms="auto",flagbackup=True,datacolumn=
+        partition(vis=vis,outputvis=vis[:-3]+'.mms',createmms=True,separationaxis="",numsubms="auto",flagbackup=True,datacolumn=
 "all",field="",spw="",scan="",antenna="",correlation="",timerange="",intent="",array="",uvrange="",observation="",feed="",disableparallel=None,ddistart=None
 ,taql=None)
         if os.path.isdir(vis[:-3]+'.mms') == True:
