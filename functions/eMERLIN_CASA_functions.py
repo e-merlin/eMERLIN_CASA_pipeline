@@ -441,8 +441,6 @@ def run_aoflagger_fields(vis, flags, fields='all', pipeline_path='./'):
             aostrategy = './aoflagger_strategies/user/{0}.rfis'.format(field)
         elif os.path.isfile(pipeline_path+'aoflagger_strategies/default/{0}.rfis'.format(field))==True:
             aostrategy = pipeline_path+'aoflagger_strategies/default/{0}.rfis'.format(field)
-        elif os.path.isfile(pipeline_path+'aoflagger_strategies/default/{0}.rfis'.format(field))==True:
-            aostrategy = pipeline_path+'aoflagger_strategies/default/{0}.rfis'.format(field)
         else:
             aostrategy = pipeline_path+'aoflagger_strategies/default/{0}.rfis'.format('default_faint')
         logger.info('Running AOFLagger for field {0} ({1}) using strategy {2}'.format(field,fields_num[field], aostrategy))

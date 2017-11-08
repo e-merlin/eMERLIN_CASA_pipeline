@@ -1,11 +1,77 @@
 <!---
-Convert to pdf with http://www.markdowntopdf.com/
+I use grip to convert to html using: grip docs.md --export --title "e-MERLIN CASA pipeline
+It can also be converted to pdf using: http://www.markdowntopdf.com/
 -->
 
-# Inputs
+# e-MERLIN CASA pipeline 
+### Documentation for v0.6.4
 
-There are two types of inputs. The ones at the begining expect a string that will depend on the project, sources, antennas or files needed. The ones in the last two blocks expect an integer that can be 0, 1 or 2 and are used to select which steps to execute. For `[str]` inputs, the use of single quotes is not required. Most inputs accept a list of values in the format of a comma-separated string. Examples: `target = '1111+2222'` or `target = 1111+2222`. For multiple inputs: `phscals = '1111+2222,3333+4444,5555+6666'`.
+---
+# Table of contents
+- [1. How to run the pipeline](#run_the_pipeline)
+- [2. How to reduce e-MERLIN data](#reduce_data)
+- [3. Inputs](#inputs)
+- [4. Procedures](#procedures)
+     - [4.1 Pre-processing data](#pre-processing)
+     - [4.2 Calibration](#calibration)
+- [5. Support functions](#support-functions)
+- [6. Quick summary](#quick-summary)
 
+
+---
+<a name="run_the_pipeline"></a>
+# 1. How to run the pipeline
+----------------------------
+
+Download the pipeline from github [e-MERLIN CASA Pipeline](https://github.com/e-merlin/CASA_eMERLIN_pipeline).
+
+To run the pipeline simply do:
+```
+casa -c /path/to/pipeline/eMERLIN_CASA_pipeline.py -i <input file>
+```
+
+To run the parallelized version using MPI in CASA you can use:
+```
+mpicasa -n <num_cores> casa -c /path/to/pipeline/eMERLIN_CASA_pipeline.py -i <input file>
+```
+
+To execute the pipeline from within CASA:
+~~~~
+run_in_casa = True
+pipeline_path = '/path/to/pipeline_path/'   # You need to define this variable explicitly
+execfile(pipeline_path + 'eMERLIN_CASA_pipeline.py')
+inputs, msinfo = run_pipeline(inputs_path=<input file>)
+~~~~
+
+---
+<a name="reduce_data"></a>
+# 2. How to reduce e-MERLIN data
+
+### Data preparation
+- Download the pipeline (it can be in any location).
+- Download the fits-IDI files from the observatory (they can be in any location).
+- Create the working path where you will work, and copy the `inputs.txt` to your working path.
+- Fill the `fits_path` (where the fits files are located) and the `inbase` (any name you want to give to your project).
+- Leave all the other parameters as default, and only use the steps `run_importfits=1` and `summary_weblog=1`.
+- Data will be converted to MS and prepared. Open in a web browser the file `./weblog/index.html`.
+- Check the listobs file in the weblog/Observation summary and fill the fields `targets`, `phscals`, `fluxcal`,`bpcal`,`ptcal`.
+- Select a reference antenna `refant`. If you are not sure set `refant=''` and rerun the `summary_weblog` step alone. The pipeline will try to suggest a list of the best reference antenna to use.
+- Run the rest of the pre-processing steps depending on your needs. It is recommended to produce an average dataset `inbase_avg.ms`.
+
+### Data calibration
+- Prepare the file `manual_flags_a` with flags commands based on the plots produced in the previous section (or your own data exploration).
+- Run all the calibration steps. You may prefer to run each of them one by one and check the output plots
+- You can always select the step `weblog=1`. It will just update the weblog with any new plots available.
+- Improve the `manual_flags_a` to have more detailed flagging as you proceed with the calibration.
+- It is a good practice to redo the calibration once you are happy with your flags and you are sure of all the steps. For that you can rerun `average_1` to produce from scrath the `inbase_avg.ms` dataset and repeat all the calibration steps.
+
+
+
+---
+<a name="inputs"></a>
+# 3. Inputs
+
+There are two types of inputs. The ones at the begining expect a string that will depend on the project, sources, antennas or files needed. The ones in the last two blocks expect an integer that can be 0, 1 or 2 and are used to select which steps to execute.
 
 ```
 fits_path  [str]
@@ -13,42 +79,71 @@ fits_path  [str]
 Path to the location of the fits files. Can be an absolute or relative path. A single directory must be specified. All fits and FITS files from that directory are considered.
 
 
-- `inbase     [str]`: Project name. It will be used to give name to MS, plots and tables.
+```
+inbase     [str]
+```
+Project name. It will be used to give name to MS, plots and tables.
+
+```
+targets    [str]
+```
+Names of sources as they appear in the MS to be used as targets. Can be a comma-separated string. If more than one target is selected, the corresponding phase calibrator has to keep the same order.
 
 
-- `targets    [str]`: Names of sources as they appear in the MS to be used as targets. Can be a comma-separated string. If more than one target is selected, the corresponding phase calibrator has to keep the same order.
+```
+phscals    [str]
+```
+Names of sources as they appear in the MS to be used as calibrators. Can be a comma-separated string. If more than one phase calibrator is selected, the order needs to match the targets. If the same phase calibrator is used for different targets, just repeat the name as many times as needed.
+
+```
+fluxcal    [str]
+```
+Names of source as it appears in the MS to be used as flux calibrator. Only one source accepted. 1331+305 expected. If a different source is selected the `fluxscale` step will not work properly.
 
 
-- `phscals    [str]`: Names of sources as they appear in the MS to be used as calibrators. Can be a comma-separated string. If more than one phase calibrator is selected, the order needs to match the targets. If the same phase calibrator is used for different targets, just repeat the name as many times as needed.
+```
+bpcal      [str]
+```
+Names of sources as they appear in the MS to be used as calibrators. Can be a comma-separated string.
+
+```
+ptcal      [str]
+```
+Point-like calibrator. Names of sources as they appear in the MS to be included in calibration steps, but not used to calibrate other sources by now. For the moment, consider it for check sources.
 
 
-- `fluxcal    [str]`: Names of source as it appears in the MS to be used as flux calibrator. Only one source accepted. 1331+305 expected. If a different source is selected the `fluxscale` step will not work properly.
+```
+refant     [str]
+```
+Antenna name to be used as reference antenna. Can accept a comma-separated string, but CASA can only manage a single value for now (there are plans to allow `gaincal` to use a prioritized list. If empty, the pipeline will try to search for the most suitable antennas.
 
 
-- `bpcal      [str]`: Names of sources as they appear in the MS to be used as calibrators. Can be a comma-separated string.
+```
+Lo_dropout_scans    [str]
+```
+Comma-separated list of scans in which the Lo telescope was not observing the phase calibrator(s). This has two effects: those scans will be flagged in the `flag_1_apriori` step, and also each calibration table created will be edited to remove solutions for antenna Lo for the phase calibrator scans listed in `Lo_dropout_scans`. Example: `Lo_dropout_scans = '4,8,12,16,20,24,28'`
 
-- `ptcal      [str]`: Point-like calibrator. Names of sources as they appear in the MS to be included in calibration steps, but not used to calibrate other sources by now. For the moment, consider it for check sources.
+```
+manual_flags_a      [str]
+```
+Path to an external file that contains a list of flag commands, one per line. The flags will be applied to the unaveraged data set `inbase.ms`. The file will be read by CASA task flagdata using `mode='list'` and `inpfile` will be set to `manual_flags_a`. Note from the [CASA documentation](https://casa.nrao.edu/casadocs/casa-5.1.1/global-task-list/task_flagdata/about) on the format of the file: There should be no whitespace between KEY=VALUE since the parser first breaks command lines on whitespace, then on "=". Use only one whitespace to separate the parameters (no commas).
+
+```
+manual_flags_b      [str]
+```
+Same as `manual_flags_a` but will be applied to the averaged data set `inbase_avg.ms`.
 
 
-- `refant     [str]`: Antenna name to be used as reference antenna. Can accept a comma-separated string, but CASA can only manage a single value for now (there are plans to allow `gaincal` to use a prioritized list. If empty, the pipeline will try to search for the most suitable antennas.
-
-
-- `Lo_dropout_scans    [str]`: Comma-separated list of scans in which the Lo telescope was not observing the phase calibrator(s). This has two effects: those scans will be flagged in the `flag_1_apriori` step, and also each calibration table created will be edited to remove solutions for antenna Lo for the phase calibrator scans listed in `Lo_dropout_scans`. Example: `Lo_dropout_scans = '4,8,12,16,20,24,28'`
-
-- `manual_flags_a      [str]`: Path to an external file that contains a list of flag commands, one per line. The flags will be applied to the unaveraged data set `inbase.ms`. The file will be read by CASA task flagdata using `mode='list'` and `inpfile` will be set to `manual_flags_a`. Note from the [CASA documentation](https://casa.nrao.edu/casadocs/casa-5.1.1/global-task-list/task_flagdata/about) on the format of the file: There should be no whitespace between KEY=VALUE since the parser first breaks command lines on whitespace, then on "=". Use only one whitespace to separate the parameters (no commas).
-
-- `manual_flags_b      [str]`: Same as `manual_flags_a` but will be applied to the averaged data set `inbase_avg.ms`.
-
-
-
-
+**Note on the format**: For `[str]` inputs, the use of single quotes is not required. Most inputs accept a list of values in the format of a comma-separated string. Examples: `target = '1111+2222'` or `target = 1111+2222`. For multiple inputs: `phscals = '1111+2222,3333+4444,5555+6666'` is accepted.
 
 ---
-# Procedures
+<a name="procedures"></a>
+# 4. Procedures
 
-## 1. Pre-processing
+<a name="pre-processing"></a>
+## 4.1 Pre-processing
 
-### run_importfitsidi
+###4.1.1 run_importfitsidi
 Merge fits-IDI files in `fits_path` to form a MS named `inbase.ms`
 
 Inputs parameters needed:
@@ -57,7 +152,7 @@ fits_path               [str]
 inbase                  [str]
 ```
 
-Produces:
+Output:
 ```
 inbase.ms               [MS]
 inbase.ms.listobs       [txt]
@@ -70,7 +165,7 @@ At this point the pipeline checks if the observations were observed in mixed mod
 
 
 ---
-### summary_weblog
+###4.1.2 summary_weblog
 Retrieve basic information from the original MS, produce some plots and compile eveything in the weblog.
 
 Inputs parameters needed:
@@ -78,14 +173,14 @@ Inputs parameters needed:
 inbase                  [str]
 ```
 
-Produces:
+Output:
 ```
 inbase.ms.msinfo.pkl    [pickle dictionary]
 ```
 Runs `get_msinfo` (see section 3, below) to get information from the inputs file and directly from the MS. It prepares plots for elevation vs time and uvcov for each individual sources. It produces a weblog with the available information. If no `refant` is selected, or the antenna selected is not in the MS, a procedure will try to guess a good refant to use. Please update the inputs file with a suitable refant.
 
 ---
-### hanning
+###4.1.3 hanning
 Just runs CASA hanning smoothing.
 
 Inputs parameters needed:
@@ -93,7 +188,7 @@ Inputs parameters needed:
 inbase                  [str]
 ```
 
-Produces:
+Output:
 ```
 inbase.ms               [MS]
 ```
@@ -103,7 +198,7 @@ Runs mstransform with mode='hanning' on DATA column. It produces a new MS, which
 
 
 ---
-### ms2mms
+###4.1.4 ms2mms
 Optional step to transform original MS to a MMS.
 
 Inputs parameters needed:
@@ -111,7 +206,7 @@ Inputs parameters needed:
 inbase                  [str]
 ```
 
-Produces:
+Output:
 ```
 inbase.mms               [MMS]
 ```
@@ -120,7 +215,7 @@ This allow CASA to run tasks on the MultiMeasurementSet in parallel transparentl
 
 
 ---
-### flag_0_aoflagger
+###4.1.5 flag_0_aoflagger
 Uses aoflagger to autoflag data using predefined strategies
 
 Inputs parameters needed:
@@ -137,7 +232,7 @@ It runs [aoflagger](https://sourceforge.net/p/aoflagger/wiki/Home/) on all the f
 
 
 ---
-### flag_1_apriori
+###4.1.6 flag_1_apriori
 Applies a-priori standard flags.
 
 Inputs parameters needed:
@@ -160,15 +255,19 @@ Different flags are applied to the data:
 
 
 ---
-### flag_2a_manual
-Applies flags from external file with a list of flag commands
+###4.1.7 flag_2a_manual
+Applies flags from external file with a list of flag commands the unaveraged dataset.
+
+Inputs parameters needed:
 
 ```
 inbase                  [str]
 manual_flags_a          [str, path to file]
 ```
 
-Simply runs `flagdata(vis='inbase.ms', mode='list', inpfile=manual_flags_a)`. For more information on this flagdata mode see [flagdata](https://casa.nrao.edu/casadocs/casa-5.1.1/global-task-list/task_flagdata/about). For details on the format of the file see [examples](https://casa.nrao.edu/casadocs/casa-5.1.1/global-task-list/task_flagdata/examples). It needs one flag command per line, with parameters separated by one space (don't use commas!). For example:
+Simply runs `flagdata(vis='inbase.ms', mode='list', inpfile=manual_flags_a)`. This is run on the original, unaveraged, dataset `inbase.ms`. To apply manual flags to an averaged dataset see `flag_2b_manual` below.
+
+ For more information on this flagdata mode see [flagdata](https://casa.nrao.edu/casadocs/casa-5.1.1/global-task-list/task_flagdata/about). For details on the format of the file see [examples](https://casa.nrao.edu/casadocs/casa-5.1.1/global-task-list/task_flagdata/examples). It needs one flag command per line, with parameters separated by one space (don't use commas!). For example:
 
 ```
 mode='manual' field='1331+305' antenna='' timerange='10:00:00~10:11:30'
@@ -178,57 +277,502 @@ mode='manual' field='1258-2219' antenna='' timerange='12:57:01~12:59:59'
 mode='quack' field='1258-2219,1309-2322' quackinterval=24.
 ```
 ---
-### average_1
-Split dataset and average to reduce data volume
+###4.1.8 average_1
+Split dataset and average to reduce data volume.
+
+Inputs parameters needed:
+```
+inbase                  [str]
+targets                 [str]
+phscals                 [str]
+fluxcal                 [str]
+bpcal                   [str]
+ptcal                   [str]
+```
+
+Output:
+```
+inbase_avg.ms           [MS]
+inbase_avg.ms.listobs   [txt]
+```
+
+It will create a new MS `inbase_avg.ms` (or inbase_avg.mms if working with mms files). It will remove previous inbase_avg.ms file if it exists. Only the fields selected in the inputs file will be included in inbase_avg.ms. Data is averaged using `width=4` and `timebin='1s'` (This will be `2s` when CASA gaincal fixes its bug related to VisibilityIterator2). `keepflags=False` in this version.
+
+---
+**Important** when the inbase_avg.ms file is produced, all the steps of the pipeline after this one will always work on inbase_avg.ms only, and not the original dataset. At this point `get_msinfo` is executed again, and the `msinfo` dictionary is created and saved in `inbase_avg.ms.msinfo.pkl`. If the averaged dataset does not exist, the pipeline will always use the unaveraged dataset `inbase.ms`.
 
 
 ---
-### plot_data
+###4.1.9 plot_data
 Produce plots of amp/phase vs time/freq for each baseline	plotms
 
+Inputs parameters needed:
+```
+inbase                  [str]
+targets                 [str]
+phscals                 [str]
+fluxcal                 [str]
+bpcal                   [str]
+ptcal                   [str]
+```
+
+Output:
+```
+./plots/plots_data      [directory with multiple plots in png format]
+```
+
+Produces plots in png format for the visitibilities in `inbase_avg.ms`. It iterates through all sources specified by the user in the inputs file, and produces plots for each baseline. All plots are stored in the output directory. The plots have some averaging:
+
+ - Amp/Phase vs Time: all channels averaged in each spw, colorized by spw.
+ - Amp/Phase vs Frequency: averaged every 5 min, colorized by correlation.
+
+---
+<a name="calibration"></a>
+## 4.2. Calibration
+
+All calibration steps require the following input parameters:
+```
+inbase                  [str]
+targets                 [str]
+phscals                 [str]
+fluxcal                 [str]
+bpcal                   [str]
+ptcal                   [str]
+refant                  [str]
+Lo_dropout_scans        [str]
+```
+
+You can select which steps to run in the inputs file by setting the corresponding number to:
+
+ - 0: don't run the step
+ - 1: run the step and produce calibration tables and plots
+ - 2: run the step and produce calibration tables and plots and apply the calibration to the data.
+
+During calibration, solutions are found using only the inner ~90% channels of each spw. So `innerchan=0.1*(nchan-nchan/512.), 0.9*(nchan-nchan/512.)`.
+
+**Important.** Below we list the parameters used to create each table in each calibration step. `previous_cal` is a list of names of previous calibration tables that will be used to fill the `gaintable`, `gainfield`, `interp`, `spwmap`. Those parameters are defined when the table is created, and they will be used only to generate other tables when the corresponding table name is listed in `previous_cal`. To know the values of those parameters you have to check them in the description of the tables listed in `previous_cal`.
+
+Also, the **applycal** description at the end of each step shows which tables will be applied to calibrators and targets respectively if `2` is selected for that step in the inputs file.
+
+`calsources` is a comma-separated list of all calibrator sources.
+
+---
+###4.2.1 flag_2b_manual
+Applies flags from external file with a list of flag commands to the averaged dataset.
+
+Inputs parameters needed:
+
+```
+manual_flags_b          [str, path to file]
+```
+
+Simply runs `flagdata(vis='inbase_avg.ms', mode='list', inpfile=manual_flags_b)`. This is run on the averaged dataset `inbase_avg.ms`. To apply manual flags to an averaged dataset see `flag_2b_manual` below.
+
+For more information on this flagdata mode see [flagdata](https://casa.nrao.edu/casadocs/casa-5.1.1/global-task-list/task_flagdata/about). For details on the format of the file see [examples](https://casa.nrao.edu/casadocs/casa-5.1.1/global-task-list/task_flagdata/examples). It needs one flag command per line, with parameters separated by one space (don't use commas!). For example:
+
+```
+mode='manual' field='1331+305' antenna='' timerange='10:00:00~10:11:30'
+mode='manual' field='' antenna='' timerange='' spw='0:0~30'
+mode='manual' field='' antenna='Mk2' timerange='09:05:00~16:27:00'
+mode='manual' field='1258-2219' antenna='' timerange='12:57:01~12:59:59'
+mode='quack' field='1258-2219,1309-2322' quackinterval=24.
+```
+---
+###4.2.2 init_models
+
+The pipeline will initialize the model column for all sources different from 1331+305 using CASA `delmod`, so setting all amplitudes to 1 and all phases to 0 in the model column. For 1331+305 it will check if the data is L band or C band, and use `setjy` to introduce the correct model of 1331+305 (3C286) into the data column. The models can be found in `pipeline_path+'calibrator_models/'`. Only C and L band models available.
+
+---
+###4.2.3 bandpass_0
+
+It runs a delay, phase, and a&p calibration before finding the combined BP table for all sources listed in `bpcals`.
+
+**bpcal_d.K0** - Delay calibration of bandpass calibrator(s)
+
+|Table parameter| Value                    |
+|---------------| -------------------------|
+| name          | bpcal_d.K0               |
+| field         | bpcal                    |
+| previous_cal  | []                       |
+| solint        | 180s                     |
+| gaintype      | K                        |
+| calmode       | p                        |
+| spw           | *:innerchan              |
+| combine       | spw                      |
+| table         | ./calib/inbase_bpcal_d.K0|
+| gainfield     | bpcal                    |
+| interp        | linear                   |
+| spwmap        | [0]*num_spw              |
 
 
 
-## 2. Calibration
+**bpcal_p.G0** - Phase calibration of bandpass calibrator(s)
 
-### flag_2b_manual
+|Table parameter| Value                    |
+|---------------| -------------------------|
+| name          | bpcal_p.G0               |
+| field         | bpcal                    |
+| previous_cal  | ['bpcal_d.K0']           |
+| solint        | int                      |
+| gaintype      | G                        |
+| calmode       | p                        |
+| spw           | *:innerchan              |
+| combine       |                          |
+| table         | ./calib/inbase_bpcal_p.G0|
+| gainfield     | bpcal                    |
+| interp        | linear                   |
+| spwmap        | []                       |
 
-### init_models
+**bpcal_ap.G1** - Amplitude and phase calibration of bandpass calibrator(s)
 
-### bandpass_0
+|Table parameter| Value                       |
+|---------------| --------------------------- |
+| name          | bpcal_p.G0                  |
+| field         | bpcal                       |
+| previous_cal  | ['bpcal_d.K0', 'bpcal_p.G0']|
+| solint        | 32s                         |
+| gaintype      | G                           |
+| calmode       | ap                          |
+| spw           | *:innerchan                 |
+| combine       |                             |
+| table         | ./calib/inbase_bpcal_ap.G1  |
+| gainfield     | bpcal                       |
+| interp        | linear                      |
+| spwmap        | []                          |
 
-### flag_3_tfcropBP
+**bpcal.B1** - Initial bandpass table
 
-### delay
+|Table parameter| Value                                      |
+|-------------- | ------------------------------------------ |
+| name          | bpcal.B0                                   |
+| field         | bpcal                                      |
+| previous_cal  | ['bpcal_d.K0', 'bpcal_p.G0', 'bpcal_ap.G1']|
+| solint        | inf                                        |
+| spw           |                                            |
+| uvrange       |                                            |
+| combine       | field,scan                                 |
+| table         | ./calib/inbase_bpcal.B0                    |
+| gainfield     | bpcal                                      |
+| interp        | nearest,linear                             |
+| spwmap        | []                                         |
 
-### gain_0_p_ap
+**Applycal:**
 
-### fluxscale
-
-### bandpass_1_sp
-
-### gain_1_amp_sp
-
-### applycal_all
-
-### flag_4_rflag
-
-### plot_corrected
-
-### weblog
-
-
-## 3. Support functions
+ - On calibrators: ['bpcal.B0']
+ - On targets: ['bpcal.B0']
 
 
-### get_msinfo
+---
+###4.2.4 flag_3_tfcropBP
+
+This task needs the data to be bandpass corrected. So first of all, it will apply the table ['bpcal.B0'] to all sources.
+
+CASA `flagdata`
+
+|Parameter      | Value  |
+|-------------- | ------ |
+| mode          | tfcrop |
+| correlation   | ABS_ALL|
+| ntime         | 90min  |
+| combinescans  | True   |
+| datacolumn    | DATA   |
+| winsize       | 3      |
+| timecutoff    | 3.6    |
+| freqcutoff    | 3.6    |
+| maxnpieces    | 2      |
+| usewindowstats| sum    |
+| halfwin       | 3      |
+| extendflags   | True   |
+| action        | apply  |
+
+---
+###4.2.5 delay
+
+**bpcal_d.K0** - Delay calibration of all calibrators.
+
+|Table parameter| Value                  |
+|---------------| -----------------------|
+| name          | delay.K1               |
+| field         | calsources             |
+| previous_cal  | ['bpcal.B0']           |
+| solint        | 300s                   |
+| gaintype      | K                      |
+| calmode       | p                      |
+| spw           | *:innerchan            |
+| combine       | spw                    |
+| table         | ./calib/inbase_delay.K1|
+| gainfield     | calsources             |
+| interp        | linear                 |
+| spwmap        | [0]*num_spw            |
+
+**Applycal:**
+
+ - On calibrators: ['bpcal.B0','delay.K1']
+ - On targets: ['bpcal.B0','delay.K1']
+
+
+---
+###4.2.6 gain_0_p_ap
+
+**allcal_p.G0** - Phase calibration of all calibrators.
+
+|Table parameter| Value                     |
+|---------------| --------------------------|
+| name          | allcal_p.G0               |
+| field         | calsources                |
+| previous_cal  | ['delay.K1', 'bpcal.B0']  |
+| solint        | 16s                       |
+| gaintype      | G                         |
+| calmode       | p                         |
+| spw           | *:innerchan               |
+| combine       |                           |
+| table         | ./calib/inbase_allcal_p.G0|
+| gainfield     | calsources                |
+| interp        | linear                    |
+| spwmap        | []                        |
+
+**allcal_p_jitter.G0** - Short-interval phase calibration of all calibrators.
+
+|Table parameter| Value                            |
+|---------------| ---------------------------------|
+| name          | allcal_p_jitter.G0               |
+| field         | calsources                       |
+| previous_cal  | ['delay.K1', 'bpcal.B0']         |
+| solint        | 2s                               |
+| gaintype      | G                                |
+| calmode       | p                                |
+| spw           | *:innerchan                      |
+| combine       | spw                              |
+| table         | ./calib/inbase_allcal_p_jitter.G0|
+| gainfield     | calsources                       |
+| interp        | linear                           |
+| spwmap        | [0]*nchan                        |
+
+
+**allcal_ap.G1** - Amplitude and phase calibration of all calibrators.
+
+|Table parameter| Value                                                        |
+|---------------| ------------------------------------------------------------ |
+| name          | allcal_ap.G1                                                 |
+| field         | calsources                                                   |
+| previous_cal  | ['delay.K1', 'bpcal.B0', 'allcal_p.G0', 'allcal_p_jitter.G0']|
+| solint        | 32s                                                          |
+| gaintype      | G                                                            |
+| calmode       | ap                                                           |
+| spw           | *:innerchan                                                  |
+| combine       |                                                              |
+| table         | ./calib/inbase_allcal_ap.G1                                  |
+| gainfield     | calsources                                                   |
+| interp        | linear                                                       |
+| spwmap        | []                                                           |
+
+
+**phscal_p_scan.G2** - Scan-averaged phase calibration of all phase reference calibrators.
+
+|Table parameter| Value                          |
+|---------------| -------------------------------|
+| name          | phscal_p_scan.G2               |
+| field         | calsources                     |
+| previous_cal  | ['delay.K1', 'bpcal.B0']       |
+| solint        | inf                            |
+| gaintype      | G                              |
+| calmode       | p                              |
+| spw           | *:innerchan                    |
+| combine       |                                |
+| table         | ./calib/inbase_phscal_p_scan.G2|
+| gainfield     | calsources                     |
+| interp        | linear                         |
+| spwmap        | []                             |
+
+
+
+**Applycal:**
+
+ - On calibrators: ['delay.K1','allcal_p.G0', 'allcal_p_jitter.G0', 'allcal_ap.G1','bpcal.B0']
+ - On targets: ['delay.K1','phscal_p_scan.G2','allcal_ap.G1','bpcal.B0']
+
+
+
+---
+###4.2.7 fluxscale
+
+Runs CASA `fluxscale` to bootstrap the flux density scale of 1331+305 using its model, and forward the corrections to all other sources, updating their model column. Also, a corrected _fluxscale table is derived from the previous amplitude calibration.
+
+CASA `fluxscale`
+
+|Parameter      | Value                                     |
+|-------------- | ----------------------------------------- |
+| reference     | fluxcal                                   |
+| transfer      | calibrators (except fluxcal)              |
+| antenna       | anten_for_flux*                           |
+| caltable      | allcal_ap.G1                              |
+| fluxtable     | allcal_ap.G1_fluxscaled                   |
+| listfile      | ./calib/allcal_ap.G1_fluxscaled_fluxes.txt|
+|               |                                           |
+
+*anten_for_flux: selection of antennas to use for amplitude scale. Will try to remove Lo and De from the fluxscale determination, but only if there are enough antennas to have at least 4 antennas.
+
+
+Then, the pipeline will run the script `dfluxpy` to find the correction factor eMfactor. This is a correction factor for the flux density of 1331+305 (3C286) needed because the source is slightly resolved by the the shortest baseline of e-MERLIN. The task will check the shortest baseline and the observation frequency, and scale the results accordingly. The values reported by the logger in eMCP.log are already corrected by this factor. The file allcal_ap.G1_fluxscaled_fluxes.txt is not corrected by this factor, but a warning note is included in the file.
+
+Finally, CASA `setjy` is run for each calibrator source (except the fluxcal) to include the new flux density into the model column for each spw.
+
+
+**Applycal:**
+
+ - On calibrators: ['delay.K1','allcal_p.G0','allcal_p_jitter.G0','allcal_ap.G1_fluxscaled','bpcal.B0']
+ - On targets: ['delay.K1','phscal_p_scan.G2','allcal_ap.G1_fluxscaled','bpcal.B0']
+
+
+---
+###4.2.8 bandpass_1_sp
+
+**bpcal_sp.B1**
+
+Recalculate the BP table. Now the model columns contain the actual flux density of the calibrators, so the BP table will include spectral index information. I use `allcal_ap.G1_fluxscaled` table just because I want to have the right flux scale if applycal is selected for this step.
+
+|Table parameter| Value                                                                    |
+|-------------- | ------------------------------------------------------------------------ |
+| name          | bpcal_sp.B1                                                              |
+| field         | bpcal                                                                    |
+| previous_cal  | ['delay.K1','allcal_p.G0','allcal_p_jitter.G0','allcal_ap.G1_fluxscaled']|
+| solint        | inf                                                                      |
+| spw           |                                                                          |
+| uvrange       |                                                                          |
+| combine       | field,scan                                                               |
+| solnorm       | False                                                                    |
+| table         | ./calib/inbase_bpcal_sp.B1                                               |
+| gainfield     | bpcal                                                                    |
+| interp        | nearest,linear                                                           |
+| spwmap        | []                                                                       |
+
+**Applycal:**
+
+ - On calibrators: ['delay.K1','allcal_p.G0','allcal_p_jitter.G0','allcal_ap.G1_fluxscaled','bpcal_sp.B1']
+ - On targets: ['delay.K1','phscal_p_scan.G2','allcal_ap.G1_fluxscaled','bpcal_sp.B1']
+
+
+---
+###4.2.9 gain_1_amp_sp
+
+**allcal_ap.G3**
+
+
+|Table parameter| Value                                                        |
+|---------------| ------------------------------------------------------------ |
+| name          | allcal_ap.G3                                                 |
+| field         | calsources                                                   |
+| previous_cal  | ['delay.K1','allcal_p.G0','allcal_p_jitter.G0','bpcal_sp.B1']|
+| solint        | 32s                                                          |
+| gaintype      | G                                                            |
+| calmode       | ap                                                           |
+| spw           | *:innerchan                                                  |
+| combine       |                                                              |
+| table         | ./calib/inbase_allcal_ap.G3                                  |
+| gainfield     | calsources                                                   |
+| interp        | linear                                                       |
+| spwmap        | []                                                           |
+
+**allcal_ap_scan.G3**
+
+
+|Table parameter| Value                                                        |
+|---------------| ------------------------------------------------------------ |
+| name          | allcal_ap_scan.G3                                            |
+| field         | phscals                                                      |
+| previous_cal  | ['delay.K1','allcal_p.G0','allcal_p_jitter.G0','bpcal_sp.B1']|
+| solint        | inf                                                          |
+| gaintype      | G                                                            |
+| calmode       | ap                                                           |
+| spw           | *:innerchan                                                  |
+| combine       |                                                              |
+| table         | ./calib/inbase_allcal_ap_scan.G3                             |
+| gainfield     | phscals                                                      |
+| interp        | linear                                                       |
+| spwmap        | []                                                           |
+
+
+
+**Applycal:**
+
+ - On calibrators: ['delay.K1','bpcal_sp.B1','allcal_p.G0','allcal_p_jitter.G0','allcal_ap.G3']
+ - On targets: ['delay.K1','bpcal_sp.B1','phscal_p_scan.G2','allcal_ap_scan.G3']
+
+---
+###4.2.10 applycal_all
+Two runs are executed. One to correct calibrators, using their own solutions when relevant. A second correction is executed for each target, using the solutions from the corresponding phase reference calibrator.
+
+ - On calibrators: ['delay.K1','bpcal_sp.B1','allcal_p.G0','allcal_p_jitter.G0','allcal_ap.G3']
+ - On targets: ['delay.K1','bpcal_sp.B1','phscal_p_scan.G2','allcal_ap_scan.G3']
+
+---
+###4.2.11 flag_4_rflag
+
+After calibration, we can run `flagdata` in rflag mode. This mode requires the data to be already calibrated.
+
+CASA `flagdata`
+
+|Parameter      | Value    |
+|-------------- | -------- |
+| mode          | rflag    |
+| correlation   | ABS_ALL  |
+| ntime         | 90min    |
+| combinescans  | True     |
+| datacolumn    | corrected|
+| timedevscale  | 5        |
+| freqdevscale  | 5        |
+| action        | apply    |
+
+
+---
+###4.2.12 plot_corrected
+
+Produce plots of amp/phase vs time/freq for each baseline	plotms using corrected data column.
+
+Inputs parameters needed:
+```
+inbase                  [str]
+targets                 [str]
+phscals                 [str]
+fluxcal                 [str]
+bpcal                   [str]
+ptcal                   [str]
+```
+
+Output:
+```
+./plots/plots_corrected [directory with multiple plots in png format]
+```
+
+Produces plots in png format for the visitibilities in `inbase_avg.ms`. It iterates through all sources specified by the user in the inputs file, and produces plots for each baseline. All plots are stored in the output directory. The plots have some averaging:
+
+ - Amp/Phase vs Time: all channels averaged in each spw, colorized by spw.
+ - Amp/Phase vs Frequency: averaged every 5 min, colorized by correlation.
+
+
+---
+###4.2.13 weblog
+Update the weblog will all available information and plots.
+
+As the initial `summary_weblog` but the weblog will include all information related to the dataset, the observation, the calibration and the visibilities. There are four different web pages:
+
+ - Home. Basic dataset information (name, date, antennas, frequency, averaging, etc.)
+ - Observation summary. Access to listobs, antennas, elevation plot, uvcov plots per each source.
+ - Calibration. List of tables produced and plots showing the solutions.
+ - Plots. Amp/phase vs time/freq per source and per baseline. Corrected and uncorrected visibilities, and Amp/phase vs uvdist.
+
+---
+<a name="support-functions"></a>
+## 5. Support functions and variables
+
+
+### get_msinfo [function] and msinfo [dict]
 Internal task that retrieves information from the inputs file and also directly from the MS.
 
-This is an inner funtion used by the pipeline, but the output can be useful. Produces the dictionary `msinfo` that contains: msfile, msfilename, project, run, sources, mssources, antennas, band, baselines, num_spw, t_ini, t_end, freq_ini, freq_end, chan_Res, nchan, innerchan, polarizations. The dictionary is saved with pickle in file `inbase.ms.msinfo.pkl` and `inbase_avg.ms.msinfo.pkl` if average data is produced. `msinfo` can be read with pickle or with:
+This is an inner funtion used by the pipeline, but the output can be useful. Produces the dictionary `msinfo` that contains: msfile, msfilename, project, run, sources, mssources, antennas, band, baselines, num_spw, t_ini, t_end, freq_ini, freq_end, chan_Res, nchan, innerchan, polarizations. The dictionary is saved with pickle in file `inbase.ms.msinfo.pkl` and `inbase_avg.ms.msinfo.pkl` if average data is produced. `msinfo` can be read with pickle, for example:
 
-> `msinfo = pickle.load('inbase.ms.msinfo.pkl')`
-> 
-> `em.prt_hist(msinfo)` # To see the contents
+> `msinfo = pickle.load(open('inbase_avg.ms.msinfo.pkl', 'rb'))`
+
 
 Example:
 
@@ -271,10 +815,50 @@ sources
       1143+1834     : phscals
 
 ```
+### caltables [dict]
+
+This is a dictionary that is stored in the file `./calib/caltables.pkl`. It contains information on all the calibration tables produced by the pipeline. The pipeline saves cummulative pickle files after each step as ./calib/caltables_<step>.pkl. This is just for security and it is not used by the pipeline. The caltables variable can be load with python using:
+
+> `caltables = pickle.load(open('./calib/caltables.pkl', 'rb'))`
+
+
+Example:
+
+```
+'bpcal_d.K0': {'calmode': 'p',
+                'combine': 'spw',
+                'field': '1407+284,1258-2219',
+                'gainfield': '1407+284,1258-2219',
+                'gaintype': 'K',
+                'interp': 'linear',
+                'name': 'bpcal_d.K0',
+                'previous_cal': [],
+                'solint': '180s',
+                'spw': '*:13~115',
+                'spwmap': [0, 0, 0, 0],
+                'table': './calib/CY5003_24_C_20170922_bpcal_d.K0'},
+ 'bpcal_p.G0': {'calmode': 'p',
+                'combine': '',
+                'field': '1407+284,1258-2219',
+                'gainfield': '1407+284,1258-2219',
+                'gaintype': 'G',
+                'interp': 'linear',
+                'name': 'bpcal_p.G0',
+                'previous_cal': ['bpcal_d.K0'],
+                'solint': 'int',
+                'spw': '*:13~115',
+                'spwmap': [],
+                'table': './calib/CY5003_24_C_20170922_bpcal_p.G0'},
+
+... 
+...
+```
+
 
 
 ---
-# Quick summary
+<a name="quick-summary"></a>
+# 6. Quick summary
 
 ### Pre-processing
 |Procedure        |Summary                                                     | CASA/external tasks                       |Inputs                   |Outputs        |Notes                                                                                          |

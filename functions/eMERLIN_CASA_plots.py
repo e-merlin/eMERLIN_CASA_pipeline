@@ -59,7 +59,7 @@ def single_4plot(msfile, field, baseline, datacolumn, plot_file):
     plotfile = '', expformat = 'png', customsymbol = True, symbolshape = 'circle',
     overwrite=True,  showgui=showgui, symbolsize=4)
 
-    plotms(vis=msfile, xaxis='time', yaxis='phase', title='Amp vs Time {0} {1} (color=spw)'.format(field, baseline),
+    plotms(vis=msfile, xaxis='time', yaxis='phase', title='Phase vs Time {0} {1} (color=spw)'.format(field, baseline),
     gridrows=gridrows, gridcols=gridcols, rowindex=1, colindex=0, plotindex=1,
     xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
     antenna=baseline, field=field,
