@@ -10,7 +10,7 @@ import logging
 from taskinit import *
 from tasks import *
 
-pipeline_version = 'v0.6.4'
+pipeline_version = 'v0.6.5'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -230,7 +230,7 @@ def run_pipeline(inputs=None, inputs_path=''):
         save_obj(caltables, calib_dir+'caltables')
 
     ### Initialize models ###
-    if inputs['init_models'] == 1:  # Need to add parameter to GUI
+    if inputs['init_models'] > 0:  # Need to add parameter to GUI
         models_path = pipeline_path+'calibrator_models/'
         em.run_initialize_models(msfile=msfile, fluxcal=msinfo['sources']['fluxcal'],
                                  models_path=models_path,
@@ -249,7 +249,7 @@ def run_pipeline(inputs=None, inputs_path=''):
                             previous_cal_targets=['bpcal.B0'])
 
     ### Flagdata using TFCROP and bandpass shape B0
-    if inputs['flag_3_tfcropBP'] == 1:
+    if inputs['flag_3_tfcropBP'] > 0:
         # If B0 has not been applied before, do it now
         if inputs['bandpass_0'] != 2:
             em.run_applycal(msfile=msfile, caltables=caltables, sources=msinfo['sources'],
@@ -336,7 +336,7 @@ def run_pipeline(inputs=None, inputs_path=''):
 
 
     ### RFLAG automatic flagging ###
-    if inputs['flag_4_rflag'] == 1:
+    if inputs['flag_4_rflag'] > 0:
         try:
             msinfo['applycal_all'] == True
             flags = em.flagdata4_rflag(msfile=msfile, msinfo=msinfo, flags=flags)
@@ -345,12 +345,12 @@ def run_pipeline(inputs=None, inputs_path=''):
             logger.warning('flag_4_rflag will not be executed.')
 
     ### Produce some visibility plots ###
-    if inputs['plot_corrected'] == 1:
+    if inputs['plot_corrected'] > 0:
         emplt.make_4plots(msfile, msinfo, datacolumn='corrected')
         emplt.make_uvplt(msinfo)
 
     ### Write weblog ###
-    if inputs['weblog'] == 1:
+    if inputs['weblog'] > 0:
         if os.path.isfile(msfile+'.msinfo.pkl'):
             logger.info('Elevation and uvcov plots will not be created again as long as the {}.pkl file exists.'.format(msfile+'.msinfo'))
         elif os.path.isdir(msfile):
@@ -363,7 +363,7 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     ### Run monitoring for bright sources:
     try:
-        if inputs['monitoring'] == 1:
+        if inputs['monitoring'] > 0:
             flags, caltables = em.monitoring(msfile=msfile, msinfo=msinfo,
                                              flags=flags, caltables=caltables,
                                              previous_cal=[''])

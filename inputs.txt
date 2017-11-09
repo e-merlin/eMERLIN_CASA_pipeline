@@ -1,30 +1,34 @@
-# Inputs for CASA e-MERLIN pipeline:
-fits_path = /path/to/fits/files/
-inbase    = 'project_name'
-targets   = ''
-phscals   = ''
-fluxcal   = '1331+305'
-bpcal     = '1407+284'
-ptcal     = '0319+415'
-refant    = 'Mk2'
+# Inputs for the e-MERLIN CASA pipeline:
 
-Lo_dropout_scans = ''
-manual_flags_a = ./inputfg_a.flags
-manual_flags_b = ./inputfg_b_avg.flags
+# 1. User inputs
+
+fits_path       = /path/to/fits/files/
+inbase          = 'project_name'
+targets         = ''
+phscals         = ''
+fluxcal         = '1331+305'
+bpcal           = '1407+284'
+ptcal           = '0319+415'
+refant          = 'Mk2'
+Lo_dropout_scans= ''
+manual_flags_a  = ./inputfg_a.flags
+manual_flags_b  = ./inputfg_b_avg.flags
 
 
-# Pre-processing (0=don't run, 1=run):
+# 2. Process inputs
+
+## Pre-processing (0=don't run, 1=run):
 run_importfits  = 1
-summary_weblog	= 1
+summary_weblog  = 1
 hanning         = 0
 ms2mms          = 0
 flag_0_aoflagger= 0
 flag_1_apriori  = 0
 flag_2a_manual  = 0
 average_1       = 0
-plot_data	= 0
+plot_data       = 0
 
-# Calibration (0=don't run, 1=run; 2=run and applycal if calibration is produced):
+## Calibration (0=don't run, 1=run):
 flag_2b_manual  = 0
 init_models     = 0
 bandpass_0      = 0
@@ -35,6 +39,8 @@ fluxscale       = 0
 bandpass_1_sp   = 0
 gain_1_amp_sp   = 0
 applycal_all    = 0
-flag_4_rflag	= 0
-plot_corrected	= 0
-weblog		= 0
+flag_4_rflag    = 0
+plot_corrected  = 0
+weblog          = 0
+# For bandpass_0, delay, gain_0_p_ap, fluxscale, bandpass_1_sp or gain_1_amp_sp
+# a value of 2 means run and apply the calibration up to that step.
