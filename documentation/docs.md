@@ -49,21 +49,22 @@ inputs, msinfo = run_pipeline(inputs_path=<input file>)
 
 ### Data preparation
 - Download the pipeline (it can be in any location).
-- Download the fits-IDI files from the observatory (they can be in any location).
+- Download the fits-IDI files from the observatory (they can be in any unique location).
 - Create the working path where you will work, and copy the `inputs.txt` to your working path.
-- Fill the `fits_path` (where the fits files are located) and the `inbase` (any name you want to give to your project).
-- Leave all the other parameters as default, and only use the steps `run_importfits=1` and `summary_weblog=1`.
+- Edit the inputs.txt file: fill the `fits_path` (where the fits files are located) and the `inbase` (any name you want to give to your project).
+- Leave all other parameters as default, and only use the steps `run_importfits=1` and `summary_weblog=1`.
 - Data will be converted to MS and prepared. Open in a web browser the file `./weblog/index.html`.
-- Check the listobs file in the weblog/Observation summary and fill the fields `targets`, `phscals`, `fluxcal`,`bpcal`,`ptcal`.
-- Select a reference antenna `refant`. If you are not sure set `refant=''` and rerun the `summary_weblog` step alone. The pipeline will try to suggest a list of the best reference antenna to use.
-- Run the rest of the pre-processing steps depending on your needs. It is recommended to produce an average dataset `inbase_avg.ms`.
+- Check the listobs file in the 'Observation summary' tab and fill in the inputs.txt file the fields `targets`, `phscals`, `fluxcal`,`bpcal`,`ptcal`.
+- Select a reference antenna `refant`. If you are not sure set `refant=''` and rerun the `summary_weblog` step alone. The pipeline will try to suggest a list of the best reference antennas to use.
+- Run the rest of the pre-processing steps depending on your needs. If you have a list of manual flags to apply, set `flag_2a_manual=1` and remember to specify where that file is by setting `manual_flags_a` in the user inputs.
+- In most cases it is recommended to run `average_1=1` to split the date to a new averaged dataset `inbase_avg.ms`.
 
 ### Data calibration
-- Prepare the file `manual_flags_a` with flags commands based on the plots produced in the previous section (or your own data exploration).
-- Run all the calibration steps. You may prefer to run each of them one by one and check the output plots
+- Prepare the file `manual_flags_b` with flags commands based on the plots produced in the previous section (or your own data exploration). The external file should be set in `manual_flags_b` in the user inputs.
+- Run all the calibration steps by setting them to 1. You may prefer to run each of them one by one and check the output plots
 - You can always select the step `weblog=1`. It will just update the weblog with any new plots available.
-- Improve the `manual_flags_a` to have more detailed flagging as you proceed with the calibration.
-- It is a good practice to redo the calibration once you are happy with your flags and you are sure of all the steps. For that you can rerun `average_1` to produce from scrath the `inbase_avg.ms` dataset and repeat all the calibration steps.
+- Improve the `manual_flags_a` file to have more detailed flagging as you proceed with the calibration.
+- It is a good practice to redo the calibration once you are happy with your flags and you are sure of all the steps. For that, you can rerun `average_1` to produce from scratch the `inbase_avg.ms` dataset and repeat all the calibration steps.
 
 
 
@@ -83,7 +84,7 @@ Path to the location of the fits files. Can be an absolute or relative path. A s
 ```
 inbase     [str]
 ```
-Project name. It will be used to give name to MS, plots and tables.
+Project name. It will be used to give names to the MS, plots and tables.
 
 ```
 targets    [str]
@@ -99,7 +100,7 @@ Names of sources as they appear in the MS to be used as calibrators. Can be a co
 ```
 fluxcal    [str]
 ```
-Names of source as it appears in the MS to be used as flux calibrator. Only one source accepted. 1331+305 expected. If a different source is selected the `fluxscale` step will not work properly.
+Name of source as it appears in the MS to be used as flux calibrator. Only one source accepted. 1331+305 expected. If a different source is selected the `fluxscale` step will not work properly.
 
 
 ```
@@ -127,12 +128,12 @@ Comma-separated list of scans in which the Lo telescope was not observing the ph
 ```
 manual_flags_a      [str]
 ```
-Path to an external file that contains a list of flag commands, one per line. The flags will be applied to the unaveraged data set `inbase.ms`. The file will be read by CASA task flagdata using `mode='list'` and `inpfile` will be set to `manual_flags_a`. Note from the [CASA documentation](https://casa.nrao.edu/casadocs/casa-5.1.1/global-task-list/task_flagdata/about) on the format of the file: There should be no whitespace between KEY=VALUE since the parser first breaks command lines on whitespace, then on "=". Use only one whitespace to separate the parameters (no commas).
+Path to an external file that contains a list of flag commands, one per line. The flags will be applied to the unaveraged dataset `inbase.ms` when step `flag_2a_manual` is enabled. The file will be read by CASA task flagdata using `mode='list'` and `inpfile` will be set to `manual_flags_a`. Note from the [CASA documentation](https://casa.nrao.edu/casadocs/casa-5.1.1/global-task-list/task_flagdata/about) on the format of the file: There should be no whitespace between KEY=VALUE since the parser first breaks command lines on whitespace, then on "=". Use only one whitespace to separate the parameters (no commas).
 
 ```
 manual_flags_b      [str]
 ```
-Same as `manual_flags_a` but will be applied to the averaged data set `inbase_avg.ms`.
+Same as `manual_flags_a` but will be applied to the averaged data set `inbase_avg.ms` when step `flag_2b_manual` is enabled.
 
 
 **Note on the format**: For `[str]` inputs, the use of single quotes is not required. Most inputs accept a list of values in the format of a comma-separated string. Examples: `target = '1111+2222'` or `target = 1111+2222`. For multiple inputs: `phscals = '1111+2222,3333+4444,5555+6666'` is accepted.
@@ -145,7 +146,7 @@ Same as `manual_flags_a` but will be applied to the averaged data set `inbase_av
 ## 4.1 Pre-processing
 
 ### 4.1.1 run_importfitsidi
-Merge fits-IDI files in `fits_path` to form a MS named `inbase.ms`
+Merge fits-IDI files in `fits_path` to form an MS named `inbase.ms`
 
 Inputs parameters needed:
 ```
@@ -160,14 +161,14 @@ inbase.ms.listobs       [txt]
 inbase.ms.sp0           [MS] (only for mixed mode observations)
 ```
 
-First `inbase.ms` is removed if present (`inbase` is the parameter in inputs file). All files ending in .fits or .FITS in the folder `fits_path` are considered for importing and will be merged. The logger shows which files have been found. Several CASA tasks are executed: `importfitsidi` is executed with `constobsid=True, scanreindexgap_s=15.0`. Then `uvfix` with option `reuse=False` is run to correct UVW values and the output MS replaces `inbase.ms`. Then `flagdata` with `mode='manual',autocorr=True` to remove autocorrelations. Finally, `listobs` is run and a new listobs file is created in `inbase.ms.listobs`.
+First, `inbase.ms` is removed if present (`inbase` is the parameter in inputs file). All files ending in .fits or .FITS in the folder `fits_path` are considered for importing and will be merged. The logger shows which files have been found. Several CASA tasks are executed: `importfitsidi` is executed with `constobsid=True, scanreindexgap_s=15.0`. Then `uvfix` with option `reuse=False` is run to correct UVW values and the output MS replaces `inbase.ms`. Then `flagdata` with `mode='manual',autocorr=True` to remove autocorrelations. Finally, `listobs` is run and a new listobs file is created in `inbase.ms.listobs`.
 
-At this point the pipeline checks if the observations were observed in mixed mode. If so, the spectal spws will be splitted and `inbase.ms` will contain only the continuum data (broadband, low spectral resolution). The high resolution spw will be splitted in new MS ending with sp0, sp1, etc.
+At this point, the pipeline checks if the observations were observed in mixed mode. If so, the spectral spws will be split and `inbase.ms` will contain only the continuum data (broadband, low spectral resolution). The high resolution spw will be splitted in new MS ending with sp0, sp1, etc.
 
 
 ---
 ### 4.1.2 summary_weblog
-Retrieve basic information from the original MS, produce some plots and compile eveything in the weblog.
+Retrieve basic information from the original MS, produce some plots and compile everything in the weblog.
 
 Inputs parameters needed:
 ```
@@ -194,13 +195,13 @@ Output:
 inbase.ms               [MS]
 ```
 
-Runs mstransform with mode='hanning' on DATA column. It produces a new MS, which substitutes the `inbase.ms`. It works with MS or MMS. This step is optional, but recommended for L band observations. It is probably not needed for C band datasets.
+Runs mstransform with mode='hanning' on DATA column. It produces a new MS, which substitutes the `inbase.ms`. It works with MS or MMS. This step is optional but recommended for L band observations. It is probably not needed for C band datasets.
 
 
 
 ---
 ### 4.1.4 ms2mms
-Optional step to transform original MS to a MMS.
+Optional step to transform original MS to an MMS.
 
 Inputs parameters needed:
 ```
@@ -212,7 +213,7 @@ Output:
 inbase.mms               [MMS]
 ```
 
-This allow CASA to run tasks on the MultiMeasurementSet in parallel transparently. Takes time to convert but later makes calibration and imaging faster. To be tested in detail. Uses CASA task `partition` with default parameters. **Important**: if ms2mms is executed, it will delete `inbase.ms` and all the following steps will be run on the new `inbase.mms`.
+This allows CASA to run tasks on the MultiMeasurementSet in parallel transparently. Takes time to convert but later makes calibration and imaging faster. To be tested in detail. Uses CASA task `partition` with default parameters. **Important**: if ms2mms is executed, it will delete `inbase.ms` and all the following steps will be run on the new `inbase.mms`.
 
 
 ---
@@ -224,7 +225,7 @@ Inputs parameters needed:
 inbase                  [str]
 ```
 
-It runs [aoflagger](https://sourceforge.net/p/aoflagger/wiki/Home/) on all the fields in the MS. aoflagger v2.9+ required. The pipeline might work with previous versions in some situations, but it is not recommended and probably will fail The strategies are selected by field following this criteria: (1) First, check if user has a new strategy for this field in the local folder ./aoflagger_strategies/user/, the strategy needs to match: `<field>.rfis`. (2) If not, check if user has produced a new strategy for this field in the pipeline folder. So will search for `pipeline_path+'aoflagger_strategies/default/<field>.rfis`, (3) If nothing is found, just use the default strategy. For example for field 1234+5678 the prioritization for searching strategies is:
+It runs [aoflagger](https://sourceforge.net/p/aoflagger/wiki/Home/) on all the fields in the MS. aoflagger v2.9+ required. The pipeline might work with previous versions in some situations, but it is not recommended and probably will fail The strategies are selected by field following this criteria: (1) First, check if the user has a new strategy for this field in the local folder ./aoflagger_strategies/user/, the strategy needs to match: `<field>.rfis`. (2) If not, check if the user has produced a new strategy for this field in the pipeline folder. So will search for `pipeline_path+'aoflagger_strategies/default/<field>.rfis`, (3) If nothing is found, just use the default strategy. For example for field 1234+5678 the prioritization for searching strategies is:
 
  1. ./aoflagger_strategies/user/1234+5678.rfis
  2. /path/to/pipeline/aoflagger_strategies/default/1234+5678.rfis
@@ -257,7 +258,7 @@ Different flags are applied to the data:
 
 ---
 ### 4.1.7 flag_2a_manual
-Applies flags from external file with a list of flag commands the unaveraged dataset.
+Applies flags from an external file with a list of flag commands the unaveraged dataset.
 
 Inputs parameters needed:
 
@@ -300,7 +301,7 @@ inbase_avg.ms.listobs   [txt]
 It will create a new MS `inbase_avg.ms` (or inbase_avg.mms if working with mms files). It will remove previous inbase_avg.ms file if it exists. Only the fields selected in the inputs file will be included in inbase_avg.ms. Data is averaged using `width=4` and `timebin='1s'` (This will be `2s` when CASA gaincal fixes its bug related to VisibilityIterator2). `keepflags=False` in this version.
 
 ---
-**Important** when the inbase_avg.ms file is produced, all the steps of the pipeline after this one will always work on inbase_avg.ms only, and not the original dataset. At this point `get_msinfo` is executed again, and the `msinfo` dictionary is created and saved in `inbase_avg.ms.msinfo.pkl`. If the averaged dataset does not exist, the pipeline will always use the unaveraged dataset `inbase.ms`.
+**Important** when the inbase_avg.ms file is produced, all the steps of the pipeline after this one will always work on inbase_avg.ms only, and not the original dataset. At this point, `get_msinfo` is executed again, and the `msinfo` dictionary is created and saved in `inbase_avg.ms.msinfo.pkl`. If the averaged dataset does not exist, the pipeline will always use the unaveraged dataset `inbase.ms`.
 
 
 ---
@@ -322,7 +323,7 @@ Output:
 ./plots/plots_data      [directory with multiple plots in png format]
 ```
 
-Produces plots in png format for the visitibilities in `inbase_avg.ms`. It iterates through all sources specified by the user in the inputs file, and produces plots for each baseline. All plots are stored in the output directory. The plots have some averaging:
+Produces plots in png format for the visibilities in `inbase_avg.ms`. It iterates through all sources specified by the user in the inputs file, and produces plots for each baseline. All plots are stored in the output directory. The plots have some averaging:
 
  - Amp/Phase vs Time: all channels averaged in each spw, colorized by spw.
  - Amp/Phase vs Frequency: averaged every 5 min, colorized by correlation.
@@ -359,7 +360,7 @@ Also, the **applycal** description at the end of each step shows which tables wi
 
 ---
 ### 4.2.1 flag_2b_manual
-Applies flags from external file with a list of flag commands to the averaged dataset.
+Applies flags from an external file with a list of flag commands to the averaged dataset.
 
 Inputs parameters needed:
 
@@ -614,7 +615,7 @@ CASA `fluxscale`
 *anten_for_flux: selection of antennas to use for amplitude scale. Will try to remove Lo and De from the fluxscale determination, but only if there are enough antennas to have at least 4 antennas.
 
 
-Then, the pipeline will run the script `dfluxpy` to find the correction factor eMfactor. This is a correction factor for the flux density of 1331+305 (3C286) needed because the source is slightly resolved by the the shortest baseline of e-MERLIN. The task will check the shortest baseline and the observation frequency, and scale the results accordingly. The values reported by the logger in eMCP.log are already corrected by this factor. The file allcal_ap.G1_fluxscaled_fluxes.txt is not corrected by this factor, but a warning note is included in the file.
+Then, the pipeline will run the script `dfluxpy` to find the correction factor eMfactor. This is a correction factor for the flux density of 1331+305 (3C286) needed because the source is slightly resolved by the shortest baseline of e-MERLIN. The task will check the shortest baseline and the observation frequency, and scale the results accordingly. The values reported by the logger in eMCP.log are already corrected by this factor. The file allcal_ap.G1_fluxscaled_fluxes.txt is not corrected by this factor, but a warning note is included in the file.
 
 Finally, CASA `setjy` is run for each calibrator source (except the fluxcal) to include the new flux density into the model column for each spw.
 
@@ -745,7 +746,7 @@ Output:
 ./plots/plots_corrected [directory with multiple plots in png format]
 ```
 
-Produces plots in png format for the visitibilities in `inbase_avg.ms`. It iterates through all sources specified by the user in the inputs file, and produces plots for each baseline. All plots are stored in the output directory. The plots have some averaging:
+Produces plots in png format for the visibilities in `inbase_avg.ms`. It iterates through all sources specified by the user in the inputs file, and produces plots for each baseline. All plots are stored in the output directory. The plots have some averaging:
 
  - Amp/Phase vs Time: all channels averaged in each spw, colorized by spw.
  - Amp/Phase vs Frequency: averaged every 5 min, colorized by correlation.
@@ -767,9 +768,9 @@ As the initial `summary_weblog` but the weblog will include all information rela
 # 5. Support functions and variables
 
 ### get_msinfo [function] and msinfo [dict]
-Internal task that retrieves information from the inputs file and also directly from the MS.
+An internal task that retrieves information from the inputs file and also directly from the MS.
 
-This is an inner funtion used by the pipeline, but the output can be useful. Produces the dictionary `msinfo` that contains: msfile, msfilename, project, run, sources, mssources, antennas, band, baselines, num_spw, t_ini, t_end, freq_ini, freq_end, chan_Res, nchan, innerchan, polarizations. The dictionary is saved with pickle in file `inbase.ms.msinfo.pkl` and `inbase_avg.ms.msinfo.pkl` if average data is produced. `msinfo` can be read with pickle, for example:
+This is an inner function used by the pipeline, but the output can be useful. Produces the dictionary `msinfo` that contains: msfile, msfilename, project, run, sources, mssources, antennas, band, baselines, num_spw, t_ini, t_end, freq_ini, freq_end, chan_Res, nchan, innerchan, polarizations. The dictionary is saved with pickle in file `inbase.ms.msinfo.pkl` and `inbase_avg.ms.msinfo.pkl` if average data is produced. `msinfo` can be read with pickle, for example:
 
 > `msinfo = pickle.load(open('inbase_avg.ms.msinfo.pkl', 'rb'))`
 
@@ -817,7 +818,7 @@ sources
 ```
 ### caltables [dict]
 
-This is a dictionary that is stored in the file `./calib/caltables.pkl`. It contains information on all the calibration tables produced by the pipeline. The pipeline saves cummulative pickle files after each step as ./calib/caltables_<step>.pkl. This is just for security and it is not used by the pipeline. The caltables variable can be load with python using:
+This is a dictionary that is stored in the file `./calib/caltables.pkl`. It contains information on all the calibration tables produced by the pipeline. The pipeline saves cumulative pickle files after each step as ./calib/caltables_<step>.pkl. This is just for security and it is not used by the pipeline. The caltables variable can be load with python using:
 
 > `caltables = pickle.load(open('./calib/caltables.pkl', 'rb'))`
 
