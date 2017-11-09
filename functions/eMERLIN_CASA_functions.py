@@ -624,6 +624,10 @@ def flagdata1_apriori(msfile, sources, Lo_dropout_scans, flags, do_quack=True):
 
 def flagdata2_manual(msfile, inpfile, flags):
     logger.info('Start flagdata_manual')
+    if not os.path.isfile(inpfile) == True:
+        logger.warning('Manual flagging step requested but cannot access file: {0}'.format(inpfile))
+        logger.warning('Stopping pipeline at this step')
+        sys.exit()
     logger.info('Applying manual flags from file: {0}'.format(inpfile))
     flagdata(vis=msfile, mode='list', inpfile=inpfile)
     flag_applied(flags, 'flagdata_manual')

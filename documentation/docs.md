@@ -71,7 +71,8 @@ inputs, msinfo = run_pipeline(inputs_path=<input file>)
 
 # 3. Inputs
 
-There are two types of inputs. The ones at the begining expect a string that will depend on the project, sources, antennas or files needed. The ones in the last two blocks expect an integer that can be 0, 1 or 2 and are used to select which steps to execute.
+There are two types of inputs: the **user inputs** and the **process inputs**. The user inputs expect a string that will depend on the project, sources, antennas and external files. The process inputs expect an integer that can be 0 to not run a step, or 1 to run it. Additionally, steps that produce calibration tables can be set to also apply the calibration to the data modifying the corrected column. So for `bandpass_0`, `delay`, `gain_0_p_ap`, `fluxscale`, `bandpass_1_sp` and `gain_1_amp_sp`, a value of 2 means run the step and apply the calibration up to that step. This is useful to check the calibration up to each step, but you can also use `applycal_all=1` to apply everything when all tables are produced.
+
 
 ```
 fits_path  [str]

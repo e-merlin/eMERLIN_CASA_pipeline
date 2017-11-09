@@ -11,8 +11,8 @@ bpcal           = '1407+284'
 ptcal           = '0319+415'
 refant          = 'Mk2'
 Lo_dropout_scans= ''
-manual_flags_a  = ./inputfg_a.flags
-manual_flags_b  = ./inputfg_b_avg.flags
+manual_flags_a  = ./inputfg_a.flags      # Used in flag_2a_manual
+manual_flags_b  = ./inputfg_b_avg.flags  # Used in flag_2b_manual
 
 
 # 2. Process inputs
