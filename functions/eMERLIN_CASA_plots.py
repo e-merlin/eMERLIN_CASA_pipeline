@@ -162,7 +162,7 @@ def single_uvcov(field, u, v, freqs, plot_file):
                                 norm=norm, orientation='vertical')
     ax1.yaxis.set_label_position("right")
     ax1.set_ylabel('Frequency [GHz]')
-    ax.set_xlabel('U [Mlambda]')
+    ax.set_xlabel('V [Mlambda]')
     ax.set_ylabel('U [Mlambda]')
     ax.set_aspect('equal')
     ax.set_title(field)

@@ -4,7 +4,7 @@ It can also be converted to pdf using: http://www.markdowntopdf.com/
 -->
 
 # e-MERLIN CASA pipeline
-### Documentation for v0.6.4
+### Documentation for v0.6
 
 ---
 # Table of contents
