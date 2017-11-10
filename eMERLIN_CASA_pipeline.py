@@ -10,7 +10,7 @@ import logging
 from taskinit import *
 from tasks import *
 
-pipeline_version = 'v0.6.5'
+pipeline_version = 'v0.6.6'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
