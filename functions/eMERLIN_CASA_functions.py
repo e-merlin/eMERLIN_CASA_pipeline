@@ -1836,9 +1836,9 @@ def single_tclean(msinfo, s, num):
     logger.info('Producing tclean images for {0}, field: {1}'.format(msinfo['msfile'], s))
     makedir('./images/{}'.format(s))
     imagename = './images/{0}/{1}_{0}_img{2:02d}'.format(s, msinfo['msfilename'], num)
-#    prev_images = glob.glob(imagename+'*')
-#    for prev_image in prev_images:
-#        rmdir(prev_image)
+    prev_images = glob.glob(imagename+'*')
+    for prev_image in prev_images:
+        rmdir(prev_image)
     cellsize = {'C':'0.008arcsec', 'L':'0.02arcsec'}
     imsize = 1024
     cell = cellsize[msinfo['band']]
@@ -1855,13 +1855,13 @@ def single_tclean(msinfo, s, num):
                 weighting, robust))
     logger.info('usemask = {0}, maskthreshold = {1}, maskresolution = {2}, nmask = {3}'.format(
                 usemask, maskthreshold, maskresolution, nmask))
-#    tclean(vis=msinfo['msfile'], field=s, datacolumn='corrected', imagename=imagename,
-#           imsize=imsize, cell=cell, deconvolver='hogbom', weighting=weighting, 
-#           robust=robust, niter=niter, usemask=usemask,
-#           maskthreshold=maskthreshold, # sigma
-#           maskresolution=maskresolution, # 2xbmaj
-#           nmask=nmask,
-#           savemodel='none')
+    tclean(vis=msinfo['msfile'], field=s, datacolumn='corrected', imagename=imagename,
+           imsize=imsize, cell=cell, deconvolver='hogbom', weighting=weighting, 
+           robust=robust, niter=niter, usemask=usemask,
+           maskthreshold=maskthreshold, # sigma
+           maskresolution=maskresolution, # 2xbmaj
+           nmask=nmask,
+           savemodel='none')
     plot_image(imagename, dozoom=True)
     plot_image_add(imagename, dozoom=True)
 
