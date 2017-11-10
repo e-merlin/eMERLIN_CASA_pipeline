@@ -190,9 +190,9 @@ def run_pipeline(inputs=None, inputs_path=''):
     if inputs['plot_data'] == 1:
         emplt.make_4plots(msfile, msinfo, datacolumn='data')
 
-    ### Load manual flagging file
-    if inputs['flag_2b_manual'] == 1:
-        flags = em.flagdata2_manual(msfile=msfile, inpfile=inputs['manual_flags_b'], flags=flags)
+    ### Save flag status up to this point
+    if inputs['save_flags'] == 1:
+        em.saveflagstatus(msinfo)
 
 
     ###################
@@ -212,7 +212,7 @@ def run_pipeline(inputs=None, inputs_path=''):
             caltables['plots_dir'] = plots_dir
             caltables['calib_dir'] = calib_dir
             caltables['num_spw'] = msinfo['num_spw']
-            all_calsteps = [    
+            all_calsteps = [
                     'bpcal_d.K0',
                     'bpcal_p.G0',
                     'bpcal_ap.G1',
@@ -230,6 +230,14 @@ def run_pipeline(inputs=None, inputs_path=''):
         caltables['Lo_dropout_scans'] = inputs['Lo_dropout_scans']
         caltables['refant'] = msinfo['refant']
         save_obj(caltables, calib_dir+'caltables')
+
+    ### Restore flag status at to this point
+    if inputs['restore_flags'] == 1:
+        em.restoreflagstatus(msinfo)
+
+    ### Load manual flagging file
+    if inputs['flag_2b_manual'] == 1:
+        flags = em.flagdata2_manual(msfile=msfile, inpfile=inputs['manual_flags_b'], flags=flags)
 
     ### Initialize models ###
     if inputs['init_models'] > 0:  # Need to add parameter to GUI

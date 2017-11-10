@@ -794,6 +794,23 @@ def plot_caltable(msinfo, caltable, plot_file, xaxis='', yaxis='', title='',
                width=1000, height=240*num_anten, clearplots=False, overwrite=True, showgui=showgui)
 
 
+def saveflagstatus(msinfo):
+    logger.info('Start saveflagstatus')
+    logger.info('Saving current flagging status to versionname=\'initialize_flags\'')
+    flagmanager(msinfo['msfile'], mode='save', versionname='initialize_flags',
+             comment='Restore this version to restart calibration without the flags produced by the calibration',
+             merge='replace')
+    logger.info('End saveflagstatus')
+
+
+def restoreflagstatus(msinfo):
+    logger.info('Start restoreflagstatus')
+    logger.info('Restoring flagging status in versionname=\'initialize_flags\'')
+    flagmanager(msinfo['msfile'], mode='restore', versionname='initialize_flags',
+             merge='replace')
+    logger.info('End restoreflagstatus')
+
+
 ### Run CASA calibration functions
 
 def run_split(msfile, sources, width, timebin, datacolumn='data'):

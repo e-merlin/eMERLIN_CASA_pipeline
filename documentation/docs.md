@@ -328,6 +328,18 @@ Produces plots in png format for the visibilities in `inbase_avg.ms`. It iterate
  - Amp/Phase vs Time: all channels averaged in each spw, colorized by spw.
  - Amp/Phase vs Frequency: averaged every 5 min, colorized by correlation.
 
+
+### 4.1.10 save_flags
+Saves the current status of the flagging to the flag table with versionname='initialize_flags'.
+
+Output:
+```
+initialize_flags        [flag table]
+```
+
+Makes a copy of the current flags to the flag table with versionname `initialize_flags` using flagmanager. It will overwrite previous versions of that table. This table means to contain flags produced by aoflagger, a-priori and manual_a flags, but only if the user has saved this table after producing those flags (so it is the responsability of the user to keep track of what was applied when this step is executed).
+
+
 ---
 
 ## 4.2. Calibration
@@ -358,8 +370,21 @@ Also, the **applycal** description at the end of each step shows which tables wi
 
 `calsources` is a comma-separated list of all calibrator sources.
 
+
+### 4.2.1 restore_flags
+Restore the status of the flagging that was saved in the flag table with versionname='initialize_flags'.
+
+Output:
+```
+initialize_flags        [flag table]
+```
+
+Restores the flags saved in the flag table with versionname `initialize_flags` using flagmanager. The idea is to use this saving point to restart calibration from scratch but keeping the flags produced during the pre-process stage. Any other tables associated with the dataset will not be removed, so use flagmanager and remove them manually if needed.
+
+
+
 ---
-### 4.2.1 flag_2b_manual
+### 4.2.2 flag_2b_manual
 Applies flags from an external file with a list of flag commands to the averaged dataset.
 
 Inputs parameters needed:
@@ -380,12 +405,12 @@ mode='manual' field='1258-2219' antenna='' timerange='12:57:01~12:59:59'
 mode='quack' field='1258-2219,1309-2322' quackinterval=24.
 ```
 ---
-### 4.2.2 init_models
+### 4.2.3 init_models
 
 The pipeline will initialize the model column for all sources different from 1331+305 using CASA `delmod`, so setting all amplitudes to 1 and all phases to 0 in the model column. For 1331+305 it will check if the data is L band or C band, and use `setjy` to introduce the correct model of 1331+305 (3C286) into the data column. The models can be found in `pipeline_path+'calibrator_models/'`. Only C and L band models available.
 
 ---
-### 4.2.3 bandpass_0
+### 4.2.5 bandpass_0
 
 It runs a delay, phase, and a&p calibration before finding the combined BP table for all sources listed in `bpcals`.
 
@@ -465,7 +490,7 @@ It runs a delay, phase, and a&p calibration before finding the combined BP table
 
 
 ---
-### 4.2.4 flag_3_tfcropBP
+### 4.2.5 flag_3_tfcropBP
 
 This task needs the data to be bandpass corrected. So first of all, it will apply the table ['bpcal.B0'] to all sources.
 
@@ -488,7 +513,7 @@ CASA `flagdata`
 | action        | apply  |
 
 ---
-### 4.2.5 delay
+### 4.2.6 delay
 
 **bpcal_d.K0** - Delay calibration of all calibrators.
 
@@ -514,7 +539,7 @@ CASA `flagdata`
 
 
 ---
-### 4.2.6 gain_0_p_ap
+### 4.2.7 gain_0_p_ap
 
 **allcal_p.G0** - Phase calibration of all calibrators.
 
@@ -596,7 +621,7 @@ CASA `flagdata`
 
 
 ---
-### 4.2.7 fluxscale
+### 4.2.8 fluxscale
 
 Runs CASA `fluxscale` to bootstrap the flux density scale of 1331+305 using its model, and forward the corrections to all other sources, updating their model column. Also, a corrected _fluxscale table is derived from the previous amplitude calibration.
 
@@ -627,7 +652,7 @@ Finally, CASA `setjy` is run for each calibrator source (except the fluxcal) to 
 
 
 ---
-### 4.2.8 bandpass_1_sp
+### 4.2.9 bandpass_1_sp
 
 **bpcal_sp.B1**
 
@@ -655,7 +680,7 @@ Recalculate the BP table. Now the model columns contain the actual flux density 
 
 
 ---
-### 4.2.9 gain_1_amp_sp
+### 4.2.10 gain_1_amp_sp
 
 **allcal_ap.G3**
 
@@ -701,14 +726,14 @@ Recalculate the BP table. Now the model columns contain the actual flux density 
  - On targets: ['delay.K1','bpcal_sp.B1','phscal_p_scan.G2','allcal_ap_scan.G3']
 
 ---
-### 4.2.10 applycal_all
+### 4.2.11 applycal_all
 Two runs are executed. One to correct calibrators, using their own solutions when relevant. A second correction is executed for each target, using the solutions from the corresponding phase reference calibrator.
 
  - On calibrators: ['delay.K1','bpcal_sp.B1','allcal_p.G0','allcal_p_jitter.G0','allcal_ap.G3']
  - On targets: ['delay.K1','bpcal_sp.B1','phscal_p_scan.G2','allcal_ap_scan.G3']
 
 ---
-### 4.2.11 flag_4_rflag
+### 4.2.12 flag_4_rflag
 
 After calibration, we can run `flagdata` in rflag mode. This mode requires the data to be already calibrated.
 
@@ -727,7 +752,7 @@ CASA `flagdata`
 
 
 ---
-### 4.2.12 plot_corrected
+### 4.2.13 plot_corrected
 
 Produce plots of amp/phase vs time/freq for each baseline	plotms using corrected data column.
 
@@ -753,7 +778,7 @@ Produces plots in png format for the visibilities in `inbase_avg.ms`. It iterate
 
 
 ---
-### 4.2.13 weblog
+### 4.2.14 weblog
 Update the weblog will all available information and plots.
 
 As the initial `summary_weblog` but the weblog will include all information related to the dataset, the observation, the calibration and the visibilities. There are four different web pages:
