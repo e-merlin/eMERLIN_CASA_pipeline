@@ -2,6 +2,7 @@
 import os, subprocess
 import numpy as np
 import pickle
+import glob
 from Tkinter import *
 import tkMessageBox
 import sys, shutil
@@ -1775,3 +1776,103 @@ def dfluxpy(freq,baseline):
 
     return vlaflux, merlinflux, resolved_percent, caution_res_pc, thisbl
 
+
+def plot_image(imagename, dozoom=False):
+    imstat_residual = imstat(imagename+'.residual')
+    imstat_image = imstat(imagename+'.image')
+    noise = imstat_residual['rms'][0]
+    peak = imstat_image['max'][0]
+    #scaling =  np.min([0, -np.log(1.0*peak/noise)+4])
+    scaling = np.min([0.0, -int(np.log(1.0*peak/noise)+1)])
+    levels = 3.*np.sqrt(3**np.arange(20))
+    center = 512
+    zoom_range = 150
+    for extension in ['image']:
+        filename = '{0}.{1}'.format(imagename, extension)
+        imview(raster={'file':filename,
+                       #'range':[0, 0.032],
+                       'scaling': float(scaling),
+                       'colorwedge':True},
+               contour = {'file':filename,
+                   'levels':list(levels),
+                   'base':0,
+                   'unit':float(noise)*2.},
+               out = filename+'.png')
+        if dozoom:
+            imview(raster={'file':filename,
+                           #'range':[0, 0.032],
+                           'scaling': float(scaling),
+                           'colorwedge':True},
+                   contour = {'file':filename,
+                              'levels':list(levels),
+                              'base':0,
+                              'unit':float(noise)*2.},
+                   zoom = {'blc':[center-zoom_range,center-zoom_range],'trc':[center+zoom_range, center+zoom_range]},
+                   out = filename+'_zoom.png')
+
+def plot_image_add(imagename, dozoom=False):
+    filename = imagename
+    center = 512
+    zoom_range = 150
+    imview(raster={'file':filename+'.residual',
+                   #'range':[0, 0.032],
+                   #'scaling': float(scaling),
+                   'colorwedge':True},
+           contour = {'file':filename+'.mask',
+               'levels':[1]},
+           out = filename+'.residual.png')
+    if dozoom:
+        imview(raster={'file':filename+'.residual',
+               #'range':[0, 0.032],
+               #'scaling': float(scaling),
+               'colorwedge':True},
+        contour = {'file':filename+'.mask',
+                   'levels':[1]},
+        zoom = {'blc':[center-zoom_range,center-zoom_range],'trc':[center+zoom_range, center+zoom_range]},
+        out = filename+'.residual_zoom.png')
+
+
+def single_tclean(msinfo, s, num):
+    logger.info('Producing tclean images for {0}, field: {1}'.format(msinfo['msfile'], s))
+    makedir('./images/{}'.format(s))
+    imagename = './images/{0}/{1}_{0}_img{2:02d}'.format(s, msinfo['msfilename'], num)
+#    prev_images = glob.glob(imagename+'*')
+#    for prev_image in prev_images:
+#        rmdir(prev_image)
+    cellsize = {'C':'0.008arcsec', 'L':'0.02arcsec'}
+    imsize = 1024
+    cell = cellsize[msinfo['band']]
+    niter = 1000
+    weighting='briggs'
+    robust = 0.5
+    usemask='auto-thresh'
+    maskthreshold=2.5 # sigma
+    maskresolution=1.0 # 2xbmaj
+    nmask=2
+    logger.info('imsize = {0}, cell = {1}, niter = {2}'.format(
+                imsize, cell, niter))
+    logger.info('weighting = {0}, robust = {1}'.format(
+                weighting, robust))
+    logger.info('usemask = {0}, maskthreshold = {1}, maskresolution = {2}, nmask = {3}'.format(
+                usemask, maskthreshold, maskresolution, nmask))
+#    tclean(vis=msinfo['msfile'], field=s, datacolumn='corrected', imagename=imagename,
+#           imsize=imsize, cell=cell, deconvolver='hogbom', weighting=weighting, 
+#           robust=robust, niter=niter, usemask=usemask,
+#           maskthreshold=maskthreshold, # sigma
+#           maskresolution=maskresolution, # 2xbmaj
+#           nmask=nmask,
+#           savemodel='none')
+    plot_image(imagename, dozoom=True)
+    plot_image_add(imagename, dozoom=True)
+
+
+
+def run_first_images(msinfo):
+    logger.info('Start run_first_images')
+    num = 0
+    for s in msinfo['sources']['targets_phscals'].split(','):
+        single_tclean(msinfo, s, num)
+    logger.info('End run_first_images')
+
+    return
+    

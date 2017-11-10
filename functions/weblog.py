@@ -25,6 +25,7 @@ def weblog_header(wlog, section, project):
     wlog.write('<input type="button" value="Observation summary"  onclick="window.location.href=\'./obs_summary.html\'">\n')
     wlog.write('<input type="button" value="Calibration"  onclick="window.location.href=\'./calibration.html\'">\n')
     wlog.write('<input type="button" value="Plots"  onclick="window.location.href=\'./plots.html\'">\n')
+    wlog.write('<input type="button" value="Images"  onclick="window.location.href=\'./images.html\'">\n')
     #wlog.write('<input type="button" value="Files"  onclick="window.location.href=\'./files.html\'">\n')
     wlog.write('</form>\n')
     #wlog.write('<br>\n')
@@ -188,9 +189,11 @@ def weblog_calibration(msinfo):
     wlog = open("./weblog/calibration.html","w")
     weblog_header(wlog, 'Calibration', msinfo['run'])
     #------------------------------------------
-    if os.path.isfile('./calib/caltables'):
+    if os.path.isfile('./calib/caltables.pkl'):
         caltables = load_obj('./calib/caltables')
+        print(caltables)
         for calstep in caltables['all_calsteps']:
+            print calstep
             try:
                 wlog.write('<h4>{}</h4>\n'.format(caltables[calstep]['name']))
                 wlog.write('<table cellspacing = "20" cellpadding = "4px" style="width:40%">\n<tr> <td valign="top">\n')
@@ -198,7 +201,7 @@ def weblog_calibration(msinfo):
                 all_plots = np.sort(glob.glob('./plots/caltables/*{}*.png'.format(calstep)))
                 for p in all_plots:
                     wlog.write('<td><a href = ".{0}"><img style="max-width:700px" src=".{0}"></a></td>\n'.format(p))
-                    wlog.write('</table><br><br>\n<hr>\n')
+                wlog.write('</table><br><br>\n<hr>\n')
             except:
                 pass
 
@@ -214,11 +217,46 @@ def weblog_plots(msinfo):
         plots_corrected(msinfo, wlog)
     if (os.path.isdir('./plots/plots_uvplt/')) and (os.listdir('./plots/plots_uvplt/')):
         plots_uvplt(msinfo, wlog)
-
-
     #------------------------------------------
     weblog_foot(wlog)
     wlog.close()
+
+def weblog_images(msinfo):
+    ###### Images page
+    wlog = open("./weblog/images.html","w")
+    weblog_header(wlog, 'Crude images', msinfo['run'])
+    wlog.write('These are crude images of targets and phase calibrators. The images are produced automatically with tclean in CASA ')
+    wlog.write('using auto-thresh mode, which generates cleaning boxes without human intervention. ')
+    wlog.write('These images should not be used for production.')
+    #------------------------------------------
+    for i in range(len(msinfo['sources']['targets'].split(','))):
+        show_image(msinfo, wlog, i)
+    #------------------------------------------
+    weblog_foot(wlog)
+    wlog.close()
+
+def show_image(msinfo, wlog, i):
+    num = 0
+    target = msinfo['sources']['targets'].split(',')[i]
+    phscal = msinfo['sources']['phscals'].split(',')[i]
+    img_target = './images/{0}/{1}_{0}_img{2:02d}'.format(target, msinfo['msfilename'], num)
+    img_phscal = './images/{0}/{1}_{0}_img{2:02d}'.format(phscal, msinfo['msfilename'], num)
+    wlog.write('<hr>\n')
+    wlog.write('<h3>{}</h3>\n'.format(target))
+    wlog.write('<table bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:30%">\n')
+    wlog.write('<tr><td><b>{0}</b> (target image)</td><td>Residual</td>\n'.format(target))
+    wlog.write('<tr><td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(img_target+'.image.png'))
+    wlog.write('<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>\n'.format(img_target+'.residual.png'))
+    wlog.write('<tr><td>{0} image</td><td>{0} residual</td>\n'.format('zoom'))
+    wlog.write('<tr><td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(img_target+'.image_zoom.png'))
+    wlog.write('<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>\n'.format(img_target+'.residual_zoom.png'))
+    wlog.write('<tr><td><b>{0}</b> (phasecal image) </td><td>Residual</td>\n'.format(phscal))
+    wlog.write('<tr><td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(img_phscal+'.image.png'))
+    wlog.write('<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>\n'.format(img_phscal+'.residual.png'))
+    wlog.write('<tr><td>{0} image</td><td>{0} residual</td>\n'.format('zoom'))
+    wlog.write('<tr><td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(img_phscal+'.image_zoom.png'))
+    wlog.write('<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>\n'.format(img_phscal+'.residual_zoom.png'))
+    wlog.write('</table><br>\n')
 
 def makedir(pathdir):
     try:
@@ -239,6 +277,7 @@ def start_weblog(msinfo):
     weblog_obssum(msinfo)
     weblog_calibration(msinfo)
     weblog_plots(msinfo)
+    weblog_images(msinfo)
     logger.info('End weblog')
 
 

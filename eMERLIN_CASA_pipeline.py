@@ -10,7 +10,7 @@ import logging
 from taskinit import *
 from tasks import *
 
-pipeline_version = 'v0.6.5'
+pipeline_version = 'v0.6.6'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -79,6 +79,7 @@ def run_pipeline(inputs=None, inputs_path=''):
     calib_dir = './calib/'
     plots_dir = './plots/'
     logs_dir  = './logs/'
+    images_dir = './images/'
 
     # Flags applied to the data by the pipeline
     try:
@@ -93,6 +94,7 @@ def run_pipeline(inputs=None, inputs_path=''):
     em.makedir(plots_dir)
     em.makedir(calib_dir)
     em.makedir(logs_dir)
+    em.makedir(images_dir)
     em.makedir(plots_dir+'caltables')
 
 #    if inputs['quit'] == 1: #Check from GUI if quit is needed
@@ -369,6 +371,11 @@ def run_pipeline(inputs=None, inputs_path=''):
             sys.exit()
         emwlog.start_weblog(msinfo)
 
+    ### First images ###
+    if inputs['first_images'] > 0:
+        em.run_first_images(msinfo)
+        
+        
     ### Run monitoring for bright sources:
     try:
         if inputs['monitoring'] > 0:
