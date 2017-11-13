@@ -497,7 +497,7 @@ def check_aoflagger_version():
 def ms2mms(vis,mode):
     logger.info('Start ms2mms')
     if mode == 'parallel':
-        partition(vis=vis,outputvis=vis[:-3]+'.mms',createmms=True,separationaxis="",numsubms="auto",flagbackup=True,datacolumn=
+        partition(vis=vis,outputvis=vis[:-3]+'.mms',createmms=True,separationaxis="auto",numsubms="auto",flagbackup=True,datacolumn=
 "all",field="",spw="",scan="",antenna="",correlation="",timerange="",intent="",array="",uvrange="",observation="",feed="",disableparallel=None,ddistart=None
 ,taql=None)
         if os.path.isdir(vis[:-3]+'.mms') == True:
