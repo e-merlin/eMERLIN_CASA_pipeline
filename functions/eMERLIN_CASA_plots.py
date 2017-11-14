@@ -210,5 +210,5 @@ def make_elevation(msfile, msinfo):
     plotms(vis=msfile, xaxis='time', yaxis='elevation', correlation = 'RR',
     spw='0', coloraxis = 'field', width=900, symbolsize=5, plotrange=[-1,-1,0,90],
     plotfile = plot_file, expformat = 'png', customsymbol = True, symbolshape = 'circle',
-    overwrite=True,  showgui=showgui)
+    overwrite=True,showlegend=True, showgui=showgui)
 
