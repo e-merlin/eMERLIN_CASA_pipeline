@@ -10,7 +10,7 @@ import logging
 from taskinit import *
 from tasks import *
 
-pipeline_version = 'v0.6.8'
+pipeline_version = 'v0.6.9'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -361,14 +361,13 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     ### Write weblog ###
     if inputs['weblog'] > 0:
-        if os.path.isfile(msfile+'.msinfo.pkl'):
-            logger.info('Elevation and uvcov plots will not be created again as long as the {}.pkl file exists.'.format(msfile+'.msinfo'))
-        elif os.path.isdir(msfile):
+        elevplot = './plots/plots_observation/{0}_elevation.png'.format(msinfo['msfilename'])
+        if os.path.isfile(elevplot):
+            logger.info('Elevation plot found.')
+            logger.info('To regenerate elev and uvcov plots remove {}.'.format(elevplot))
+        else:
             emplt.make_elevation(msfile, msinfo)
             emplt.make_uvcov(msfile, msinfo)
-        else:
-            logger.info('MS nor MS.msinfo.pkl found. Weblog cannot be produced')
-            sys.exit()
         emwlog.start_weblog(msinfo)
 
     ### First images ###
