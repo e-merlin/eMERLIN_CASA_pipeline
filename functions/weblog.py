@@ -228,7 +228,9 @@ def weblog_images(msinfo):
     wlog.write('These images should not be used for production.')
     #------------------------------------------
     for i in range(len(msinfo['sources']['targets'].split(','))):
-        show_image(msinfo, wlog, i)
+        img_dir = './images/{0}/'.format(msinfo['sources']['targets'].split(',')[i])
+        if (os.path.isdir(img_dir)) and (os.listdir(img_dir)):
+            show_image(msinfo, wlog, i)
     #------------------------------------------
     weblog_foot(wlog)
     wlog.close()
