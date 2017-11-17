@@ -89,7 +89,7 @@ def weblog_obssum(msinfo):
     weblog_header(wlog, 'Observation summary', msinfo['run'])
     #------------------------------------------
     wlog.write('<h3>Summary:</h3>\n')
-    write_link_txt(wlog, '../{}'.format(msinfo['msfile']+'.listobs'), 'Summary of the observation (listobs)')
+    write_link_txt(wlog, '../{}'.format(msinfo['msfile']+'.listobs.txt'), 'Summary of the observation (listobs)')
     wlog.write('<h3>Sources:</h3>\n')
     wlog.write('<table bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:30%">\n')
     wlog.write('<tr><td><b>Source in MS</b> </td><td> <b>Intent</b></td>\n')
@@ -191,9 +191,7 @@ def weblog_calibration(msinfo):
     #------------------------------------------
     if os.path.isfile('./calib/caltables.pkl'):
         caltables = load_obj('./calib/caltables')
-        print(caltables)
         for calstep in caltables['all_calsteps']:
-            print calstep
             try:
                 wlog.write('<h4>{}</h4>\n'.format(caltables[calstep]['name']))
                 wlog.write('<table cellspacing = "20" cellpadding = "4px" style="width:40%">\n<tr> <td valign="top">\n')

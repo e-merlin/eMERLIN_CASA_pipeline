@@ -394,8 +394,8 @@ def run_importfitsIDI(data_dir,vis, setorder=False):
     ms.writehistory(message='eMER_CASA_Pipeline: Fixed uv coordinates & remove autocorr',msname=vis)
     logger.info('End flagdata_autocorr')
     logger.debug('You have been transformed from an ugly UVFITS to beautiful MS')
-    listobs(vis=vis, listfile=vis+'.listobs', overwrite=True)
-    logger.info('Listobs file in: {0}'.format(vis+'.listobs'))
+    listobs(vis=vis, listfile=vis+'.listobs.txt', overwrite=True)
+    logger.info('Listobs file in: {0}'.format(vis+'.listobs.txt'))
     return
 
 ##Hanning smoothing and flag of autocorrelations, will delete original and rename
@@ -831,7 +831,7 @@ def run_split(msfile, sources, width, timebin, datacolumn='data'):
     outputmsfile = name+'_avg.'+exte
     rmdir(outputmsfile)
     rmdir(outputmsfile+'.flagversions')
-    rmdir(outputmsfile+'.listobs')
+    rmdir(outputmsfile+'.listobs.txt')
     logger.info('Input MS: {0}'.format(msfile))
     logger.info('Output MS: {0}'.format(outputmsfile))
     logger.info('width={0}, timebin={1}'.format(width, timebin,))
@@ -839,8 +839,8 @@ def run_split(msfile, sources, width, timebin, datacolumn='data'):
     logger.info('Data column: {0}'.format(datacolumn))
     split(vis=msfile, outputvis=outputmsfile, field=fields, width=width,
           timebin=timebin, datacolumn=datacolumn, keepflags=False)
-    listobs(vis=outputmsfile, listfile=outputmsfile+'.listobs',overwrite=True)
-    logger.info('Listobs file in: {0}'.format(outputmsfile+'.listobs'))
+    listobs(vis=outputmsfile, listfile=outputmsfile+'.listobs.txt',overwrite=True)
+    logger.info('Listobs file in: {0}'.format(outputmsfile+'.listobs.txt'))
     logger.info('End split')
 
 

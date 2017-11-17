@@ -157,11 +157,11 @@ inbase                  [str]
 Output:
 ```
 inbase.ms               [MS]
-inbase.ms.listobs       [txt]
+inbase.ms.listobs.txt   [txt]
 inbase.ms.sp0           [MS] (only for mixed mode observations)
 ```
 
-First, `inbase.ms` is removed if present (`inbase` is the parameter in inputs file). All files ending in .fits or .FITS in the folder `fits_path` are considered for importing and will be merged. The logger shows which files have been found. Several CASA tasks are executed: `importfitsidi` is executed with `constobsid=True, scanreindexgap_s=15.0`. Then `uvfix` with option `reuse=False` is run to correct UVW values and the output MS replaces `inbase.ms`. Then `flagdata` with `mode='manual',autocorr=True` to remove autocorrelations. Finally, `listobs` is run and a new listobs file is created in `inbase.ms.listobs`.
+First, `inbase.ms` is removed if present (`inbase` is the parameter in inputs file). All files ending in .fits or .FITS in the folder `fits_path` are considered for importing and will be merged. The logger shows which files have been found. Several CASA tasks are executed: `importfitsidi` is executed with `constobsid=True, scanreindexgap_s=15.0`. Then `uvfix` with option `reuse=False` is run to correct UVW values and the output MS replaces `inbase.ms`. Then `flagdata` with `mode='manual',autocorr=True` to remove autocorrelations. Finally, `listobs` is run and a new listobs file is created in `inbase.ms.listobs.txt`.
 
 At this point, the pipeline checks if the observations were observed in mixed mode. If so, the spectral spws will be split and `inbase.ms` will contain only the continuum data (broadband, low spectral resolution). The high resolution spw will be splitted in new MS ending with sp0, sp1, etc.
 
@@ -294,8 +294,8 @@ ptcal                   [str]
 
 Output:
 ```
-inbase_avg.ms           [MS]
-inbase_avg.ms.listobs   [txt]
+inbase_avg.ms               [MS]
+inbase_avg.ms.listobs.txt   [txt]
 ```
 
 It will create a new MS `inbase_avg.ms` (or inbase_avg.mms if working with mms files). It will remove previous inbase_avg.ms file if it exists. Only the fields selected in the inputs file will be included in inbase_avg.ms. Data is averaged using `width=4` and `timebin='1s'` (This will be `2s` when CASA gaincal fixes its bug related to VisibilityIterator2). `keepflags=False` in this version.
@@ -889,7 +889,7 @@ Example:
 ### Pre-processing summary
 |Procedure        |Summary                                                     | CASA/external tasks                       |Inputs                   |Outputs        |Notes                                                                                          |
 |-----------------|------------------------------------------------------------|-------------------------------------------|-------------------------|---------------|-----------------------------------------------------------------------------------------------|
-|run_importfitsidi| Concatenate all fits-IDI files in a folder to a MS         | importfitsidi, fixvis, flagdata (autocorr)|fits_path                |inbase.ms      | Also produces inbase.ms.listobs                                                               |
+|run_importfitsidi| Concatenate all fits-IDI files in a folder to a MS         | importfitsidi, fixvis, flagdata (autocorr)|fits_path                |inbase.ms      | Also produces inbase.ms.listobs.txt                                                               |
 |summary_weblog   | Produces weblog with basic project information and plots   | get_data, plotms                          |                         |               | Info (sources, spw, channels, time, etc), elevation vs time plot and uvcov plots.             |
 | hanning         | Run hanning smoothing                                      | mstransform                               |                         |               | Hanning smoothing helps with RFI removal. Recommended for L band data.                        |                                                                                                                                                                              | ms2mms          | Convert to mms format to run tasks in parallel             | mstransform                               |                         |inbase.mms     | If this step is executed, inbase.ms will be removed and all other steps will run on inbase.mms|
 | flag0_aoflagger | Autoflag data using predefined strategies                  | aoflagger                                 |                         |               | Accepts user strategies per field. Can take very long if low memory available                 |
