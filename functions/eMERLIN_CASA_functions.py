@@ -387,7 +387,12 @@ def run_importfitsIDI(data_dir,vis, setorder=False):
     logger.info('Start UVFIX')
     fixvis(vis=vis,outputvis=vis+'.uvfix',reuse=False)
     logger.info('End UVFIX')
-    rmdir(vis)
+    if os.path.isdir(vis+'.uvfix') == True:
+        rmdir(vis)
+    else:
+        logger.warning('Problem generating UVFIXEd ms. Stopping pipeline')
+        logger.warning('File {0}.uvfix was not created. {0} was not corrected.'.format(vis))
+        sys.exit()
     mvdir(vis+'.uvfix', vis)
     logger.info('Start flagdata_autocorr')
     flagdata(vis=vis,mode='manual',autocorr=True)
@@ -409,6 +414,12 @@ def hanning(inputvis,deloriginal):
         outputvis = inputvis[:-4]+'_hanning'+inputvis[-4:]
         rmdir(outputvis)
         mstransform(vis=inputvis,outputvis=outputvis,hanning=True,datacolumn='data')
+    # Check if hanning smoothed data was not produced:
+    if os.path.isdir(outputvis) == False:
+        logger.warning('Problem generating Hanning smoothed ms. Stopping pipeline')
+        logger.warning('File {0} was not created. {1} was not modified.'.format(outputvis, inputvis))
+        sys.exit()
+    # Delete or move original
     if deloriginal==True:
         rmdir(inputvis)
         rmdir(inputvis+'.flagversions')
@@ -436,7 +447,7 @@ def run_aoflagger_fields(vis, flags, fields='all', pipeline_path='./'):
     if not aoflagger_available:
         logger.info('aoflagger requested but not available.')
         logger.info('Exiting pipeline.')
-        sys.exit()        
+        sys.exit()
     vis_fields = vishead(vis,mode='list',listitems='field')['field'][0]
     fields_num = {f:i for i,f in enumerate(vis_fields)}
     if fields == 'all':
