@@ -10,7 +10,7 @@ import logging
 from taskinit import *
 from tasks import *
 
-pipeline_version = 'v0.6.9'
+pipeline_version = 'v0.6.10'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -359,6 +359,10 @@ def run_pipeline(inputs=None, inputs_path=''):
         emplt.make_4plots(msfile, msinfo, datacolumn='corrected')
         emplt.make_uvplt(msinfo)
 
+    ### First images ###
+    if inputs['first_images'] > 0:
+        em.run_first_images(msinfo)
+
     ### Write weblog ###
     if inputs['weblog'] > 0:
         elevplot = './plots/plots_observation/{0}_elevation.png'.format(msinfo['msfilename'])
@@ -370,11 +374,6 @@ def run_pipeline(inputs=None, inputs_path=''):
             emplt.make_uvcov(msfile, msinfo)
         emwlog.start_weblog(msinfo)
 
-    ### First images ###
-    if inputs['first_images'] > 0:
-        em.run_first_images(msinfo)
-        
-        
     ### Run monitoring for bright sources:
     try:
         if inputs['monitoring'] > 0:
