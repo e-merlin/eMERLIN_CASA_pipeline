@@ -159,10 +159,10 @@ def run_pipeline(inputs=None, inputs_path=''):
 
 
     ### Average data ###
-    if inputs['average_1'] == 1:
+    if inputs['average_1'] > 0:
         sources = em.user_sources(inputs)
-        #em.run_split(msfile, sources=sources, width=4, timebin='2s')
-        em.run_split(msfile, sources=sources, width=4, timebin='')
+        timebin = '{}s'.format(inputs['average_1'])
+        em.run_split(msfile, sources=sources, width=4, timebin=timebin)
 
     # Check if averaged data already generated
     if os.path.isdir('./'+inputs['inbase']+'_avg.mms') == True:
