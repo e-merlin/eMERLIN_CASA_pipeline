@@ -298,7 +298,7 @@ inbase_avg.ms               [MS]
 inbase_avg.ms.listobs.txt   [txt]
 ```
 
-It will create a new MS `inbase_avg.ms` (or inbase_avg.mms if working with mms files). It will remove previous inbase_avg.ms file if it exists. Only the fields selected in the inputs file will be included in inbase_avg.ms. Data is averaged using `width=4` and `timebin='1s'` (This will be `2s` when CASA gaincal fixes its bug related to VisibilityIterator2). `keepflags=False` in this version.
+It will create a new MS `inbase_avg.ms` (or inbase_avg.mms if working with mms files). It will remove previous inbase_avg.ms file if it exists. Only the fields selected in the inputs file will be included in inbase_avg.ms. Data is averaged using `width=4` and `timebin='1s'` (This will be `2s` when CASA gaincal fixes its bug related to VisibilityIterator2). Optionally you can use a value different than `1` in the inputs file, and that number will be the timebin value in seconds. `keepflags=False` in this version.
 
 ---
 **Important** when the inbase_avg.ms file is produced, all the steps of the pipeline after this one will always work on inbase_avg.ms only, and not the original dataset. At this point, `get_msinfo` is executed again, and the `msinfo` dictionary is created and saved in `inbase_avg.ms.msinfo.pkl`. If the averaged dataset does not exist, the pipeline will always use the unaveraged dataset `inbase.ms`.
@@ -364,9 +364,9 @@ You can select which steps to run in the inputs file by setting the correspondin
 
 During calibration, solutions are found using only the inner ~90% channels of each spw. So `innerchan=0.1*(nchan-nchan/512.), 0.9*(nchan-nchan/512.)`.
 
-**Important.** Below we list the parameters used to create each table in each calibration step. `previous_cal` is a list of names of previous calibration tables that will be used to fill the `gaintable`, `gainfield`, `interp`, `spwmap`. Those parameters are defined when the table is created, and they will be used only to generate other tables when the corresponding table name is listed in `previous_cal`. To know the values of those parameters you have to check them in the description of the tables listed in `previous_cal`.
+**Important.** Below we list the parameters used to create each table in each calibration step. `previous_cal` is a list of names of previous calibration tables that will be used to fill the `gaintable`, `gainfield`, `interp`, `spwmap`. Those parameters are defined when the table is created, and they will be used only to generate other tables when the corresponding table name is listed in `previous_cal`. To know the values of those parameters you have to check them in the description of the corresponding table.
 
-Also, the **applycal** description at the end of each step shows which tables will be applied to calibrators and targets respectively if `2` is selected for that step in the inputs file.
+The step applycal_all will apply all calibration: it will write `CORRECTED_DATA` column in the MS using the last caltables. In particular it will use `delay.K1,bpcal_sp.B1,allcal_p.G0,allcal_p_jitter.G0,allcal_ap.G3` for the calibrators and `delay.K1,bpcal_sp.B1,phscal_p_scan.G2,allcal_ap_scan.G3` for the targets. If you want to apply the calibration up to an intermediate step (for instance you want to apply the delay and BP caltables only to check their effects before proceeding), you can set in the inputs file a value of `2`, which means apply all previous calibration up to that step. Below you can find the **applycal** description at the end of each step that shows which tables will be applied to calibrators and targets respectively if `2` is selected for that step in the inputs file.
 
 `calsources` is a comma-separated list of all calibrator sources.
 
