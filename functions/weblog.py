@@ -91,9 +91,9 @@ def weblog_obssum(msinfo):
     wlog.write('<h3>Summary:</h3>\n')
     write_link_txt(wlog, '../{}'.format(msinfo['msfile']+'.listobs.txt'), 'Summary of the observation (listobs)')
     wlog.write('<h3>Sources:</h3>\n')
+    infile = '../plots/plots_observation/source_separations.txt'
+    wlog.write('Source pairs and separations: <a href="{0}" target="_blank">txt</a><br>\n'.format(infile))
     if msinfo['sources']['targets'] != '':
-        infile = '../plots/plots_observation/source_separations.txt'
-        wlog.write('Source pairs and separations: <a href="{0}" target="_blank">txt</a><br>\n'.format(infile))
         wlog.write('<table bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:30%">\n')
         wlog.write('<tr><td><b>Target</b> </td><td><b>Phase cal</b></td><td><b>Separation [deg]</b></td>\n')
         separations = msinfo['separations']
@@ -119,9 +119,9 @@ def weblog_obssum(msinfo):
                                  msinfo['sources']['allsources'].split(',') if s not in
                        msinfo['sources']['mssources']])
     if missing_sources != '':
-        wlog.write('*Sources in inputs file but not in MS: {0}\n'.format(missing_sources))
+        wlog.write('*Sources specified in the inputs file but not in MS: {0}\n'.format(missing_sources))
     else:
-        wlog.write('*All sources in inputs file are in the MS.\n')
+        wlog.write('*All sources specified in the inputs file are in the MS.\n')
 
     wlog.write('<h3>Antennas:</h3>\n')
     wlog.write('<pre>\n')
