@@ -45,5 +45,4 @@ flag_4_rflag    = 0
 plot_corrected  = 0
 first_images    = 0
 weblog          = 0
-# For bandpass_0, delay, gain_0_p_ap, fluxscale, bandpass_1_sp or gain_1_amp_sp
-# a value of 2 means run and apply the calibration up to that step.
+# To apply calibration up to an individual step, read the documentation

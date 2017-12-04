@@ -91,8 +91,27 @@ def weblog_obssum(msinfo):
     wlog.write('<h3>Summary:</h3>\n')
     write_link_txt(wlog, '../{}'.format(msinfo['msfile']+'.listobs.txt'), 'Summary of the observation (listobs)')
     wlog.write('<h3>Sources:</h3>\n')
+    if msinfo['sources']['targets'] != '':
+        infile = '../plots/plots_observation/source_separations.txt'
+        wlog.write('Source pairs and separations: <a href="{0}" target="_blank">txt</a><br>\n'.format(infile))
+        wlog.write('<table bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:30%">\n')
+        wlog.write('<tr><td><b>Target</b> </td><td><b>Phase cal</b></td><td><b>Separation [deg]</b></td>\n')
+        separations = msinfo['separations']
+        for s1, s2 in zip(msinfo['sources']['targets'].split(','),
+                      msinfo['sources']['phscals'].split(',')):
+            if s1 not in msinfo['sources']['mssources'].split(','):
+                logger.warning('{} not in MS'.format(s1))
+                separation = 'Not in MS'
+            elif s2 not in msinfo['sources']['mssources'].split(','):
+                logger.warning('{} not in MS'.format(s2))
+                separation = 'Not in MS'
+            else:
+                separation = '{0:5.2f}'.format(separations[s1+'-'+s2])
+            wlog.write('<tr><td>{0} </td><td> {1}</td><td>{2}</td>\n'.format(s1, s2, separation))
+        wlog.write('</table><br>\n')
     wlog.write('<table bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:30%">\n')
-    wlog.write('<tr><td><b>Source in MS</b> </td><td> <b>Intent</b></td>\n')
+    wlog.write('Sources in MS:')
+    wlog.write('<tr><td><b>Source</b> </td><td> <b>Intent</b></td>\n')
     for source in msinfo['sources']['mssources'].split(','):
         wlog.write('<tr><td>{0} </td><td> {1}</td>\n'.format(source, msinfo['sources']['source_intent'][source]))
     wlog.write('</table><br>\n')
@@ -100,9 +119,10 @@ def weblog_obssum(msinfo):
                                  msinfo['sources']['allsources'].split(',') if s not in
                        msinfo['sources']['mssources']])
     if missing_sources != '':
-        wlog.write('Sources in inputs file but not in MS: {0}'.format(missing_sources))
+        wlog.write('*Sources in inputs file but not in MS: {0}\n'.format(missing_sources))
     else:
-        wlog.write('All sources in inputs file are in the MS.')
+        wlog.write('*All sources in inputs file are in the MS.\n')
+
     wlog.write('<h3>Antennas:</h3>\n')
     wlog.write('<pre>\n')
     for a in msinfo['antennas']:

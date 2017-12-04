@@ -301,6 +301,42 @@ def get_polarization(msfile):
     tb.close()
     return ', '.join(polarization[:,0])
 
+def get_directions(msfile):
+    ms.open(msfile)
+    d = ms.getdata(['field_id', 'axis_info'],ifraxis=True)
+    ms.close()
+    field_ids = np.unique(d['field_id'])
+    tb.open(msfile+'/FIELD')
+    field_names = tb.getcol('NAME')
+    tb.close()
+    directions = {}
+    for field in field_ids:
+        field_name = field_names[np.argwhere(field_ids == field)[0][0]]
+        vhead = vishead(msfile, mode = 'list', listitems = 'ptcs')
+        ra_float = vhead['ptcs'][0]['r'+str(field+1)][0][0][0]*180./np.pi
+        de_float = vhead['ptcs'][0]['r'+str(field+1)][1][0][0]*180./np.pi
+        directions[field_name] = me.direction('J2000', '{}deg'.format(ra_float), '{}deg'.format(de_float))
+    return directions
+
+def get_distances(msfile, directions=''):
+    if directions == '':
+        directions = get_directions(msfile)
+    tb.open(msfile+'/FIELD')
+    field_names = tb.getcol('NAME')
+    tb.close()
+    separations = {}
+    # Write all separations in a txt file
+    plots_obs_dir = './plots/plots_observation/'
+    makedir(plots_obs_dir)
+    sep_file = open(plots_obs_dir+'source_separations.txt', 'wb')
+    for i in range(len(field_names)):
+        for j in range(i+1, len(field_names)):
+            f1 = field_names[i]
+            f2 = field_names[j]
+            separations[f1+'-'+f2] = me.separation(directions[f1],directions[f2])['value']
+            sep_file.write('{0:10} {1:10} {2:7.2f}deg\n'.format(f1, f2, separations[f1+'-'+f2]))
+    return separations
+
 
 def get_msinfo(msfile, inputs, doprint=False):
     logger.info('Reading ms file information for MS: {0}'.format(msfile))
@@ -326,6 +362,8 @@ def get_msinfo(msfile, inputs, doprint=False):
     msinfo['innerchan'] = '{0:.0f}~{1:.0f}'.format(0.1*(nchan-nchan/512.), 0.9*(nchan-nchan/512.))
     msinfo['polarizations'] = get_polarization(msfile)
     msinfo['refant'] = define_refant(msfile, msinfo, inputs)
+    msinfo['directions'] = get_directions(msfile)
+    msinfo['separations'] = get_distances(msfile, directions=msinfo['directions'])
     if doprint:
         prt_dict(msinfo)
     return msinfo
