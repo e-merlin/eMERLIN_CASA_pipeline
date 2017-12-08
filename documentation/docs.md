@@ -252,7 +252,7 @@ Different flags are applied to the data:
  - Lo&Mk2 for all sources.
  - Edge channels for all sources, all spw, defined as spw='*:0~(nchan/128-1);(nchan-nchan/128)~(nchan-1)'.
  - Quack for 5 minutes for 1331+305, 1407+284, 0319+415 if they are present.
- - Quack 20 seconds for all targets and phasecals.
+ - Quack n seconds for all targets and phasecals. The number of seconds depend on the target-phasecal separation in degrees. 20s for separation < 1deg, 25s for 1.0 <= separation < 2.0, 30s for 2.0 <= separation < 3.5, 35s for separation >= 3.5.
  - Scans in `Lo_dropout_scans` for antenna = 'Lo' and fields in `phscals`.
 
 

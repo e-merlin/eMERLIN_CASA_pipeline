@@ -10,7 +10,7 @@ import logging
 from taskinit import *
 from tasks import *
 
-pipeline_version = 'v0.6.12'
+pipeline_version = 'v0.6.13'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -113,6 +113,10 @@ def run_pipeline(inputs=None, inputs_path=''):
         em.run_importfitsIDI(fits_path, msfile)
         em.check_mixed_mode(msfile,mode='split')
 
+    msinfo = em.get_msinfo(msfile, inputs)
+    save_obj(msinfo, msfile+'.msinfo')
+    logger.info('Saving information of MS {0} in: {1}'.format(msfile, msfile+'.pkl'))
+
     ### Write summary weblog ###
     if inputs['summary_weblog'] == 1:
         logger.info('Starting summary weblog')
@@ -120,11 +124,8 @@ def run_pipeline(inputs=None, inputs_path=''):
             logger.info('Error finding original data: {0}'.format(msfile))
             logger.info('summary_weblog cannot be run. Exiting pipeline.')
             sys.exit()
-        msinfo = em.get_msinfo(msfile, inputs)
         emplt.make_elevation(msfile, msinfo)
         emplt.make_uvcov(msfile, msinfo)
-        save_obj(msinfo, msfile+'.msinfo')
-        logger.info('Saving information of MS {0} in: {1}'.format(msfile, msfile+'.pkl'))
         emwlog.start_weblog(msinfo)
 
     if inputs['hanning'] == 1:
@@ -150,7 +151,7 @@ def run_pipeline(inputs=None, inputs_path=''):
     if inputs['flag_1_apriori'] == 1:
         sources = em.user_sources(inputs)
         Lo_dropout_scans =inputs['Lo_dropout_scans']
-        flags = em.flagdata1_apriori(msfile=msfile, sources=sources,
+        flags = em.flagdata1_apriori(msfile=msfile, msinfo=msinfo,
                                      Lo_dropout_scans=Lo_dropout_scans, flags=flags, do_quack=True)
 
     ### Load manual flagging file

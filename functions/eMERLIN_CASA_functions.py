@@ -637,7 +637,35 @@ def ms2mms_fields(msfile):
 #    logger.info('End prediagnostics')
 #
 
-def flagdata1_apriori(msfile, sources, Lo_dropout_scans, flags, do_quack=True):
+def find_quacktime(msinfo, s1, s2):
+    separations = msinfo['separations']
+    if s1 not in msinfo['sources']['mssources'].split(','):
+        logger.warning('{} not in MS'.format(s1))
+        separation = 'Not in MS'
+        return 0
+    elif s2 not in msinfo['sources']['mssources'].split(','):
+        logger.warning('{} not in MS'.format(s2))
+        separation = 'Not in MS'
+        return 0
+    else:
+        try:
+            separation = float('{0:5.2f}'.format(separations[s1+'-'+s2]))
+        except:
+            separation = float('{0:5.2f}'.format(separations[s2+'-'+s1]))
+    if separation < 1.0:
+        quacktime = 20.
+    elif 1.0 <= separation < 2.0:
+        quacktime = 25.
+    elif 2.0 <= separation < 3.5:
+        quacktime = 30.
+    elif separation >= 3.5:
+        quacktime = 35.
+    else:
+        quacktime = 0
+    return quacktime
+
+def flagdata1_apriori(msfile, msinfo, Lo_dropout_scans, flags, do_quack=True):
+    sources = msinfo['sources']
     logger.info('Start flagdata1_apriori')
     antennas = get_antennas(msfile)
     # Find number of channels in MS:
@@ -653,16 +681,23 @@ def flagdata1_apriori(msfile, sources, Lo_dropout_scans, flags, do_quack=True):
     channels_to_flag = '*:0~{0};{1}~{2}'.format(nchan/128-1, nchan-nchan/128, nchan-1)
     logger.info('MS has {} channels/spw'.format(nchan))
     logger.info('Flagging edge channels {0}'.format(channels_to_flag))
-    flagdata(vis=msfile, mode='manual', field=sources['allsources'], spw=channels_to_flag)
+#    flagdata(vis=msfile, mode='manual', field=sources['allsources'], spw=channels_to_flag)
     # Slewing (typical):
     # Main calibrators, 5 min
-    logger.info('Flagging 5 min from bright calibrators')
     bright_cal = join_lists([si for si in ['1331+305','1407+284','0319+415'] if si in
                   sources['maincal']])
-    flagdata(vis=msfile, field=bright_cal, mode='quack', quackinterval=300)
-    # Target and phase reference, 20 sec
-    logger.info('Flagging first 20 sec of target and phasecal')
-    flagdata(vis=msfile, field=sources['targets_phscals'], mode='quack', quackinterval=20)
+    if bright_cal != '':
+        logger.info('Flagging 5 min from bright calibrators')
+        flagdata(vis=msfile, field=bright_cal, mode='quack', quackinterval=300)
+    for s1, s2 in zip(msinfo['sources']['targets'].split(','),
+                      msinfo['sources']['phscals'].split(',')):
+        quacktime = find_quacktime(msinfo, s1, s2)
+        if s1 != '':
+            logger.info('Flagging first {0} sec of target {1} and phasecal {2}'.format(quacktime, s1, s2))
+            flagdata(vis=msfile, field=','.join([s1,s2]), mode='quack', quackinterval=quacktime)
+    ## Target and phase reference, 20 sec
+    #logger.info('Flagging first 20 sec of target and phasecal')
+    #flagdata(vis=msfile, field=sources['targets_phscals'], mode='quack', quackinterval=20)
     # We can add more (Lo is slower, etc).
     if Lo_dropout_scans != '':
         logger.info('Flagging Lo dropout scans: {0}. Assuming phasecal is: {1}'.format(Lo_dropout_scans, sources['phscals']))
