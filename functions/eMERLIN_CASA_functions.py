@@ -434,7 +434,7 @@ def run_importfitsIDI(data_dir,msfile, doaverage=0):
             rmdir(msfile)
         else:
             logger.warning('Problem generating averaged ms. Stopping pipeline')
-            logger.warning('File {0}.tavg was not created.'.format(vis))
+            logger.warning('File {0}.tavg was not created.'.format(msfile))
             sys.exit()
         mvdir(msfile+'_tavg', msfile)
         logger.info('End average0')
