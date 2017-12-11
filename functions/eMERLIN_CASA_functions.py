@@ -614,16 +614,19 @@ def flagdata1_apriori(msfile, msinfo, Lo_dropout_scans, flags, do_quack=True):
     # Flag Lo-Mk2
     if 'Lo' in antennas and 'Mk2' in antennas:
         logger.info('Flagging Lo-Mk2 baseline')
-        flagdata(vis=msfile, mode='manual', field=sources['allsources'], antenna='Lo*&Mk2*')
+        flagdata(vis=msfile, mode='manual', antenna='Lo*&Mk2*')
     # Subband edges
     channels_to_flag = '*:0~{0};{1}~{2}'.format(nchan/128-1, nchan-nchan/128, nchan-1)
     logger.info('MS has {} channels/spw'.format(nchan))
     logger.info('Flagging edge channels {0}'.format(channels_to_flag))
-#    flagdata(vis=msfile, mode='manual', field=sources['allsources'], spw=channels_to_flag)
+    flagdata(vis=msfile, mode='manual', spw=channels_to_flag)
     # Slewing (typical):
-    # Main calibrators, 5 min
+    ## Target and phase reference, 20 sec
+    logger.info('Flagging first 20 sec of all sources.')
+    flagdata(vis=msfile, mode='quack', quackinterval=20)
+     Main calibrators, 5 min
     bright_cal = join_lists([si for si in ['1331+305','1407+284','0319+415'] if si in
-                  sources['maincal']])
+                  msinfo['sources']['mssources']])
     if bright_cal != '':
         logger.info('Flagging 5 min from bright calibrators')
         flagdata(vis=msfile, field=bright_cal, mode='quack', quackinterval=300)
@@ -633,14 +636,13 @@ def flagdata1_apriori(msfile, msinfo, Lo_dropout_scans, flags, do_quack=True):
         if s1 != '':
             logger.info('Flagging first {0} sec of target {1} and phasecal {2}'.format(quacktime, s1, s2))
             flagdata(vis=msfile, field=','.join([s1,s2]), mode='quack', quackinterval=quacktime)
-    ## Target and phase reference, 20 sec
-    #logger.info('Flagging first 20 sec of target and phasecal')
-    #flagdata(vis=msfile, field=sources['targets_phscals'], mode='quack', quackinterval=20)
     # We can add more (Lo is slower, etc).
     if Lo_dropout_scans != '':
-        logger.info('Flagging Lo dropout scans: {0}. Assuming phasecal is: {1}'.format(Lo_dropout_scans, sources['phscals']))
-        flagdata(vis=msfile, antenna='Lo', field=sources['phscals'], scan=Lo_dropout_scans)
-
+        if msinfo['sources']['phscals'] != '':
+            logger.info('Flagging Lo dropout scans: {0}. Assuming phasecal is: {1}'.format(Lo_dropout_scans, sources['phscals']))
+            flagdata(vis=msfile, antenna='Lo', field=sources['phscals'], scan=Lo_dropout_scans)
+        else:
+            logger.warning('Lo_dropout_scans selected but no name for phasecal. Please fill the phscal field in the inputs file.')
     flag_applied(flags, 'flagdata1_apriori')
     logger.info('End flagdata1_apriori')
     return flags
