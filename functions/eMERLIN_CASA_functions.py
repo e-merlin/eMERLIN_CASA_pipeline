@@ -406,15 +406,15 @@ def remove_missing_scans(caltable, scans2flag):
 
 def run_importfitsIDI(data_dir,msfile, doaverage=0):
     logger.info('Starting importfitsIDI procedure')
-#    rmdir(msfile)
-#    fitsfiles =[]
-#    for file in os.listdir(data_dir):
-#        if file.endswith('fits') or file.endswith('FITS'):
-#            fitsfiles = fitsfiles + [data_dir+file]
-#            logger.info('FITS file found to be imported: {0}'.format(file))
-#    logger.info('Start importfitsIDI')
-#    importfitsidi(fitsidifile=fitsfiles, vis=msfile, constobsid=True, scanreindexgap_s=15.0)
-#    ms.writehistory(message='eMER_CASA_Pipeline: Import fitsidi to ms, complete',msname=msfile)
+    rmdir(msfile)
+    fitsfiles =[]
+    for file in os.listdir(data_dir):
+        if file.endswith('fits') or file.endswith('FITS'):
+            fitsfiles = fitsfiles + [data_dir+file]
+            logger.info('FITS file found to be imported: {0}'.format(file))
+    logger.info('Start importfitsIDI')
+    importfitsidi(fitsidifile=fitsfiles, vis=msfile, constobsid=True, scanreindexgap_s=15.0)
+    ms.writehistory(message='eMER_CASA_Pipeline: Import fitsidi to ms, complete',msname=msfile)
      #if setorder:
      #    logger.info('Setting MS order with setToCasaOrder')
      #    mvdir(msfile, msfile+'_noorder')
@@ -463,11 +463,10 @@ def hanning(inputvis,deloriginal):
     if inputvis[-3:].lower() == '.ms':
         outputvis = inputvis[:-3]+'_hanning'+inputvis[-3:]
         rmdir(outputvis)
-        hanningsmooth(vis=inputvis,outputvis=outputvis,datacolumn='data')
     elif inputvis[-3:].lower() == 'mms':
         outputvis = inputvis[:-4]+'_hanning'+inputvis[-4:]
         rmdir(outputvis)
-        mstransform(vis=inputvis,outputvis=outputvis,hanning=True,datacolumn='data')
+    mstransform(vis=inputvis,outputvis=outputvis,hanning=True,datacolumn='data')
     # Check if hanning smoothed data was not produced:
     if os.path.isdir(outputvis) == False:
         logger.warning('Problem generating Hanning smoothed ms. Stopping pipeline')
