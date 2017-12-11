@@ -10,7 +10,7 @@ import logging
 from taskinit import *
 from tasks import *
 
-pipeline_version = 'v0.6.13'
+pipeline_version = 'v0.7.1'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -133,10 +133,7 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     ### Convert MS to MMS ###
     if inputs['ms2mms'] > 0:
-        if em.check_aoflagger_version():
-            em.ms2mms_fields(msfile=msfile)
-        else:
-            em.ms2mms(vis=msfile,mode='parallel')
+        em.ms2mms(vis=msfile,mode='parallel')
 
     ### check for parallelisation
     if os.path.isdir('./'+inputs['inbase']+'.mms') == True:

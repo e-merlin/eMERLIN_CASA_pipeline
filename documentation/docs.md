@@ -4,7 +4,7 @@ It can also be converted to pdf using: http://www.markdowntopdf.com/
 -->
 
 # e-MERLIN CASA pipeline
-### Documentation for v0.6
+### Documentation for v0.7
 
 ---
 # Table of contents
@@ -253,10 +253,12 @@ Different flags are applied to the data:
 
  - Lo&Mk2 for all sources.
  - Edge channels for all sources, all spw, defined as spw='*:0~(nchan/128-1);(nchan-nchan/128)~(nchan-1)'.
- - Quack for 5 minutes for 1331+305, 1407+284, 0319+415 if they are present.
+ - Quack 20 seconds on all sources in the MS.
+ - Quack for 5 minutes for 1331+305, 1407+284, 0319+415 if they are present in the MS (no need to include in inputs file.
  - Quack n seconds for all targets and phasecals. The number of seconds depend on the target-phasecal separation in degrees. 20s for separation < 1deg, 25s for 1.0 <= separation < 2.0, 30s for 2.0 <= separation < 3.5, 35s for separation >= 3.5.
  - Scans in `Lo_dropout_scans` for antenna = 'Lo' and fields in `phscals`.
 
+Source names in the inputs parameters are only needed in two cases: `phscals` in order to flag Lo_dropout scans, and `targets`+`phscals` to compute quackintervals that depend on the target-phasecal separations (otherwise 20s are flagged by default). The rest of the a-priori flagging steps do not require any source name in the inputs file.
 
 ---
 ### 4.1.7 flag_2a_manual

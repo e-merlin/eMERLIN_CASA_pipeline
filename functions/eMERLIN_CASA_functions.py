@@ -624,7 +624,7 @@ def flagdata1_apriori(msfile, msinfo, Lo_dropout_scans, flags, do_quack=True):
     ## Target and phase reference, 20 sec
     logger.info('Flagging first 20 sec of all sources.')
     flagdata(vis=msfile, mode='quack', quackinterval=20)
-     Main calibrators, 5 min
+    # Main calibrators, 5 min
     bright_cal = join_lists([si for si in ['1331+305','1407+284','0319+415'] if si in
                   msinfo['sources']['mssources']])
     if bright_cal != '':
