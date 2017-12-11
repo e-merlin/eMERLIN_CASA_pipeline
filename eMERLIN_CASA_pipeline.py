@@ -109,8 +109,8 @@ def run_pipeline(inputs=None, inputs_path=''):
     #################################
 
     ## Pipeline processes, inputs are read from the inputs dictionary
-    if inputs['run_importfits'] == 1:
-        em.run_importfitsIDI(fits_path, msfile)
+    if inputs['run_importfits'] > 0:
+        em.run_importfitsIDI(fits_path, msfile, doaverage=inputs['run_importfits'])
         em.check_mixed_mode(msfile,mode='split')
 
     msinfo = em.get_msinfo(msfile, inputs)
@@ -118,7 +118,7 @@ def run_pipeline(inputs=None, inputs_path=''):
     logger.info('Saving information of MS {0} in: {1}'.format(msfile, msfile+'.pkl'))
 
     ### Write summary weblog ###
-    if inputs['summary_weblog'] == 1:
+    if inputs['summary_weblog'] > 0:
         logger.info('Starting summary weblog')
         if not os.path.isdir(msfile):
             logger.info('Error finding original data: {0}'.format(msfile))
@@ -128,11 +128,11 @@ def run_pipeline(inputs=None, inputs_path=''):
         emplt.make_uvcov(msfile, msinfo)
         emwlog.start_weblog(msinfo)
 
-    if inputs['hanning'] == 1:
+    if inputs['hanning'] > 0:
         em.hanning(inputvis=msfile,deloriginal=True)
 
     ### Convert MS to MMS ###
-    if inputs['ms2mms'] == 1:
+    if inputs['ms2mms'] > 0:
         if em.check_aoflagger_version():
             em.ms2mms_fields(msfile=msfile)
         else:
@@ -144,18 +144,18 @@ def run_pipeline(inputs=None, inputs_path=''):
         logger.info('Using MS file: {0}'.format(msfile))
 
     ### Run AOflagger
-    if inputs['flag_0_aoflagger'] == 1:
+    if inputs['flag_0_aoflagger'] > 0:
         flags = em.run_aoflagger_fields(vis=msfile, flags=flags, fields='all', pipeline_path = pipeline_path)
 
     ### A-priori flagdata: Lo&Mk2, edge channels, standard quack
-    if inputs['flag_1_apriori'] == 1:
+    if inputs['flag_1_apriori'] > 0:
         sources = em.user_sources(inputs)
         Lo_dropout_scans =inputs['Lo_dropout_scans']
         flags = em.flagdata1_apriori(msfile=msfile, msinfo=msinfo,
                                      Lo_dropout_scans=Lo_dropout_scans, flags=flags, do_quack=True)
 
     ### Load manual flagging file
-    if inputs['flag_2a_manual'] == 1:
+    if inputs['flag_2a_manual'] > 0:
         flags = em.flagdata2_manual(msfile=msfile, inpfile=inputs['manual_flags_a'], flags=flags)
 
 

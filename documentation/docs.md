@@ -161,7 +161,9 @@ inbase.ms.listobs.txt   [txt]
 inbase.ms.sp0           [MS] (only for mixed mode observations)
 ```
 
-First, `inbase.ms` is removed if present (`inbase` is the parameter in inputs file). All files ending in .fits or .FITS in the folder `fits_path` are considered for importing and will be merged. The logger shows which files have been found. Several CASA tasks are executed: `importfitsidi` is executed with `constobsid=True, scanreindexgap_s=15.0`. Then `uvfix` with option `reuse=False` is run to correct UVW values and the output MS replaces `inbase.ms`. Then `flagdata` with `mode='manual',autocorr=True` to remove autocorrelations. Finally, `listobs` is run and a new listobs file is created in `inbase.ms.listobs.txt`.
+First, `inbase.ms` is removed if present (`inbase` is the parameter in inputs file). All files ending in .fits or .FITS in the folder `fits_path` are considered for importing and will be merged. The logger shows which files have been found. Several CASA tasks are executed: `importfitsidi` is executed with `constobsid=True, scanreindexgap_s=15.0`. The dataset can be averaged in time at this point by setting the `run_importfits = n` with n > 1. The dataset will be averaged with a timebin of `n`. 
+
+Then `uvfix` with option `reuse=False` is run to correct UVW values and the output MS replaces `inbase.ms`. Then `flagdata` with `mode='manual',autocorr=True` to remove autocorrelations. Finally, `listobs` is run and a new listobs file is created in `inbase.ms.listobs.txt`.
 
 At this point, the pipeline checks if the observations were observed in mixed mode. If so, the spectral spws will be split and `inbase.ms` will contain only the continuum data (broadband, low spectral resolution). The high resolution spw will be splitted in new MS ending with sp0, sp1, etc.
 

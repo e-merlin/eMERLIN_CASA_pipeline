@@ -404,41 +404,57 @@ def remove_missing_scans(caltable, scans2flag):
     logger.info('Removing Lo solutions for dropout scans from {0}: {1}'.format(caltable, scans2flag))
     tb.close()
 
-def run_importfitsIDI(data_dir,vis, setorder=False):
+def run_importfitsIDI(data_dir,msfile, doaverage=0):
     logger.info('Starting importfitsIDI procedure')
-    rmdir(vis)
-    fitsfiles =[]
-    for file in os.listdir(data_dir):
-        if file.endswith('fits') or file.endswith('FITS'):
-            fitsfiles = fitsfiles + [data_dir+file]
-            logger.info('FITS file found to be imported: {0}'.format(file))
-    logger.info('Start importfitsIDI')
-    importfitsidi(fitsidifile=fitsfiles, vis=vis, constobsid=True, scanreindexgap_s=15.0)
-    ms.writehistory(message='eMER_CASA_Pipeline: Import fitsidi to ms, complete',msname=vis)
-    if setorder:
-        logger.info('Setting MS order with setToCasaOrder')
-        mvdir(vis, vis+'_noorder')
-        setToCasaOrder(inputMS=vis+'_noorder', outputMS=vis)
-        rmdir(vis+'_noorder')
-    ms.writehistory(message='eMER_CASA_Pipeline: setToCasaOrder, complete',msname=vis)
+#    rmdir(msfile)
+#    fitsfiles =[]
+#    for file in os.listdir(data_dir):
+#        if file.endswith('fits') or file.endswith('FITS'):
+#            fitsfiles = fitsfiles + [data_dir+file]
+#            logger.info('FITS file found to be imported: {0}'.format(file))
+#    logger.info('Start importfitsIDI')
+#    importfitsidi(fitsidifile=fitsfiles, vis=msfile, constobsid=True, scanreindexgap_s=15.0)
+#    ms.writehistory(message='eMER_CASA_Pipeline: Import fitsidi to ms, complete',msname=msfile)
+     #if setorder:
+     #    logger.info('Setting MS order with setToCasaOrder')
+     #    mvdir(msfile, msfile+'_noorder')
+     #    setToCasaOrder(inputMS=msfile+'_noorder', outputMS=msfile)
+     #    rmdir(msfile+'_noorder')
+     #ms.writehistory(message='eMER_CASA_Pipeline: setToCasaOrder, complete',msname=msfile)
     logger.info('End importfitsIDI')
+
+    if doaverage > 1:
+        logger.info('Start average0')
+        timebin = '{}s'.format(doaverage)
+        rmdir(msfile+'_tavg')
+        logger.info('Averaging raw data to {}'.format(timebin))
+        mstransform(vis=msfile, outputvis=msfile+'_tavg', datacolumn='data',
+                    timeaverage=True, timebin=timebin)
+        if os.path.isdir(msfile+'_tavg') == True:
+            rmdir(msfile)
+        else:
+            logger.warning('Problem generating averaged ms. Stopping pipeline')
+            logger.warning('File {0}.tavg was not created.'.format(vis))
+            sys.exit()
+        mvdir(msfile+'_tavg', msfile)
+        logger.info('End average0')
     logger.info('Start UVFIX')
-    fixvis(vis=vis,outputvis=vis+'.uvfix',reuse=False)
+    fixvis(vis=msfile,outputvis=msfile+'.uvfix',reuse=False)
     logger.info('End UVFIX')
-    if os.path.isdir(vis+'.uvfix') == True:
-        rmdir(vis)
+    if os.path.isdir(msfile+'.uvfix') == True:
+        rmdir(msfile)
     else:
         logger.warning('Problem generating UVFIXEd ms. Stopping pipeline')
-        logger.warning('File {0}.uvfix was not created. {0} was not corrected.'.format(vis))
+        logger.warning('File {0}.uvfix was not created. {0} was not corrected.'.format(msfile))
         sys.exit()
-    mvdir(vis+'.uvfix', vis)
+    mvdir(msfile+'.uvfix', msfile)
     logger.info('Start flagdata_autocorr')
-    flagdata(vis=vis,mode='manual',autocorr=True)
-    ms.writehistory(message='eMER_CASA_Pipeline: Fixed uv coordinates & remove autocorr',msname=vis)
+    flagdata(vis=msfile,mode='manual',autocorr=True)
+    ms.writehistory(message='eMER_CASA_Pipeline: Fixed uv coordinates & remove autocorr',msname=msfile)
     logger.info('End flagdata_autocorr')
     logger.debug('You have been transformed from an ugly UVFITS to beautiful MS')
-    listobs(vis=vis, listfile=vis+'.listobs.txt', overwrite=True)
-    logger.info('Listobs file in: {0}'.format(vis+'.listobs.txt'))
+    listobs(vis=msfile, listfile=msfile+'.listobs.txt', overwrite=True)
+    logger.info('Listobs file in: {0}'.format(msfile+'.listobs.txt'))
     return
 
 ##Hanning smoothing and flag of autocorrelations, will delete original and rename
