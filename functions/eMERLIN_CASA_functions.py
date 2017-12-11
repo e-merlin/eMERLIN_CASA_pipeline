@@ -507,7 +507,6 @@ def run_aoflagger_fields(vis, flags, fields='all', pipeline_path='./'):
         fields = vis_fields
     else:
         fields = np.atleast_1d(fields)
-    old_aoflagger = check_aoflagger_version()
     for field in np.unique(fields):
         # First, check if user has a new strategy for this field in the local folder.
         # If not, check if user has produced a new strategy for this field in the pipeline folder (for typical sources, etc).
@@ -520,10 +519,7 @@ def run_aoflagger_fields(vis, flags, fields='all', pipeline_path='./'):
         else:
             aostrategy = pipeline_path+'aoflagger_strategies/default/{0}.rfis'.format('default_faint')
         logger.info('Running AOFLagger for field {0} ({1}) using strategy {2}'.format(field,fields_num[field], aostrategy))
-        if old_aoflagger: # < 2.9
-            flagcommand = 'time aoflagger -strategy {0} {1}'.format(aostrategy, vis+'/SUBMSS/*{0}.mms.*.ms'.format(field))
-        else: # >= 2.9
-            flagcommand = 'time aoflagger -fields {2} -strategy {0} {1}'.format(aostrategy, vis, fields_num[field])
+        flagcommand = 'time aoflagger -fields {2} -strategy {0} {1}'.format(aostrategy, vis, fields_num[field])
         os.system(flagcommand+' | tee -a pre-cal_flag_stats.txt')
         ms.writehistory(message='eMER_CASA_Pipeline: AOFlag field {0} with strategy {1}:'.format(field, aostrategy),msname=vis)
     flag_applied(flags, 'flagdata0_aoflagger')
