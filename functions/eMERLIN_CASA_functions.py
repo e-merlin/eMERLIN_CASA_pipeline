@@ -558,7 +558,7 @@ def check_aoflagger_version():
         old_aoflagger = False
     return old_aoflagger
 
-def ms2mms(vis,mode):
+def ms2mms(vis, mode):
     logger.info('Start ms2mms')
     if mode == 'parallel':
         partition(vis=vis,outputvis=vis[:-3]+'.mms',createmms=True,separationaxis="auto",numsubms="auto",flagbackup=True,datacolumn=
@@ -578,79 +578,6 @@ def ms2mms(vis,mode):
            rmdir(vis)
            rmdir(vis+'.flagversions')
     logger.info('End ms2mms')
-
-def ms2mms_fields(msfile):
-    logger.info('Start ms2mms_fields')
-    output_mmsfile = msfile[:-3]+'.mms'
-    fields = vishead(msfile, mode = 'list', listitems = 'field')['field'][0]
-    mmsfiles = []
-    for field in fields:
-        logger.info('Running partition on field found: {}'.format(field))
-        mmsfile = msfile[:-3]+'_'+field+'.mms'
-        mmsfiles.append(mmsfile)
-        partition(vis=msfile, outputvis=mmsfile, createmms=True, separationaxis="baseline", numsubms="auto", flagbackup=False, datacolumn="all", field= field, spw="", scan="", antenna="", correlation="", timerange="", intent="", array="", uvrange="", observation="", feed="", disableparallel=None, ddistart=None, taql=None)
-    # Virtual concatenation. No data copied, just moved to SUBMMS directory
-    if len(mmsfiles) == 1: # No need to concatenate because there is only one file
-        os.system('mv {0} {1}'.format(mmsfiles[0], output_mmsfile))
-    elif len(mmsfiles) > 1:
-        virtualconcat(vis = mmsfiles, concatvis = output_mmsfile, copypointing=True)
-    else:
-        logger.critical('No MMS files found.')
-    if os.path.isdir(msfile) == True:
-        rmdir(msfile)
-        rmdir(msfile+'.flagversions')
-    logger.info('End ms2mms_fields')
-# To be removed
-#def do_prediagnostics(vis,plot_dir):
-#    ##Pre diagnostics for measurement sets##
-#    ## Includes:
-#    ## - Antenna positions
-#    ## - Amplitude vs. Time
-#    ## - Amplitude vs. Frequency
-#    ## - Phase vs. Time
-#    ## - Phase vs. Frequency
-#    ## - Closures (if task is available)
-#    ## - Listobs summary
-#    logger.info('Start prediagnostics')
-#    if os.path.isdir(plot_dir) == False:
-#        os.system('mkdir '+plot_dir)
-#    if os.path.isdir('./'+plot_dir+'pre-calibration') == False:
-#        os.system('mkdir ./'+plot_dir+'pre-calibration')
-#    directory = plot_dir
-#    ## Get information from ms
-#    x = vishead(vis,mode='list',listitems='field')['field'][0]
-#    tb.open(vis+'/SPECTRAL_WINDOW')
-#    nChan = str(tb.getcol('NUM_CHAN')[0])
-#    time = str(10E6)
-#    for i in range(len(x)):
-#        ## - Amplitude vs. Time
-#        plotms(vis=vis,xaxis='time',yaxis='amplitude',xdatacolumn='data',ydatacolumn='data',\
-#field=x[i], antenna='*&*', averagedata=True, avgchannel=str(nChan), iteraxis='baseline', plotfile=directory+'pre-cal_'+vis+'_'+x[i]+'_amp_vs_time.pdf',highres=True ,dpi=1200,expformat='pdf',exprange='all', showgui=False)
-#        os.system('convert '+directory+'pre-cal_'+vis+'_'+x[i]+'_amp_vs_time_* '+directory+'Pre-cal_amp_vs_time_'+vis+'_'+x[i]+'.pdf')
-#        os.system('rm '+directory+'pre-cal_'+vis+'_'+x[i]+'_amp_vs_time_*')
-#        ## - Amplitude vs frequency
-#        plotms(vis=vis,xaxis='frequency',yaxis='amplitude',xdatacolumn='data',ydatacolumn='data',\
-#field=x[i], antenna='*&*', averagedata=True, avgchannel='1', avgtime=time, iteraxis='baseline', plotfile=directory+'pre-cal_'+vis+'_'+x[i]+'_amp_vs_frequency.pdf',highres=True ,dpi=1200,expformat='pdf',exprange='all', showgui=False)
-#        os.system('convert '+directory+'pre-cal_'+vis+'_'+x[i]+'_amp_vs_frequency_* '+directory+'Pre-cal_amp_vs_frequency_'+vis+'_'+x[i]+'.pdf')
-#        os.system('rm '+directory+'pre-cal_'+vis+'_'+x[i]+'_amp_vs_frequency_*')
-#
-#        ## - Phase vs time
-#        plotms(vis=vis,xaxis='time',yaxis='phase',xdatacolumn='data',ydatacolumn='data',\
-#field=x[i], antenna='*&*', averagedata=True, avgchannel=str(nChan), iteraxis='baseline', plotfile=directory+'pre-cal_'+vis+'_'+x[i]+'_phase_vs_time.pdf', expformat='pdf',highres=True,dpi=1200,exprange='all', showgui=False)
-#        os.system('convert '+directory+'pre-cal_'+vis+'_'+x[i]+'_phase_vs_time_* '+directory+'Pre-cal_phase_vs_time_'+vis+'_'+x[i]+'.pdf')
-#        os.system('rm '+directory+'pre-cal_'+vis+'_'+x[i]+'_phase_vs_time_*')
-#
-#        ## - Phase vs frequency
-#        plotms(vis=vis,xaxis='frequency',yaxis='phase',xdatacolumn='data',ydatacolumn='data',\
-#field=x[i], antenna='*&*', averagedata=True, avgtime=time, iteraxis='baseline', plotfile=directory+'pre-cal_'+vis+'_'+x[i]+'_phase_vs_frequency.pdf', expformat='pdf',highres=True,dpi=1200,exprange='all', showgui=False)
-#        os.system('convert '+directory+'pre-cal_'+vis+'_'+x[i]+'_phase_vs_frequency_* '+directory+'Pre-cal_phase_vs_frequency_'+vis+'_'+x[i]+'.pdf')
-#        os.system('rm '+directory+'pre-cal_'+vis+'_'+x[i]+'_phase_vs_frequency_*')
-#    #vishead(vis=vis,listfile=directory+vis+'.listobs')
-#    #plotants(vis=vis,figfile=directory+vis+'.plotants.png')
-#    ## Amplitude vs Time:
-#    os.system('mv ./'+plot_dir+'/*pdf ./'+plot_dir+'/pre-calibration')
-#    logger.info('End prediagnostics')
-#
 
 def find_quacktime(msinfo, s1, s2):
     separations = msinfo['separations']
