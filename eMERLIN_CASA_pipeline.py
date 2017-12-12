@@ -10,7 +10,7 @@ import logging
 from taskinit import *
 from tasks import *
 
-pipeline_version = 'v0.7.1'
+pipeline_version = 'v0.7.2'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -129,7 +129,8 @@ def run_pipeline(inputs=None, inputs_path=''):
         emwlog.start_weblog(msinfo)
 
     if inputs['hanning'] > 0:
-        em.hanning(inputvis=msfile,deloriginal=True)
+        run_hanning = inputs['hanning']
+        em.hanning(inputvis=msfile, run_hanning=run_hanning, deloriginal=True)
 
     ### Convert MS to MMS ###
     if inputs['ms2mms'] > 0:

@@ -458,31 +458,43 @@ def run_importfitsIDI(data_dir,msfile, doaverage=0):
     return
 
 ##Hanning smoothing and flag of autocorrelations, will delete original and rename
-def hanning(inputvis,deloriginal):
-    logger.info('Start hanning')
-    if inputvis[-3:].lower() == '.ms':
-        outputvis = inputvis[:-3]+'_hanning'+inputvis[-3:]
-        rmdir(outputvis)
-    elif inputvis[-3:].lower() == 'mms':
-        outputvis = inputvis[:-4]+'_hanning'+inputvis[-4:]
-        rmdir(outputvis)
-    mstransform(vis=inputvis,outputvis=outputvis,hanning=True,datacolumn='data')
-    # Check if hanning smoothed data was not produced:
-    if os.path.isdir(outputvis) == False:
-        logger.warning('Problem generating Hanning smoothed ms. Stopping pipeline')
-        logger.warning('File {0} was not created. {1} was not modified.'.format(outputvis, inputvis))
-        sys.exit()
-    # Delete or move original
-    if deloriginal==True:
-        rmdir(inputvis)
-        rmdir(inputvis+'.flagversions')
-    else:
-        mvdir(inputvis, inputvis+'_prehanning')
-        mvdir(inputvis+'.flagversions', inputvis+'_prehanning.flagversions')
-    mvdir(outputvis, inputvis)
-    mvdir(outputvis+'.flagversions', inputvis+'.flagversions')
-    ms.writehistory(message='eMER_CASA_Pipeline: Hanning smoothed data, complete',msname=inputvis)
-    logger.info('End hanning')
+def hanning(inputvis, run_hanning, deloriginal):
+    apply_hanning = False
+    if run_hanning == 1:
+        logger.info('hanning = 1 means check if data are L band.')
+        band = check_band(inputvis)
+        if band == 'L':
+            logger.info('L band dataset. Hanning smoothing will be executed.')
+            apply_hanning = True
+        else:
+            logger.info('Dataset is not L band. Hanning smoothing not needed.')
+    elif run_hanning > 1:
+        apply_hanning = True
+    if apply_hanning:
+        logger.info('Start hanning')
+        if inputvis[-3:].lower() == '.ms':
+            outputvis = inputvis[:-3]+'_hanning'+inputvis[-3:]
+            rmdir(outputvis)
+        elif inputvis[-3:].lower() == 'mms':
+            outputvis = inputvis[:-4]+'_hanning'+inputvis[-4:]
+            rmdir(outputvis)
+        mstransform(vis=inputvis,outputvis=outputvis,hanning=True,datacolumn='data')
+        # Check if hanning smoothed data was not produced:
+        if os.path.isdir(outputvis) == False:
+            logger.warning('Problem generating Hanning smoothed ms. Stopping pipeline')
+            logger.warning('File {0} was not created. {1} was not modified.'.format(outputvis, inputvis))
+            sys.exit()
+        # Delete or move original
+        if deloriginal==True:
+            rmdir(inputvis)
+            rmdir(inputvis+'.flagversions')
+        else:
+            mvdir(inputvis, inputvis+'_prehanning')
+            mvdir(inputvis+'.flagversions', inputvis+'_prehanning.flagversions')
+        mvdir(outputvis, inputvis)
+        mvdir(outputvis+'.flagversions', inputvis+'.flagversions')
+        ms.writehistory(message='eMER_CASA_Pipeline: Hanning smoothed data, complete',msname=inputvis)
+        logger.info('End hanning')
     return
 
 def run_rfigui(vis):

@@ -197,7 +197,7 @@ Output:
 inbase.ms               [MS]
 ```
 
-Runs mstransform with mode='hanning' on DATA column. It produces a new MS, which substitutes the `inbase.ms`. It works with MS or MMS. This step is optional but recommended for L band observations. It is probably not needed for C band datasets.
+Runs mstransform with mode='hanning' on DATA column. It produces a new MS, which substitutes the `inbase.ms`. It works with MS or MMS. This step is optional but recommended for L band observations. It is probably not needed for C band datasets. A value of 1 will check the band of the dataset, and apply Hanning smoothing only if it is an L band dataset. A value higher than 1 will force Hanning smoothing, regardless of the band.
 
 
 
