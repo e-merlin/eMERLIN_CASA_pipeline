@@ -13,10 +13,8 @@ from tasks import *
 pipeline_version = 'v0.7.2'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
-try:
-    pipeline_path = os.path.dirname(sys.argv[np.where(np.asarray(sys.argv)=='-c')[0][0] + 1]) + '/'
-except:
-    pass
+pipeline_filename = sys.argv[sys.argv.index('-c') + 1]
+pipeline_path = os.path.abspath(os.path.dirname(pipeline_filename))
 
 sys.path.append(pipeline_path)
 import functions.eMERLIN_CASA_functions as em
