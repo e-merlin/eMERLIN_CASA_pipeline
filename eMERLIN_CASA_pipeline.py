@@ -10,11 +10,14 @@ import logging
 from taskinit import *
 from tasks import *
 
-pipeline_version = 'v0.7.2'
+pipeline_version = 'v0.7.3'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
-pipeline_filename = sys.argv[sys.argv.index('-c') + 1]
-pipeline_path = os.path.abspath(os.path.dirname(pipeline_filename))
+try:
+    pipeline_filename = sys.argv[sys.argv.index('-c') + 1]
+    pipeline_path = os.path.abspath(os.path.dirname(pipeline_filename))
+except:
+    pass
 
 sys.path.append(pipeline_path)
 import functions.eMERLIN_CASA_functions as em
