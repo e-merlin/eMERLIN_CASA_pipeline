@@ -3,6 +3,7 @@ import os
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
+import multiprocessing
 plt.ioff()
 
 # CASA imports
@@ -41,7 +42,7 @@ def get_freqs(msfile, allfreqs=False):
     return freqs
 
 
-def single_4plot(msfile, field, baseline, datacolumn, plot_file):
+def single_4plot_old(msfile, field, baseline, datacolumn, plot_file):
     logger.info('Baseline: {0:6s}, Output: {1}'.format(baseline, plot_file))
     tb.open(msfile+'/SPECTRAL_WINDOW')
     nchan = str(tb.getcol('NUM_CHAN')[0])
@@ -87,7 +88,7 @@ def single_4plot(msfile, field, baseline, datacolumn, plot_file):
     width=2600, height=1200, symbolsize=4,clearplots=False, overwrite=True, showgui=showgui)
 
 
-def make_4plots(msfile, msinfo, datacolumn='data'):
+def make_4plots_old(msfile, msinfo, datacolumn='data'):
     if datacolumn == 'data':
         plots_data_dir = './plots/plots_data/'
     elif datacolumn == 'corrected':
@@ -103,9 +104,106 @@ def make_4plots(msfile, msinfo, datacolumn='data'):
                                                          msinfo['msfilename'], f,
                                                          baseline.replace('&','-'),
                                                          datacolumn)
-            single_4plot(msfile, f, baseline, datacolumn, plot_file)
+            single_4plot_old(msfile, f, baseline, datacolumn, plot_file)
 
-def single_uvplt(msinfo, field, plot_file):
+
+
+
+def single_4plot((msinfo, field, datacolumn, plots_data_dir)):
+    logger.info('Visibility plots for field: {0}, datacolumn: {1}'.format(field, datacolumn))
+    msfile = msinfo['msfile']
+    tb.open(msfile+'/SPECTRAL_WINDOW')
+    nchan = str(tb.getcol('NUM_CHAN')[0])
+    tb.close()
+    plot_file = plots_data_dir+'{0}_4plot_{1}_{2}'.format(msinfo['msfilename'],
+                                                          field, datacolumn)
+    num_baselines = len(msinfo['baselines'])
+    gridrows = num_baselines
+    gridcols = 1
+    showgui=False
+    avgtime = '300'
+    baseline = '*&*'
+    w, h = 1200, num_baselines*200
+    plotms(vis=msfile, xaxis='time', yaxis='amp', title='Amp vs Time {0} (color=spw)'.format(field),
+    gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=0, plotindex=0,
+    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
+    antenna=baseline, field=field, iteraxis='baseline',
+    averagedata = True, avgchannel = nchan, #avgtime='16',
+    xselfscale = True, xsharedaxis = True, coloraxis = 'spw', plotrange=[-1,-1,0,-1],
+    plotfile = plot_file+'0.png', expformat = 'png', customsymbol = True, symbolshape = 'circle',
+    width=w, height=h, symbolsize=4,clearplots=False, overwrite=True, showgui=showgui)
+
+    plotms(vis=msfile, xaxis='time', yaxis='phase', title='Phase vs Time {0} (color=spw)'.format(field),
+    gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=0, plotindex=0,
+    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
+    antenna=baseline, field=field, iteraxis='baseline',
+    averagedata = True, avgchannel = nchan, #avgtime='16',
+    xselfscale = True, xsharedaxis = True, coloraxis   = 'spw', plotrange=[-1,-1,-180,180],
+    plotfile = plot_file+'1.png', expformat = 'png', customsymbol = True, symbolshape = 'circle',
+    width=w, height=h, symbolsize=4,clearplots=False, overwrite=True, showgui=showgui)
+
+    plotms(vis=msfile, xaxis='freq', yaxis='amp', title='Amp vs Frequency {0} (color=corr)'.format(field),
+    gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=0, plotindex=0,
+    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
+    antenna=baseline, field=field, iteraxis='baseline',
+    averagedata = True, avgtime=avgtime,
+    xselfscale = True, xsharedaxis = True, coloraxis   = 'corr', plotrange=[-1,-1,0,-1],
+    plotfile = plot_file+'2.png', expformat = 'png', customsymbol = True, symbolshape = 'circle',
+    width=w, height=h, symbolsize=4,clearplots=False, overwrite=True, showgui=showgui)
+
+    plotms(vis=msfile, xaxis='freq', yaxis='phase', title='Phase vs Frequency {0} (color=corr)'.format(field),
+    gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=0, plotindex=0,
+    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
+    antenna=baseline, field=field, iteraxis='baseline',
+    averagedata = True, avgtime=avgtime,
+    xselfscale = True, xsharedaxis = True, coloraxis   = 'corr', plotrange=[-1,-1,-180,180],
+    plotfile = plot_file+'3.png', expformat = 'png', customsymbol = True, symbolshape = 'circle',
+    width=w, height=h, symbolsize=4,clearplots=False, overwrite=True, showgui=showgui)
+    logger.info('Finished field: {0}, output: {1}{{0-4}}.png'.format(field, plot_file))
+
+#def make_4plots((msinfo, field, datacolumn, plots_data_dir)):
+#    msfile = msinfo['msfile']
+#    plot_file = plots_data_dir+'{0}_4plot_{1}_{2}'.format(msinfo['msfilename'],
+#                                                          field, datacolumn)
+#    if datacolumn == 'data':
+#        plots_data_dir = './plots/plots_data/'
+#    elif datacolumn == 'corrected':
+#        plots_data_dir = './plots/plots_corrected/'
+#    else:
+#        plots_data_dir = './plots/'
+#    makedir(plots_data_dir)
+#    for f in msinfo['sources']['mssources'].split(','):
+#        if f != '':
+#            logger.info('Generating plot for msfile: {0}, field: {1}, column: {2}'.format(
+#                                                    (msfile), field, datacolumn))
+#            plot_file = plots_data_dir+'{0}_4plot_{1}_{2}'.format(
+#                                                         msinfo['msfilename'],
+#                                                         field, datacolumn)
+#            num_baselines = len(msinfo['baselines'])
+#            single_4plot(msfile, field, num_baselines, datacolumn, plot_file)
+
+def make_4plots(msfile, msinfo, datacolumn='data'):
+    if datacolumn == 'data':
+        plots_data_dir = './plots/plots_data/'
+    elif datacolumn == 'corrected':
+        plots_data_dir = './plots/plots_corrected/'
+    else:
+        plots_data_dir = './plots/'
+    makedir(plots_data_dir)
+    fields = msinfo['sources']['allsources'].split(',')
+    logger.info('Producing in parallel visibility plots for fields: {}'.format(msinfo['sources']['allsources']))
+    num_proc = 1
+    pool = multiprocessing.Pool(num_proc)
+    input_args = [(msinfo, field, datacolumn, plots_data_dir) for field in fields]
+    p = pool.map(single_4plot, input_args)
+    pool.close()
+    pool.join()
+    logger.info('Visibility plots finished')
+
+
+def single_uvplt((msinfo, field, plots_data_dir)):
+    logger.info('uvplt for field: {}'.format(field))
+    plot_file =  plots_data_dir+'{0}_uvplt_{1}.png'.format(msinfo['msfilename'], field)
     msfile = msinfo['msfile']
     nchan = msinfo['nchan']
     datacolumn='corrected'
@@ -133,13 +231,17 @@ def single_uvplt(msinfo, field, plot_file):
 
 
 def make_uvplt(msinfo):
+    num_proc = 1
     plots_data_dir = './plots/plots_uvplt/'
     makedir(plots_data_dir)
-    for f in msinfo['sources']['allsources'].split(','):
-        plot_file =  plots_data_dir+'{0}_uvplt_{1}.png'.format(msinfo['msfilename'], f)
-        logger.info('Plotting uvplt for {0}: {1}'.format(f, plot_file))
-        single_uvplt(msinfo, f, plot_file)
-
+    fields = msinfo['sources']['allsources'].split(',')
+    logger.info('Producing in parallel uvplot for fields: {}'.format(msinfo['sources']['allsources']))
+    pool = multiprocessing.Pool(num_proc)
+    input_args = [(msinfo, field, plots_data_dir) for field in fields]
+    pool.map(single_uvplt, input_args)
+    pool.close()
+    pool.join()
+    logger.info('uvplts finished')
 
 def single_uvcov(field, u, v, freqs, plot_file):
     c = 299792458.

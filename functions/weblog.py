@@ -150,24 +150,27 @@ def weblog_obssum(msinfo):
     weblog_foot(wlog)
     wlog.close()
 
-def create_pnghtml_baselines(plots_path, source, subtitle, msinfo):
+def create_pnghtml_baselines(plots_path, source, subtitle, msinfo, datacolumn):
     page_path = "./weblog/"+plots_path+'_'+source+".html"
     wlog = open(page_path,"w")
     weblog_header(wlog, source, msinfo['run'])
     wlog.write('<h3>{0}</h3>\n'.format(subtitle))
     #------------------------------------------
-    for bsl in msinfo['baselines']:
-        try:
-            b1, b2 = bsl.split('&')
-            png = np.sort(glob.glob('./plots/{0}/{1}_4plot_{2}_{3}-{4}_*.png'.format(plots_path,
-                                                            msinfo['msfilename'],
-                                                            source,
-                                                            b1, b2)))[0]
-            wlog.write('<h5>{0}-{1}</h5>\n'.format(b1,b2))
-            wlog.write('<a href = ".{0}"><img style="max-width:960px" src=".{0}"></a><br>\n'.format(png))
-            wlog.write('<hr>')
-        except:
-            pass
+
+    plot_file = './plots/'+plots_path+'/{0}_4plot_{1}_{2}'.format(msinfo['msfilename'],
+                                                      source,
+                                                      datacolumn)
+    wlog.write('<table bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:40%">\n')
+    wlog.write('<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td>\n'.format('Amp vs Time',
+                                                                               'Phase vs  Time',
+                                                                               'Amp vs Freq',
+                                                                               'Phase vs Freq'))
+    link0 = '<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(plot_file+'0.png')
+    link1 = '<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(plot_file+'1.png')
+    link2 = '<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(plot_file+'2.png')
+    link3 = '<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(plot_file+'3.png')
+    wlog.write('<tr>'+link0+link1+link2+link3+'</tr>')
+    wlog.write('</table></td>\n')
     #------------------------------------------
     weblog_foot(wlog)
     wlog.close()
@@ -175,14 +178,18 @@ def create_pnghtml_baselines(plots_path, source, subtitle, msinfo):
 
 def plots_data(msinfo, wlog):
     wlog.write('<h3>Uncalibrated visibilities</h3>\n')
-    for source in msinfo['sources']['allsources'].split(','):
-        page_path = create_pnghtml_baselines('plots_data', source, 'Uncalibrated amplitude and phase against time and frequency.', msinfo)
+    for source in msinfo['sources']['mssources'].split(','):
+        page_path = create_pnghtml_baselines('plots_data', source,
+                                             'Uncalibrated amplitude and phase against time and frequency.',
+                                             msinfo, 'data')
         wlog.write('{0} <a href=".{1}" target="_blank">plots</a><br>\n'.format(source, page_path))
 
 def plots_corrected(msinfo, wlog):
     wlog.write('<h3>Calibrated visibilities</h3>\n')
-    for source in msinfo['sources']['allsources'].split(','):
-        page_path = create_pnghtml_baselines('plots_corrected', source, 'Calibrated amplitude and phase against time and frequency.', msinfo)
+    for source in msinfo['sources']['mssources'].split(','):
+        page_path = create_pnghtml_baselines('plots_corrected', source,
+                                             'Calibrated amplitude and phase against time and frequency.',
+                                             msinfo, 'corrected')
         wlog.write('{0} <a href=".{1}" target="_blank">plots</a><br>\n'.format(source, page_path))
 
 #def plots_caltables(msinfo, wlog):
@@ -225,6 +232,9 @@ def weblog_calibration(msinfo):
                 wlog.write('</table><br><br>\n<hr>\n')
             except:
                 pass
+    #------------------------------------------
+    weblog_foot(wlog)
+    wlog.close()
 
 
 def weblog_plots(msinfo):
