@@ -19,7 +19,10 @@ try:
 except:
     pass
 
+if pipeline_path[-1] != '/':
+    pipeline_path = pipeline_path + '/'
 sys.path.append(pipeline_path)
+
 import functions.eMERLIN_CASA_functions as em
 import functions.weblog as emwlog
 import functions.eMERLIN_CASA_plots as emplt
