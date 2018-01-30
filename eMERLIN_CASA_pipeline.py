@@ -374,8 +374,8 @@ def run_pipeline(inputs=None, inputs_path=''):
         em.run_first_images(msinfo)
 
     ### Plot flagstatistics ###
-     if inputs['flag_statistics'] > 0:
-        em.flag_statistics(msinfo)
+    if inputs['flag_statistics'] > 0:
+        emplt.flag_statistics(msinfo)
 
     ### Write weblog ###
     if inputs['weblog'] > 0:
