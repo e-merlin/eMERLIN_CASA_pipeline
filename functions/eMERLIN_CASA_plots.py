@@ -1,9 +1,12 @@
 #!/usr/local/python
 import os
 import numpy as np
+import pickle
 import matplotlib
 import matplotlib.pyplot as plt
 import multiprocessing
+from matplotlib.ticker import MultipleLocator
+
 plt.ioff()
 
 # CASA imports
@@ -12,6 +15,28 @@ from tasks import *
 
 import logging
 logger = logging.getLogger('logger')
+
+
+# Functions to save and load dictionaries
+def save_obj(obj, name):
+    with open(name + '.pkl', 'wb') as f:
+        pickle.dump(obj, f)
+
+def load_obj(name):
+    with open(name + '.pkl', 'rb') as f:
+        return pickle.load(f)
+
+def prt_dict(d, pre=''):
+    subdict = []
+    for key in d.keys():
+        if type(d[key]) == dict:
+            subdict.append(key)
+        else:
+            print('{0:20s}: {1}'.format(pre+key, d[key]))
+    if subdict != []:
+        for key_inner in subdict:
+            print(pre+key_inner)
+            prt_dict(d[key_inner], pre=pre+'   ')
 
 
 def makedir(pathdir):
@@ -429,9 +454,14 @@ def plot_flagstatistics(flag_stats, msinfo):
 
     #ax1.legend(loc=0)
     #ax2.legend(loc=0)
-    fig.savefig('flagstatistics.png', bbox_inches='tight')
 
+    plots_obs_dir = './plots/plots_flagstats/'
+    makedir(plots_obs_dir)
+    plot_file1 = plots_obs_dir+'{0}_flagstats_all.png'.format(msinfo['msfilename'])
+    logger.info('Plotting flagstats all: {0}'.format(plot_file1))
+    fig.savefig(plot_file1, bbox_inches='tight')
 
+    # Plot only scans:
     fig = plt.figure(figsize=(50,8))
     ax1 = fig.add_subplot(111)
 
@@ -447,17 +477,25 @@ def plot_flagstatistics(flag_stats, msinfo):
     ax1.set_ylim(0,1)
     ax1.set_xlabel('Scan number')
     ax1.set_ylabel('Flagged fraction')
-    fig.savefig('flagstatistics2.png', bbox_inches='tight')
+
+    plot_file2 = plots_obs_dir+'{0}_flagstats_scans.png'.format(msinfo['msfilename'])
+    logger.info('Plotting flagstats scans: {0}'.format(plot_file2))
+    fig.savefig(plot_file2, bbox_inches='tight')
 
 
 def flag_statistics(msinfo):
     logger.info('Start flagstatistics')
-    try:
-        flag_stats = load_obj('flagstats')
-    except:
-        flag_stats = flagdata(vis=msinfo['msfile'], mode='summary', action='calculate', display='none', antenna='*&*')
-        save_obj(flag_stats, 'flagstats')
-    logger.info('Statistics ready. Now plotting.')
+    logger.info('Running flagdata on {0}, mode="summary", action="calculate", antenna="*&*"'.format(msinfo['msfile']))
+    flag_stats = flagdata(vis=msinfo['msfile'], mode='summary', action='calculate', display='none', antenna='*&*')
+    save_obj(flag_stats, './plots/plots_flagstats/flagstats')
+    logger.info('flagstats file saved to: ./plots/plots_flagstats/flagstats.pkl')
+    # For testing (read instead of producing):
+#    try:
+#        flag_stats = load_obj('./plots/plots_flagstats/flagstats')
+#    except:
+#       flag_stats = flagdata(vis=msinfo['msfile'], mode='summary', action='calculate', display='none', antenna='*&*') 
+#        save_obj(flag_stats, 'flagstats')
+    logger.info('Flag statistics ready. Now plotting.')
     plot_flagstatistics(flag_stats, msinfo)
     logger.info('End flagstatistics')
 
