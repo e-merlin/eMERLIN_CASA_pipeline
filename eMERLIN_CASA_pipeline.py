@@ -10,7 +10,7 @@ import logging
 from taskinit import *
 from tasks import *
 
-pipeline_version = 'v0.7.4'
+pipeline_version = 'v0.7.5'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -372,6 +372,10 @@ def run_pipeline(inputs=None, inputs_path=''):
     ### First images ###
     if inputs['first_images'] > 0:
         em.run_first_images(msinfo)
+
+    ### Plot flagstatistics ###
+     if inputs['flag_statistics'] > 0:
+        em.flag_statistics(msinfo)
 
     ### Write weblog ###
     if inputs['weblog'] > 0:
