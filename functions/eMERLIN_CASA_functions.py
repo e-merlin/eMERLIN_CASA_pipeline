@@ -531,8 +531,11 @@ def run_aoflagger_fields(vis, flags, fields='all', pipeline_path='./'):
         else:
             aostrategy = pipeline_path+'aoflagger_strategies/default/{0}.rfis'.format('default_faint')
         logger.info('Running AOFLagger for field {0} ({1}) using strategy {2}'.format(field,fields_num[field], aostrategy))
-        flagcommand = 'time aoflagger -fields {2} -strategy {0} {1}'.format(aostrategy, vis, fields_num[field])
-        os.system(flagcommand+' | tee -a pre-cal_flag_stats.txt')
+        for b in range(8):
+            logger.info('Processing source {0}, band {1}'.format(field, b))
+            flagcommand = 'time aoflagger -fields {2} -bands {3} -strategy {0} {1}'.format(aostrategy, vis, fields_num[field], b)
+            os.system(flagcommand+' | tee -a pre-cal_flag_stats.txt')
+        logger.info('Last AOFlagger command: {}'.format(flagcommand))
         ms.writehistory(message='eMER_CASA_Pipeline: AOFlag field {0} with strategy {1}:'.format(field, aostrategy),msname=vis)
     flag_applied(flags, 'flagdata0_aoflagger')
     logger.info('End run_aoflagger_fields')
