@@ -456,7 +456,6 @@ def plot_flagstatistics(flag_stats, msinfo):
     #ax2.legend(loc=0)
 
     plots_obs_dir = './plots/plots_flagstats/'
-    makedir(plots_obs_dir)
     plot_file1 = plots_obs_dir+'{0}_flagstats_all.png'.format(msinfo['msfilename'])
     logger.info('Plotting flagstats all: {0}'.format(plot_file1))
     fig.savefig(plot_file1, bbox_inches='tight')
@@ -484,6 +483,8 @@ def plot_flagstatistics(flag_stats, msinfo):
 
 
 def flag_statistics(msinfo):
+    plots_obs_dir = './plots/plots_flagstats/'
+    makedir(plots_obs_dir)
     logger.info('Start flagstatistics')
     logger.info('Running flagdata on {0}, mode="summary", action="calculate", antenna="*&*"'.format(msinfo['msfile']))
     flag_stats = flagdata(vis=msinfo['msfile'], mode='summary', action='calculate', display='none', antenna='*&*')
