@@ -790,7 +790,7 @@ As the initial `summary_weblog` but the weblog will include all information rela
  - Home. Basic dataset information (name, date, antennas, frequency, averaging, etc.)
  - Observation summary. Access to listobs, antennas, elevation plot, uvcov plots per each source.
  - Calibration. List of tables produced and plots showing the solutions.
- - Plots. Amp/phase vs time/freq per source and per baseline. Corrected and uncorrected visibilities, and Amp/phase vs uvdist.
+ - Plots. Amp/phase vs time/freq per source and per baseline. Corrected and uncorrected visibilities, and Amp/phase vs uvdist. Also statistics of flagged visibilities per scan, field, correlation, spw and antenna.
 
 ---
 
