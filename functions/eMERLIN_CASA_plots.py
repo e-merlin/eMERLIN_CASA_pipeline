@@ -208,6 +208,7 @@ def single_4plot((msinfo, field, datacolumn, plots_data_dir)):
 #            single_4plot(msfile, field, num_baselines, datacolumn, plot_file)
 
 def make_4plots(msfile, msinfo, datacolumn='data'):
+    logger.info('Start plot_{}'.format(datacolumn))
     if datacolumn == 'data':
         plots_data_dir = './plots/plots_data/'
     elif datacolumn == 'corrected':
@@ -224,7 +225,7 @@ def make_4plots(msfile, msinfo, datacolumn='data'):
     pool.close()
     pool.join()
     logger.info('Visibility plots finished')
-
+    logger.info('End plot_{}'.format(datacolumn))
 
 def single_uvplt((msinfo, field, plots_data_dir)):
     logger.info('uvplt for field: {}'.format(field))
