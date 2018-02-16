@@ -1968,7 +1968,7 @@ def read_shifts_file(shifts_file):
 
 def shift_all_positions(msfile):
     logger.info('Start shift_all_pos')
-    shifts_file = './new_phasecenter.txt'
+    shifts_file = './shift_phasecenter.txt'
     try:
         shifts_list = read_shifts_file(shifts_file)
         logger.info('Reading shifts from {0}'.format(shifts_file))

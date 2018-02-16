@@ -282,8 +282,38 @@ mode='manual' field='' antenna='Mk2' timerange='09:05:00~16:27:00'
 mode='manual' field='1258-2219' antenna='' timerange='12:57:01~12:59:59'
 mode='quack' field='1258-2219,1309-2322' quackinterval=24.
 ```
+
 ---
 ### 4.1.8 average_1
+Generate new field positions by shifting the phase center.
+
+Inputs parameters needed:
+```
+inbase                  [str]
+shift_phasecenter.txt   [external file]
+```
+
+Output:
+```
+inbase.ms               [MS]
+inbase.ms.listobs.txt   [txt]
+```
+
+The text file shift_phasecenter.txt should contain one shift per line, with three comma-separated values each: field, new field name, and new position coordinates. For example:
+
+```
+0336+3218, 0336+3218_pos1, J2000 03h36m30.10s +32d18m30.0s
+0336+3218, 0336+3218_pos2, J2000 03h36m30.10s +32d18m40.0s
+0332+3205, 0336+3218_pos1, J2000 03h32m28.30s +32d05m46.0s
+```
+
+Spaces will be ignored except inside the coordinate string. That file will produce two shifts of field 0336+3218 and one shift of field 0332+3205 to the corresponding positions indicated. For each shift, the field will be splitted in a temporary MS on which the shift will be computed. Then that temporary MS will be merged to the main data set. WARNING1: this step will add new fields to the MS (using concat) without removing any previous field: this adds phase centers, does not update the original ones. That means that the resulting MS will have two or more **new** fields with the same time stamps and same scan number but with different phase centers. This task is not intended to correct the phase center of a field, as it will keep the original one. However, you can always choose only the relevant fields when averaging the data in step `average_1`, for example you may want only corrected positions 0336+3218_pos2 and 0336+3218_pos1. WARNING2: note that because new fields are added to the MS, if you want to use them you need to specify them in the inputs file.
+
+NOTE: Apparently CASA cannot concatenate (`concat`) into a MMS. Therefore `ms2mms` is not compatible with `shift_field_pos`. If you want to use a MMS and shift a phase center your options are: (a) run `ms2mms` only after producing the shift, (b) modify `shift_field_pos` code to use `virtualconcat` instead of `concat`, (c) ignore that and do the phase shifts manually.
+
+
+---
+### 4.1.9 average_1
 Split dataset and average to reduce data volume.
 
 Inputs parameters needed:
@@ -309,7 +339,7 @@ It will create a new MS `inbase_avg.ms` (or inbase_avg.mms if working with mms f
 
 
 ---
-### 4.1.9 plot_data
+### 4.1.10 plot_data
 Produce plots of amp/phase vs time/freq for each baseline	plotms
 
 Inputs parameters needed:
@@ -333,7 +363,7 @@ Produces plots in png format for the visibilities in `inbase_avg.ms`. It iterate
  - Amp/Phase vs Frequency: averaged every 5 min, colorized by correlation.
 
 
-### 4.1.10 save_flags
+### 4.1.11 save_flags
 Saves the current status of the flagging to the flag table with versionname='initialize_flags'.
 
 Output:

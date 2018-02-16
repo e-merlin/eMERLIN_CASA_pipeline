@@ -170,13 +170,6 @@ def run_pipeline(inputs=None, inputs_path=''):
     ### Multi phase center ###
     if inputs['shift_field_pos'] > 0:
         em.shift_all_positions(msfile)
-        ### check for parallelisation
-        if os.path.isdir('./'+inputs['inbase']+'.mms') == True:
-            msfile = inputs['inbase']+'.mms'
-            msinfo = em.get_msinfo(msfile, inputs)
-            save_obj(msinfo, msfile+'.msinfo')
-            logger.info('Saving information of MS {0} in: {1}'.format(msfile, msfile+'.pkl'))
-            logger.info('Using MS file: {0}'.format(msfile))
 
     ### Average data ###
     if inputs['average_1'] > 0:
