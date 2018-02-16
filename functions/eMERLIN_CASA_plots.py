@@ -465,7 +465,7 @@ def plot_flagstatistics(flag_stats, msinfo):
     fig = plt.figure(figsize=(50,8))
     ax1 = fig.add_subplot(111)
 
-    for i, fi in enumerate(vis_fields):
+    for i, fi in enumerate(np.unique(vis_fields[scan_fieldID])):
         cond = scan_fieldID == i
         ax1.bar(i_scan[cond]-0.5, f_scan[cond], alpha=1.0,
                 color=plt.cm.Set1(1.0*i/len(i_field)), width=1,
