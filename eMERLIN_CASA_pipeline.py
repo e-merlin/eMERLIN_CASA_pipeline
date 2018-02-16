@@ -10,7 +10,7 @@ import logging
 from taskinit import *
 from tasks import *
 
-pipeline_version = 'v0.7.7'
+pipeline_version = 'v0.7.8'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -167,6 +167,16 @@ def run_pipeline(inputs=None, inputs_path=''):
     if inputs['flag_2a_manual'] > 0:
         flags = em.flagdata2_manual(msfile=msfile, inpfile=inputs['manual_flags_a'], flags=flags)
 
+    ### Multi phase center ###
+    if inputs['shift_field_pos'] > 0:
+        em.shift_all_positions(msfile)
+        ### check for parallelisation
+        if os.path.isdir('./'+inputs['inbase']+'.mms') == True:
+            msfile = inputs['inbase']+'.mms'
+            msinfo = em.get_msinfo(msfile, inputs)
+            save_obj(msinfo, msfile+'.msinfo')
+            logger.info('Saving information of MS {0} in: {1}'.format(msfile, msfile+'.pkl'))
+            logger.info('Using MS file: {0}'.format(msfile))
 
     ### Average data ###
     if inputs['average_1'] > 0:

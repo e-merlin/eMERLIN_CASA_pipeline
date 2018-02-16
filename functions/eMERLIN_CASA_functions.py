@@ -645,12 +645,19 @@ def flagdata1_apriori(msfile, msinfo, Lo_dropout_scans, flags, do_quack=True):
     if bright_cal != '':
         logger.info('Flagging 5 min from bright calibrators')
         flagdata(vis=msfile, field=bright_cal, mode='quack', quackinterval=300)
+    else:
+        logger.warning('No main calibrators (1331+305, 1407+284, 0319+415) found in data set')
     for s1, s2 in zip(msinfo['sources']['targets'].split(','),
                       msinfo['sources']['phscals'].split(',')):
-        quacktime = find_quacktime(msinfo, s1, s2)
-        if s1 != '':
-            logger.info('Flagging first {0} sec of target {1} and phasecal {2}'.format(quacktime, s1, s2))
-            flagdata(vis=msfile, field=','.join([s1,s2]), mode='quack', quackinterval=quacktime)
+        sources_in_ms = msinfo['sources']['mssources'].split(',')
+        missing_sources = [si for si in [s1,s2] if si not in sources_in_ms]
+        if missing_sources == []:
+            quacktime = find_quacktime(msinfo, s1, s2)
+            if s1 != '':
+                logger.info('Flagging first {0} sec of target {1} and phasecal {2}'.format(quacktime, s1, s2))
+                flagdata(vis=msfile, field=','.join([s1,s2]), mode='quack', quackinterval=quacktime)
+        else:
+            logger.warning('Warning, source(s) {} not present in MS, will not flag this pair'.format(','.join(missing_sources)))
     # We can add more (Lo is slower, etc).
     if Lo_dropout_scans != '':
         if msinfo['sources']['phscals'] != '':
@@ -1914,4 +1921,68 @@ def run_first_images(msinfo):
     logger.info('End run_first_images')
 
     return
-    
+
+def shift_field_position(msfile, shift):
+    field = shift['field']
+    new_pos = shift['new_position']
+    position_name = shift['new_field_name']
+    logger.info('Field {0} will be shifted to {1} on {2}'.format(field, position_name, new_pos))
+    msfile_split = '{0}_{1}'.format(msfile, position_name)
+    mssources = vishead(msfile,mode='list',listitems='field')['field'][0]
+    if field not in mssources:
+        logger.warning('Requested field to shift: {} not in MS! Closing '.format(field))
+        sys.exit(1)
+    rmdir(msfile_split)
+    # Split
+    logger.info('Splitting field: {}'.format(field))
+    mstransform(msfile, outputvis=msfile_split, field=field, datacolumn='data')
+    #FIXVIS
+    logger.info('Changing phase center to: {}'.format(new_pos))
+    fixvis(vis=msfile_split, field=field, outputvis='', phasecenter=new_pos, datacolumn='data')
+    # Change field name
+    tb.open(msfile_split+'/FIELD',nomodify=False)
+    st=tb.selectrows(0)
+    st.putcol('NAME', '{0}'.format(position_name))
+    st.done()
+    tb.close()
+    # Concatenate again
+    logger.info('Concatenating {0} into {1}'.format(msfile_split, msfile))
+    concat(vis= msfile_split, concatvis= msfile)
+    logger.info('Updating listobs for MS: {}'.format(msfile))
+    listobs(vis=msfile, listfile=msfile+'.listobs.txt', overwrite=True)
+    rmdir(msfile_split)
+    logger.warning('New field: {} in MS. Make sure you include it in the inputs file'.format(position_name))
+
+def read_shifts_file(shifts_file):
+    shifts_list = []
+    with open(shifts_file, 'rb') as shifts_txt:
+        lines = shifts_txt.readlines()
+        for line in lines:
+            if line.strip() != '':
+                shift = {'field': line.split(',')[0].strip(),
+                         'new_field_name': line.split(',')[1].strip(),
+                         'new_position': line.split(',')[2].strip()}
+                shifts_list.append(shift)
+    return shifts_list
+
+
+def shift_all_positions(msfile):
+    logger.info('Start shift_all_pos')
+    shifts_file = './new_phasecenter.txt'
+    try:
+        shifts_list = read_shifts_file(shifts_file)
+        logger.info('Reading shifts from {0}'.format(shifts_file))
+    except:
+        logger.info('Unable to open {0} with new position information'.format(shifts_file))
+        sys.exit()
+
+    mvdir(msfile+'listobs.txt', msfile+'listobs_preshift.txt')
+    logger.info('Found {0} shifts to apply. {0} new fields will be added'.format(len(shifts_list)))
+    for shift in shifts_list:
+        shift_field_position(msfile, shift)
+    listobs(vis=msfile, listfile=msfile+'.listobs.txt', overwrite=True)
+    logger.info('Listobs file in: {0}'.format(msfile+'.listobs.txt'))
+    logger.info('End shift_all_pos')
+
+
+
