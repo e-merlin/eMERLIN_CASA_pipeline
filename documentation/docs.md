@@ -284,7 +284,7 @@ mode='quack' field='1258-2219,1309-2322' quackinterval=24.
 ```
 
 ---
-### 4.1.8 average_1
+### 4.1.8 shift_field_pos
 Generate new field positions by shifting the phase center.
 
 Inputs parameters needed:
