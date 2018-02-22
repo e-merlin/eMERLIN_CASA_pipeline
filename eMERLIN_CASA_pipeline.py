@@ -10,7 +10,7 @@ import logging
 from taskinit import *
 from tasks import *
 
-pipeline_version = 'v0.7.8'
+pipeline_version = 'v0.7.9'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -149,7 +149,14 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     ### Run AOflagger
     if inputs['flag_0_aoflagger'] > 0:
-        flags = em.run_aoflagger_fields(vis=msfile, flags=flags, fields='all', pipeline_path = pipeline_path)
+        if inputs['flag_0_aoflagger'] == 1:
+            separate_bands = True
+        elif inputs['flag_0_aoflagger'] == 2:
+            separate_bands = False
+        else:
+            logger.warning('flag_0_aoflagger can only be 1 or 2')
+        flags = em.run_aoflagger_fields(msfile=msfile, separate_bands=separate_bands,
+                                        flags=flags, fields='all', pipeline_path = pipeline_path)
 
     ### A-priori flagdata: Lo&Mk2, edge channels, standard quack
     if inputs['flag_1_apriori'] > 0:

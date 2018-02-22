@@ -505,7 +505,7 @@ def run_rfigui(vis):
     logger.info('End run_rfigui')
 
 
-def run_aoflagger_fields(vis, flags, fields='all', pipeline_path='./'):
+def run_aoflagger_fields(msfile, separate_bands, flags, fields='all', pipeline_path='./'):
     """This version of the autoflagger iterates through the ms within the mms structure selecting individual fields. It uses pre-defined strategies. The np.unique in the loop below is needed for single source files. The mms thinks there are many filds (one per mms). I think it is a bug from virtualconcat."""
     logger.info('Start run_aoflagger_fields')
     aoflagger_available = check_command('aoflagger')
@@ -513,7 +513,7 @@ def run_aoflagger_fields(vis, flags, fields='all', pipeline_path='./'):
         logger.info('aoflagger requested but not available.')
         logger.info('Exiting pipeline.')
         sys.exit()
-    vis_fields = vishead(vis,mode='list',listitems='field')['field'][0]
+    vis_fields = vishead(msfile,mode='list',listitems='field')['field'][0]
     fields_num = {f:i for i,f in enumerate(vis_fields)}
     if fields == 'all':
         fields = vis_fields
@@ -531,12 +531,19 @@ def run_aoflagger_fields(vis, flags, fields='all', pipeline_path='./'):
         else:
             aostrategy = pipeline_path+'aoflagger_strategies/default/{0}.rfis'.format('default_faint')
         logger.info('Running AOFLagger for field {0} ({1}) using strategy {2}'.format(field,fields_num[field], aostrategy))
-        for b in range(8):
-            logger.info('Processing source {0}, band {1}'.format(field, b))
-            flagcommand = 'time aoflagger -fields {2} -bands {3} -strategy {0} {1}'.format(aostrategy, vis, fields_num[field], b)
+        if separate_bands:
+            num_spw = len(vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
+            for b in range(num_spw):
+                logger.info('Processing source {0}, band {1}'.format(field, b))
+                flagcommand = 'time aoflagger -fields {2} -bands {3} -strategy {0} {1}'.format(aostrategy, msfile, fields_num[field], b)
+                os.system(flagcommand+' | tee -a pre-cal_flag_stats.txt')
+            logger.info('Last AOFlagger command: {}'.format(flagcommand))
+        else:
+            logger.info('Processing source {0}, all bands'.format(field))
+            flagcommand = 'time aoflagger -fields {2} -strategy {0} {1}'.format(aostrategy, msfile, fields_num[field])
             os.system(flagcommand+' | tee -a pre-cal_flag_stats.txt')
-        logger.info('Last AOFlagger command: {}'.format(flagcommand))
-        ms.writehistory(message='eMER_CASA_Pipeline: AOFlag field {0} with strategy {1}:'.format(field, aostrategy),msname=vis)
+            logger.info('Last AOFlagger command: {}'.format(flagcommand))
+        ms.writehistory(message='eMER_CASA_Pipeline: AOFlag field {0} with strategy {1}:'.format(field, aostrategy),msname=msfile)
     flag_applied(flags, 'flagdata0_aoflagger')
     logger.info('End run_aoflagger_fields')
     return flags

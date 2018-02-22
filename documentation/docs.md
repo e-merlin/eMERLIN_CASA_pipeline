@@ -233,6 +233,7 @@ It runs [aoflagger](https://sourceforge.net/p/aoflagger/wiki/Home/) on all the f
  2. /path/to/pipeline/aoflagger_strategies/default/1234+5678.rfis
  3. /path/to/pipeline/aoflagger_strategies/default/default_faint.rfis
 
+Two values are accepted for this step. `flag_0_aoflagger=1` means to process each spw separately and `flag_0_aoflagger=2` means to compute all spw at the same time. The flags produced are the same, the only difference is that 2 will read data from all the spw at the same time. 2 can be used when the data set is small (about 50GB or less, but depends on free memory) because you save the overhead of restarting aoflagger once per spw (and per source). 1 can be used for large datasets, as it does not require so much memory and will run much faster, even if many loops are needed.
 
 
 ---
