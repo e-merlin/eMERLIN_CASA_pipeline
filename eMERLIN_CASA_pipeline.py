@@ -10,7 +10,7 @@ import logging
 from taskinit import *
 from tasks import *
 
-pipeline_version = 'v0.7.9'
+pipeline_version = 'v0.7.10'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -320,7 +320,8 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     ### Flux scale ###
     if inputs['fluxscale'] > 0:
-        caltables = em.eM_fluxscale(msfile=msfile, caltables=caltables,
+        caltables = em.eM_fluxscale(msfile=msfile, msinfo=msinfo,
+                                    caltables=caltables,
                                     sources=msinfo['sources'],
                                     ampcal_table='allcal_ap.G1',
                                     antennas=msinfo['antennas'])

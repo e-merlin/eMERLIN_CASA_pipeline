@@ -1453,7 +1453,41 @@ def find_anten_fluxscale(antennas):
     return anten_for_flux
 
 
-def eM_fluxscale(msfile, caltables, ampcal_table, sources, antennas):
+def read_source_model(model, field, msinfo, eMcalflux):
+    logger.info('Found tt0 model for source {0}: {1}'.format(field, model[0]))
+    logger.info('Found tt1 model for source {0}: {1}'.format(field, model[1]))
+    model_path, modelfilename = os.path.split(model[0])
+    model_name = os.path.splitext(modelfilename)[0]
+    scaled_model_base = '{0}/{1}_{2}.'.format(model_path,msinfo['msfilename'],model_name)
+    scaled_model = [scaled_model_base+ext for ext in ['tt0','tt1']]
+    rmdir(scaled_model[0])
+    rmdir(scaled_model[1])
+    flux_in_model = imstat(model[0])
+    logger.info('Flux in model tt0 (sum): {0:5.3g}, rms: {1:5.3g}, mean: {2:5.3g}'.format(
+        flux_in_model['sum'][0],
+        flux_in_model['rms'][0],
+        flux_in_model['mean'][0]))
+    logger.info('Scaling model {0} to eMcalflux {1} Jy to create {2}'.format(
+                            model[0],
+                            eMcalflux,
+                            scaled_model[0]))
+    logger.info('Scaling model {0} to eMcalflux {1} Jy to create {2}'.format(
+                            model[1],
+                            eMcalflux,
+                            scaled_model[1]))
+    logger.info('The multiplying factor is: {0:5.3f}'.format(eMcalflux/flux_in_model['sum'][0]))
+    immath(imagename= model[0],
+        mode='evalexpr',
+        expr = 'IM0*{}'.format(eMcalflux/flux_in_model['sum'][0]),
+        outfile = scaled_model[0])
+    immath(imagename= model[1],
+        mode='evalexpr',
+        expr = 'IM0*{}'.format(eMcalflux/flux_in_model['sum'][0]),
+        outfile = scaled_model[1])
+    return scaled_model
+
+
+def eM_fluxscale(msfile, msinfo, caltables, ampcal_table, sources, antennas):
     logger.info('Start eM_fluxscale')
     anten_for_flux = find_anten_fluxscale(antennas)
     cals_to_scale = sources['cals_no_fluxcal']
@@ -1490,21 +1524,38 @@ def eM_fluxscale(msfile, caltables, ampcal_table, sources, antennas):
                 a.append(calfluxes[k]['spidx'][1])
                 a.append(calfluxes[k]['fitRefFreq'])
                 eMcalfluxes[calfluxes[k]['fieldName']]=a
-                logger.info('Spectrum for {0:>9s}: Flux density ={1:6.3f} +/-{2:6.3f}, spidx ={3:5.2f}+/-{4:5.2f}'.format(calfluxes[k]['fieldName'],
+                logger.info('Spectrum for {0:>9s}: Flux density = {1:6.3f} +/-{2:6.3f}, spidx ={3:5.2f}+/-{4:5.2f}'.format(calfluxes[k]['fieldName'],
                     calfluxes[k]['fitFluxd']*eMfactor, calfluxes[k]['fitFluxdErr']*eMfactor,
                     calfluxes[k]['spidx'][1], calfluxes[k]['spidxerr'][1]))
             except:
                 pass
-
-    for f in eMcalfluxes.keys():    # Phase calibrator and bandpass calibrator
-        setjy(vis = msfile,
-              field = f,
-              standard = 'manual',
-              fluxdensity = eMcalfluxes[f][0],
-              spix = eMcalfluxes[f][1],
-              reffreq = str(eMcalfluxes[f][2])+'Hz')
+    # Scale and fill model column:
+    for field in eMcalfluxes.keys():
+        # Check if there are image models (tt0, tt1) for each field:
+        model = ['./source_models/{0}.model.tt0'.format(field),
+                 './source_models/{0}.model.tt1'.format(field)]
+        if os.path.exists(model[0]) and os.path.exists(model[1]):
+            scaled_model = read_source_model(model, field, msinfo,
+                                             eMcalfluxes[field][0])
+            logger.info('New model for this observation: {0}, {1}'.format(scaled_model[0], scaled_model[1]))
+            ft(vis=msfile, field=field, model=scaled_model, nterms=2, usescratch=True)
+            logger.info('Model for {0} included in MODEL column in {1}'.format(field, msfile))
+        else:
+            # If there is no model, just assume point source:
+            logger.info('Filling model column for point-like source: {0}'.format(field))
+            logger.info('Model: flux={0:6.3g}Jy, spix={1:6.3g}, reffreq={2:6.3g}Hz'.format(
+                                                eMcalfluxes[field][0],
+                                                eMcalfluxes[field][1],
+                                                eMcalfluxes[field][2]))
+            setjy(vis = msfile,
+                  field = field,
+                  standard = 'manual',
+                  fluxdensity = eMcalfluxes[field][0],
+                  spix = eMcalfluxes[field][1],
+                  reffreq = str(eMcalfluxes[field][2])+'Hz')
     logger.info('End eM_fluxscale')
     return caltables
+
 
 def bandpass_sp(msfile, msinfo, caltables, previous_cal):
     logger.info('Start bandpass_sp')

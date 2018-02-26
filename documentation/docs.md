@@ -677,7 +677,7 @@ CASA `fluxscale`
 
 Then, the pipeline will run the script `dfluxpy` to find the correction factor eMfactor. This is a correction factor for the flux density of 1331+305 (3C286) needed because the source is slightly resolved by the shortest baseline of e-MERLIN. The task will check the shortest baseline and the observation frequency, and scale the results accordingly. The values reported by the logger in eMCP.log are already corrected by this factor. The file allcal_ap.G1_fluxscaled_fluxes.txt is not corrected by this factor, but a warning note is included in the file.
 
-Finally, CASA `setjy` is run for each calibrator source (except the fluxcal) to include the new flux density into the model column for each spw.
+The step can accept an external model image for any source (typically the phase calibrator). For each source `fieldname` it will search for `./source_models/<fieldname>.model.tt0` and `./source_models/<fieldname>.model.tt1`. If both are present, the models will be scaled by eMcalflux/flux_in_model. eMcalflux is the flux derived by task `fluxscale` (see above), and flux_in_model is the sum of pixels in the model.tt0 image. Both the tt0 and tt1 model images will be scaled by that factor and the new models specific for the current observation will be placed in ./source_models. If no models are found for a source, a point-like model with the flux density and spectral index derived by `fluxscale` will be used. Finally, the model column in the MS will be updated using `ft` if there model images (tt0 and tt1) are available in `./source/models/`, of `setjy` if there are no models and a point-like model is assumed. In both cases the model column should contain spectral index information.
 
 
 **Applycal:**
