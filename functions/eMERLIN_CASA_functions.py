@@ -897,8 +897,10 @@ def run_split(msfile, sources, width, timebin, datacolumn='data'):
     logger.info('End split')
 
 
-def run_initialize_models(msfile, fluxcal, models_path, delmod_sources):
+def run_initialize_models(msfile, fluxcal, models_path):
     logger.info('Start init_models')
+    logger.info('Deleting model of all sources')
+    delmod(vis=msfile, otf=True, scr=True) #scr to delete MODEL column
     # Check dataset frequency:
     band = check_band(msfile)
     if band == 'C':
@@ -917,8 +919,6 @@ def run_initialize_models(msfile, fluxcal, models_path, delmod_sources):
           model=model_3C286, scalebychan=True, usescratch=True)
     # Is usescratch needed? Probably not, but I see amp=1 in the model column
     # otherwise when running on an MMS file.
-    logger.info('Deleting model for all other sources: '+delmod_sources)
-    delmod(vis=msfile, field=delmod_sources)
     logger.info('End init_models')
 
 def run_fringefit(msfile, caltables, caltable_name, previous_cal, minblperant=3, minsnr=2, smodel=[]):

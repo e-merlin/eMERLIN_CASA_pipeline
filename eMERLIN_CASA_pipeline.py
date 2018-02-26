@@ -263,8 +263,7 @@ def run_pipeline(inputs=None, inputs_path=''):
     if inputs['init_models'] > 0:  # Need to add parameter to GUI
         models_path = pipeline_path+'calibrator_models/'
         em.run_initialize_models(msfile=msfile, fluxcal=msinfo['sources']['fluxcal'],
-                                 models_path=models_path,
-                                 delmod_sources=msinfo['sources']['no_fluxcal'])
+                                 models_path=models_path)
 
 
     ### Initial BandPass calibration ###
