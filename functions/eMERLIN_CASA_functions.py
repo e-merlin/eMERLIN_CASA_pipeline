@@ -1552,7 +1552,8 @@ def eM_fluxscale(msfile, msinfo, caltables, ampcal_table, sources, antennas):
                   standard = 'manual',
                   fluxdensity = eMcalfluxes[field][0],
                   spix = eMcalfluxes[field][1],
-                  reffreq = str(eMcalfluxes[field][2])+'Hz')
+                  reffreq = str(eMcalfluxes[field][2])+'Hz',
+                  usescratch = True)
     logger.info('End eM_fluxscale')
     return caltables
 
