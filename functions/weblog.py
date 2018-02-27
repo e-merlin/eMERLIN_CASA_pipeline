@@ -199,12 +199,16 @@ def plots_corrected(msinfo, wlog):
 
 def plots_uvplt(msinfo, wlog):
     wlog.write('<h3>Calibrated UVplots</h3>\n')
-    all_plots = np.sort(glob.glob('./plots/plots_uvplt/*png'))
+    all_plots = np.sort(glob.glob('./plots/plots_uvplt/*_uvplt_*png'))
     for p in all_plots:
         source_name = os.path.splitext(p)[0].split('_')[-1]
-        wlog.write('<h4>{0}</h4>\n'.format(source_name))
-        wlog.write('<a href = ".{0}"><img style="max-width:960px" src=".{0}"></a><br>\n'.format(p))
-        wlog.write('<hr>\n')
+        wlog.write('<table cellspacing = "0" cellpadding = "4px" style="width:40%">\n')
+        wlog.write('<tr><td><h4>{0}</h4></td></tr>\n'.format(source_name))
+        wlog.write('<tr><td  valign="top"><a href = ".{0}"><img style="max-width:960px" src=".{0}"></a></td>\n'.format(p))
+        if source_name in msinfo['sources']['calsources'].split(','):
+            p_model = './plots/plots_uvplt/{0}_uvpltmodel_{1}.png'.format(msinfo['msfilename'],source_name)
+            wlog.write('<td><a href = ".{0}"><img style="max-width:960px" src=".{0}"></a></td>\n'.format(p_model))
+        wlog.write('</tr></table><br><br>\n<hr>\n')
 
 def plots_flagstats(msinfo, wlog):
     wlog.write('<h3>Flag statistics</h3>\n')

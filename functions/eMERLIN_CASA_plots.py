@@ -246,7 +246,26 @@ def single_uvplt((msinfo, field, plots_data_dir)):
     plotfile = '', expformat = 'png', customsymbol = True, symbolshape = 'circle',
     symbolsize=4, clearplots=True, overwrite=True, showgui=showgui)
 
-    plotms(vis=msfile, xaxis='UVwave', yaxis='phase', title='Phase vs UVWave {0} (color=spw)'.format(field),
+def single_uvplt_model((msinfo, field, plots_data_dir)):
+    logger.info('uvplt (model) for field: {}'.format(field))
+    plot_file =  plots_data_dir+'{0}_uvpltmodel_{1}.png'.format(msinfo['msfilename'], field)
+    msfile = msinfo['msfile']
+    nchan = msinfo['nchan']
+    datacolumn='model'
+    avgtime = ''
+    showgui = False
+    gridrows = 1
+    gridcols = 2
+    plotms(vis=msfile, xaxis='UVwave', yaxis='amp', title='Model Amplitude vs UVWave {0} (color=spw)'.format(field),
+    gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=0, plotindex=0,
+    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR,LL',
+    antenna='*&*', field=field,
+    averagedata = True, avgtime=avgtime, avgchannel = str(nchan),
+    xselfscale = True, xsharedaxis = True, coloraxis   = 'spw',
+    plotfile = '', expformat = 'png', customsymbol = True, symbolshape = 'circle',
+    symbolsize=4, clearplots=True, overwrite=True, showgui=showgui)
+
+    plotms(vis=msfile, xaxis='UVwave', yaxis='phase', title='Model Phase vs UVWave {0} (color=spw)'.format(field),
     gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=1, plotindex=1,
     xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR,LL',
     antenna='*&*', field=field,
@@ -262,9 +281,17 @@ def make_uvplt(msinfo):
     makedir(plots_data_dir)
     fields = msinfo['sources']['allsources'].split(',')
     logger.info('Producing in parallel uvplot for fields: {}'.format(msinfo['sources']['allsources']))
+    # UVplot all sources
     pool = multiprocessing.Pool(num_proc)
     input_args = [(msinfo, field, plots_data_dir) for field in fields]
     pool.map(single_uvplt, input_args)
+    pool.close()
+    pool.join()
+    # UVplot model, calibrators
+    calsources = msinfo['sources']['calsources'].split(',')
+    pool = multiprocessing.Pool(num_proc)
+    input_args = [(msinfo, field, plots_data_dir) for field in fields]
+    pool.map(single_uvplt_model, input_args)
     pool.close()
     pool.join()
     logger.info('uvplts finished')
