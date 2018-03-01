@@ -106,7 +106,6 @@ def run_pipeline(inputs=None, inputs_path=''):
 #        sys.exit()
 
     msfile = inputs['inbase']+'.ms'
-    logger.info('Using MS file: {0}'.format(msfile))
 
     #################################
     ### LOAD AND PREPROCESS DATA  ###
@@ -117,10 +116,14 @@ def run_pipeline(inputs=None, inputs_path=''):
         em.run_importfitsIDI(fits_path, msfile, doaverage=inputs['run_importfits'])
         em.check_mixed_mode(msfile,mode='split')
 
-    ### Write summary weblog ###
-    if inputs['summary_weblog'] > 0:
+    if os.path.isdir('./'+inputs['inbase']+'.ms') == True:
+        msfile = inputs['inbase']+'.ms'
+        logger.info('Found MS file: {0}'.format(msfile))
         msinfo = em.get_msinfo(msfile, inputs)
         save_obj(msinfo, msfile+'.msinfo')
+
+    ### Write summary weblog ###
+    if inputs['summary_weblog'] > 0:
         logger.info('Saving information of MS {0} in: {1}'.format(msfile, msfile+'.pkl'))
         logger.info('Starting summary weblog')
         if not os.path.isdir(msfile):
@@ -142,10 +145,10 @@ def run_pipeline(inputs=None, inputs_path=''):
     ### check for parallelisation
     if os.path.isdir('./'+inputs['inbase']+'.mms') == True:
         msfile = inputs['inbase']+'.mms'
+        logger.info('Found MMS file: {0}'.format(msfile))
         msinfo = em.get_msinfo(msfile, inputs)
         save_obj(msinfo, msfile+'.msinfo')
         logger.info('Saving information of MS {0} in: {1}'.format(msfile, msfile+'.pkl'))
-        logger.info('Using MS file: {0}'.format(msfile))
 
     ### Run AOflagger
     if inputs['flag_0_aoflagger'] > 0:
@@ -162,11 +165,6 @@ def run_pipeline(inputs=None, inputs_path=''):
     if inputs['flag_1_apriori'] > 0:
         sources = em.user_sources(inputs)
         Lo_dropout_scans =inputs['Lo_dropout_scans']
-        try:
-            msinfo
-        except:
-            msinfo = em.get_msinfo(msfile, inputs)
-            save_obj(msinfo, msfile+'.msinfo')
         flags = em.flagdata1_apriori(msfile=msfile, msinfo=msinfo,
                                      Lo_dropout_scans=Lo_dropout_scans, flags=flags, do_quack=True)
 
@@ -187,24 +185,16 @@ def run_pipeline(inputs=None, inputs_path=''):
     # Check if averaged data already generated
     if os.path.isdir('./'+inputs['inbase']+'_avg.mms') == True:
         msfile = './'+inputs['inbase']+'_avg.mms'
-        avg_file = True
-    elif os.path.isdir('./'+inputs['inbase']+'_avg.ms') == True:
-        msfile = './'+inputs['inbase']+'_avg.ms'
-        avg_file = True
-    else:
-        avg_file = False
-
-    ### Load or create dictionary with ms information.
-    if avg_file == True:
-        logger.info('Using MS file: {0}'.format(msfile))
+        logger.info('Found MMS file: {0}'.format(msfile))
         msinfo = em.get_msinfo(msfile, inputs)
         save_obj(msinfo, msfile+'.msinfo')
-    else:
-        try:
-            msinfo   # Don't produce it again if summary_weblog was just executed.
-        except:
-            msinfo = em.get_msinfo(msfile, inputs)
-            save_obj(msinfo, msfile+'.msinfo')
+        logger.info('Saving information of MS {0} in: {1}'.format(msfile, msfile+'.pkl'))
+    elif os.path.isdir('./'+inputs['inbase']+'_avg.ms') == True:
+        msfile = './'+inputs['inbase']+'_avg.ms'
+        logger.info('Found MS file: {0}'.format(msfile))
+        msinfo = em.get_msinfo(msfile, inputs)
+        save_obj(msinfo, msfile+'.msinfo')
+        logger.info('Saving information of MS {0} in: {1}'.format(msfile, msfile+'.pkl'))
 
     ### Produce some plots ###
     if inputs['plot_data'] == 1:

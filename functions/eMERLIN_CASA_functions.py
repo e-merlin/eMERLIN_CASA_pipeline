@@ -251,11 +251,11 @@ def user_sources(inputs):
     sources['no_fluxcal'] = sources['allsources'].replace(sources['fluxcal'], '').replace(',,',',').strip(',')
     sources['cals_no_fluxcal'] = sources['calsources'].replace(sources['fluxcal'], '').replace(',,',',').strip(',')
     sources['targets_phscals'] = join_lists([sources['targets'],sources['phscals']])
-    logger.info('Targets:   {0}'.format(sources['targets']))
-    logger.info('Phasecals: {0}'.format(sources['phscals']))
-    logger.info('Fluxcal:   {0}'.format(sources['fluxcal']))
-    logger.info('Bandpass:  {0}'.format(sources['bpcal']))
-    logger.info('Pointcal:  {0}'.format(sources['ptcal']))
+    #logger.info('Targets:   {0}'.format(sources['targets']))
+    #logger.info('Phasecals: {0}'.format(sources['phscals']))
+    #logger.info('Fluxcal:   {0}'.format(sources['fluxcal']))
+    #logger.info('Bandpass:  {0}'.format(sources['bpcal']))
+    #logger.info('Pointcal:  {0}'.format(sources['ptcal']))
     return sources
 
 def get_antennas(msfile):
@@ -266,7 +266,7 @@ def get_antennas(msfile):
     antennas = np.unique('-'.join(d['axis_info']['ifr_axis']['ifr_name']).split('-'))
     nice_order = ['Lo', 'Mk2', 'Pi', 'Da', 'Kn', 'De', 'Cm']
     antennas = [a for a in nice_order if a in antennas]
-    logger.info('Antennas in MS {0}: {1}'.format(msfile, antennas))
+    #logger.info('Antennas in MS {0}: {1}'.format(msfile, antennas))
     return antennas
 
 def get_timefreq(msfile):
@@ -283,7 +283,7 @@ def get_timefreq(msfile):
 
 def find_mssources(msfile):
     mssources = ','.join(vishead(msfile,mode='list',listitems='field')['field'][0])
-    logger.info('Sources in MS {0}: {1}'.format(msfile, mssources))
+    #logger.info('Sources in MS {0}: {1}'.format(msfile, mssources))
     return mssources
 
 def find_source_intent(msinfo, cats=['targets', 'phscals', 'bpcal', 'fluxcal', 'ptcal']):
@@ -349,7 +349,7 @@ def get_integration_time(msfile):
         except:
             pass
     msmd.done()
-    logger.info('Integration time: {0:.1f}s'.format(int_time['value']))
+    #logger.info('Integration time: {0:.1f}s'.format(int_time['value']))
     return int_time['value']
 
 
@@ -380,6 +380,11 @@ def get_msinfo(msfile, inputs, doprint=False):
     msinfo['refant'] = define_refant(msfile, msinfo, inputs)
     msinfo['directions'] = get_directions(msfile)
     msinfo['separations'] = get_distances(msfile, directions=msinfo['directions'])
+    logger.info('> Sources ({0}): {1}'.format(len(msinfo['sources']['mssources'].split(',')),
+                                                 msinfo['sources']['mssources']))
+    logger.info('> Number of spw: {0}'.format(msinfo['num_spw']))
+    logger.info('> Channels per spw: {0}'.format(msinfo['nchan']))
+    logger.info('> Itegration time {0:3.1f}s'.format(msinfo['int_time']))
     if doprint:
         prt_dict(msinfo)
     return msinfo
@@ -780,7 +785,7 @@ def define_refant(msfile, msinfo, inputs):
                                              antennas='Mk2,Pi,Da,Kn', spws='2,3', scan='')
     else:
         refant = ','.join(refant_user)
-    logger.info('Refant: {}'.format(refant))
+    #logger.info('Refant: {}'.format(refant))
     return refant
 
 
