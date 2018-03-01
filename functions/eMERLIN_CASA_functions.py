@@ -338,6 +338,20 @@ def get_distances(msfile, directions=''):
             sep_file.write('{0:10} {1:10} {2:7.2f}deg\n'.format(f1, f2, separations[f1+'-'+f2]))
     return separations
 
+def get_integration_time(msfile):
+    msmd.open(msfile)
+    int_time = 0    # If cannot find any, set it to 0
+    for i in range(1, 10):
+        "This loop is just to check the first scan. If not, search up to 10"
+        try:
+            int_time = msmd.exposuretime(i)
+            break
+        except:
+            pass
+    msmd.done()
+    logger.info('Integration time: {0:.1f}s'.format(int_time['value']))
+    return int_time['value']
+
 
 def get_msinfo(msfile, inputs, doprint=False):
     logger.info('Reading ms file information for MS: {0}'.format(msfile))
@@ -358,6 +372,7 @@ def get_msinfo(msfile, inputs, doprint=False):
     msinfo['t_end'] = t_end
     msinfo['freq_ini'] = freq_ini
     msinfo['freq_end'] = freq_end
+    msinfo['int_time'] = get_integration_time(msfile)
     msinfo['chan_res'] = chan_res
     msinfo['nchan'] = nchan
     msinfo['innerchan'] = '{0:.0f}~{1:.0f}'.format(0.1*(nchan-nchan/512.), 0.9*(nchan-nchan/512.))

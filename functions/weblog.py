@@ -61,6 +61,7 @@ def weblog_index(msinfo):
     wlog.write('<tr><td>Band </td>   <td> {0} </td>\n'.format(msinfo['band']))
     wlog.write('<tr><td>Antennas </td>   <td> {0} </td>\n'.format(', '.join(msinfo['antennas'])))
     wlog.write('<tr><td>Number of sources </td>   <td> {0} </td>\n'.format(len(msinfo['sources']['mssources'].split(','))))
+    wlog.write('<tr><td>Integration time </td>             <td> {0}s</td>\n'.format(msinfo['int_time']))
     wlog.write('<tr><td>Frequency </td>  <td> {0:5.2f} - {1:5.2f} GHz </td>\n'.format(
         msinfo['freq_ini'], msinfo['freq_end']))
     wlog.write('<tr><td>Num. spw </td>             <td> {0} </td>\n'.format(msinfo['num_spw']))
