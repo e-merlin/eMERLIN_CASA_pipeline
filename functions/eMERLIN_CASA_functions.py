@@ -9,6 +9,7 @@ import sys, shutil
 import copy
 import getopt
 import datetime
+import collections
 from eMERLIN_CASA_GUI import GUI_pipeline
 
 # CASA imports
@@ -238,7 +239,7 @@ def join_lists(x=[]):
     return ','.join(x2)
 
 def user_sources(inputs):
-    sources = {}
+    sources = collections.OrderedDict()
     sources['targets'] = inputs['targets']
     sources['phscals'] = inputs['phscals']
     sources['fluxcal'] = inputs['fluxcal']
@@ -309,7 +310,7 @@ def get_directions(msfile):
     tb.open(msfile+'/FIELD')
     field_names = tb.getcol('NAME')
     tb.close()
-    directions = {}
+    directions = collections.OrderedDict()
     for field in field_ids:
         field_name = field_names[np.argwhere(field_ids == field)[0][0]]
         vhead = vishead(msfile, mode = 'list', listitems = 'ptcs')
@@ -324,7 +325,7 @@ def get_distances(msfile, directions=''):
     tb.open(msfile+'/FIELD')
     field_names = tb.getcol('NAME')
     tb.close()
-    separations = {}
+    separations = collections.OrderedDict()
     # Write all separations in a txt file
     plots_obs_dir = './plots/plots_observation/'
     makedir(plots_obs_dir)
@@ -340,7 +341,7 @@ def get_distances(msfile, directions=''):
 
 def get_msinfo(msfile, inputs, doprint=False):
     logger.info('Reading ms file information for MS: {0}'.format(msfile))
-    msinfo = {}
+    msinfo = collections.OrderedDict()
     msinfo['msfile'] = msfile
     msinfo['msfilename'] = os.path.splitext(msfile)[0].split('/')[-1]
     msinfo['project'] = get_project(msfile)
@@ -820,7 +821,7 @@ def find_refant(msfile, field, antennas='', spws='', scan=''):
     [a for a  in pref_ant if a in ['Mk2','Pi','Da','Kn', 'Cm', 'De']], return_index=True)
 
     refant = ','.join(u[np.argsort(ind)])
-    refant_pref = {}
+    refant_pref = collections.OrderedDict()
     refant_pref['snr'] = snr
     refant_pref['pref_ant'] = pref_ant
     refant_pref['snr_avg_sorted'] = snr_avg_sorted
@@ -1113,7 +1114,7 @@ def run_applycal(msfile, caltables, sources, previous_cal, previous_cal_targets=
 def solve_delays(msfile, msinfo, caltables, previous_cal, solint='300s'):
     logger.info('Start solve_delays')
     caltable_name = 'delay.K1'
-    caltables[caltable_name] = {}
+    caltables[caltable_name] = collections.OrderedDict()
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
     caltables[caltable_name]['field'] = msinfo['sources']['calsources']
@@ -1151,7 +1152,7 @@ def delay_fringefit(msfile, msinfo, caltables, previous_cal):
     # in the pre-release version of task fringefit
     logger.info('Start delay_fringefit')
     caltable_name = 'delay.K1'
-    caltables[caltable_name] = {}
+    caltables[caltable_name] = collections.OrderedDict()
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
     caltables[caltable_name]['field'] = msinfo['sources']['calsources']
@@ -1201,7 +1202,7 @@ def initial_bp_cal(msfile, msinfo, caltables, previous_cal):
 
     # 0 Delay calibration of bpcal
     caltable_name = 'bpcal_d.K0'
-    caltables[caltable_name] = {}
+    caltables[caltable_name] = collections.OrderedDict()
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
     caltables[caltable_name]['field'] = msinfo['sources']['bpcal']
@@ -1228,7 +1229,7 @@ def initial_bp_cal(msfile, msinfo, caltables, previous_cal):
 
     # 1 Phase calibration
     caltable_name = 'bpcal_p.G0'
-    caltables[caltable_name] = {}
+    caltables[caltable_name] = collections.OrderedDict()
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
     caltables[caltable_name]['field'] = msinfo['sources']['bpcal']
@@ -1256,7 +1257,7 @@ def initial_bp_cal(msfile, msinfo, caltables, previous_cal):
 
     # 2 Amplitude calibration
     caltable_name = 'bpcal_ap.G1'
-    caltables[caltable_name] = {}
+    caltables[caltable_name] = collections.OrderedDict()
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
     caltables[caltable_name]['field'] = msinfo['sources']['bpcal']
@@ -1289,7 +1290,7 @@ def initial_bp_cal(msfile, msinfo, caltables, previous_cal):
 
     # 3 Bandpass calibration
     caltable_name = 'bpcal.B0'
-    caltables[caltable_name] = {}
+    caltables[caltable_name] = collections.OrderedDict()
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
     caltables[caltable_name]['field'] = msinfo['sources']['bpcal']
@@ -1325,7 +1326,7 @@ def initial_gaincal(msfile, msinfo, caltables, previous_cal):
 
     # 1 Phase calibration
     caltable_name = 'allcal_p.G0'
-    caltables[caltable_name] = {}
+    caltables[caltable_name] = collections.OrderedDict()
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
     caltables[caltable_name]['field'] = msinfo['sources']['calsources']
@@ -1352,7 +1353,7 @@ def initial_gaincal(msfile, msinfo, caltables, previous_cal):
 
     # 1b Phase jitter correction
     caltable_name = 'allcal_p_jitter.G0'
-    caltables[caltable_name] = {}
+    caltables[caltable_name] = collections.OrderedDict()
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
     caltables[caltable_name]['field'] = msinfo['sources']['calsources']
@@ -1379,7 +1380,7 @@ def initial_gaincal(msfile, msinfo, caltables, previous_cal):
 
     # 2 Amplitude calibration
     caltable_name = 'allcal_ap.G1'
-    caltables[caltable_name] = {}
+    caltables[caltable_name] = collections.OrderedDict()
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
     caltables[caltable_name]['field'] = msinfo['sources']['calsources']
@@ -1412,7 +1413,7 @@ def initial_gaincal(msfile, msinfo, caltables, previous_cal):
 
     # 3 Phase calibration on phasecal: scan-averaged phase solutions
     caltable_name = 'phscal_p_scan.G2'
-    caltables[caltable_name] = {}
+    caltables[caltable_name] = collections.OrderedDict()
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
     caltables[caltable_name]['field'] = msinfo['sources']['phscals']
@@ -1515,7 +1516,7 @@ def eM_fluxscale(msfile, msinfo, caltables, ampcal_table, sources, antennas):
     with open(caltables[caltable_name]['table']+'_fluxes.txt', 'a') as file:
         file.write('# WARNING: All flux densities in this file need to be multiplied by eMfactor={0:6.4f} to match the corrections that have been applied to the data.'.format(eMfactor))
     # Get fitted flux density and spectral index, correctly scaled for e-MERLIN
-    eMcalfluxes = {}
+    eMcalfluxes = collections.OrderedDict()
     for k in calfluxes.keys():
         if len(calfluxes[k]) > 4:
             try:
@@ -1562,7 +1563,7 @@ def bandpass_sp(msfile, msinfo, caltables, previous_cal):
     logger.info('Start bandpass_sp')
     # Bandpass calibration
     caltable_name = 'bpcal_sp.B1'
-    caltables[caltable_name] = {}
+    caltables[caltable_name] = collections.OrderedDict()
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
     caltables[caltable_name]['field'] = msinfo['sources']['bpcal']
@@ -1598,7 +1599,7 @@ def sp_amp_gaincal(msfile, msinfo, caltables, previous_cal):
 
     # 1 Amplitude calibration
     caltable_name = 'allcal_ap.G3'
-    caltables[caltable_name] = {}
+    caltables[caltable_name] = collections.OrderedDict()
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
     caltables[caltable_name]['field'] = msinfo['sources']['calsources']
@@ -1630,7 +1631,7 @@ def sp_amp_gaincal(msfile, msinfo, caltables, previous_cal):
 
     # 2 Amplitude calibration on phasecal: scan-averaged amplitude solutions
     caltable_name = 'allcal_ap_scan.G3'
-    caltables[caltable_name] = {}
+    caltables[caltable_name] = collections.OrderedDict()
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
     caltables[caltable_name]['field'] = msinfo['sources']['phscals']
