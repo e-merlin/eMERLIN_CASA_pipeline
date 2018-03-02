@@ -2,9 +2,12 @@ import os
 import numpy as np
 import glob
 import pickle
+import collections
+
+# CASA imports
 from taskinit import *
 from tasks import *
-import collections
+import casadef
 
 import logging
 logger = logging.getLogger('logger')
@@ -22,8 +25,12 @@ calib_link = './calib/'
 plots_link = './plots/'
 images_link= './images/'
 
+def save_obj(obj, name):
+    with open(name, 'wb') as f:
+        pickle.dump(obj, f)
+
 def load_obj(name):
-    with open(name + '.pkl', 'rb') as f:
+    with open(name, 'rb') as f:
         return pickle.load(f)
 
 def weblog_button(weblog_link, name, link):
@@ -43,6 +50,7 @@ def weblog_header(wlog, section, project):
     wlog.write(weblog_button(weblog_link, 'Home', 'index'))
     wlog.write(weblog_button(weblog_link, 'Observation summary',
                              'obs_summary'))
+    wlog.write(weblog_button(weblog_link, 'Pipeline info', 'pipelineinfo'))
     wlog.write(weblog_button(weblog_link, 'Calibration', 'calibration'))
     wlog.write(weblog_button(weblog_link, 'Plots', 'plots'))
     wlog.write(weblog_button(weblog_link, 'Images', 'images'))
@@ -108,7 +116,7 @@ def weblog_index(msinfo):
 
 def weblog_obssum(msinfo):
     ###### Observation summary page
-    wlog = open("./weblog/obs_summary.html","w")
+    wlog = open(weblog_dir + "obs_summary.html","w")
     weblog_header(wlog, 'Observation summary', msinfo['run'])
     #------------------------------------------
     wlog.write('<h3>Summary:</h3>\n')
@@ -159,13 +167,13 @@ def weblog_obssum(msinfo):
     wlog.write('Reference antenna: {}'.format(msinfo['refant']))
     wlog.write('<h3>Source elevation:</h3>\n')
     try:
-        elev_plot = glob.glob('./weblog/plots/plots_observation/{0}_elevation.png'.format(msinfo['msfilename']))
+        elev_plot = glob.glob(weblog_dir+'plots/plots_observation/{0}_elevation.png'.format(msinfo['msfilename']))
         wlog.write('<a href = ".{0}"><img style="max-width:600px" src=".{0}"></a><br>\n'.format(elev_plot[0]))
     except:
         pass
     wlog.write('<br><h3>UV coverage:</h3>\n')
     try:
-        uvcov = np.sort(glob.glob('./weblog/plots/plots_observation/{0}_uvcov_*.png'.format(msinfo['msfilename'])))
+        uvcov = np.sort(glob.glob(weblog_dir+'plots/plots_observation/{0}_uvcov_*.png'.format(msinfo['msfilename'])))
         for u in uvcov:
             wlog.write('<a href = ".{0}"><img style="max-width:700px" src=".{0}"></a><br>\n'.format(u))
             wlog.write('<hr>\n')
@@ -176,13 +184,13 @@ def weblog_obssum(msinfo):
     wlog.close()
 
 def create_pnghtml_baselines(plots_path, source, subtitle, msinfo, datacolumn):
-    page_path = "./weblog/"+plots_path+'_'+source+".html"
+    page_path = weblog_dir +plots_path+'_'+source+".html"
     wlog = open(page_path,"w")
     weblog_header(wlog, source, msinfo['run'])
     wlog.write('<h3>{0}</h3>\n'.format(subtitle))
     #------------------------------------------
 
-    plot_file = './weblog/plots/'+plots_path+'/{0}_4plot_{1}_{2}'.format(msinfo['msfilename'],
+    plot_file = weblog_dir+'plots/'+plots_path+'/{0}_4plot_{1}_{2}'.format(msinfo['msfilename'],
                                                       source,
                                                       datacolumn)
     wlog.write('<table bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:40%">\n')
@@ -253,14 +261,26 @@ def write_caltable(caltable, wlog):
         wlog.write('<tr><td>{} </td>   <td>{}</td>\n'.format(k, caltable[k]))
     wlog.write('</table></td>\n')
 
+def weblog_pipelineinfo(msinfo):
+    eMCP_info = msinfo['eMCP_info']
+    # Summary of pipeline execution page
+    wlog = open(weblog_dir + "pipelineinfo.html","w")
+    weblog_header(wlog, 'Pipeline info', msinfo['run'])
+    #------------------------------------------         
+    wlog.write('CASA version: {}\n<br>'.format(eMCP_info['casa_version']))
+    wlog.write('Pipeline version: {}\n<br>'.format(eMCP_info['pipeline_version']))
+    #------------------------------------------                                                                       
+    weblog_foot(wlog)
+    wlog.close()
+
 
 def weblog_calibration(msinfo):
     ###### Calibration page
-    wlog = open("./weblog/calibration.html","w")
+    wlog = open(weblog_dir + "calibration.html","w")
     weblog_header(wlog, 'Calibration', msinfo['run'])
     #------------------------------------------
     if os.path.isfile('./weblog/calib/caltables.pkl'):
-        caltables = load_obj('./weblog/calib/caltables')
+        caltables = load_obj('./weblog/calib/caltables.pkl')
         for calstep in caltables['all_calsteps']:
             try:
                 wlog.write('<h4>{}</h4>\n'.format(caltables[calstep]['name']))
@@ -279,7 +299,7 @@ def weblog_calibration(msinfo):
 
 def weblog_plots(msinfo):
     ###### Plots page
-    wlog = open("./weblog/plots.html","w")
+    wlog = open(weblog_dir + "plots.html","w")
     weblog_header(wlog, 'Plots', msinfo['run'])
     #------------------------------------------
     if (os.path.isdir('./weblog/plots/plots_data/')) and \
@@ -300,14 +320,14 @@ def weblog_plots(msinfo):
 
 def weblog_images(msinfo):
     ###### Images page
-    wlog = open(weblog_link + "images.html","w")
+    wlog = open(weblog_dir + "images.html","w")
     weblog_header(wlog, 'Crude images', msinfo['run'])
     wlog.write('These are crude images of targets and phase calibrators. The images are produced automatically with tclean in CASA ')
     wlog.write('using auto-thresh mode, which generates cleaning boxes without human intervention. ')
     wlog.write('These images should not be used for production.')
     #------------------------------------------
     for i in range(len(msinfo['sources']['targets'].split(','))):
-        img_dir = './images/{0}/'.format(msinfo['sources']['targets'].split(',')[i])
+        img_dir = weblog_dir + 'images/{0}/'.format(msinfo['sources']['targets'].split(',')[i])
         if (os.path.isdir(img_dir)) and (os.listdir(img_dir)):
             show_image(msinfo, wlog, i)
     #------------------------------------------
@@ -318,8 +338,8 @@ def show_image(msinfo, wlog, i):
     num = 0
     target = msinfo['sources']['targets'].split(',')[i]
     phscal = msinfo['sources']['phscals'].split(',')[i]
-    img_target = './images/{0}/{1}_{0}_img{2:02d}'.format(target, msinfo['msfilename'], num)
-    img_phscal = './images/{0}/{1}_{0}_img{2:02d}'.format(phscal, msinfo['msfilename'], num)
+    img_target = weblog_dir+'images/{0}/{1}_{0}_img{2:02d}'.format(target, msinfo['msfilename'], num)
+    img_phscal = weblog_dir+'images/{0}/{1}_{0}_img{2:02d}'.format(phscal, msinfo['msfilename'], num)
     wlog.write('<hr>\n')
     wlog.write('<h3>{}</h3>\n'.format(target))
     wlog.write('<table bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:30%">\n')
@@ -352,6 +372,7 @@ def start_weblog(msinfo):
 
     weblog_index(msinfo)
     weblog_obssum(msinfo)
+    weblog_pipelineinfo(msinfo)
     weblog_calibration(msinfo)
     weblog_plots(msinfo)
     weblog_images(msinfo)

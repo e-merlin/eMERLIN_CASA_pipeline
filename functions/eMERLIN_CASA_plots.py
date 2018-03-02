@@ -31,11 +31,11 @@ images_link= './images/'
 
 # Functions to save and load dictionaries
 def save_obj(obj, name):
-    with open(name + '.pkl', 'wb') as f:
+    with open(name, 'wb') as f:
         pickle.dump(obj, f)
 
 def load_obj(name):
-    with open(name + '.pkl', 'rb') as f:
+    with open(name, 'rb') as f:
         return pickle.load(f)
 
 def prt_dict(d, pre=''):
@@ -537,7 +537,7 @@ def flag_statistics(msinfo):
     logger.info('Start flagstatistics')
     logger.info('Running flagdata on {0}, mode="summary", action="calculate", antenna="*&*"'.format(msinfo['msfile']))
     flag_stats = flagdata(vis=msinfo['msfile'], mode='summary', action='calculate', display='none', antenna='*&*')
-    save_obj(flag_stats, './weblog/plots/plots_flagstats/flagstats')
+    save_obj(flag_stats, weblog_dir + 'plots/plots_flagstats/flagstats.pkl')
     logger.info('flagstats file saved to: ./weblog/plots/plots_flagstats/flagstats.pkl')
     # For testing (read instead of producing):
 #    try:

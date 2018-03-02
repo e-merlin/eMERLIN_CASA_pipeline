@@ -156,11 +156,11 @@ def mvdir(pathdir, outpudir):
 
 # Functions to save and load dictionaries
 def save_obj(obj, name):
-    with open(name + '.pkl', 'wb') as f:
+    with open(name, 'wb') as f:
         pickle.dump(obj, f)
 
 def load_obj(name):
-    with open(name + '.pkl', 'rb') as f:
+    with open(name, 'rb') as f:
         return pickle.load(f)
 
 def prt_dict(d, pre=''):
@@ -174,6 +174,20 @@ def prt_dict(d, pre=''):
         for key_inner in subdict:
             print(pre+key_inner)
             prt_dict(d[key_inner], pre=pre+'   ')
+
+def check_pipeline_conflict(eMCP_info, pipeline_version):
+    try:
+        eMCP_info['pipeline_version']
+        new_run = False
+    except:
+        new_run = True
+        pass
+    if ((~new_run) and (eMCP_info['pipeline_version'] != pipeline_version)):
+        logger.warning(
+            'The log shows that different versions of the pipeline'
+            ' has been executed. Please verify versions')
+        logger.warning('Previous version: {0}. Current version {1}'.format(
+            eMCP_info['pipeline_version'], pipeline_version))
 
 
 def check_mixed_mode(vis,mode):
@@ -396,7 +410,7 @@ def get_msinfo(msfile, inputs, doprint=False):
     logger.info('> Number of spw: {0}'.format(msinfo['num_spw']))
     logger.info('> Channels per spw: {0}'.format(msinfo['nchan']))
     logger.info('> Itegration time {0:3.1f}s'.format(msinfo['int_time']))
-    save_obj(msinfo, info_dir + msinfo['msfilename']+'.msinfo')
+    save_obj(msinfo, info_dir + msinfo['msfilename']+'.msinfo.pkl')
     if doprint:
         prt_dict(msinfo)
     return msinfo
@@ -542,7 +556,7 @@ def run_rfigui(vis):
     logger.info('End run_rfigui')
 
 
-def run_aoflagger_fields(msfile, separate_bands, flags, fields='all', pipeline_path='./'):
+def run_aoflagger_fields(msfile, separate_bands, fields='all', pipeline_path='./'):
     """This version of the autoflagger iterates through the ms within the mms structure selecting individual fields. It uses pre-defined strategies. The np.unique in the loop below is needed for single source files. The mms thinks there are many filds (one per mms). I think it is a bug from virtualconcat."""
     logger.info('Start run_aoflagger_fields')
     aoflagger_available = check_command('aoflagger')
@@ -581,9 +595,9 @@ def run_aoflagger_fields(msfile, separate_bands, flags, fields='all', pipeline_p
             os.system(flagcommand+' | tee -a pre-cal_flag_stats.txt')
             logger.info('Last AOFlagger command: {}'.format(flagcommand))
         ms.writehistory(message='eMER_CASA_Pipeline: AOFlag field {0} with strategy {1}:'.format(field, aostrategy),msname=msfile)
-    flag_applied(flags, 'flagdata0_aoflagger')
+    #flag_applied(flags, 'flagdata0_aoflagger')
     logger.info('End run_aoflagger_fields')
-    return flags
+    return
 
 def check_command(command):
     try:
@@ -661,7 +675,7 @@ def find_quacktime(msinfo, s1, s2):
         quacktime = 0
     return quacktime
 
-def flagdata1_apriori(msfile, msinfo, Lo_dropout_scans, flags, do_quack=True):
+def flagdata1_apriori(msfile, msinfo, Lo_dropout_scans, do_quack=True):
     sources = msinfo['sources']
     logger.info('Start flagdata1_apriori')
     antennas = get_antennas(msfile)
@@ -709,11 +723,11 @@ def flagdata1_apriori(msfile, msinfo, Lo_dropout_scans, flags, do_quack=True):
             flagdata(vis=msfile, antenna='Lo', field=sources['phscals'], scan=Lo_dropout_scans)
         else:
             logger.warning('Lo_dropout_scans selected but no name for phasecal. Please fill the phscal field in the inputs file.')
-    flag_applied(flags, 'flagdata1_apriori')
+    #flag_applied(flags, 'flagdata1_apriori')
     logger.info('End flagdata1_apriori')
-    return flags
+    return 
 
-def flagdata2_manual(msfile, inpfile, flags):
+def flagdata2_manual(msfile, inpfile):
     logger.info('Start flagdata_manual')
     if not os.path.isfile(inpfile) == True:
         logger.warning('Manual flagging step requested but cannot access file: {0}'.format(inpfile))
@@ -721,11 +735,11 @@ def flagdata2_manual(msfile, inpfile, flags):
         sys.exit()
     logger.info('Applying manual flags from file: {0}'.format(inpfile))
     flagdata(vis=msfile, mode='list', inpfile=inpfile)
-    flag_applied(flags, 'flagdata_manual')
+    #flag_applied(flags, 'flagdata_manual')
     logger.info('End flagdata_manual')
-    return flags
+    return 
 
-def flagdata3_tfcropBP(msfile, msinfo, flags):
+def flagdata3_tfcropBP(msfile, msinfo):
     logger.info('Start flagdata3_tfcropBP')
     logger.info("Running flagdata, mode = 'tfcrop'")
     logger.info("correlation='ABS_ALL'")
@@ -738,11 +752,11 @@ def flagdata3_tfcropBP(msfile, msinfo, flags):
              winsize=3, timecutoff=4.0, freqcutoff=3.0, maxnpieces=1,
              usewindowstats='sum', halfwin=3, extendflags=True,
              action='apply', display='', flagbackup=True)
-    flag_applied(flags, 'flagdata3_tfcropBP')
+    #flag_applied(flags, 'flagdata3_tfcropBP')
     logger.info('End flagdata3_tfcropBP')
-    return flags
+    return 
 
-def flagdata_tfcrop_bright(msfile, sources, flags, datacolumn='DATA'):
+def flagdata_tfcrop_bright(msfile, sources, datacolumn='DATA'):
     logger.info('Start flagdata_tfcrop_bright')
     logger.info("Running flagdata, mode = 'tfcrop'")
     logger.info("correlation='ABS_ALL'")
@@ -757,11 +771,11 @@ def flagdata_tfcrop_bright(msfile, sources, flags, datacolumn='DATA'):
              action='apply', display='', flagbackup=True)
     flagdata(vis=msfile, mode='extend', ntime='90min', extendpols=False,
              growtime=50, growfreq=0)
-    flag_applied(flags, 'flagdata_tfcrop_bright')
+    #flag_applied(flags, 'flagdata_tfcrop_bright')
     logger.info('End flagdata_tfcrop_bright')
-    return flags
+    return 
 
-def flagdata4_rflag(msfile, msinfo, flags):
+def flagdata4_rflag(msfile, msinfo):
     timedevscale = 5
     freqdevscale = 5
     logger.info('Start flagdata4_rflag')
@@ -774,19 +788,20 @@ def flagdata4_rflag(msfile, msinfo, flags):
              ntime='90min', combinescans=True, datacolumn='corrected',
              timedevscale=timedevscale, freqdevscale=freqdevscale,
              action='apply', display='', flagbackup=True)
-    flag_applied(flags, 'flagdata4_rflag')
+    #flag_applied(flags, 'flagdata4_rflag')
     logger.info('End flagdata4_rflag')
-    return flags
+    return 
 
 
-def flag_applied(flags, new_flag):
-    if new_flag in flags:
-        logger.warning('Flags from {0} were already applied by the pipeline! They are applied more than once.'.format(new_flag))
-    flags.append(new_flag)
-    logger.info('New flags applied: {0}'.format(new_flag))
-    logger.info('Current flags applied: {0}'.format(flags))
-    save_obj(flags, './flags')
-    return flags
+# This can be used to track flags with flagnames
+#def flag_applied(flags, new_flag):
+#    if new_flag in flags:
+#        logger.warning('Flags from {0} were already applied by the pipeline! They are applied more than once.'.format(new_flag))
+#    flags.append(new_flag)
+#    logger.info('New flags applied: {0}'.format(new_flag))
+#    logger.info('Current flags applied: {0}'.format(flags))
+#    save_obj(flags, './flags.pkl')
+#    return 
 
 def define_refant(msfile, msinfo, inputs):
     refant0 = inputs['refant']
@@ -1542,6 +1557,7 @@ def eM_fluxscale(msfile, msinfo, caltables, ampcal_table, sources, antennas):
                           listfile  = caltables[caltable_name]['table']+'_fluxes.txt')
     logger.info('Modified caltable: {0}'.format(caltables[caltable_name]['table']))
     logger.info('Spectrum information: {0}'.format(caltables[caltable_name]['table']+'_fluxes.txt'))
+    save_obj(calfluxes, info_dir + 'calfluxes.pkl')
     # Compute correction to scale the flux density of 3C286 according to
     # resolution provided by the shortest available baseline of e-MERLIN
     eMfactor = calc_eMfactor(msfile, field=fluxcal)
@@ -1762,7 +1778,7 @@ def compile_delays(tablename, outname):
     logger.info('Delay statistics saved to: {0}'.format(outname))
 
 
-def monitoring(msfile, msinfo, flags, caltables, previous_cal):
+def monitoring(msfile, msinfo, caltables, previous_cal):
     # This is intented to run on a single-source file for daily monitoring on
     # unaveraged data
     logger.info('Starting monitoring')
@@ -1770,9 +1786,9 @@ def monitoring(msfile, msinfo, flags, caltables, previous_cal):
     if band == 'L':
         hanning(inputvis=msfile,deloriginal=True)
 
-    flags = flagdata1_apriori(msfile=msfile, msinfo=msinfo, flags=flags, do_quack=True)
+    flagdata1_apriori(msfile=msfile, msinfo=msinfo, do_quack=True)
 
-    flags = flagdata_tfcrop_bright(msfile=msfile, sources=msinfo['sources'], flags=flags)
+    flagdata_tfcrop_bright(msfile=msfile, sources=msinfo['sources'])
     caltables = solve_delays(msfile=msfile, caltables=caltables,
                    previous_cal=[], calsources=msinfo['sources']['calsources'],
                              solint='60s')
@@ -1780,7 +1796,7 @@ def monitoring(msfile, msinfo, flags, caltables, previous_cal):
                     previous_cal=['delay.K1'],
                     previous_cal_targets=['delay.K1'])
     compile_statistics(msfile, tablename=caltables['delay.K1']['table'])
-    return flags, caltables
+    return caltables
 
 
 def calc_eMfactor(msfile, field='1331+305'):
@@ -1974,8 +1990,8 @@ def plot_image_add(imagename, dozoom=False):
 
 def single_tclean(msinfo, s, num):
     logger.info('Producing tclean images for {0}, field: {1}'.format(msinfo['msfile'], s))
-    makedir('./images/{}'.format(s))
-    imagename = './images/{0}/{1}_{0}_img{2:02d}'.format(s, msinfo['msfilename'], num)
+    makedir(images_dir+'{}'.format(s))
+    imagename = images_dir+'{0}/{1}_{0}_img{2:02d}'.format(s, msinfo['msfilename'], num)
     prev_images = glob.glob(imagename+'*')
     for prev_image in prev_images:
         rmdir(prev_image)
