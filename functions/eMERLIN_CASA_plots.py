@@ -246,6 +246,15 @@ def single_uvplt((msinfo, field, plots_data_dir)):
     plotfile = '', expformat = 'png', customsymbol = True, symbolshape = 'circle',
     symbolsize=4, clearplots=True, overwrite=True, showgui=showgui)
 
+    plotms(vis=msfile, xaxis='UVwave', yaxis='phase', title='Phase vs UVWave {0} (color=spw)'.format(field),
+    gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=1, plotindex=1,
+    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR,LL',
+    antenna='*&*', field=field,
+    averagedata = True, avgtime=avgtime, avgchannel = str(nchan),
+    xselfscale = True, xsharedaxis = True, coloraxis   = 'spw', plotrange=[-1,-1,-180,180],
+    plotfile = plot_file, expformat = 'png', customsymbol = True, symbolshape = 'circle',
+    width=1200, height=573, symbolsize=4, clearplots=False, overwrite=True, showgui=showgui)
+
 def single_uvplt_model((msinfo, field, plots_data_dir)):
     logger.info('uvplt (model) for field: {}'.format(field))
     plot_file =  plots_data_dir+'{0}_uvpltmodel_{1}.png'.format(msinfo['msfilename'], field)
