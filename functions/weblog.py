@@ -372,7 +372,7 @@ def start_weblog(msinfo):
 
     weblog_index(msinfo)
     weblog_obssum(msinfo)
-    weblog_pipelineinfo(msinfo)
+    #weblog_pipelineinfo(msinfo)
     weblog_calibration(msinfo)
     weblog_plots(msinfo)
     weblog_images(msinfo)

@@ -70,10 +70,13 @@ def run_pipeline(inputs=None, inputs_path=''):
     em.makedir(plots_dir+'caltables')
 
     pipeline_version = current_version
+
+    # Continue with previous pipeline configuration if possible:
     try:
         eMCP_info = load_obj(info_dir + 'eMCP_info.pkl')
     except:
         eMCP_info = collections.OrderedDict()
+
     # Setup logger
     logger = logging.getLogger('logger')
     logging.Formatter.converter = time.gmtime
@@ -122,7 +125,6 @@ def run_pipeline(inputs=None, inputs_path=''):
         em.check_mixed_mode(msfile,mode='split')
         run_hanning = 1
         if run_hanning > 0:
-            run_hanning = inputs['hanning']
             em.hanning(inputvis=msfile, run_hanning=run_hanning, deloriginal=True)
 
     if os.path.isdir('./'+inputs['inbase']+'.ms') == True:
@@ -161,7 +163,8 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     ### Load manual flagging file
     if inputs['flag_2a_manual'] > 0:
-        em.flagdata2_manual(msfile=msfile, inpfile=inputs['manual_flags_a'])
+        inpfile = './inputfg_a.flags'
+        em.flagdata2_manual(msfile=msfile, inpfile=inpfile)
 
     ### Multi phase center ###
     if inputs['shift_field_pos'] > 0:
@@ -198,7 +201,7 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     # All the calibration steps will be saved in the dictionary caltables.pkl
     # located in the calib directory. If it does not exist a new one is created.
-    any_calsteps = ['bandpass_0', 'delay', 'flag_3_tfcropBP','gain_0_p_ap','fluxscale','bandpass_1_sp','gain_1_amp_sp','applycal_all', 'weblog']
+    any_calsteps = ['bandpass_0', 'delay', 'flag_3_tfcropBP','gain_0_p_ap','fluxscale','bandpass_1_sp','gain_1_amp_sp','applycal_all']
     if np.array([inputs[cal]>0 for cal in any_calsteps]).any():
         try:
             caltables = load_obj(calib_dir+'caltables.pkl')
@@ -234,7 +237,8 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     ### Load manual flagging file
     if inputs['flag_2b_manual'] == 1:
-        em.flagdata2_manual(msfile=msfile, inpfile=inputs['manual_flags_b'])
+        inpfile = './inputfg_b_avg.flags'
+        em.flagdata2_manual(msfile=msfile, inpfile=inpfile)
 
     ### Initialize models ###
     if inputs['init_models'] > 0:  # Need to add parameter to GUI
@@ -298,6 +302,9 @@ def run_pipeline(inputs=None, inputs_path=''):
                                     sources=msinfo['sources'],
                                     ampcal_table='allcal_ap.G1',
                                     antennas=msinfo['antennas'])
+        if caltables == 'dead':
+            print ('AA')
+            sys.exit(1)
         save_obj(caltables, calib_dir+'caltables.pkl')
         if inputs['fluxscale'] == 2:
             em.run_applycal(msfile=msfile, caltables=caltables,
@@ -338,12 +345,8 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     ### RFLAG automatic flagging ###
     if inputs['flag_4_rflag'] > 0:
-        try:
-            msinfo['applycal_all'] == True
-            em.flagdata4_rflag(msfile=msfile, msinfo=msinfo)
-        except:
-            logger.warning('flag_4_rflag selected but applycal_all has not been run. RFLAG only works on calibrated data!')
-            logger.warning('flag_4_rflag will not be executed.')
+        logger.warning('RFLAG only works on calibrated data.')
+        em.flagdata4_rflag(msfile=msfile, msinfo=msinfo)
 
     ### Produce some visibility plots ###
     if inputs['plot_corrected'] > 0:
@@ -355,20 +358,29 @@ def run_pipeline(inputs=None, inputs_path=''):
         em.run_first_images(msinfo)
 
     ### Plot flagstatistics ###
-    if inputs['flag_statistics'] > 0:
-        emplt.flag_statistics(msinfo)
+    run_flag_statistics = 1
+    if run_flag_statistics > 0:
+        try:
+            emplt.flag_statistics(msinfo)
+        except:
+            pass
 
     ### Write weblog ###
-    msinfo['eMCP_info'] = eMCP_info
-    if inputs['weblog'] > 0:
-        elevplot = './plots/plots_observation/{0}_elevation.png'.format(msinfo['msfilename'])
-        if os.path.isfile(elevplot):
-            logger.info('Elevation plot found.')
-            logger.info('To regenerate elev and uvcov plots remove {}.'.format(elevplot))
-        else:
-            emplt.make_elevation(msfile, msinfo)
-            emplt.make_uvcov(msfile, msinfo)
-        emwlog.start_weblog(msinfo)
+    try:
+        msinfo['eMCP_info'] = eMCP_info
+        run_weblog = 1
+        if run_weblog > 0:
+            elevplot = plots_dir + 'plots_observation/{0}_elevation.png'.format(
+                                                        msinfo['msfilename'])
+            if os.path.isfile(elevplot):
+                logger.info('Elevation plot found.')
+                logger.info('To regenerate elev and uvcov plots remove {}.'.format(elevplot))
+            else:
+                emplt.make_elevation(msfile, msinfo)
+                emplt.make_uvcov(msfile, msinfo)
+            emwlog.start_weblog(msinfo)
+    except:
+        pass
 
     ### Run monitoring for bright sources:
     try:
@@ -386,7 +398,7 @@ def run_pipeline(inputs=None, inputs_path=''):
     logger.info('Pipeline finished')
     logger.info('#################')
 
-    return inputs, eMCP_info, msinfo
+    return
 
 
 
@@ -395,7 +407,7 @@ try:
     if run_in_casa == True:
         # Running the pipeline from inside CASA
         print('Pipeline initialized. To run the pipeline within CASA use:')
-        print('inputs, eMCP_info, msinfo = run_pipeline(inputs_path=<input file>)')
+        print('run_pipeline(inputs_path=<input file>)')
 except:
     inputs = em.check_in(pipeline_path)
     run_pipeline(inputs=inputs)

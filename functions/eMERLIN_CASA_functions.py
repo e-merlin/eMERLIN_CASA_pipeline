@@ -51,7 +51,7 @@ def check_in(pipeline_path):
             logger.info('inputs from GUI: {}'.format(inputs))
         elif o in ('-h','--help'):
             logger.debug('help will be written soon')
-            sys.exit()
+            sys.exit('Closing pipeline eMCP')
         elif o == '-c':
             logger.debug('Executing!')
         else:
@@ -178,17 +178,14 @@ def prt_dict(d, pre=''):
 def check_pipeline_conflict(eMCP_info, pipeline_version):
     try:
         eMCP_info['pipeline_version']
-        new_run = False
-    except:
-        new_run = True
-        pass
-    if ((~new_run) and (eMCP_info['pipeline_version'] != pipeline_version)):
-        logger.warning(
+        if ((~new_run) and (eMCP_info['pipeline_version'] != pipeline_version)):
+            logger.warning(
             'The log shows that different versions of the pipeline'
             ' has been executed. Please verify versions')
-        logger.warning('Previous version: {0}. Current version {1}'.format(
+            logger.warning('Previous version: {0}. Current version {1}'.format(
             eMCP_info['pipeline_version'], pipeline_version))
-
+    except:
+        pass
 
 def check_mixed_mode(vis,mode):
     logger.info('Check for mixed mode')
@@ -485,9 +482,9 @@ def run_importfitsIDI(data_dir,msfile, doaverage=0):
         if os.path.isdir(msfile+'_tavg') == True:
             rmdir(msfile)
         else:
-            logger.warning('Problem generating averaged ms. Stopping pipeline')
+            logger.critical('Problem generating averaged ms. Stopping pipeline')
             logger.warning('File {0}.tavg was not created.'.format(msfile))
-            sys.exit()
+            exit_pipeline(msinfo)
         mvdir(msfile+'_tavg', msfile)
         logger.info('End average0')
     logger.info('Start UVFIX')
@@ -496,9 +493,9 @@ def run_importfitsIDI(data_dir,msfile, doaverage=0):
     if os.path.isdir(msfile+'.uvfix') == True:
         rmdir(msfile)
     else:
-        logger.warning('Problem generating UVFIXEd ms. Stopping pipeline')
+        logger.critical('Problem generating UVFIXEd ms. Stopping pipeline')
         logger.warning('File {0}.uvfix was not created. {0} was not corrected.'.format(msfile))
-        sys.exit()
+        exit_pipeline(msinfo)
     mvdir(msfile+'.uvfix', msfile)
     logger.info('Start flagdata_autocorr')
     flagdata(vis=msfile,mode='manual',autocorr=True)
@@ -532,9 +529,9 @@ def hanning(inputvis, run_hanning, deloriginal):
         mstransform(vis=inputvis,outputvis=outputvis,hanning=True,datacolumn='data')
         # Check if hanning smoothed data was not produced:
         if os.path.isdir(outputvis) == False:
-            logger.warning('Problem generating Hanning smoothed ms. Stopping pipeline')
+            logger.critical('Problem generating Hanning smoothed ms. Stopping pipeline')
             logger.warning('File {0} was not created. {1} was not modified.'.format(outputvis, inputvis))
-            sys.exit()
+            exit_pipeline()
         # Delete or move original
         if deloriginal==True:
             rmdir(inputvis)
@@ -561,9 +558,9 @@ def run_aoflagger_fields(msfile, separate_bands, fields='all', pipeline_path='./
     logger.info('Start run_aoflagger_fields')
     aoflagger_available = check_command('aoflagger')
     if not aoflagger_available:
-        logger.info('aoflagger requested but not available.')
-        logger.info('Exiting pipeline.')
-        sys.exit()
+        logger.critical('aoflagger requested but not available.')
+        logger.warning('Exiting pipeline.')
+        exit_pipeline()
     vis_fields = vishead(msfile,mode='list',listitems='field')['field'][0]
     fields_num = {f:i for i,f in enumerate(vis_fields)}
     if fields == 'all':
@@ -730,14 +727,14 @@ def flagdata1_apriori(msfile, msinfo, Lo_dropout_scans, do_quack=True):
 def flagdata2_manual(msfile, inpfile):
     logger.info('Start flagdata_manual')
     if not os.path.isfile(inpfile) == True:
-        logger.warning('Manual flagging step requested but cannot access file: {0}'.format(inpfile))
+        logger.critical('Manual flagging step requested but cannot access file: {0}'.format(inpfile))
         logger.warning('Stopping pipeline at this step')
-        sys.exit()
+        exit_pipeline()
     logger.info('Applying manual flags from file: {0}'.format(inpfile))
     flagdata(vis=msfile, mode='list', inpfile=inpfile)
     #flag_applied(flags, 'flagdata_manual')
     logger.info('End flagdata_manual')
-    return 
+    return
 
 def flagdata3_tfcropBP(msfile, msinfo):
     logger.info('Start flagdata3_tfcropBP')
@@ -1536,6 +1533,12 @@ def read_source_model(model, field, msinfo, eMcalflux):
         outfile = scaled_model[1])
     return scaled_model
 
+def exit_pipeline(msinfo=''):
+    if msinfo != '':
+        logger.info('Something went wrong. Producing weblog and quiting')
+        import functions.weblog as emwlog
+        emwlog.start_weblog(msinfo)
+    sys.exit()
 
 def eM_fluxscale(msfile, msinfo, caltables, ampcal_table, sources, antennas):
     logger.info('Start eM_fluxscale')
@@ -1558,6 +1561,12 @@ def eM_fluxscale(msfile, msinfo, caltables, ampcal_table, sources, antennas):
     logger.info('Modified caltable: {0}'.format(caltables[caltable_name]['table']))
     logger.info('Spectrum information: {0}'.format(caltables[caltable_name]['table']+'_fluxes.txt'))
     save_obj(calfluxes, info_dir + 'calfluxes.pkl')
+    if calfluxes == None:
+        logger.critical('Something went wrong with fluxscale')
+        logger.warning('This probably means that necessary data are missing:')
+        logger.warning('Required sources: {0}'.format(cals_to_scale))
+        logger.warning('Required antennas: {0}'.format(','.join(anten_for_flux)))
+        exit_pipeline(msinfo)
     # Compute correction to scale the flux density of 3C286 according to
     # resolution provided by the shortest available baseline of e-MERLIN
     eMfactor = calc_eMfactor(msfile, field=fluxcal)
@@ -2040,8 +2049,8 @@ def shift_field_position(msfile, shift):
     msfile_split = '{0}_{1}'.format(msfile, position_name)
     mssources = vishead(msfile,mode='list',listitems='field')['field'][0]
     if field not in mssources:
-        logger.warning('Requested field to shift: {} not in MS! Closing '.format(field))
-        sys.exit(1)
+        logger.critical('Requested field to shift: {} not in MS! Closing '.format(field))
+        exit_pipeline(msinfo)
     rmdir(msfile_split)
     # Split
     logger.info('Splitting field: {}'.format(field))
@@ -2083,8 +2092,8 @@ def shift_all_positions(msfile):
         shifts_list = read_shifts_file(shifts_file)
         logger.info('Reading shifts from {0}'.format(shifts_file))
     except:
-        logger.info('Unable to open {0} with new position information'.format(shifts_file))
-        sys.exit()
+        logger.critical('Unable to open {0} with new position information'.format(shifts_file))
+        exit_pipeline(msinfo)
     listobs_file = info_dir + msfile
     mvdir(listobs_file + '.listobs.txt', listobs_file+'preshift_listobs.txt')
     logger.info('Found {0} shifts to apply. {0} new fields will be added'.format(len(shifts_list)))

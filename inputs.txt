@@ -19,15 +19,15 @@ Lo_dropout_scans= ''
 run_importfits  = 0
 flag_0_aoflagger= 0
 flag_1_apriori  = 0
-flag_2a_manual  = 0
-shift_field_pos = 0
-average_1       = 0
+flag_2a_manual  = 0   # Commands in ./inputfg_a.flags
+shift_field_pos = 0   # Shift positions in ./shift_phasecenter.txt
+average_1       = 0   # Value will be seconds to average
 plot_data       = 0
 save_flags      = 0
 
 ## Calibration (0=don't run, 1=run):
 restore_flags   = 0
-flag_2b_manual  = 0
+flag_2b_manual  = 0   # Commands in ./inputfg_b_avg.flags
 init_models     = 0
 bandpass_0      = 0
 flag_3_tfcropBP = 0
@@ -40,6 +40,3 @@ applycal_all    = 0
 flag_4_rflag    = 0
 plot_corrected  = 0
 first_images    = 0
-flag_statistics = 0
-weblog          = 0
-# To apply calibration up to an individual step, read the documentation
