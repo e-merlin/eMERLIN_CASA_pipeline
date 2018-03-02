@@ -80,10 +80,12 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     # Paths to use
     fits_path = em.backslash_check(inputs['fits_path'])
-    calib_dir = './calib/'
-    plots_dir = './plots/'
-    logs_dir  = './logs/'
-    images_dir = './images/'
+    weblog_dir = './weblog/'
+    info_dir   = './weblog/info/'
+    calib_dir  = './weblog/calib/'
+    plots_dir  = './weblog/plots/'
+    logs_dir   = './logs/'
+    images_dir = './weblog/images/'
 
     # Flags applied to the data by the pipeline
     try:
@@ -95,21 +97,20 @@ def run_pipeline(inputs=None, inputs_path=''):
 
 
     ## Create directory structure ##
+    em.makedir(weblog_dir)
+    em.makedir(info_dir)
     em.makedir(plots_dir)
     em.makedir(calib_dir)
-    em.makedir(logs_dir)
     em.makedir(images_dir)
+    em.makedir(logs_dir)
     em.makedir(plots_dir+'caltables')
 
-#    if inputs['quit'] == 1: #Check from GUI if quit is needed
-#        logger.debug('Pipeline exit')
-#        sys.exit()
-
-    msfile = inputs['inbase']+'.ms'
 
     #################################
     ### LOAD AND PREPROCESS DATA  ###
     #################################
+
+    msfile = inputs['inbase']+'.ms'
 
     ## Pipeline processes, inputs are read from the inputs dictionary
     if inputs['run_importfits'] > 0:
@@ -120,7 +121,6 @@ def run_pipeline(inputs=None, inputs_path=''):
         msfile = inputs['inbase']+'.ms'
         logger.info('Found MS file: {0}'.format(msfile))
         msinfo = em.get_msinfo(msfile, inputs)
-        save_obj(msinfo, msfile+'.msinfo')
 
     ### Write summary weblog ###
     if inputs['summary_weblog'] > 0:
@@ -147,7 +147,6 @@ def run_pipeline(inputs=None, inputs_path=''):
         msfile = inputs['inbase']+'.mms'
         logger.info('Found MMS file: {0}'.format(msfile))
         msinfo = em.get_msinfo(msfile, inputs)
-        save_obj(msinfo, msfile+'.msinfo')
         logger.info('Saving information of MS {0} in: {1}'.format(msfile, msfile+'.pkl'))
 
     ### Run AOflagger
@@ -187,13 +186,11 @@ def run_pipeline(inputs=None, inputs_path=''):
         msfile = './'+inputs['inbase']+'_avg.mms'
         logger.info('Found MMS file: {0}'.format(msfile))
         msinfo = em.get_msinfo(msfile, inputs)
-        save_obj(msinfo, msfile+'.msinfo')
         logger.info('Saving information of MS {0} in: {1}'.format(msfile, msfile+'.pkl'))
     elif os.path.isdir('./'+inputs['inbase']+'_avg.ms') == True:
         msfile = './'+inputs['inbase']+'_avg.ms'
         logger.info('Found MS file: {0}'.format(msfile))
         msinfo = em.get_msinfo(msfile, inputs)
-        save_obj(msinfo, msfile+'.msinfo')
         logger.info('Saving information of MS {0} in: {1}'.format(msfile, msfile+'.pkl'))
 
     ### Produce some plots ###
@@ -352,7 +349,7 @@ def run_pipeline(inputs=None, inputs_path=''):
            previous_cal=['delay.K1','bpcal_sp.B1','allcal_p.G0','allcal_p_jitter.G0','allcal_ap.G3'],
            previous_cal_targets=['delay.K1','bpcal_sp.B1','phscal_p_scan.G2','allcal_ap_scan.G3'])
         msinfo['applycal_all'] = True
-        save_obj(msinfo, msfile+'.msinfo')
+        save_obj(msinfo, info_dir + msinfo['msfilename']+'.msinfo')
 
 
     ### RFLAG automatic flagging ###
@@ -398,7 +395,7 @@ def run_pipeline(inputs=None, inputs_path=''):
         pass
 
     try:
-        os.system('mv casa-*.log *.last ./logs')
+        os.system('mv ipython-*.log casa-*.log *.last ./logs')
     except:
         pass
     logger.info('Pipeline finished')

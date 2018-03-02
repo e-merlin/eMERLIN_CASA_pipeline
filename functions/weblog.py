@@ -4,29 +4,48 @@ import glob
 import pickle
 from taskinit import *
 from tasks import *
+import collections
 
 import logging
 logger = logging.getLogger('logger')
 
+weblog_dir = './weblog/'
+info_dir   = './weblog/info/'
+calib_dir  = './weblog/calib/'
+plots_dir  = './weblog/plots/'
+logs_dir   = './logs/'
+images_dir = './weblog/images/'
+
+weblog_link= './'
+info_link  = './info/'
+calib_link = './calib/'
+plots_link = './plots/'
+images_link= './images/'
 
 def load_obj(name):
     with open(name + '.pkl', 'rb') as f:
         return pickle.load(f)
 
+def weblog_button(weblog_link, name, link):
+    line = ('<input type="button" value="{0}" '
+            'onclick="window.location.href=\''
+            '{1}{2}.html\'">\n').format(name, weblog_link, link)
+    return line
+
 def weblog_header(wlog, section, project):
     wlog.write('<html>\n')
     wlog.write('<head>\n')
-    wlog.write('<title>{} - e-MERLIN Pipeline Web Log</title>\n'.format(project))
+    wlog.write('<title>{} - eMCP</title>\n'.format(project))
     wlog.write('</head>\n')
     wlog.write('<body>\n')
     wlog.write('<h4>e-MERLIN Pipeline Web Log<br>{}</h4>\n'.format(project))
     wlog.write('<form>\n')
-    wlog.write('<input type="button" value="Home"  onclick="window.location.href=\'./index.html\'">\n')
-    wlog.write('<input type="button" value="Observation summary"  onclick="window.location.href=\'./obs_summary.html\'">\n')
-    wlog.write('<input type="button" value="Calibration"  onclick="window.location.href=\'./calibration.html\'">\n')
-    wlog.write('<input type="button" value="Plots"  onclick="window.location.href=\'./plots.html\'">\n')
-    wlog.write('<input type="button" value="Images"  onclick="window.location.href=\'./images.html\'">\n')
-    #wlog.write('<input type="button" value="Files"  onclick="window.location.href=\'./files.html\'">\n')
+    wlog.write(weblog_button(weblog_link, 'Home', 'index'))
+    wlog.write(weblog_button(weblog_link, 'Observation summary',
+                             'obs_summary'))
+    wlog.write(weblog_button(weblog_link, 'Calibration', 'calibration'))
+    wlog.write(weblog_button(weblog_link, 'Plots', 'plots'))
+    wlog.write(weblog_button(weblog_link, 'Images', 'images'))
     wlog.write('</form>\n')
     #wlog.write('<br>\n')
     wlog.write('<h2>{0}</h2>\n'.format(section))
@@ -36,10 +55,13 @@ def weblog_header(wlog, section, project):
 def weblog_foot(wlog):
     wlog.write('<hr><br>\n')
     wlog.write('<small>')
-    wlog.write('<a href="https://github.com/e-merlin/CASA_eMERLIN_pipeline">e-MERLIN Pipeline Github</a><br>\n')
-    wlog.write('<a href="http://www.e-merlin.ac.uk/">e-MERLIN</a><br>\n')
-    wlog.write('<a href="http://www.e-merlin.ac.uk/data_red/">User support and data reduction for e-MERLIN</a><br>\n')
-    wlog.write('<a href="https://casa.nrao.edu/">CASA</a></small><br>\n')
+    links = collections.OrderedDict()
+    links['e-MERLIN Pipeline Github'] = 'https://github.com/e-merlin/casa_emerlin_pipeline'
+    links['e-MERLIN']  = 'http://www.e-merlin.ac.uk/'
+    links['User support and data reduction for e-MERLIN'] = 'http://www.e-merlin.ac.uk/data_red/'
+    links['CASA'] = 'https://casa.nrao.edu/'
+    for n, l in links.items():
+        wlog.write('<a href="{0}">{1}</a><br>\n'.format(l, n))
     wlog.write('<hr>\n')
     wlog.write('</body>\n')
     wlog.write('</html>\n')
@@ -90,10 +112,12 @@ def weblog_obssum(msinfo):
     weblog_header(wlog, 'Observation summary', msinfo['run'])
     #------------------------------------------
     wlog.write('<h3>Summary:</h3>\n')
-    write_link_txt(wlog, '../{}'.format(msinfo['msfile']+'.listobs.txt'), 'Summary of the observation (listobs)')
+    listobs_file = info_link + msinfo['msfile'] + '.listobs.txt'
+    write_link_txt(wlog, listobs_file, 'Summary of the observation (listobs)')
     wlog.write('<h3>Sources:</h3>\n')
-    infile = '../plots/plots_observation/source_separations.txt'
-    wlog.write('Source pairs and separations: <a href="{0}" target="_blank">txt</a><br>\n'.format(infile))
+    sepfile = info_link + 'source_separations.txt'
+    wlog.write(('Source pairs and separations: '
+               '<a href="{0}" target="_blank">txt</a><br>\n').format(sepfile))
     if msinfo['sources']['targets'] != '':
         wlog.write('<table bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:30%">\n')
         wlog.write('<tr><td><b>Target</b> </td><td><b>Phase cal</b></td><td><b>Separation [deg]</b></td>\n')
@@ -135,13 +159,13 @@ def weblog_obssum(msinfo):
     wlog.write('Reference antenna: {}'.format(msinfo['refant']))
     wlog.write('<h3>Source elevation:</h3>\n')
     try:
-        elev_plot = glob.glob('./plots/plots_observation/{0}_elevation.png'.format(msinfo['msfilename']))
+        elev_plot = glob.glob('./weblog/plots/plots_observation/{0}_elevation.png'.format(msinfo['msfilename']))
         wlog.write('<a href = ".{0}"><img style="max-width:600px" src=".{0}"></a><br>\n'.format(elev_plot[0]))
     except:
         pass
     wlog.write('<br><h3>UV coverage:</h3>\n')
     try:
-        uvcov = np.sort(glob.glob('./plots/plots_observation/{0}_uvcov_*.png'.format(msinfo['msfilename'])))
+        uvcov = np.sort(glob.glob('./weblog/plots/plots_observation/{0}_uvcov_*.png'.format(msinfo['msfilename'])))
         for u in uvcov:
             wlog.write('<a href = ".{0}"><img style="max-width:700px" src=".{0}"></a><br>\n'.format(u))
             wlog.write('<hr>\n')
@@ -158,7 +182,7 @@ def create_pnghtml_baselines(plots_path, source, subtitle, msinfo, datacolumn):
     wlog.write('<h3>{0}</h3>\n'.format(subtitle))
     #------------------------------------------
 
-    plot_file = './plots/'+plots_path+'/{0}_4plot_{1}_{2}'.format(msinfo['msfilename'],
+    plot_file = './weblog/plots/'+plots_path+'/{0}_4plot_{1}_{2}'.format(msinfo['msfilename'],
                                                       source,
                                                       datacolumn)
     wlog.write('<table bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:40%">\n')
@@ -194,28 +218,28 @@ def plots_corrected(msinfo, wlog):
         wlog.write('{0} <a href=".{1}" target="_blank">plots</a><br>\n'.format(source, page_path))
 
 #def plots_caltables(msinfo, wlog):
-#    all_plots = np.sort(glob.glob('./plots/caltables/*png'))
+#    all_plots = np.sort(glob.glob('./weblog/plots/caltables/*png'))
 #    for p in all_plots:
 #        wlog.write('<a href=".{1}" target="_blank">{0}</a><br>\n'.format(os.path.basename(p), p))
 
 def plots_uvplt(msinfo, wlog):
     wlog.write('<h3>Calibrated UVplots</h3>\n')
-    all_plots = np.sort(glob.glob('./plots/plots_uvplt/*_uvplt_*png'))
+    all_plots = np.sort(glob.glob('./weblog/plots/plots_uvplt/*_uvplt_*png'))
     for p in all_plots:
         source_name = os.path.splitext(p)[0].split('_')[-1]
         wlog.write('<table cellspacing = "0" cellpadding = "4px" style="width:40%">\n')
         wlog.write('<tr><td><h4>{0}</h4></td></tr>\n'.format(source_name))
         wlog.write('<tr><td  valign="top"><a href = ".{0}"><img style="max-width:960px" src=".{0}"></a></td>\n'.format(p))
         if source_name in msinfo['sources']['calsources'].split(','):
-            p_model = './plots/plots_uvplt/{0}_uvpltmodel_{1}.png'.format(msinfo['msfilename'],source_name)
+            p_model = './weblog/plots/plots_uvplt/{0}_uvpltmodel_{1}.png'.format(msinfo['msfilename'],source_name)
             wlog.write('<td><a href = ".{0}"><img style="max-width:960px" src=".{0}"></a></td>\n'.format(p_model))
         wlog.write('</tr></table><br><br>\n<hr>\n')
 
 def plots_flagstats(msinfo, wlog):
     wlog.write('<h3>Flag statistics</h3>\n')
-    all_plots = np.sort(glob.glob('./plots/plots_flagstats/*png'))
+    all_plots = np.sort(glob.glob('./weblog/plots/plots_flagstats/*png'))
     #wlog.write('<h4>{0}</h4>\n'.format(msinfo['msfilename']))
-    plots_obs_dir = './plots/plots_flagstats/'
+    plots_obs_dir = './weblog/plots/plots_flagstats/'
     plot_file1 = plots_obs_dir+'{0}_flagstats_all.png'.format(msinfo['msfilename'])
     plot_file2 = plots_obs_dir+'{0}_flagstats_scans.png'.format(msinfo['msfilename'])
     wlog.write('<a href = ".{0}"><img style="max-width:960px" src=".{0}"></a><br>\n'.format(plot_file1))
@@ -235,14 +259,14 @@ def weblog_calibration(msinfo):
     wlog = open("./weblog/calibration.html","w")
     weblog_header(wlog, 'Calibration', msinfo['run'])
     #------------------------------------------
-    if os.path.isfile('./calib/caltables.pkl'):
-        caltables = load_obj('./calib/caltables')
+    if os.path.isfile('./weblog/calib/caltables.pkl'):
+        caltables = load_obj('./weblog/calib/caltables')
         for calstep in caltables['all_calsteps']:
             try:
                 wlog.write('<h4>{}</h4>\n'.format(caltables[calstep]['name']))
                 wlog.write('<table cellspacing = "20" cellpadding = "4px" style="width:40%">\n<tr> <td valign="top">\n')
                 write_caltable(caltables[calstep], wlog)
-                all_plots = np.sort(glob.glob('./plots/caltables/*{}*.png'.format(calstep)))
+                all_plots = np.sort(glob.glob('./weblog/plots/caltables/*{}*.png'.format(calstep)))
                 for p in all_plots:
                     wlog.write('<td><a href = ".{0}"><img style="max-width:700px" src=".{0}"></a></td>\n'.format(p))
                 wlog.write('</table><br><br>\n<hr>\n')
@@ -258,13 +282,17 @@ def weblog_plots(msinfo):
     wlog = open("./weblog/plots.html","w")
     weblog_header(wlog, 'Plots', msinfo['run'])
     #------------------------------------------
-    if (os.path.isdir('./plots/plots_data/')) and (os.listdir('./plots/plots_data/')):
+    if (os.path.isdir('./weblog/plots/plots_data/')) and \
+       (os.listdir('./weblog/plots/plots_data/')):
         plots_data(msinfo, wlog)
-    if (os.path.isdir('./plots/plots_corrected/')) and (os.listdir('./plots/plots_corrected/')):
+    if (os.path.isdir('./weblog/plots/plots_corrected/')) and \
+       (os.listdir('./weblog/plots/plots_corrected/')):
         plots_corrected(msinfo, wlog)
-    if (os.path.isdir('./plots/plots_uvplt/')) and (os.listdir('./plots/plots_uvplt/')):
+    if (os.path.isdir('./weblog/plots/plots_uvplt/')) and \
+       (os.listdir('./weblog/plots/plots_uvplt/')):
         plots_uvplt(msinfo, wlog)
-    if (os.path.isdir('./plots/plots_flagstats/')) and (os.listdir('./plots/plots_flagstats/')):
+    if (os.path.isdir('./weblog/plots/plots_flagstats/')) and \
+    (os.listdir('./weblog/plots/plots_flagstats/')):
         plots_flagstats(msinfo, wlog)
     #------------------------------------------
     weblog_foot(wlog)
@@ -272,7 +300,7 @@ def weblog_plots(msinfo):
 
 def weblog_images(msinfo):
     ###### Images page
-    wlog = open("./weblog/images.html","w")
+    wlog = open(weblog_link + "images.html","w")
     weblog_header(wlog, 'Crude images', msinfo['run'])
     wlog.write('These are crude images of targets and phase calibrators. The images are produced automatically with tclean in CASA ')
     wlog.write('using auto-thresh mode, which generates cleaning boxes without human intervention. ')
@@ -321,8 +349,6 @@ def makedir(pathdir):
 def start_weblog(msinfo):
     logger.info('Start weblog')
     ###  Start weblog  ###
-    try: os.mkdir('weblog')
-    except: pass
 
     weblog_index(msinfo)
     weblog_obssum(msinfo)

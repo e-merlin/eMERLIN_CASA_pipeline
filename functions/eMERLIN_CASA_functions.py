@@ -20,6 +20,19 @@ from recipes.setOrder import setToCasaOrder
 import logging
 logger = logging.getLogger('logger')
 
+weblog_dir = './weblog/'
+info_dir   = './weblog/info/'
+calib_dir  = './weblog/calib/'
+plots_dir  = './weblog/plots/'
+logs_dir   = './logs/'
+images_dir = './weblog/images/'
+
+weblog_link= './'
+info_link  = './info/'
+calib_link = './calib/'
+plots_link = './plots/'
+images_link= './images/'
+
 def check_in(pipeline_path):
     try:
         opts, arg = getopt.getopt(sys.argv[1:],'i:c:hg',['help','input=','gui'])
@@ -327,9 +340,7 @@ def get_distances(msfile, directions=''):
     tb.close()
     separations = collections.OrderedDict()
     # Write all separations in a txt file
-    plots_obs_dir = './plots/plots_observation/'
-    makedir(plots_obs_dir)
-    sep_file = open(plots_obs_dir+'source_separations.txt', 'wb')
+    sep_file = open(info_dir+'source_separations.txt', 'wb')
     for i in range(len(field_names)):
         for j in range(i+1, len(field_names)):
             f1 = field_names[i]
@@ -385,6 +396,7 @@ def get_msinfo(msfile, inputs, doprint=False):
     logger.info('> Number of spw: {0}'.format(msinfo['num_spw']))
     logger.info('> Channels per spw: {0}'.format(msinfo['nchan']))
     logger.info('> Itegration time {0:3.1f}s'.format(msinfo['int_time']))
+    save_obj(msinfo, info_dir + msinfo['msfilename']+'.msinfo')
     if doprint:
         prt_dict(msinfo)
     return msinfo
@@ -424,6 +436,11 @@ def remove_missing_scans(caltable, scans2flag):
     tb.removerows(index_missing_rows)
     logger.info('Removing Lo solutions for dropout scans from {0}: {1}'.format(caltable, scans2flag))
     tb.close()
+
+def run_listobs(msfile):
+    outfile = info_dir + msfile + '.listobs.txt'
+    listobs(vis=msfile, listfile=outfile, overwrite=True)
+    logger.info('Listobs file in: {0}'.format(outfile))
 
 def run_importfitsIDI(data_dir,msfile, doaverage=0):
     logger.info('Starting importfitsIDI procedure')
@@ -474,8 +491,7 @@ def run_importfitsIDI(data_dir,msfile, doaverage=0):
     ms.writehistory(message='eMER_CASA_Pipeline: Fixed uv coordinates & remove autocorr',msname=msfile)
     logger.info('End flagdata_autocorr')
     logger.debug('You have been transformed from an ugly UVFITS to beautiful MS')
-    listobs(vis=msfile, listfile=msfile+'.listobs.txt', overwrite=True)
-    logger.info('Listobs file in: {0}'.format(msfile+'.listobs.txt'))
+    run_listobs(msfile)
     return
 
 ##Hanning smoothing and flag of autocorrelations, will delete original and rename
@@ -905,7 +921,6 @@ def run_split(msfile, sources, width, timebin, datacolumn='data'):
     outputmsfile = name+'_avg.'+exte
     rmdir(outputmsfile)
     rmdir(outputmsfile+'.flagversions')
-    rmdir(outputmsfile+'.listobs.txt')
     logger.info('Input MS: {0}'.format(msfile))
     logger.info('Output MS: {0}'.format(outputmsfile))
     logger.info('width={0}, timebin={1}'.format(width, timebin,))
@@ -913,8 +928,7 @@ def run_split(msfile, sources, width, timebin, datacolumn='data'):
     logger.info('Data column: {0}'.format(datacolumn))
     split(vis=msfile, outputvis=outputmsfile, field=fields, width=width,
           timebin=timebin, datacolumn=datacolumn, keepflags=False)
-    listobs(vis=outputmsfile, listfile=outputmsfile+'.listobs.txt',overwrite=True)
-    logger.info('Listobs file in: {0}'.format(outputmsfile+'.listobs.txt'))
+    run_listobs(outputmsfile)
     logger.info('End split')
 
 
@@ -2029,7 +2043,7 @@ def shift_field_position(msfile, shift):
     logger.info('Concatenating {0} into {1}'.format(msfile_split, msfile))
     concat(vis= msfile_split, concatvis= msfile)
     logger.info('Updating listobs for MS: {}'.format(msfile))
-    listobs(vis=msfile, listfile=msfile+'.listobs.txt', overwrite=True)
+    run_listobs(msfile)
     rmdir(msfile_split)
     logger.warning('New field: {} in MS. Make sure you include it in the inputs file'.format(position_name))
 
@@ -2055,12 +2069,12 @@ def shift_all_positions(msfile):
     except:
         logger.info('Unable to open {0} with new position information'.format(shifts_file))
         sys.exit()
-
-    mvdir(msfile+'listobs.txt', msfile+'listobs_preshift.txt')
+    listobs_file = info_dir + msfile
+    mvdir(listobs_file + '.listobs.txt', listobs_file+'preshift_listobs.txt')
     logger.info('Found {0} shifts to apply. {0} new fields will be added'.format(len(shifts_list)))
     for shift in shifts_list:
         shift_field_position(msfile, shift)
-    listobs(vis=msfile, listfile=msfile+'.listobs.txt', overwrite=True)
+    run_listobs(msfile)
     logger.info('Listobs file in: {0}'.format(msfile+'.listobs.txt'))
     logger.info('End shift_all_pos')
 

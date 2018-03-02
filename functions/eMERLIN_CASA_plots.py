@@ -16,6 +16,18 @@ from tasks import *
 import logging
 logger = logging.getLogger('logger')
 
+weblog_dir = './weblog/'
+info_dir   = './weblog/info/'
+calib_dir  = './weblog/calib/'
+plots_dir  = './weblog/plots/'
+logs_dir   = './logs/'
+images_dir = './weblog/images/'
+
+weblog_link= './'
+info_link  = './info/'
+calib_link = './calib/'
+plots_link = './plots/'
+images_link= './images/'
 
 # Functions to save and load dictionaries
 def save_obj(obj, name):
@@ -115,11 +127,11 @@ def single_4plot_old(msfile, field, baseline, datacolumn, plot_file):
 
 def make_4plots_old(msfile, msinfo, datacolumn='data'):
     if datacolumn == 'data':
-        plots_data_dir = './plots/plots_data/'
+        plots_data_dir = './weblog/plots/plots_data/'
     elif datacolumn == 'corrected':
-        plots_data_dir = './plots/plots_corrected/'
+        plots_data_dir = './weblog/plots/plots_corrected/'
     else:
-        plots_data_dir = './plots/'
+        plots_data_dir = './weblog/plots/'
     makedir(plots_data_dir)
     for f in msinfo['sources']['allsources'].split(','):
         logger.info('Generating plot for msfile: {0}, field: {1}, column: {2}'.format(
@@ -191,11 +203,11 @@ def single_4plot((msinfo, field, datacolumn, plots_data_dir)):
 #    plot_file = plots_data_dir+'{0}_4plot_{1}_{2}'.format(msinfo['msfilename'],
 #                                                          field, datacolumn)
 #    if datacolumn == 'data':
-#        plots_data_dir = './plots/plots_data/'
+#        plots_data_dir = './weblog/plots/plots_data/'
 #    elif datacolumn == 'corrected':
-#        plots_data_dir = './plots/plots_corrected/'
+#        plots_data_dir = './weblog/plots/plots_corrected/'
 #    else:
-#        plots_data_dir = './plots/'
+#        plots_data_dir = './weblog/plots/'
 #    makedir(plots_data_dir)
 #    for f in msinfo['sources']['mssources'].split(','):
 #        if f != '':
@@ -210,11 +222,11 @@ def single_4plot((msinfo, field, datacolumn, plots_data_dir)):
 def make_4plots(msfile, msinfo, datacolumn='data'):
     logger.info('Start plot_{}'.format(datacolumn))
     if datacolumn == 'data':
-        plots_data_dir = './plots/plots_data/'
+        plots_data_dir = './weblog/plots/plots_data/'
     elif datacolumn == 'corrected':
-        plots_data_dir = './plots/plots_corrected/'
+        plots_data_dir = './weblog/plots/plots_corrected/'
     else:
-        plots_data_dir = './plots/'
+        plots_data_dir = './weblog/plots/'
     makedir(plots_data_dir)
     fields = msinfo['sources']['allsources'].split(',')
     logger.info('Producing in parallel visibility plots for fields: {}'.format(msinfo['sources']['allsources']))
@@ -286,7 +298,7 @@ def single_uvplt_model((msinfo, field, plots_data_dir)):
 
 def make_uvplt(msinfo):
     num_proc = 1
-    plots_data_dir = './plots/plots_uvplt/'
+    plots_data_dir = './weblog/plots/plots_uvplt/'
     makedir(plots_data_dir)
     fields = msinfo['sources']['allsources'].split(',')
     logger.info('Producing in parallel uvplot for fields: {}'.format(msinfo['sources']['allsources']))
@@ -347,7 +359,7 @@ def read_uvw(msfile, field):
 
 def make_uvcov(msfile, msinfo):
     logger.info('Plotting uv-coverage for all sources'.format())
-    plots_obs_dir = './plots/plots_observation/'
+    plots_obs_dir = './weblog/plots/plots_observation/'
     makedir(plots_obs_dir)
     freqs = get_freqs(msfile, allfreqs=True)
     tb.open(msfile+'/FIELD')
@@ -365,7 +377,7 @@ def make_uvcov(msfile, msinfo):
 
 
 def make_elevation(msfile, msinfo):
-    plots_obs_dir = './plots/plots_observation/'
+    plots_obs_dir = './weblog/plots/plots_observation/'
     makedir(plots_obs_dir)
     plot_file = plots_obs_dir+'{0}_elevation.png'.format(msinfo['msfilename'])
     logger.info('Plotting elevation to: {}'.format(plot_file))
@@ -492,7 +504,7 @@ def plot_flagstatistics(flag_stats, msinfo):
     #ax1.legend(loc=0)
     #ax2.legend(loc=0)
 
-    plots_obs_dir = './plots/plots_flagstats/'
+    plots_obs_dir = './weblog/plots/plots_flagstats/'
     plot_file1 = plots_obs_dir+'{0}_flagstats_all.png'.format(msinfo['msfilename'])
     logger.info('Plotting flagstats all: {0}'.format(plot_file1))
     fig.savefig(plot_file1, bbox_inches='tight')
@@ -520,16 +532,16 @@ def plot_flagstatistics(flag_stats, msinfo):
 
 
 def flag_statistics(msinfo):
-    plots_obs_dir = './plots/plots_flagstats/'
+    plots_obs_dir = './weblog/plots/plots_flagstats/'
     makedir(plots_obs_dir)
     logger.info('Start flagstatistics')
     logger.info('Running flagdata on {0}, mode="summary", action="calculate", antenna="*&*"'.format(msinfo['msfile']))
     flag_stats = flagdata(vis=msinfo['msfile'], mode='summary', action='calculate', display='none', antenna='*&*')
-    save_obj(flag_stats, './plots/plots_flagstats/flagstats')
-    logger.info('flagstats file saved to: ./plots/plots_flagstats/flagstats.pkl')
+    save_obj(flag_stats, './weblog/plots/plots_flagstats/flagstats')
+    logger.info('flagstats file saved to: ./weblog/plots/plots_flagstats/flagstats.pkl')
     # For testing (read instead of producing):
 #    try:
-#        flag_stats = load_obj('./plots/plots_flagstats/flagstats')
+#        flag_stats = load_obj('./weblog/plots/plots_flagstats/flagstats')
 #    except:
 #       flag_stats = flagdata(vis=msinfo['msfile'], mode='summary', action='calculate', display='none', antenna='*&*') 
 #        save_obj(flag_stats, 'flagstats')
