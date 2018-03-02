@@ -100,7 +100,6 @@ def run_pipeline(inputs=None, inputs_path=''):
     logger.info('This log uses UTC times')
     eMCP_info['pipeline_path'] = pipeline_path
     eMCP_info['casa_version'] = casadef.casa_version
-    print('AAA', eMCP_info['pipeline_version'])
     em.check_pipeline_conflict(eMCP_info, pipeline_version)
     eMCP_info['pipeline_version'] = pipeline_version
     save_obj(eMCP_info, info_dir + 'eMCP_info.pkl')
@@ -121,30 +120,19 @@ def run_pipeline(inputs=None, inputs_path=''):
     if inputs['run_importfits'] > 0:
         em.run_importfitsIDI(fits_path, msfile, doaverage=inputs['run_importfits'])
         em.check_mixed_mode(msfile,mode='split')
+        run_hanning = 1
+        if run_hanning > 0:
+            run_hanning = inputs['hanning']
+            em.hanning(inputvis=msfile, run_hanning=run_hanning, deloriginal=True)
 
     if os.path.isdir('./'+inputs['inbase']+'.ms') == True:
         msfile = inputs['inbase']+'.ms'
         logger.info('Found MS file: {0}'.format(msfile))
         msinfo = em.get_msinfo(msfile, inputs)
 
-    ### Write summary weblog ###
-    msinfo['eMCP_info'] = eMCP_info
-    if inputs['summary_weblog'] > 0:
-        logger.info('Starting summary weblog')
-        if not os.path.isdir(msfile):
-            logger.info('Error finding original data: {0}'.format(msfile))
-            logger.info('summary_weblog cannot be run. Exiting pipeline.')
-            sys.exit()
-        emplt.make_elevation(msfile, msinfo)
-        emplt.make_uvcov(msfile, msinfo)
-        emwlog.start_weblog(msinfo)
-
-    if inputs['hanning'] > 0:
-        run_hanning = inputs['hanning']
-        em.hanning(inputvis=msfile, run_hanning=run_hanning, deloriginal=True)
-
     ### Convert MS to MMS ###
-    if inputs['ms2mms'] > 0:
+    run_ms2mms = 0
+    if run_ms2mms > 0:
         em.ms2mms(vis=msfile,mode='parallel')
 
     ### check for parallelisation
