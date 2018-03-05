@@ -6,6 +6,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import multiprocessing
 from matplotlib.ticker import MultipleLocator
+import datetime
 
 plt.ioff()
 
@@ -58,6 +59,10 @@ def makedir(pathdir):
     except:
         logger.debug('Cannot create directory: {}'.format(pathdir))
         pass
+
+def add_step_time(eMCP):
+    save_obj(eMCP, info_dir + 'eMCP_info.pkl')
+    return datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
 
 def get_scans(msfile, field):
     ms.open(msfile)
@@ -219,7 +224,9 @@ def single_4plot((msinfo, field, datacolumn, plots_data_dir)):
 #            num_baselines = len(msinfo['baselines'])
 #            single_4plot(msfile, field, num_baselines, datacolumn, plot_file)
 
-def make_4plots(msfile, msinfo, datacolumn='data'):
+def make_4plots(eMCP, datacolumn='data'):
+    msinfo = eMCP['msinfo']
+    msfile = eMCP['msinfo']['msfile']
     logger.info('Start plot_{}'.format(datacolumn))
     if datacolumn == 'data':
         plots_data_dir = './weblog/plots/plots_data/'
@@ -238,6 +245,8 @@ def make_4plots(msfile, msinfo, datacolumn='data'):
     pool.join()
     logger.info('Visibility plots finished')
     logger.info('End plot_{}'.format(datacolumn))
+    eMCP['steps']['plot_'+datacolumn] = add_step_time(eMCP)
+    return eMCP
 
 def single_uvplt((msinfo, field, plots_data_dir)):
     logger.info('uvplt for field: {}'.format(field))

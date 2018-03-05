@@ -17,26 +17,26 @@ Lo_dropout_scans= ''
 
 ## Pre-processing (0=don't run, 1=run):
 run_importfits  = 0
-flag_0_aoflagger= 0
-flag_1_apriori  = 0
-flag_2a_manual  = 0   # Commands in ./inputfg_a.flags
+flag_aoflagger  = 0
+flag_apriori    = 0
+flag_manual     = 0   # Commands in ./inputfg.flags
 shift_field_pos = 0   # Shift positions in ./shift_phasecenter.txt
-average_1       = 0   # Value will be seconds to average
+average         = 0   # Value will be seconds to average
 plot_data       = 0
 save_flags      = 0
 
 ## Calibration (0=don't run, 1=run):
 restore_flags   = 0
-flag_2b_manual  = 0   # Commands in ./inputfg_b_avg.flags
+flag_manual_avg = 0   # Commands in ./inputfg_avg.flags
 init_models     = 0
-bandpass_0      = 0
-flag_3_tfcropBP = 0
+bandpass        = 0
+flag_tfcropBP   = 0
 delay           = 0
-gain_0_p_ap     = 0
+gain_p_ap       = 0
 fluxscale       = 0
-bandpass_1_sp   = 0
-gain_1_amp_sp   = 0
+bandpass_sp     = 0
+gain_amp_sp     = 0
 applycal_all    = 0
-flag_4_rflag    = 0
+flag_rflag      = 0
 plot_corrected  = 0
 first_images    = 0

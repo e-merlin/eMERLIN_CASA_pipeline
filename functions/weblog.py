@@ -3,6 +3,7 @@ import numpy as np
 import glob
 import pickle
 import collections
+import datetime
 
 # CASA imports
 from taskinit import *
@@ -278,17 +279,57 @@ def write_caltable(caltable, wlog):
         wlog.write('<tr><td>{} </td>   <td>{}</td>\n'.format(k, caltable[k]))
     wlog.write('</table></td>\n')
 
-def weblog_pipelineinfo(eMCP_info):
-    msinfo = eMCP_info['msinfo']
+def table_colors(steps, step, prev_steps):
+    t_fmt = '%Y-%m-%d %H:%M:%S'
+    neutral = '#EEEEEE'
+    red = '#FF6347'
+    green = '#008B45'
+    outdated = {True: red, False: green}
+    if steps[step] == 0:
+        color = neutral
+    elif type(steps[step]) is str:
+        time_step = datetime.datetime.strptime(steps[step], t_fmt)
+        if prev_steps != []:
+            latest_prev = max([datetime.datetime.strptime(steps[stepi], t_fmt)
+                               for stepi in prev_steps])
+            color = outdated[time_step < latest_prev]
+        else:
+            color = green
+    else:
+        color = '#000000'
+    return color
+
+
+def table_steps(eMCP):
+    table_txt = '<br><h4>Execution summary</h4>\n'
+    table_txt += ('<table bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:40%">\n')
+    table_txt += ('<tr><th>Step</th><th>Execution</th>\n')
+    prev_steps = []
+    nosteps = ['plot_data', 'save_flags', 'plot_corrected', 'first_images']
+    for step, time_s in eMCP['steps'].items():
+        color = table_colors(eMCP['steps'], step, prev_steps)
+        table_txt += ('<tr><td>{0}</td>'.format(step))
+        table_txt += ('<td bgcolor={0} align="center">{1}</td></tr>\n'.format(
+                                                                color,
+                                                                time_s))
+        if (eMCP['steps'][step] != 0) and (step not in nosteps):
+            prev_steps.append(step)
+    table_txt += ('</table>\n')
+    return table_txt
+
+def weblog_pipelineinfo(eMCP):
+    msinfo = eMCP['msinfo']
     # Summary of pipeline execution page
     wlog = open(weblog_dir + "pipelineinfo.html","w")
     weblog_header(wlog, 'Pipeline info', msinfo['run'])
     #------------------------------------------         
-    wlog.write('CASA version: {}\n<br>'.format(eMCP_info['casa_version']))
-    wlog.write('Pipeline version: {}\n<br>'.format(eMCP_info['pipeline_version']))
+    wlog.write('CASA version: {}\n<br>'.format(eMCP['casa_version']))
+    wlog.write('Pipeline version: {}\n<br>'.format(eMCP['pipeline_version']))
+    wlog.write(table_steps(eMCP))
+    wlog.write('<br><h4>Relevant log files:</h4>\n')
     write_link_txt(wlog, info_link + 'eMCP.log.txt', 'eMCP.log')
     write_link_txt(wlog, info_link + 'casa_eMCP.log.txt', 'casa_eMCP.log')
-    prt_dict_tofile(eMCP_info, tofilename=info_dir + 'eMCP_info.txt', pre='  ')
+    prt_dict_tofile(eMCP, tofilename=info_dir + 'eMCP_info.txt', pre='  ')
     eMCP_txtfile = info_link + 'eMCP_info.txt'
     write_link_txt(wlog, eMCP_txtfile, 'Detailed eMCP_info dictionary')
     #------------------------------------------                                                                       
@@ -388,14 +429,14 @@ def makedir(pathdir):
         pass
 
 
-def start_weblog(eMCP_info):
-    msinfo = eMCP_info['msinfo']
+def start_weblog(eMCP):
+    msinfo = eMCP['msinfo']
     logger.info('Start weblog')
     ###  Start weblog  ###
 
     weblog_index(msinfo)
     weblog_obssum(msinfo)
-    weblog_pipelineinfo(eMCP_info)
+    weblog_pipelineinfo(eMCP)
     weblog_calibration(msinfo)
     weblog_plots(msinfo)
     weblog_images(msinfo)

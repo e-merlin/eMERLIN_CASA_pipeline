@@ -69,7 +69,7 @@ def headless(inputfile):
     ''' Parse the list of inputs given in the specified file. (Modified from evn_funcs.py)'''
     logger.info('Parameters in inputs file:')
     INPUTFILE = open(inputfile, "r")
-    control = {}
+    control = collections.OrderedDict()
     # a few useful regular expressions
     newline = re.compile(r'\n')
     space = re.compile(r'\s')
@@ -191,15 +191,19 @@ def prt_dict_tofile(d, tofilename=None, addfile='', pre=' '):
             f.write('{}\n'.format(pre+key_inner))
             prt_dict_tofile(d[key_inner], addfile=f, pre=pre+pre)
 
-def check_pipeline_conflict(eMCP_info, pipeline_version):
+def add_step_time(eMCP):
+    save_obj(eMCP, info_dir + 'eMCP_info.pkl')
+    return datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+
+def check_pipeline_conflict(eMCP, pipeline_version):
     try:
-        eMCP_info['pipeline_version']
-        if ((~new_run) and (eMCP_info['pipeline_version'] != pipeline_version)):
+        eMCP['pipeline_version']
+        if ((~new_run) and (eMCP['pipeline_version'] != pipeline_version)):
             logger.warning(
             'The log shows that different versions of the pipeline'
             ' has been executed. Please verify versions')
             logger.warning('Previous version: {0}. Current version {1}'.format(
-            eMCP_info['pipeline_version'], pipeline_version))
+            eMCP['pipeline_version'], pipeline_version))
     except:
         pass
 
@@ -391,7 +395,9 @@ def get_integration_time(msfile):
     return int_time['value']
 
 
-def get_msinfo(msfile, inputs, doprint=False):
+def get_msinfo(eMCP, msfile, doprint=False):
+    inputs = eMCP['inputs']
+    logger.info('Found MS file: {0}'.format(msfile))
     logger.info('Reading ms file information for MS: {0}'.format(msfile))
     msinfo = collections.OrderedDict()
     msinfo['msfile'] = msfile
@@ -426,7 +432,9 @@ def get_msinfo(msfile, inputs, doprint=False):
     save_obj(msinfo, info_dir + msinfo['msfilename']+'.msinfo.pkl')
     if doprint:
         prt_dict(msinfo)
-    return msinfo
+    eMCP['msinfo'] = msinfo
+    save_obj(eMCP, info_dir + 'eMCP_info.pkl')
+    return eMCP, msinfo, msfile
 
 def get_unique_field(caltable):
     # If more than one field was used to generate the caltable but
@@ -469,14 +477,18 @@ def run_listobs(msfile):
     listobs(vis=msfile, listfile=outfile, overwrite=True)
     logger.info('Listobs file in: {0}'.format(outfile))
 
-def run_importfitsIDI(data_dir,msfile, doaverage=0):
+def run_importfitsIDI(eMCP):
     logger.info('Starting importfitsIDI procedure')
+    fits_path = backslash_check(eMCP['inputs']['fits_path'])
+    doaverage = eMCP['inputs']['run_importfits']
+    msfile = eMCP['inputs']['inbase']+'.ms'
+    eMCP['msfile'] = msfile
     rmdir(msfile)
     fitsfiles =[]
-    for file in os.listdir(data_dir):
-        if file.endswith('fits') or file.endswith('FITS'):
-            fitsfiles = fitsfiles + [data_dir+file]
-            logger.info('FITS file found to be imported: {0}'.format(file))
+    for infile in os.listdir(fits_path):
+        if infile.endswith('fits') or infile.endswith('FITS'):
+            fitsfiles = fitsfiles + [fits_path+infile]
+            logger.info('FITS file found to be imported: {0}'.format(infile))
     logger.info('Start importfitsIDI')
     importfitsidi(fitsidifile=fitsfiles, vis=msfile, constobsid=True, scanreindexgap_s=15.0)
     ms.writehistory(message='eMER_CASA_Pipeline: Import fitsidi to ms, complete',msname=msfile)
@@ -500,7 +512,7 @@ def run_importfitsIDI(data_dir,msfile, doaverage=0):
         else:
             logger.critical('Problem generating averaged ms. Stopping pipeline')
             logger.warning('File {0}.tavg was not created.'.format(msfile))
-            exit_pipeline(msinfo)
+            exit_pipeline(eMCP)
         mvdir(msfile+'_tavg', msfile)
         logger.info('End average0')
     logger.info('Start UVFIX')
@@ -511,7 +523,7 @@ def run_importfitsIDI(data_dir,msfile, doaverage=0):
     else:
         logger.critical('Problem generating UVFIXEd ms. Stopping pipeline')
         logger.warning('File {0}.uvfix was not created. {0} was not corrected.'.format(msfile))
-        exit_pipeline(msinfo)
+        exit_pipeline(eMCP)
     mvdir(msfile+'.uvfix', msfile)
     logger.info('Start flagdata_autocorr')
     flagdata(vis=msfile,mode='manual',autocorr=True)
@@ -519,14 +531,18 @@ def run_importfitsIDI(data_dir,msfile, doaverage=0):
     logger.info('End flagdata_autocorr')
     logger.debug('You have been transformed from an ugly UVFITS to beautiful MS')
     run_listobs(msfile)
-    return
+    eMCP['steps']['importfitsIDI'] = add_step_time(eMCP)
+    return eMCP
 
 ##Hanning smoothing and flag of autocorrelations, will delete original and rename
-def hanning(inputvis, run_hanning, deloriginal):
+def hanning(eMCP):
+    run_hanning = 1
+    deloriginal = True
     apply_hanning = False
+    msfile = eMCP['msfile']
     if run_hanning == 1:
         logger.info('hanning = 1 means check if data are L band.')
-        band = check_band(inputvis)
+        band = check_band(eMCP['msfile'])
         if band == 'L':
             logger.info('L band dataset. Hanning smoothing will be executed.')
             apply_hanning = True
@@ -536,13 +552,10 @@ def hanning(inputvis, run_hanning, deloriginal):
         apply_hanning = True
     if apply_hanning:
         logger.info('Start hanning')
-        if inputvis[-3:].lower() == '.ms':
-            outputvis = inputvis[:-3]+'_hanning'+inputvis[-3:]
-            rmdir(outputvis)
-        elif inputvis[-3:].lower() == 'mms':
-            outputvis = inputvis[:-4]+'_hanning'+inputvis[-4:]
-            rmdir(outputvis)
-        mstransform(vis=inputvis,outputvis=outputvis,hanning=True,datacolumn='data')
+        filename, extension = os.path.splitext(msfile)
+        outputvis = filename+'_hanning'+extension
+        rmdir(outputvis)
+        mstransform(vis=msfile,outputvis=outputvis,hanning=True,datacolumn='data')
         # Check if hanning smoothed data was not produced:
         if os.path.isdir(outputvis) == False:
             logger.critical('Problem generating Hanning smoothed ms. Stopping pipeline')
@@ -550,16 +563,17 @@ def hanning(inputvis, run_hanning, deloriginal):
             exit_pipeline()
         # Delete or move original
         if deloriginal==True:
-            rmdir(inputvis)
-            rmdir(inputvis+'.flagversions')
+            rmdir(msfile)
+            rmdir(msfile+'.flagversions')
         else:
-            mvdir(inputvis, inputvis+'_prehanning')
-            mvdir(inputvis+'.flagversions', inputvis+'_prehanning.flagversions')
-        mvdir(outputvis, inputvis)
-        mvdir(outputvis+'.flagversions', inputvis+'.flagversions')
-        ms.writehistory(message='eMER_CASA_Pipeline: Hanning smoothed data, complete',msname=inputvis)
+            mvdir(msfile, msfile+'_prehanning')
+            mvdir(msfile+'.flagversions', msfile+'_prehanning.flagversions')
+        mvdir(outputvis, msfile)
+        mvdir(outputvis+'.flagversions', msfile+'.flagversions')
+        ms.writehistory(message='eMER_CASA_Pipeline: Hanning smoothed data, complete',msname=msfile)
         logger.info('End hanning')
-    return
+        eMCP['steps']['hanning'] = add_step_time(eMCP)
+    return eMCP
 
 def run_rfigui(vis):
     logger.info('Start run_rfigui')
@@ -569,9 +583,23 @@ def run_rfigui(vis):
     logger.info('End run_rfigui')
 
 
-def run_aoflagger_fields(msfile, separate_bands, fields='all', pipeline_path='./'):
+def run_aoflagger_fields(eMCP):
     """This version of the autoflagger iterates through the ms within the mms structure selecting individual fields. It uses pre-defined strategies. The np.unique in the loop below is needed for single source files. The mms thinks there are many filds (one per mms). I think it is a bug from virtualconcat."""
+    fields = 'all'
+    pipeline_path = eMCP['pipeline_path']
+    msfile = eMCP['msinfo']['msfile']
+
     logger.info('Start run_aoflagger_fields')
+    inputs_aoflagger = eMCP['inputs']['flag_aoflagger']
+    if inputs_aoflagger == 1:
+        separate_bands = True
+        logger.info('Bands will be processed separately.')
+    elif inputs_aoflagger == 2:
+        separate_bands = False
+        logger.info('Bands will be processed all together.')
+    else:
+        logger.warning('flag_aoflagger can only be 1 or 2')
+        exit_pipeline()
     aoflagger_available = check_command('aoflagger')
     if not aoflagger_available:
         logger.critical('aoflagger requested but not available.')
@@ -610,7 +638,8 @@ def run_aoflagger_fields(msfile, separate_bands, fields='all', pipeline_path='./
         ms.writehistory(message='eMER_CASA_Pipeline: AOFlag field {0} with strategy {1}:'.format(field, aostrategy),msname=msfile)
     #flag_applied(flags, 'flagdata0_aoflagger')
     logger.info('End run_aoflagger_fields')
-    return
+    eMCP['steps']['aoflagger'] = add_step_time(eMCP)
+    return eMCP
 
 def check_command(command):
     try:
@@ -640,26 +669,30 @@ def check_aoflagger_version():
         old_aoflagger = False
     return old_aoflagger
 
-def ms2mms(vis, mode):
+def ms2mms(eMCP):
+    mode = 'parallel'
+    msfile = eMCP['msfile']
     logger.info('Start ms2mms')
     if mode == 'parallel':
-        partition(vis=vis,outputvis=vis[:-3]+'.mms',createmms=True,separationaxis="auto",numsubms="auto",flagbackup=True,datacolumn=
+        partition(vis=msfile,outputvis=msfile[:-3]+'.mms',createmms=True,separationaxis="auto",numsubms="auto",flagbackup=True,datacolumn=
 "all",field="",spw="",scan="",antenna="",correlation="",timerange="",intent="",array="",uvrange="",observation="",feed="",disableparallel=None,ddistart=None
 ,taql=None)
-        if os.path.isdir(vis[:-3]+'.mms') == True:
-            rmdir(vis)
-            rmdir(vis+'.flagversions')
-        ms.writehistory(message='eMER_CASA_Pipeline: Converted MS to MMS for parallelisation',msname=vis[:-3]+'.mms')
+        if os.path.isdir(msfile[:-3]+'.mms') == True:
+            rmdir(msfile)
+            rmdir(msfile+'.flagversions')
+        ms.writehistory(message='eMER_CASA_Pipeline: Converted MS to MMS for parallelisation',msname=msfile[:-3]+'.mms')
 
     ## Need to use single if you need to aoflag the data later
     if mode == 'single':
-        partition(vis=vis,outputvis=vis[:-3]+'.ms',createmms=False,separationaxis="auto",numsubms="auto",flagbackup=True,datacolumn=
+        partition(vis=msfile,outputvis=msfile[:-3]+'.ms',createmms=False,separationaxis="auto",numsubms="auto",flagbackup=True,datacolumn=
 "all",field="",spw="",scan="",antenna="",correlation="",timerange="",intent="",array="",uvrange="",observation="",feed="",disableparallel=None,ddistart=None
 ,taql=None)
-        if os.path.isdir(vis[:-3]+'.ms') == True:
-           rmdir(vis)
-           rmdir(vis+'.flagversions')
+        if os.path.isdir(msfile[:-3]+'.ms') == True:
+           rmdir(msfile)
+           rmdir(msfile+'.flagversions')
     logger.info('End ms2mms')
+    eMCP['steps']['ms2mms'] = add_step_time(eMCP)
+    return eMCP
 
 def find_quacktime(msinfo, s1, s2):
     separations = msinfo['separations']
@@ -688,7 +721,11 @@ def find_quacktime(msinfo, s1, s2):
         quacktime = 0
     return quacktime
 
-def flagdata1_apriori(msfile, msinfo, Lo_dropout_scans, do_quack=True):
+def flagdata1_apriori(eMCP):
+    do_quack = True
+    msinfo = eMCP['msinfo']
+    msfile = msinfo['msfile']
+    Lo_dropout_scans = eMCP['inputs']['Lo_dropout_scans']
     sources = msinfo['sources']
     logger.info('Start flagdata1_apriori')
     antennas = get_antennas(msfile)
@@ -738,19 +775,28 @@ def flagdata1_apriori(msfile, msinfo, Lo_dropout_scans, do_quack=True):
             logger.warning('Lo_dropout_scans selected but no name for phasecal. Please fill the phscal field in the inputs file.')
     #flag_applied(flags, 'flagdata1_apriori')
     logger.info('End flagdata1_apriori')
-    return
+    eMCP['steps']['flag_apriori'] = add_step_time(eMCP)
+    return eMCP
 
-def flagdata2_manual(msfile, inpfile):
-    logger.info('Start flagdata_manual')
+def flagdata_manual(eMCP, run_name='flagdata_manual'):
+    msfile = eMCP['msinfo']['msfile']
+    if run_name == 'flag_manual':
+        inpfile = './inputfg.flags'
+    elif run_name == 'flag_manual_avg':
+        inpfile = './inputfg_avg.flags'
+    else:
+        logger.warning('Wrong run_name specified')
+        inpfile = ''
+    logger.info('Start {}'.format(run_name))
     if not os.path.isfile(inpfile) == True:
         logger.critical('Manual flagging step requested but cannot access file: {0}'.format(inpfile))
         logger.warning('Stopping pipeline at this step')
         exit_pipeline()
     logger.info('Applying manual flags from file: {0}'.format(inpfile))
     flagdata(vis=msfile, mode='list', inpfile=inpfile)
-    #flag_applied(flags, 'flagdata_manual')
-    logger.info('End flagdata_manual')
-    return
+    logger.info('End {}'.format(run_name))
+    eMCP['steps'][run_name] = add_step_time(eMCP)
+    return eMCP
 
 def flagdata3_tfcropBP(msfile, msinfo):
     logger.info('Start flagdata3_tfcropBP')
@@ -767,7 +813,7 @@ def flagdata3_tfcropBP(msfile, msinfo):
              action='apply', display='', flagbackup=True)
     #flag_applied(flags, 'flagdata3_tfcropBP')
     logger.info('End flagdata3_tfcropBP')
-    return 
+    return datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
 
 def flagdata_tfcrop_bright(msfile, sources, datacolumn='DATA'):
     logger.info('Start flagdata_tfcrop_bright')
@@ -786,7 +832,7 @@ def flagdata_tfcrop_bright(msfile, sources, datacolumn='DATA'):
              growtime=50, growfreq=0)
     #flag_applied(flags, 'flagdata_tfcrop_bright')
     logger.info('End flagdata_tfcrop_bright')
-    return 
+    return datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
 
 def flagdata4_rflag(msfile, msinfo):
     timedevscale = 5
@@ -803,7 +849,7 @@ def flagdata4_rflag(msfile, msinfo):
              action='apply', display='', flagbackup=True)
     #flag_applied(flags, 'flagdata4_rflag')
     logger.info('End flagdata4_rflag')
-    return 
+    return datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
 
 
 # This can be used to track flags with flagnames
@@ -912,13 +958,16 @@ def plot_caltable(msinfo, caltable, plot_file, xaxis='', yaxis='', title='',
                width=1000, height=240*num_anten, clearplots=False, overwrite=True, showgui=showgui)
 
 
-def saveflagstatus(msinfo):
+def saveflagstatus(eMCP):
+    msinfo = eMCP['msinfo']
     logger.info('Start saveflagstatus')
     logger.info('Saving current flagging status to versionname=\'initialize_flags\'')
     flagmanager(msinfo['msfile'], mode='save', versionname='initialize_flags',
              comment='Restore this version to restart calibration without the flags produced by the calibration',
              merge='replace')
     logger.info('End saveflagstatus')
+    eMCP['steps']['save_flags'] = add_step_time(eMCP)
+    return eMCP
 
 
 def restoreflagstatus(msinfo):
@@ -931,7 +980,12 @@ def restoreflagstatus(msinfo):
 
 ### Run CASA calibration functions
 
-def run_split(msfile, sources, width, timebin, datacolumn='data'):
+def run_split(eMCP):
+    msfile = eMCP['msinfo']['msfile']
+    sources = eMCP['msinfo']['sources']
+    timebin = '{}s'.format(eMCP['inputs']['average'])
+    width = 4
+    datacolumn = 'data'
     logger.info('Start split')
     mssources = find_mssources(msfile)
     # Check that all sources are there:
@@ -951,13 +1005,15 @@ def run_split(msfile, sources, width, timebin, datacolumn='data'):
     rmdir(outputmsfile+'.flagversions')
     logger.info('Input MS: {0}'.format(msfile))
     logger.info('Output MS: {0}'.format(outputmsfile))
-    logger.info('width={0}, timebin={1}'.format(width, timebin,))
+    logger.info('width={0}, timebin={1}'.format(width, timebin))
     logger.info('Fields: {0}'.format(fields))
     logger.info('Data column: {0}'.format(datacolumn))
     split(vis=msfile, outputvis=outputmsfile, field=fields, width=width,
           timebin=timebin, datacolumn=datacolumn, keepflags=False)
     run_listobs(outputmsfile)
     logger.info('End split')
+    eMCP['steps']['average'] = add_step_time(eMCP)
+    return eMCP
 
 
 def run_initialize_models(msfile, fluxcal, models_path):
@@ -1553,7 +1609,7 @@ def exit_pipeline(msinfo=''):
     if msinfo != '':
         logger.info('Something went wrong. Producing weblog and quiting')
         import functions.weblog as emwlog
-        emwlog.start_weblog(msinfo)
+        emwlog.start_weblog()
     sys.exit()
 
 def eM_fluxscale(msfile, msinfo, caltables, ampcal_table, sources, antennas):
@@ -2101,7 +2157,8 @@ def read_shifts_file(shifts_file):
     return shifts_list
 
 
-def shift_all_positions(msfile):
+def shift_all_positions(eMCP):
+    msfile = eMCP['msinfo']['msfile']
     logger.info('Start shift_all_pos')
     shifts_file = './shift_phasecenter.txt'
     try:
@@ -2118,30 +2175,34 @@ def shift_all_positions(msfile):
     run_listobs(msfile)
     logger.info('Listobs file in: {0}'.format(msfile+'.listobs.txt'))
     logger.info('End shift_all_pos')
+    eMCP['steps']['shift_field_pos'] = add_step_time(eMCP)
+    return eMCP
 
 
-def eMCP_info_start_steps(eMCP_info):
-    eMCP_info['steps'] = collections.OrderedDict()
-    eMCP_info['steps']['importfitsIDI'] = 0
-    eMCP_info['steps']['hanning'] = 0
-    eMCP_info['steps']['ms2mms'] = 0
-    eMCP_info['steps']['aoflagger'] = 0
-    eMCP_info['steps']['flag_apriori'] = 0
-    eMCP_info['steps']['flag_manual'] = 0
-    eMCP_info['steps']['shift_field_pos'] = 0
-    eMCP_info['steps']['average'] = 0
-    eMCP_info['steps']['plot_data'] = 0
-    eMCP_info['steps']['save_flags'] = 0
-    eMCP_info['steps']['flag_manual_avg'] = 0
-    eMCP_info['steps']['init_models'] = 0
-    eMCP_info['steps']['bandpass0'] = 0
-    eMCP_info['steps']['flag_tfcropBP'] = 0
-    eMCP_info['steps']['delay'] = 0
-    eMCP_info['steps']['gain_0_p_ap'] = 0
-    eMCP_info['steps']['fluxscale'] = 0
-    eMCP_info['steps']['bandpass1_sp'] = 0
-    eMCP_info['steps']['gain_1_amp_sp'] = 0
-    eMCP_info['steps']['applycal_all'] = 0
-    eMCP_info['steps']['flag_rflag'] = 0
-    eMCP_info['steps']['plot_corrected'] = 0
-    eMCP_info['steps']['first_images'] = 0
+def eMCP_info_start_steps():
+    default_value = 0
+    steps = collections.OrderedDict()
+    steps['importfitsIDI'] = default_value
+    steps['hanning'] = default_value
+    steps['ms2mms'] = default_value
+    steps['aoflagger'] = default_value
+    steps['flag_apriori'] = default_value
+    steps['flag_manual'] = default_value
+    steps['shift_field_pos'] = default_value
+    steps['average'] = default_value
+    steps['plot_data'] = default_value
+    steps['save_flags'] = default_value
+    steps['flag_manual_avg'] = default_value
+    steps['init_models'] = default_value
+    steps['bandpass'] = default_value
+    steps['flag_tfcropBP'] = default_value
+    steps['delay'] = default_value
+    steps['gain_p_ap'] = default_value
+    steps['fluxscale'] = default_value
+    steps['bandpass_sp'] = default_value
+    steps['gain_amp_sp'] = default_value
+    steps['applycal_all'] = default_value
+    steps['flag_rflag'] = default_value
+    steps['plot_corrected'] = default_value
+    steps['first_images'] = default_value
+    return steps
