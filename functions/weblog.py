@@ -33,6 +33,23 @@ def load_obj(name):
     with open(name, 'rb') as f:
         return pickle.load(f)
 
+def prt_dict_tofile(d, tofilename=None, addfile='', pre=' '):
+    if tofilename != None:
+        f = open(tofilename, 'wb')
+    else:
+        f = addfile
+    subdict = []
+    for key in d.keys():
+        if type(d[key]) in [collections.OrderedDict, dict]:
+            subdict.append(key)
+        else:
+            f.write('{0:20s}: {1}\n'.format(pre+key, d[key]))
+    if subdict != []:
+        for key_inner in subdict:
+            f.write('{}\n'.format(pre+key_inner))
+            prt_dict_tofile(d[key_inner], addfile=f, pre=pre+pre)
+
+
 def weblog_button(weblog_link, name, link):
     line = ('<input type="button" value="{0}" '
             'onclick="window.location.href=\''
@@ -261,14 +278,19 @@ def write_caltable(caltable, wlog):
         wlog.write('<tr><td>{} </td>   <td>{}</td>\n'.format(k, caltable[k]))
     wlog.write('</table></td>\n')
 
-def weblog_pipelineinfo(msinfo):
-    eMCP_info = msinfo['eMCP_info']
+def weblog_pipelineinfo(eMCP_info):
+    msinfo = eMCP_info['msinfo']
     # Summary of pipeline execution page
     wlog = open(weblog_dir + "pipelineinfo.html","w")
     weblog_header(wlog, 'Pipeline info', msinfo['run'])
     #------------------------------------------         
     wlog.write('CASA version: {}\n<br>'.format(eMCP_info['casa_version']))
     wlog.write('Pipeline version: {}\n<br>'.format(eMCP_info['pipeline_version']))
+    write_link_txt(wlog, info_link + 'eMCP.log.txt', 'eMCP.log')
+    write_link_txt(wlog, info_link + 'casa_eMCP.log.txt', 'casa_eMCP.log')
+    prt_dict_tofile(eMCP_info, tofilename=info_dir + 'eMCP_info.txt', pre='  ')
+    eMCP_txtfile = info_link + 'eMCP_info.txt'
+    write_link_txt(wlog, eMCP_txtfile, 'Detailed eMCP_info dictionary')
     #------------------------------------------                                                                       
     weblog_foot(wlog)
     wlog.close()
@@ -366,13 +388,14 @@ def makedir(pathdir):
         pass
 
 
-def start_weblog(msinfo):
+def start_weblog(eMCP_info):
+    msinfo = eMCP_info['msinfo']
     logger.info('Start weblog')
     ###  Start weblog  ###
 
     weblog_index(msinfo)
     weblog_obssum(msinfo)
-    #weblog_pipelineinfo(msinfo)
+    weblog_pipelineinfo(eMCP_info)
     weblog_calibration(msinfo)
     weblog_plots(msinfo)
     weblog_images(msinfo)

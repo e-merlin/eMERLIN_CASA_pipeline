@@ -175,6 +175,22 @@ def prt_dict(d, pre=''):
             print(pre+key_inner)
             prt_dict(d[key_inner], pre=pre+'   ')
 
+def prt_dict_tofile(d, tofilename=None, addfile='', pre=' '):
+    if tofilename != None:
+        f = open(tofilename, 'wb')
+    else:
+        f = addfile
+    subdict = []
+    for key in d.keys():
+        if type(d[key]) in [collections.OrderedDict, dict]:
+            subdict.append(key)
+        else:
+            f.write('{0:20s}: {1}\n'.format(pre+key, d[key]))
+    if subdict != []:
+        for key_inner in subdict:
+            f.write('{}\n'.format(pre+key_inner))
+            prt_dict_tofile(d[key_inner], addfile=f, pre=pre+pre)
+
 def check_pipeline_conflict(eMCP_info, pipeline_version):
     try:
         eMCP_info['pipeline_version']
@@ -722,7 +738,7 @@ def flagdata1_apriori(msfile, msinfo, Lo_dropout_scans, do_quack=True):
             logger.warning('Lo_dropout_scans selected but no name for phasecal. Please fill the phscal field in the inputs file.')
     #flag_applied(flags, 'flagdata1_apriori')
     logger.info('End flagdata1_apriori')
-    return 
+    return
 
 def flagdata2_manual(msfile, inpfile):
     logger.info('Start flagdata_manual')

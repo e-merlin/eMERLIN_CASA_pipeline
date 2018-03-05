@@ -77,6 +77,7 @@ def run_pipeline(inputs=None, inputs_path=''):
     except:
         eMCP_info = collections.OrderedDict()
 
+    eMCP_info['inputs'] = inputs
     # Setup logger
     logger = logging.getLogger('logger')
     logging.Formatter.converter = time.gmtime
@@ -131,6 +132,7 @@ def run_pipeline(inputs=None, inputs_path=''):
         msfile = inputs['inbase']+'.ms'
         logger.info('Found MS file: {0}'.format(msfile))
         msinfo = em.get_msinfo(msfile, inputs)
+        #eMCP_info['msinfo'] = msinfo
 
     ### Convert MS to MMS ###
     run_ms2mms = 0
@@ -142,6 +144,7 @@ def run_pipeline(inputs=None, inputs_path=''):
         msfile = inputs['inbase']+'.mms'
         logger.info('Found MMS file: {0}'.format(msfile))
         msinfo = em.get_msinfo(msfile, inputs)
+        #eMCP_info['msinfo'] = msinfo
 
     ### Run AOflagger
     if inputs['flag_0_aoflagger'] > 0:
@@ -181,10 +184,12 @@ def run_pipeline(inputs=None, inputs_path=''):
         msfile = './'+inputs['inbase']+'_avg.mms'
         logger.info('Found MMS file: {0}'.format(msfile))
         msinfo = em.get_msinfo(msfile, inputs)
+        #eMCP_info['msinfo'] = msinfo
     elif os.path.isdir('./'+inputs['inbase']+'_avg.ms') == True:
         msfile = './'+inputs['inbase']+'_avg.ms'
         logger.info('Found MS file: {0}'.format(msfile))
         msinfo = em.get_msinfo(msfile, inputs)
+        #eMCP_info['msinfo'] = msinfo
 
     ### Produce some plots ###
     if inputs['plot_data'] == 1:
@@ -367,7 +372,9 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     ### Write weblog ###
     try:
-        msinfo['eMCP_info'] = eMCP_info
+#    if True:
+        #msinfo['eMCP_info'] = eMCP_info
+        eMCP_info['msinfo'] = msinfo
         run_weblog = 1
         if run_weblog > 0:
             elevplot = plots_dir + 'plots_observation/{0}_elevation.png'.format(
@@ -378,9 +385,15 @@ def run_pipeline(inputs=None, inputs_path=''):
             else:
                 emplt.make_elevation(msfile, msinfo)
                 emplt.make_uvcov(msfile, msinfo)
-            emwlog.start_weblog(msinfo)
+            emwlog.start_weblog(eMCP_info)
     except:
         pass
+
+    # Keep important files
+    save_obj(eMCP_info, info_dir + 'eMCP_info.pkl')
+    os.system('cp eMCP.log {}eMCP.log.txt'.format(info_dir))
+    os.system('cp casa_eMCP.log {}casa_eMCP.log.txt'.format(info_dir))
+
 
     ### Run monitoring for bright sources:
     try:
