@@ -2120,4 +2120,28 @@ def shift_all_positions(msfile):
     logger.info('End shift_all_pos')
 
 
-
+def eMCP_info_start_steps(eMCP_info):
+    eMCP_info['steps'] = collections.OrderedDict()
+    eMCP_info['steps']['importfitsIDI'] = 0
+    eMCP_info['steps']['hanning'] = 0
+    eMCP_info['steps']['ms2mms'] = 0
+    eMCP_info['steps']['aoflagger'] = 0
+    eMCP_info['steps']['flag_apriori'] = 0
+    eMCP_info['steps']['flag_manual'] = 0
+    eMCP_info['steps']['shift_field_pos'] = 0
+    eMCP_info['steps']['average'] = 0
+    eMCP_info['steps']['plot_data'] = 0
+    eMCP_info['steps']['save_flags'] = 0
+    eMCP_info['steps']['flag_manual_avg'] = 0
+    eMCP_info['steps']['init_models'] = 0
+    eMCP_info['steps']['bandpass0'] = 0
+    eMCP_info['steps']['flag_tfcropBP'] = 0
+    eMCP_info['steps']['delay'] = 0
+    eMCP_info['steps']['gain_0_p_ap'] = 0
+    eMCP_info['steps']['fluxscale'] = 0
+    eMCP_info['steps']['bandpass1_sp'] = 0
+    eMCP_info['steps']['gain_1_amp_sp'] = 0
+    eMCP_info['steps']['applycal_all'] = 0
+    eMCP_info['steps']['flag_rflag'] = 0
+    eMCP_info['steps']['plot_corrected'] = 0
+    eMCP_info['steps']['first_images'] = 0

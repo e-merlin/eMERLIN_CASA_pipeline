@@ -76,6 +76,7 @@ def run_pipeline(inputs=None, inputs_path=''):
         eMCP_info = load_obj(info_dir + 'eMCP_info.pkl')
     except:
         eMCP_info = collections.OrderedDict()
+        eMCP_info['steps'] = collections.OrderedDict()
 
     eMCP_info['inputs'] = inputs
     # Setup logger
@@ -308,8 +309,7 @@ def run_pipeline(inputs=None, inputs_path=''):
                                     ampcal_table='allcal_ap.G1',
                                     antennas=msinfo['antennas'])
         if caltables == 'dead':
-            print ('AA')
-            sys.exit(1)
+            em.exit_pipeline()
         save_obj(caltables, calib_dir+'caltables.pkl')
         if inputs['fluxscale'] == 2:
             em.run_applycal(msfile=msfile, caltables=caltables,
@@ -373,7 +373,6 @@ def run_pipeline(inputs=None, inputs_path=''):
     ### Write weblog ###
     try:
 #    if True:
-        #msinfo['eMCP_info'] = eMCP_info
         eMCP_info['msinfo'] = msinfo
         run_weblog = 1
         if run_weblog > 0:
