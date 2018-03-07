@@ -429,9 +429,12 @@ def makedir(pathdir):
         pass
 
 
-def start_weblog(eMCP):
+def start_weblog(eMCP, silent=False):
     msinfo = eMCP['msinfo']
-    logger.info('Start weblog')
+    if not silent:
+        logger.info('Start weblog')
+    else:
+        logger.info('Updating weblog')
     ###  Start weblog  ###
 
     weblog_index(msinfo)
@@ -440,7 +443,8 @@ def start_weblog(eMCP):
     weblog_calibration(msinfo)
     weblog_plots(msinfo)
     weblog_images(msinfo)
-    logger.info('End weblog')
+    if not silent:
+        logger.info('End weblog')
 
 
 

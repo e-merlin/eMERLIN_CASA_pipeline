@@ -124,8 +124,7 @@ def run_pipeline(inputs=None, inputs_path=''):
     if inputs['run_importfits'] > 0:
         eMCP = em.run_importfitsIDI(eMCP)
         em.check_mixed_mode(eMCP['msfile'], mode='split')
-        run_hanning = 1
-        if run_hanning > 0:
+        if eMCP['defaults']['hanning']['run_hanning']:
             eMCP = em.hanning(eMCP)
 
     if os.path.isdir('./'+inputs['inbase']+'.ms') == True:
@@ -133,8 +132,7 @@ def run_pipeline(inputs=None, inputs_path=''):
         eMCP, msinfo, msfile = em.get_msinfo(eMCP, msfile)
 
     ### Convert MS to MMS ###
-    run_ms2mms = 0
-    if run_ms2mms > 0:
+    if eMCP['defaults']['ms2mms']['run_ms2mms']:
         eMCP = em.ms2mms(eMCP)
 
     ### check for parallelisation
@@ -235,49 +233,20 @@ def run_pipeline(inputs=None, inputs_path=''):
         eMCP = em.flagdata_tfcropBP(eMCP, caltables)
 
     ### Delay calibration ###
-    use_fringefit = False
     if inputs['delay'] > 0:
-        if not use_fringefit:
-            caltables = em.solve_delays(msfile=msfile, msinfo=msinfo, caltables=caltables,
-                                        previous_cal=['bpcal.B0'])
+        if not eMCP['defaults']['delay']['use_fringefit']:
+            eMCP, caltables = em.solve_delays(eMCP, caltables)
         else:
             logger.info('Full fringe fit selected.')
-            caltables = em.delay_fringefit(msfile=msfile, msinfo=msinfo, caltables=caltables,
-                                           previous_cal=['bpcal.B0'])
-        # Should the previous_cal be bpcal.B0? Probably better delay fit, but later
-        # delay.K1 is applied without bpcal.B0, when bpcal_sp.B1 is computed
-        save_obj(caltables, calib_dir+'caltables.pkl')
-        if inputs['delay'] == 2:
-            em.run_applycal(msfile=msfile, caltables=caltables, sources=msinfo['sources'],
-               previous_cal=['bpcal.B0','delay.K1'],
-               previous_cal_targets=['bpcal.B0','delay.K1'])
-
+            eMCP, caltables = em.delay_fringefit(eMCP, caltables)
 
     ### Initial gain calibration ###
     if inputs['gain_p_ap'] > 0:
-        caltables = em.initial_gaincal(msfile=msfile, msinfo=msinfo, caltables=caltables,
-                                       previous_cal=['delay.K1', 'bpcal.B0'])
-        save_obj(caltables, calib_dir+'caltables.pkl')
-        if inputs['gain_p_ap'] == 2:
-            em.run_applycal(msfile=msfile, caltables=caltables, sources=msinfo['sources'],
-               previous_cal=['delay.K1','allcal_p.G0', 'allcal_p_jitter.G0', 'allcal_ap.G1','bpcal.B0'],
-               previous_cal_targets=['delay.K1','phscal_p_scan.G2','allcal_ap.G1','bpcal.B0'])
+        eMCP, caltables = em.initial_gaincal(eMCP, caltables)
 
     ### Flux scale ###
     if inputs['fluxscale'] > 0:
-        caltables = em.eM_fluxscale(msfile=msfile, msinfo=msinfo,
-                                    caltables=caltables,
-                                    sources=msinfo['sources'],
-                                    ampcal_table='allcal_ap.G1',
-                                    antennas=msinfo['antennas'])
-        if caltables == 'dead':
-            em.exit_pipeline()
-        save_obj(caltables, calib_dir+'caltables.pkl')
-        if inputs['fluxscale'] == 2:
-            em.run_applycal(msfile=msfile, caltables=caltables,
-                            sources=msinfo['sources'],
-                            previous_cal=['delay.K1','allcal_p.G0','allcal_p_jitter.G0','allcal_ap.G1_fluxscaled','bpcal.B0'],
-                            previous_cal_targets=['delay.K1','phscal_p_scan.G2','allcal_ap.G1_fluxscaled','bpcal.B0'])
+        eMCP, caltables = em.eM_fluxscale(eMCP, caltables)
 
     ### BandPass calibration with spectral index information ###
     if inputs['bandpass_sp'] > 0:
