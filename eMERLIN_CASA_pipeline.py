@@ -13,7 +13,7 @@ from tasks import *
 import casadef
 
 
-current_version = 'v0.7.13'
+current_version = 'v0.7.14'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -29,7 +29,7 @@ sys.path.append(pipeline_path)
 import functions.eMERLIN_CASA_functions as em
 import functions.weblog as emwlog
 import functions.eMERLIN_CASA_plots as emplt
-#import functions.eMERLIN_CASA_GUI as emGUI
+from functions.default_params import defaults
 
 casalog.setlogfile('casa_eMCP.log')
 
@@ -78,6 +78,8 @@ def run_pipeline(inputs=None, inputs_path=''):
         eMCP['steps'] = em.eMCP_info_start_steps()
 
     eMCP['inputs'] = inputs
+    eMCP['defaults'] = defaults
+
     # Setup logger
     logger = logging.getLogger('logger')
     logging.Formatter.converter = time.gmtime
@@ -222,29 +224,15 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     ### Initialize models ###
     if inputs['init_models'] > 0:  # Need to add parameter to GUI
-        models_path = pipeline_path+'calibrator_models/'
-        em.run_initialize_models(msfile=msfile, fluxcal=msinfo['sources']['fluxcal'],
-                                 models_path=models_path)
-
+        eMCP = em.run_initialize_models(eMCP)
 
     ### Initial BandPass calibration ###
     if inputs['bandpass'] > 0:
-        caltables = em.initial_bp_cal(msfile=msfile, msinfo=msinfo, caltables=caltables,
-                                      previous_cal=[])
-        save_obj(caltables, calib_dir+'caltables.pkl')
-        if inputs['bandpass'] == 2:
-            em.run_applycal(msfile=msfile, caltables=caltables,
-                            sources=msinfo['sources'], previous_cal=['bpcal.B0'],
-                            previous_cal_targets=['bpcal.B0'])
+        eMCP, caltables = em.initial_bp_cal(eMCP, caltables)
 
     ### Flagdata using TFCROP and bandpass shape B0
     if inputs['flag_tfcropBP'] > 0:
-        # If B0 has not been applied before, do it now
-        if inputs['bandpass'] != 2:
-            em.run_applycal(msfile=msfile, caltables=caltables, sources=msinfo['sources'],
-               previous_cal=['bpcal.B0'], previous_cal_targets=['bpcal.B0'])
-        em.flagdata3_tfcropBP(msfile=msfile, msinfo=msinfo)
-
+        eMCP = em.flagdata_tfcropBP(eMCP, caltables)
 
     ### Delay calibration ###
     use_fringefit = False
@@ -325,12 +313,11 @@ def run_pipeline(inputs=None, inputs_path=''):
     ### RFLAG automatic flagging ###
     if inputs['flag_rflag'] > 0:
         logger.warning('RFLAG only works on calibrated data.')
-        em.flagdata4_rflag(msfile=msfile, msinfo=msinfo)
+        eMCP = em.flagdata_rflag(eMCP)
 
     ### Produce some visibility plots ###
     if inputs['plot_corrected'] > 0:
-        emplt.make_4plots(msfile, msinfo, datacolumn='corrected')
-        emplt.make_uvplt(msinfo)
+        eMCP = emplt.make_4plots(eMCP, datacolumn='corrected')
 
     ### First images ###
     if inputs['first_images'] > 0:
