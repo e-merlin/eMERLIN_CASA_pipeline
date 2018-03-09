@@ -275,8 +275,10 @@ def plots_flagstats(msinfo, wlog):
 def write_caltable(caltable, wlog):
     wlog.write('<table bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:40%">\n')
     #wlog.write('<tr><td>{} </td>   <td>{}</td>\n'.format('Parameter', 'Value'))
-    for k in caltable.keys():
-        wlog.write('<tr><td>{} </td>   <td>{}</td>\n'.format(k, caltable[k]))
+    for name, value in caltable.items():
+        if type(value) == str:
+            value = value.replace(',', ', ')
+        wlog.write('<tr><td>{0}</td><td>{1}</td>\n'.format(name, value))
     wlog.write('</table></td>\n')
 
 def table_colors(steps, step, prev_steps):
@@ -329,9 +331,18 @@ def weblog_pipelineinfo(eMCP):
     wlog.write('<br><h4>Relevant log files:</h4>\n')
     write_link_txt(wlog, info_link + 'eMCP.log.txt', 'eMCP.log')
     write_link_txt(wlog, info_link + 'casa_eMCP.log.txt', 'casa_eMCP.log')
+    # eMCP_info dictionary as text
     prt_dict_tofile(eMCP, tofilename=info_dir + 'eMCP_info.txt', pre='  ')
     eMCP_txtfile = info_link + 'eMCP_info.txt'
     write_link_txt(wlog, eMCP_txtfile, 'Detailed eMCP_info dictionary')
+    # caltables dictionary as text
+    try:
+        caltables = load_obj(calib_dir+'caltables.pkl')
+        prt_dict_tofile(caltables, tofilename=info_dir + 'caltables.txt', pre='  ')
+        caltables_txtfile = info_link + 'caltables.txt'
+        write_link_txt(wlog, caltables_txtfile, 'Calibration tables txt')
+    except:
+        pass
     #------------------------------------------                                                                       
     weblog_foot(wlog)
     wlog.close()

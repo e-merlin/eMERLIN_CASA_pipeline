@@ -130,24 +130,24 @@ def single_4plot_old(msfile, field, baseline, datacolumn, plot_file):
     width=2600, height=1200, symbolsize=4,clearplots=False, overwrite=True, showgui=showgui)
 
 
-def make_4plots_old(msfile, msinfo, datacolumn='data'):
-    if datacolumn == 'data':
-        plots_data_dir = './weblog/plots/plots_data/'
-    elif datacolumn == 'corrected':
-        plots_data_dir = './weblog/plots/plots_corrected/'
-    else:
-        plots_data_dir = './weblog/plots/'
-    makedir(plots_data_dir)
-    for f in msinfo['sources']['allsources'].split(','):
-        logger.info('Generating plot for msfile: {0}, field: {1}, column: {2}'.format(
-                                                    (msfile), f, datacolumn))
-        for baseline in msinfo['baselines']:
-            plot_file = plots_data_dir+'{0}_4plot_{1}_{2}_{3}.png'.format(
-                                                         msinfo['msfilename'], f,
-                                                         baseline.replace('&','-'),
-                                                         datacolumn)
-            single_4plot_old(msfile, f, baseline, datacolumn, plot_file)
-
+#def make_4plots_old(msfile, msinfo, datacolumn='data'):
+#    if datacolumn == 'data':
+#        plots_data_dir = './weblog/plots/plots_data/'
+#    elif datacolumn == 'corrected':
+#        plots_data_dir = './weblog/plots/plots_corrected/'
+#    else:
+#        plots_data_dir = './weblog/plots/'
+#    makedir(plots_data_dir)
+#    for f in msinfo['sources']['allsources'].split(','):
+#        logger.info('Generating plot for msfile: {0}, field: {1}, column: {2}'.format(
+#                                                    (msfile), f, datacolumn))
+#        for baseline in msinfo['baselines']:
+#            plot_file = plots_data_dir+'{0}_4plot_{1}_{2}_{3}.png'.format(
+#                                                         msinfo['msfilename'], f,
+#                                                         baseline.replace('&','-'),
+#                                                         datacolumn)
+#            single_4plot_old(msfile, f, baseline, datacolumn, plot_file)
+#
 
 
 
@@ -237,13 +237,15 @@ def make_4plots(eMCP, datacolumn='data'):
     makedir(plots_data_dir)
     fields = msinfo['sources']['allsources'].split(',')
     logger.info('Producing in parallel visibility plots for fields: {}'.format(msinfo['sources']['allsources']))
-    num_proc = 1
+    num_proc = eMCP['defaults']['plot_data']['num_proc']
     pool = multiprocessing.Pool(num_proc)
     input_args = [(msinfo, field, datacolumn, plots_data_dir) for field in fields]
     p = pool.map(single_4plot, input_args)
     pool.close()
     pool.join()
     logger.info('Visibility plots finished')
+    if datacolumn == 'corrected':
+        make_uvplt(eMCP)
     logger.info('End plot_{}'.format(datacolumn))
     eMCP['steps']['plot_'+datacolumn] = add_step_time(eMCP)
     return eMCP
@@ -305,8 +307,9 @@ def single_uvplt_model((msinfo, field, plots_data_dir)):
     width=1200, height=573, symbolsize=4, clearplots=False, overwrite=True, showgui=showgui)
 
 
-def make_uvplt(msinfo):
-    num_proc = 1
+def make_uvplt(eMCP):
+    msinfo = eMCP['msinfo']
+    num_proc = eMCP['defaults']['plot_data']['num_proc']
     plots_data_dir = './weblog/plots/plots_uvplt/'
     makedir(plots_data_dir)
     fields = msinfo['sources']['allsources'].split(',')

@@ -13,7 +13,7 @@ from tasks import *
 import casadef
 
 
-current_version = 'v0.7.14'
+current_version = 'v0.7.16'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -193,21 +193,21 @@ def run_pipeline(inputs=None, inputs_path=''):
             caltables['plots_dir'] = plots_dir
             caltables['calib_dir'] = calib_dir
             caltables['num_spw'] = msinfo['num_spw']
-            all_calsteps = [
-                    'bpcal_d.K0',
-                    'bpcal_p.G0',
-                    'bpcal_ap.G1',
-                    'bpcal.B0',
-                    'delay.K1',
-                    'allcal_p.G0',
-                    'allcal_p_jitter.G0',
-                    'allcal_ap.G1',
-                    'phscal_p_scan.G2',
-                    'bpcal_sp.B1',
-                    'allcal_ap.G3',
-                    'allcal_ap_scan.G3']    # This is just used to know which tables to search in weblog
-            caltables['all_calsteps'] = all_calsteps
-            logger.info('New caltables dictionary created. Saved to: {0}'.format(calib_dir+'caltables.pkl'))
+        all_calsteps = [
+               'bpcal_d.K0',
+                   'bpcal_p.G0',
+                   'bpcal_ap.G1',
+                   'bpcal.B0',
+                   'delay.K1',
+                   'allcal_p.G0',
+                   'allcal_p_jitter.G0',
+                   'allcal_ap.G1',
+                   'bpcal_sp.B1',
+                   'allcal_ap.G3',
+                   'phscal_p_scan.G3',
+                   'phscal_ap_scan.G3']    # This is just used to know which tables to search in weblog
+        caltables['all_calsteps'] = all_calsteps
+        logger.info('New caltables dictionary created. Saved to: {0}'.format(calib_dir+'caltables.pkl'))
         caltables['Lo_dropout_scans'] = inputs['Lo_dropout_scans']
         caltables['refant'] = msinfo['refant']
         save_obj(caltables, calib_dir+'caltables.pkl')
@@ -250,38 +250,18 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     ### BandPass calibration with spectral index information ###
     if inputs['bandpass_sp'] > 0:
-        caltables = em.bandpass_sp(msfile=msfile, msinfo=msinfo, caltables=caltables,
-                                   previous_cal=['delay.K1','allcal_p.G0','allcal_p_jitter.G0','allcal_ap.G1_fluxscaled'])
-        save_obj(caltables, calib_dir+'caltables.pkl')
-        if inputs['bandpass_sp'] == 2:
-            em.run_applycal(msfile=msfile, caltables=caltables, sources=msinfo['sources'],
-               previous_cal=['delay.K1','allcal_p.G0','allcal_p_jitter.G0','allcal_ap.G1_fluxscaled','bpcal_sp.B1'],
-               previous_cal_targets=['delay.K1','phscal_p_scan.G2','allcal_ap.G1_fluxscaled','bpcal_sp.B1'])
+        eMCP, caltables = em.bandpass_sp(eMCP, caltables)
 
     ### Amplitude calibration including spectral information ###
     if inputs['gain_amp_sp'] > 0:
-        caltables = em.sp_amp_gaincal(msfile=msfile, msinfo=msinfo, caltables=caltables,
-                                      previous_cal=['delay.K1','allcal_p.G0','allcal_p_jitter.G0','bpcal_sp.B1'])
-        save_obj(caltables, calib_dir+'caltables.pkl')
-        if inputs['gain_amp_sp'] == 2:
-            em.run_applycal(msfile=msfile, caltables=caltables,
-                            sources=msinfo['sources'],
-                            previous_cal=['delay.K1','bpcal_sp.B1','allcal_p.G0','allcal_p_jitter.G0','allcal_ap.G3'],
-                            previous_cal_targets=['delay.K1','bpcal_sp.B1','phscal_p_scan.G2','allcal_ap_scan.G3'])
-
+        eMCP, caltables = em.gain_amp_sp(eMCP, caltables)
 
     ### Apply calibration  ###
     if inputs['applycal_all'] > 0:
-        em.run_applycal(msfile=msfile, caltables=caltables, sources=msinfo['sources'],
-           previous_cal=['delay.K1','bpcal_sp.B1','allcal_p.G0','allcal_p_jitter.G0','allcal_ap.G3'],
-           previous_cal_targets=['delay.K1','bpcal_sp.B1','phscal_p_scan.G2','allcal_ap_scan.G3'])
-        msinfo['applycal_all'] = True
-        save_obj(msinfo, info_dir + msinfo['msfilename']+'.msinfo.pkl')
-
+        eMCP = em.applycal_all(eMCP, caltables)
 
     ### RFLAG automatic flagging ###
     if inputs['flag_rflag'] > 0:
-        logger.warning('RFLAG only works on calibrated data.')
         eMCP = em.flagdata_rflag(eMCP)
 
     ### Produce some visibility plots ###
@@ -290,7 +270,7 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     ### First images ###
     if inputs['first_images'] > 0:
-        em.run_first_images(msinfo)
+        eMCP = em.run_first_images(eMCP)
 
     ### Plot flagstatistics ###
     run_flag_statistics = 1

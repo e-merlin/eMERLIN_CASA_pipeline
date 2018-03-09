@@ -205,7 +205,7 @@ def prt_dict_tofile(d, tofilename=None, addfile='', pre=' '):
 
 def add_step_time(eMCP):
     save_obj(eMCP, info_dir + 'eMCP_info.pkl')
-    emwlog.start_weblog(eMCP)
+    emwlog.start_weblog(eMCP, silent=True)
     return datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
 
 def check_pipeline_conflict(eMCP, pipeline_version):
@@ -821,9 +821,7 @@ def flagdata_manual(eMCP, run_name='flagdata_manual'):
 def flagdata_tfcropBP(eMCP, caltables):
     # If B0 has not been applied before, do it now
     if eMCP['inputs']['bandpass'] != 2:
-        run_applycal(eMCP, caltables,
-                     previous_cal=['bpcal.B0'],
-                     previous_cal_targets=['bpcal.B0'])
+        run_applycal(eMCP, caltables, step = ['bandpass'])
     logger.info('Start flagdata_tfcropBP')
     msinfo = eMCP['msinfo']
     msfile = eMCP['msinfo']['msfile']
@@ -882,6 +880,7 @@ def flagdata_tfcropBP(eMCP, caltables):
 
 def flagdata_rflag(eMCP):
     logger.info('Start flagdata_rflag')
+    logger.warning('RFLAG only works on calibrated data. Make sure you applied calibration before running this step.')
     msinfo = eMCP['msinfo']
     msfile = eMCP['msinfo']['msfile']
     sources = eMCP['msinfo']['sources']['allsources']
@@ -1035,7 +1034,7 @@ def run_split(eMCP):
     msfile = eMCP['msinfo']['msfile']
     sources = eMCP['msinfo']['sources']
     timebin = '{}s'.format(eMCP['inputs']['average'])
-    datacolumn = 'data'
+    datacolumn = eMCP['defaults']['average']['datacolumn']
     mssources = find_mssources(msfile)
     # Check that all sources are there:
     sources_not_in_msfile = [s for s in
@@ -1236,10 +1235,13 @@ def smooth_caltable(msfile, tablein, plotdir, caltable='', field='', smoothtype=
     return
 
 
-def run_applycal(eMCP, caltables, previous_cal, previous_cal_targets=''):
+def run_applycal(eMCP, caltables, step):
+    logger.info('Start applycal')
+    logger.info('Applying calibration up to step: {}'.format(step))
+    previous_cal = eMCP['defaults'][step]['apply_calibrators']
+    previous_cal_targets= eMCP['defaults'][step]['apply_targets']
     msfile = eMCP['msinfo']['msfile']
     sources = eMCP['msinfo']['sources']
-    logger.info('Start applycal')
     # 1 correct non-target sources:
     logger.info('Applying calibration to calibrator sources')
     logger.info('Fields: {0}'.format(sources['calsources']))
@@ -1286,6 +1288,7 @@ def run_applycal(eMCP, caltables, previous_cal, previous_cal_targets=''):
     logger.info('End applycal')
 
 
+
 ### Calibration steps
 
 def solve_delays(eMCP, caltables):
@@ -1327,9 +1330,7 @@ def solve_delays(eMCP, caltables):
     logger.info('End solve_delays')
     # Apply calibration if requested:
     if eMCP['inputs']['delay'] == 2:
-        run_applycal(eMCP, caltables,
-                previous_cal=eMCP['defaults']['delay']['apply_calibrators'],
-                previous_cal_targets=eMCP['defaults']['delay']['apply_targets'])
+        run_applycal(eMCP, caltables, step='delay')
     save_obj(caltables, caltables['calib_dir']+'caltables.pkl')
     eMCP['steps']['delay'] = add_step_time(eMCP)
     return eMCP, caltables
@@ -1537,9 +1538,7 @@ def initial_bp_cal(eMCP, caltables):
     logger.info('End initial_bp_cal')
     # Apply calibration if requested:
     if eMCP['inputs']['bandpass'] == 2:
-        run_applycal(eMCP, caltables,
-                previous_cal=eMCP['defaults']['bandpass']['apply_calibrators'],
-                previous_cal_targets=eMCP['defaults']['bandpass']['apply_targets'])
+        run_applycal(eMCP, caltables, step='bandpass')
     save_obj(caltables, caltables['calib_dir']+'caltables.pkl')
     eMCP['steps']['bandpass'] = add_step_time(eMCP)
     return eMCP, caltables
@@ -1671,9 +1670,7 @@ def initial_gaincal(eMCP, caltables):
     # Apply calibration if requested:
     if eMCP['inputs']['gain_p_ap'] == 2:
         logger.warning('Applying short-solint tables to target.')
-        run_applycal(eMCP, caltables,
-                previous_cal=eMCP['defaults']['gain_p_ap']['apply_calibrators'],
-                previous_cal_targets=eMCP['defaults']['gain_p_ap']['apply_targets'])
+        run_applycal(eMCP, caltables, step = 'gain_p_ap')
     save_obj(caltables, caltables['calib_dir']+'caltables.pkl')
     eMCP['steps']['gain_p_ap'] = add_step_time(eMCP)
     return eMCP, caltables
@@ -1729,7 +1726,7 @@ def read_source_model(model, field, msinfo, eMcalflux):
 def eM_fluxscale(eMCP, caltables):
 #def eM_fluxscale(msfile, msinfo, caltables, ampcal_table, sources, antennas):
     logger.info('Start eM_fluxscale')
-    flux = eMCP['defaults']['flux']
+    flux = eMCP['defaults']['fluxscale']
     msfile = eMCP['msinfo']['msfile']
     msinfo = eMCP['msinfo']
     sources = eMCP['msinfo']['sources']
@@ -1741,19 +1738,17 @@ def eM_fluxscale(eMCP, caltables):
     caltable_name = flux['tablename']
     caltables[caltable_name] = copy.copy(caltables[ampcal_table])
     caltables[caltable_name]['table']=caltables[ampcal_table]['table']+'_fluxscaled'
+    fluxes_txt = info_dir+ caltables[caltable_name]['name']+'_fluxes.txt'
     logger.info('Flux density scale from: {0}'.format(fluxcal))
     logger.info('Transfered to: {0}'.format(cals_to_scale))
     logger.info('Input caltable: {0}'.format(caltables[ampcal_table]['table']))
     logger.info('Antennas used to scale: {0}'.format(anten_for_flux))
-    print ('AA')
-    print(info_dir, caltables[caltable_name]['name'], '_fluxes.txt')
     calfluxes = fluxscale(vis=msfile, reference=fluxcal,
                           transfer=cals_to_scale,
                           antenna = ','.join(anten_for_flux),
                           caltable  = caltables[ampcal_table]['table'],
                           fluxtable = caltables[caltable_name]['table'],
-                          #listfile  = caltables[caltable_name]['table']+'_fluxes.txt')
-                          listfile  = info_dir+ caltables[caltable_name]['name']+'_fluxes.txt')
+                          listfile  = fluxes_txt)
     logger.info('Modified caltable: {0}'.format(caltables[caltable_name]['table']))
     logger.info('Spectrum information: {0}'.format(caltables[caltable_name]['table']+'_fluxes.txt'))
     save_obj(calfluxes, info_dir + 'calfluxes.pkl')
@@ -1768,7 +1763,7 @@ def eM_fluxscale(eMCP, caltables):
     eMfactor = calc_eMfactor(msfile, field=fluxcal)
     # Include a note in the fluxes.txt file warning that the values in that
     # file should be corrected by eMfactor
-    with open(caltables[caltable_name]['table']+'_fluxes.txt', 'a') as file:
+    with open(fluxes_txt, 'a') as file:
         file.write('# WARNING: All flux densities in this file need to be multiplied by eMfactor={0:6.4f} to match the corrections that have been applied to the data.'.format(eMfactor))
     # Get fitted flux density and spectral index, correctly scaled for e-MERLIN
     eMcalfluxes = collections.OrderedDict()
@@ -1814,69 +1809,78 @@ def eM_fluxscale(eMCP, caltables):
     # Apply calibration if requested:
     if eMCP['inputs']['fluxscale'] == 2:
         logger.warning('Applying short-solint tables to target.')
-        run_applycal(eMCP, caltables,
-                previous_cal=eMCP['defaults']['fluxscale']['apply_calibrators'],
-                previous_cal_targets=eMCP['defaults']['fluxscale']['apply_targets'])
+        run_applycal(eMCP, caltables, step = 'fluxscale')
     save_obj(caltables, caltables['calib_dir']+'caltables.pkl')
     eMCP['steps']['fluxscale'] = add_step_time(eMCP)
     return eMCP, caltables
 
-    return caltables
 
 
-def bandpass_sp(msfile, msinfo, caltables, previous_cal):
+def bandpass_sp(eMCP, caltables):
+#def bandpass_sp(msfile, msinfo, caltables, previous_cal):
     logger.info('Start bandpass_sp')
+    bp_sp = eMCP['defaults']['bandpass_sp']
+    msfile = eMCP['msinfo']['msfile']
+    msinfo = eMCP['msinfo']
     # Bandpass calibration
-    caltable_name = 'bpcal_sp.B1'
+    caltable_name = bp_sp['bp_tablename']
     caltables[caltable_name] = collections.OrderedDict()
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['previous_cal'] = bp_sp['bp_prev_cal']
     caltables[caltable_name]['field'] = msinfo['sources']['bpcal']
-    caltables[caltable_name]['solint'] = 'inf'
-    caltables[caltable_name]['interp'] = 'nearest,linear'
-    caltables[caltable_name]['spwmap'] = []
-    caltables[caltable_name]['combine'] = 'field,scan'
-    caltables[caltable_name]['spw'] = ''
-    #caltables[caltable_name]['uvrange'] = '>15km'
-    caltables[caltable_name]['uvrange'] = ''
-    caltables[caltable_name]['solnorm'] = False
-    caltables[caltable_name]['previous_cal'] = previous_cal
+    caltables[caltable_name]['solint'] = bp_sp['bp_solint']
+    caltables[caltable_name]['spw'] = make_spw(msinfo, bp_sp['bp_spw'])
+    caltables[caltable_name]['combine'] = bp_sp['bp_combine']
+    caltables[caltable_name]['uvrange'] = bp_sp['bp_uvrange']
+    caltables[caltable_name]['solnorm'] = bp_sp['bp_solnorm']
+    caltables[caltable_name]['spwmap'] = make_spwmap(caltables,bp_sp['bp_combine'])
+    caltables[caltable_name]['interp'] = bp_sp['bp_interp']
     bptable = caltables[caltable_name]['table']
     # Calibration
     run_bandpass(msfile, caltables, caltable_name)
     caltables[caltable_name]['gainfield'] = get_unique_field(caltables[caltable_name]['table'])
-    logger.info('Bandpass1 BP {0}: {1}'.format(caltable_name,bptable))
+    logger.info('Bandpass_sp BP {0}: {1}'.format(caltable_name,bptable))
     # Plots
     bptableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
     bptableplot_amp = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_amp.png'
     plot_caltable(msinfo, caltables[caltable_name], bptableplot_phs, title='Bandpass phase',
                   xaxis='freq', yaxis='phase', ymin=-180, ymax=180, coloraxis='corr', symbolsize=5)
-    logger.info('Bandpass0 BP phase plot: {0}'.format(bptableplot_phs))
+    logger.info('Bandpass_sp BP phase plot: {0}'.format(bptableplot_phs))
     plot_caltable(msinfo, caltables[caltable_name], bptableplot_amp, title='Bandpass amp',
                   xaxis='freq', yaxis='amp', ymin=-1, ymax=-1, coloraxis='corr', symbolsize=5)
-    logger.info('Bandpass0 BP amplitude plot: {0}'.format(bptableplot_amp))
+    logger.info('Bandpass_sp BP amplitude plot: {0}'.format(bptableplot_amp))
     logger.info('End bandpass_sp')
-    return caltables
+    # Apply calibration if requested:
+    if eMCP['inputs']['bandpass_sp'] == 2:
+        run_applycal(eMCP, caltables, step = 'bandpass_sp')
+    save_obj(caltables, caltables['calib_dir']+'caltables.pkl')
+    eMCP['steps']['bandpass_sp'] = add_step_time(eMCP)
+    return eMCP, caltables
 
 
-def sp_amp_gaincal(msfile, msinfo, caltables, previous_cal):
-    logger.info('Start gaincal_amp_sp')
-
+def gain_amp_sp(eMCP, caltables):
+    logger.info('Start gain_amp_sp')
+    amp_sp = eMCP['defaults']['gain_amp_sp']
+    msfile = eMCP['msinfo']['msfile']
+    msinfo = eMCP['msinfo']
     # 1 Amplitude calibration
-    caltable_name = 'allcal_ap.G3'
+    caltable_name = amp_sp['ap_tablename']
     caltables[caltable_name] = collections.OrderedDict()
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
-    caltables[caltable_name]['field'] = msinfo['sources']['calsources']
+    caltables[caltable_name]['previous_cal'] = amp_sp['ap_prev_cal']
     caltables[caltable_name]['gaintype'] = 'G'
     caltables[caltable_name]['calmode'] = 'ap'
-    caltables[caltable_name]['solint'] = '32s'
-    caltables[caltable_name]['interp'] = 'linear'
+    caltables[caltable_name]['field'] = msinfo['sources']['calsources']
+    caltables[caltable_name]['solint'] = amp_sp['ap_solint']
+    caltables[caltable_name]['combine'] = amp_sp['ap_combine']
+    caltables[caltable_name]['spw'] = make_spw(msinfo, amp_sp['ap_spw'])
     caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
-    caltables[caltable_name]['spwmap'] = []
-    caltables[caltable_name]['combine'] = ''
-    caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
-    caltables[caltable_name]['previous_cal'] = previous_cal
+    caltables[caltable_name]['spwmap'] = make_spwmap(caltables,amp_sp['ap_combine'])
+    caltables[caltable_name]['interp'] = amp_sp['ap_interp']
+    caltables[caltable_name]['minblperant'] = amp_sp['ap_minblperant']
+    caltables[caltable_name]['minsnr'] = amp_sp['ap_minsnr']
     caltable = caltables[caltable_name]['table']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name)
@@ -1894,38 +1898,83 @@ def sp_amp_gaincal(msfile, msinfo, caltables, previous_cal):
                   xaxis='time', yaxis='amp', ymin=-1, ymax=-1, coloraxis='spw', symbolsize=5)
     logger.info('Amplitude amplitude calibration plot: {0}'.format(caltableplot_amp))
 
-    # 2 Amplitude calibration on phasecal: scan-averaged amplitude solutions
-    caltable_name = 'allcal_ap_scan.G3'
+    # 2 Scan-averaged phase calibration
+    caltable_name = amp_sp['p_scan_tablename']
     caltables[caltable_name] = collections.OrderedDict()
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
-    caltables[caltable_name]['field'] = msinfo['sources']['phscals']
+    caltables[caltable_name]['previous_cal'] = amp_sp['p_scan_prev_cal']
     caltables[caltable_name]['gaintype'] = 'G'
-    caltables[caltable_name]['calmode'] = 'ap'
-    caltables[caltable_name]['solint'] = 'inf'
-    caltables[caltable_name]['interp'] = 'linear'
-    caltables[caltable_name]['gainfield'] = msinfo['sources']['phscals']
-    caltables[caltable_name]['spwmap'] = []
-    caltables[caltable_name]['combine'] = ''
-    caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
-    caltables[caltable_name]['previous_cal'] = previous_cal
+    caltables[caltable_name]['calmode'] = 'p'
+    caltables[caltable_name]['field'] = msinfo['sources']['calsources']
+    caltables[caltable_name]['solint'] = amp_sp['p_scan_solint']
+    caltables[caltable_name]['combine'] = amp_sp['p_scan_combine']
+    caltables[caltable_name]['spw'] = make_spw(msinfo, amp_sp['p_scan_spw'])
+    caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
+    caltables[caltable_name]['spwmap'] = make_spwmap(caltables,amp_sp['p_scan_combine'])
+    caltables[caltable_name]['interp'] = amp_sp['p_scan_interp']
+    caltables[caltable_name]['minblperant'] = amp_sp['p_scan_minblperant']
+    caltables[caltable_name]['minsnr'] = amp_sp['p_scan_minsnr']
     caltable = caltables[caltable_name]['table']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name)
     if caltables['Lo_dropout_scans'] != '':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
-    logger.info('Gain phase calibration {0}: {1}'.format(caltable_name,caltable))
+    logger.info('Gain scan-averaged phase calibration {0}: {1}'.format(caltable_name,caltable))
+#    smooth_caltable(msfile=msfile, plotdir=plotdir, tablein=caltable2, caltable='', field='', smoothtype='median', smoothtime=60*20.)
     # Plots
     caltableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
     plot_caltable(msinfo, caltables[caltable_name], caltableplot_phs, title='Phase',
                   xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=5)
-    #logger.info('Bandpass0 phase calibration plot: {0}'.format(caltableplot_phs))
+
+    # 3 Amplitude calibration on phasecal: scan-averaged amplitude solutions
+    caltable_name = amp_sp['ap_scan_tablename']
+    caltables[caltable_name] = collections.OrderedDict()
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['previous_cal'] = amp_sp['ap_scan_prev_cal']
+    caltables[caltable_name]['gaintype'] = 'G'
+    caltables[caltable_name]['calmode'] = 'ap'
+    caltables[caltable_name]['field'] = msinfo['sources']['calsources']
+    caltables[caltable_name]['solint'] = amp_sp['ap_scan_solint']
+    caltables[caltable_name]['combine'] = amp_sp['ap_scan_combine']
+    caltables[caltable_name]['spw'] = make_spw(msinfo, amp_sp['ap_scan_spw'])
+    caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
+    caltables[caltable_name]['spwmap'] = make_spwmap(caltables,amp_sp['ap_scan_combine'])
+    caltables[caltable_name]['interp'] = amp_sp['ap_scan_interp']
+    caltables[caltable_name]['minblperant'] = amp_sp['ap_scan_minblperant']
+    caltables[caltable_name]['minsnr'] = amp_sp['ap_scan_minsnr']
+    caltable = caltables[caltable_name]['table']
+    # Calibration
+    run_gaincal(msfile, caltables, caltable_name)
+    if caltables['Lo_dropout_scans'] != '':
+        remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
+    logger.info('Gain scan-average amplitude calibration {0}: {1}'.format(caltable_name,caltable))
+#    smooth_caltable(msfile=msfile, plotdir=plotdir, tablein=caltable2, caltable='', field='', smoothtype='median', smoothtime=60*20.)
+    # Plots
+    caltableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
+    plot_caltable(msinfo, caltables[caltable_name], caltableplot_phs, title='Phase',
+                  xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=5)
+    logger.info('Scan-average phase calibration plot: {0}'.format(caltableplot_phs))
     caltableplot_amp = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_amp.png'
     plot_caltable(msinfo, caltables[caltable_name], caltableplot_amp, title='Amp',
                   xaxis='time', yaxis='amp', ymin=-1, ymax=-1, coloraxis='spw', symbolsize=5)
-    logger.info('Amplitude amplitude calibration plot: {0}'.format(caltableplot_amp))
-    logger.info('End gaincal_amp_sp')
-    return caltables
+    logger.info('Scan-average amplitude calibration plot: {0}'.format(caltableplot_amp))
+    logger.info('End gain_amp_sp')
+    # Apply calibration if requested:
+    if eMCP['inputs']['gain_amp_sp'] == 2:
+        run_applycal(eMCP, caltables, step = 'gain_amp_sp')
+    save_obj(caltables, caltables['calib_dir']+'caltables.pkl')
+    eMCP['steps']['gain_amp_sp'] = add_step_time(eMCP)
+    return eMCP, caltables
+
+def applycal_all(eMCP, caltables):
+    logger.info('Start applycal_all')
+    run_applycal(eMCP, caltables, step='applycal_all')
+    logger.info('End applycal_all')
+    eMCP['steps']['applycal_all'] = add_step_time(eMCP)
+    return eMCP
+
 
 def compile_statistics(msfile, tablename=''):
     logger.info('Start compile_stats')
@@ -1993,25 +2042,25 @@ def compile_delays(tablename, outname):
     logger.info('Delay statistics saved to: {0}'.format(outname))
 
 
-def monitoring(msfile, msinfo, caltables, previous_cal):
-    # This is intented to run on a single-source file for daily monitoring on
-    # unaveraged data
-    logger.info('Starting monitoring')
-    band = check_band(msfile)
-    if band == 'L':
-        hanning(inputvis=msfile,deloriginal=True)
-
-    flagdata1_apriori(msfile=msfile, msinfo=msinfo, do_quack=True)
-
-    flagdata_tfcrop_bright(msfile=msfile, sources=msinfo['sources'])
-    caltables = solve_delays(msfile=msfile, caltables=caltables,
-                   previous_cal=[], calsources=msinfo['sources']['calsources'],
-                             solint='60s')
-    run_applycal(msfile=msfile, caltables=caltables, sources=msinfo['sources'],
-                    previous_cal=['delay.K1'],
-                    previous_cal_targets=['delay.K1'])
-    compile_statistics(msfile, tablename=caltables['delay.K1']['table'])
-    return caltables
+#def monitoring(msfile, msinfo, caltables, previous_cal):
+#    # This is intented to run on a single-source file for daily monitoring on
+#    # unaveraged data
+#    logger.info('Starting monitoring')
+#    band = check_band(msfile)
+#    if band == 'L':
+#        hanning(inputvis=msfile,deloriginal=True)
+#
+#    flagdata1_apriori(msfile=msfile, msinfo=msinfo, do_quack=True)
+#
+#    flagdata_tfcrop_bright(msfile=msfile, sources=msinfo['sources'])
+#    caltables = solve_delays(msfile=msfile, caltables=caltables,
+#                   previous_cal=[], calsources=msinfo['sources']['calsources'],
+#                             solint='60s')
+#    run_applycal(msfile=msfile, caltables=caltables, sources=msinfo['sources'],
+#                    previous_cal=['delay.K1'],
+#                    previous_cal_targets=['delay.K1'])
+#    compile_statistics(msfile, tablename=caltables['delay.K1']['table'])
+#    return caltables
 
 
 def calc_eMfactor(msfile, field='1331+305'):
@@ -2148,14 +2197,16 @@ def dfluxpy(freq,baseline):
     return vlaflux, merlinflux, resolved_percent, caution_res_pc, thisbl
 
 
-def plot_image(imagename, dozoom=False):
+def plot_image(eMCP, imagename, dozoom=False):
     imstat_residual = imstat(imagename+'.residual')
     imstat_image = imstat(imagename+'.image')
     noise = imstat_residual['rms'][0]
     peak = imstat_image['max'][0]
     #scaling =  np.min([0, -np.log(1.0*peak/noise)+4])
     scaling = np.min([0.0, -int(np.log(1.0*peak/noise)+1)])
-    levels = 3.*np.sqrt(3**np.arange(20))
+    imgpar = eMCP['defaults']['first_images']
+    level0 = imgpar['level0']
+    levels = level0*np.sqrt(3**np.arange(20))
     center = 512
     zoom_range = 150
     for extension in ['image']:
@@ -2203,7 +2254,8 @@ def plot_image_add(imagename, dozoom=False):
         out = filename+'.residual_zoom.png')
 
 
-def single_tclean(msinfo, s, num):
+def single_tclean(eMCP, s, num):
+    msinfo = eMCP['msinfo']
     logger.info('Producing tclean images for {0}, field: {1}'.format(msinfo['msfile'], s))
     makedir(images_dir+'{}'.format(s))
     imagename = images_dir+'{0}/{1}_{0}_img{2:02d}'.format(s, msinfo['msfilename'], num)
@@ -2211,41 +2263,45 @@ def single_tclean(msinfo, s, num):
     for prev_image in prev_images:
         rmdir(prev_image)
     cellsize = {'C':'0.008arcsec', 'L':'0.02arcsec'}
-    imsize = 1024
+    imgpar = eMCP['defaults']['first_images']
+    imsize = imgpar['imsize']
     cell = cellsize[msinfo['band']]
-    niter = 1000
-    weighting='briggs'
-    robust = 0.5
-    usemask='auto-thresh'
-    maskthreshold=2.5 # sigma
-    maskresolution=1.0 # 2xbmaj
-    nmask=2
+    niter = imgpar['niter']
+    weighting = imgpar['weighting']
+    robust = imgpar['robust']
+    usemask = 'auto-thresh'
+    maskthreshold = float(imgpar['maskthreshold']) # sigma
+    maskresolution = float(imgpar['maskresolution']) # 2xbmaj
+    nmask = imgpar['nmask']
     logger.info('imsize = {0}, cell = {1}, niter = {2}'.format(
                 imsize, cell, niter))
     logger.info('weighting = {0}, robust = {1}'.format(
                 weighting, robust))
     logger.info('usemask = {0}, maskthreshold = {1}, maskresolution = {2}, nmask = {3}'.format(
                 usemask, maskthreshold, maskresolution, nmask))
-    tclean(vis=msinfo['msfile'], field=s, datacolumn='corrected', imagename=imagename,
-           imsize=imsize, cell=cell, deconvolver='hogbom', weighting=weighting, 
+    tclean(vis=msinfo['msfile'], field=s, datacolumn='corrected',
+           imagename=imagename,
+           imsize=imsize, cell=cell, deconvolver='hogbom',
+           weighting=weighting,
            robust=robust, niter=niter, usemask=usemask,
            maskthreshold=maskthreshold, # sigma
            maskresolution=maskresolution, # 2xbmaj
            nmask=nmask,
            savemodel='none')
-    plot_image(imagename, dozoom=True)
+    plot_image(eMCP, imagename, dozoom=True)
     plot_image_add(imagename, dozoom=True)
 
 
 
-def run_first_images(msinfo):
+def run_first_images(eMCP):
+    msinfo = eMCP['msinfo']
     logger.info('Start run_first_images')
     num = 0
     for s in msinfo['sources']['targets_phscals'].split(','):
-        single_tclean(msinfo, s, num)
+        single_tclean(eMCP, s, num)
     logger.info('End run_first_images')
-
-    return
+    eMCP['steps']['first_images'] = add_step_time(eMCP)
+    return eMCP
 
 def shift_field_position(msfile, shift):
     field = shift['field']
@@ -2337,6 +2393,7 @@ def eMCP_info_start_steps():
     steps['gain_amp_sp'] = default_value
     steps['applycal_all'] = default_value
     steps['flag_rflag'] = default_value
+    steps['applycal_all'] = default_value
     steps['plot_corrected'] = default_value
     steps['first_images'] = default_value
     return steps
