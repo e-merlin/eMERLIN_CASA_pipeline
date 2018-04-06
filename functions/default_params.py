@@ -21,7 +21,7 @@ defaults['average']['width']                  = 4
 defaults['average']['datacolumn']             = 'data'
 
 defaults['plot_data'] = collections.OrderedDict()
-defaults['plot_data']['num_proc']             = 10
+defaults['plot_data']['num_proc']             = 1
 
 defaults['init_models'] = collections.OrderedDict()
 defaults['init_models']['calibrator_models']  = 'calibrator_models/'

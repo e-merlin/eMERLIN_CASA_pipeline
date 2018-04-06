@@ -203,9 +203,10 @@ def prt_dict_tofile(d, tofilename=None, addfile='', pre=' '):
             f.write('{}\n'.format(pre+key_inner))
             prt_dict_tofile(d[key_inner], addfile=f, pre=pre+pre)
 
-def add_step_time(eMCP):
+def add_step_time(eMCP, doweblog=True):
     save_obj(eMCP, info_dir + 'eMCP_info.pkl')
-    emwlog.start_weblog(eMCP, silent=True)
+    if doweblog:
+        emwlog.start_weblog(eMCP, silent=True)
     return datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
 
 def check_pipeline_conflict(eMCP, pipeline_version):
@@ -551,7 +552,7 @@ def run_importfitsIDI(eMCP):
     logger.info('End flagdata_autocorr')
     logger.debug('You have been transformed from an ugly UVFITS to beautiful MS')
     run_listobs(msfile)
-    eMCP['steps']['importfitsIDI'] = add_step_time(eMCP)
+    eMCP['steps']['importfitsIDI'] = add_step_time(eMCP, doweblog=False)
     return eMCP
 
 ##Hanning smoothing and flag of autocorrelations, will delete original and rename
@@ -648,7 +649,8 @@ def run_aoflagger_fields(eMCP):
             for b in range(num_spw):
                 logger.info('Processing source {0}, band {1}'.format(field, b))
                 flagcommand = 'time aoflagger -fields {2} -bands {3} -strategy {0} {1}'.format(aostrategy, msfile, fields_num[field], b)
-                os.system(flagcommand+' | tee -a pre-cal_flag_stats.txt')
+                #os.system(flagcommand+' | tee -a pre-cal_flag_stats.txt')
+                os.system(flagcommand)
             logger.info('Last AOFlagger command: {}'.format(flagcommand))
         else:
             logger.info('Processing source {0}, all bands'.format(field))
@@ -821,7 +823,7 @@ def flagdata_manual(eMCP, run_name='flagdata_manual'):
 def flagdata_tfcropBP(eMCP, caltables):
     # If B0 has not been applied before, do it now
     if eMCP['inputs']['bandpass'] != 2:
-        run_applycal(eMCP, caltables, step = ['bandpass'])
+        run_applycal(eMCP, caltables, step = 'bandpass')
     logger.info('Start flagdata_tfcropBP')
     msinfo = eMCP['msinfo']
     msfile = eMCP['msinfo']['msfile']
@@ -1088,8 +1090,6 @@ def run_initialize_models(eMCP):
         logger.warning('Using a model for 3C286 (1331+305) but your flux calibrator source is: {0}. Model may be wrong for that source'.format(fluxcal))
     setjy(vis=msfile, field=fluxcal, standard='Perley-Butler 2013',
           model=model_3C286, scalebychan=True, usescratch=True)
-    # Is usescratch needed? Probably not, but I see amp=1 in the model column
-    # otherwise when running on an MMS file.
     logger.info('End init_models')
     eMCP['steps']['init_models'] = add_step_time(eMCP)
     return eMCP

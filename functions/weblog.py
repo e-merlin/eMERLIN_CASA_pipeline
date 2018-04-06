@@ -125,7 +125,9 @@ def weblog_index(msinfo):
     #wlog.write('<tr><td>Observer </td>       <td> '+uvdata.header['observer']+'</td>\n')
     #wlog.write('<tr><td>Telescope </td>     <td> '+uvdata.header['telescop']+'</td>\n')
     wlog.write('</table><br>\n')
-    write_link_txt(wlog, './{0}.notes.txt'.format(msinfo['run']), 'Notes and observing comments')
+    notes_file = './{0}.notes.txt'.format(msinfo['run'])
+    if os.path.isfile(notes_file):
+        write_link_txt(wlog, notes_file, 'Notes and observing comments')
 #    wlog.write('<br><small>(*) The channel and integration time  displayed are derived from the averaged data that has been processed in the pipeline. Higher time or frequency resolution may be available and can be obtained if required for the science extraction or advanced calibration techniques.  If this is required please contact the e-MERLIN science support team.</small>')
     #------------------------------------------
     weblog_foot(wlog)
