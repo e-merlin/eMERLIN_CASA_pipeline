@@ -2287,7 +2287,7 @@ def single_tclean(eMCP, s, num):
            maskthreshold=maskthreshold, # sigma
            maskresolution=maskresolution, # 2xbmaj
            nmask=nmask,
-           savemodel='none')
+           savemodel='none', parallel=True)
     plot_image(eMCP, imagename, dozoom=True)
     plot_image_add(imagename, dozoom=True)
 
