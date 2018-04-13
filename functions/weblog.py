@@ -26,7 +26,7 @@ def weblog_header(wlog, section, project):
     wlog.write('<input type="button" value="Calibration"  onclick="window.location.href=\'./calibration.html\'">\n')
     wlog.write('<input type="button" value="Plots"  onclick="window.location.href=\'./plots.html\'">\n')
     wlog.write('<input type="button" value="Images"  onclick="window.location.href=\'./images.html\'">\n')
-    #wlog.write('<input type="button" value="Files"  onclick="window.location.href=\'./files.html\'">\n')
+    wlog.write('<input type="button" value="Download data"  onclick="window.location.href=\'./download.html\'">\n')
     wlog.write('</form>\n')
     #wlog.write('<br>\n')
     wlog.write('<h2>{0}</h2>\n'.format(section))
@@ -281,6 +281,19 @@ def weblog_images(msinfo):
     weblog_foot(wlog)
     wlog.close()
 
+def weblog_download(msinfo):
+    ###### Download page
+    wlog = open("./weblog/download.html","w")
+    weblog_header(wlog, 'Download data', msinfo['run'])
+    #------------------------------------------
+    wlog.write('Files ready to download:<br>\n')
+    filepath = '../{}.tar'.format(msinfo['run'])
+    wlog.write('<!--{0}: <a href="../{1}" target="_blank">tar</a><br>-->\n'.format(msinfo['run'], filepath))
+    wlog.write('<br>\n')
+    #------------------------------------------
+    weblog_foot(wlog)
+    wlog.close()
+
 def show_image(msinfo, wlog, i):
     num = 0
     target = msinfo['sources']['targets'].split(',')[i]
@@ -324,6 +337,7 @@ def start_weblog(msinfo):
     weblog_calibration(msinfo)
     weblog_plots(msinfo)
     weblog_images(msinfo)
+    weblog_download(msinfo)
     logger.info('End weblog')
 
 
