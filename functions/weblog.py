@@ -289,12 +289,12 @@ def table_colors(steps, step, prev_steps):
     red = '#FF6347'
     green = '#008B45'
     outdated = {True: red, False: green}
-    if steps[step] == 0:
+    if steps[step][0] == 0:
         color = neutral
-    elif type(steps[step]) is str:
-        time_step = datetime.datetime.strptime(steps[step], t_fmt)
+    elif type(steps[step][0]) is str:
+        time_step = datetime.datetime.strptime(steps[step][0], t_fmt)
         if prev_steps != []:
-            latest_prev = max([datetime.datetime.strptime(steps[stepi], t_fmt)
+            latest_prev = max([datetime.datetime.strptime(steps[stepi][0], t_fmt)
                                for stepi in prev_steps])
             color = outdated[time_step < latest_prev]
         else:
@@ -306,17 +306,21 @@ def table_colors(steps, step, prev_steps):
 
 def table_steps(eMCP):
     table_txt = '<br><h4>Execution summary</h4>\n'
-    table_txt += ('<table bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:40%">\n')
-    table_txt += ('<tr><th>Step</th><th>Execution</th>\n')
+    table_txt += ('<table bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:80%">\n')
+    table_txt += ("<tr><th style='width: 15%;'>Step</th>" \
+                  "<th style='width: 5%;'>Code</th>" \
+                  "<th style='width: 20%;'>Execution</th>" \
+                  "<th style='width: 60%;'>Notes</th></tr>\n")
     prev_steps = []
     nosteps = ['plot_data', 'save_flags', 'plot_corrected', 'first_images']
-    for step, time_s in eMCP['steps'].items():
+    for step, step_info in eMCP['steps'].items():
+        time_s, msg = step_info
         color = table_colors(eMCP['steps'], step, prev_steps)
         table_txt += ('<tr><td>{0}</td>'.format(step))
-        table_txt += ('<td bgcolor={0} align="center">{1}</td></tr>\n'.format(
-                                                                color,
-                                                                time_s))
-        if (eMCP['steps'][step] != 0) and (step not in nosteps):
+        table_txt += ('<td bgcolor={0}></td>\n'.format(color))
+        table_txt += ('<td align="center">{0}</td>\n'.format(time_s))
+        table_txt += ('<td>{0}</td></tr>\n'.format(msg))
+        if (eMCP['steps'][step][0] != 0) and (step not in nosteps):
             prev_steps.append(step)
     table_txt += ('</table>\n')
     return table_txt
@@ -330,6 +334,8 @@ def weblog_pipelineinfo(eMCP):
     wlog.write('CASA version: {}\n<br>'.format(eMCP['casa_version']))
     wlog.write('Pipeline version: {}\n<br>'.format(eMCP['pipeline_version']))
     wlog.write(table_steps(eMCP))
+    wlog.write('Green = executed<br>')
+    wlog.write('Red = executed but outdated by a previous step<br>')
     wlog.write('<br><h4>Relevant log files:</h4>\n')
     write_link_txt(wlog, info_link + 'eMCP.log.txt', 'eMCP.log')
     write_link_txt(wlog, info_link + 'casa_eMCP.log.txt', 'casa_eMCP.log')
