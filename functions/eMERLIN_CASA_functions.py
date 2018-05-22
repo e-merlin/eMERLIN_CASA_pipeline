@@ -1969,9 +1969,9 @@ def gain_amp_sp(eMCP, caltables):
     return eMCP, caltables
 
 def applycal_all(eMCP, caltables):
-    logger.info('Start applycal_all')
+    #logger.info('Start applycal_all')
     run_applycal(eMCP, caltables, step='applycal_all')
-    logger.info('End applycal_all')
+    #logger.info('End applycal_all')
     eMCP['steps']['applycal_all'] = add_step_time(eMCP)
     return eMCP
 
