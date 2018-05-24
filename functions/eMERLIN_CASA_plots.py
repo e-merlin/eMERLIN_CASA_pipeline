@@ -252,7 +252,7 @@ def make_4plots(eMCP, datacolumn='data'):
         make_uvplt(eMCP)
     logger.info('End plot_{}'.format(datacolumn))
     msg = ''
-    eMCP = add_step_time('plot_'+datacolumn, eMCP, msg, doweblog=False)
+    eMCP = add_step_time('plot_'+datacolumn, eMCP, msg)
     return eMCP
 
 def single_uvplt((msinfo, field, plots_data_dir)):

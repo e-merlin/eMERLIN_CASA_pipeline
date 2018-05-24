@@ -496,112 +496,180 @@ def run_listobs(msfile):
     listobs(vis=msfile, listfile=outfile, overwrite=True)
     logger.info('Listobs file in: {0}'.format(outfile))
 
-def run_importfitsIDI(eMCP):
-    logger.info('Starting importfitsIDI procedure')
+def decide_hanning(import_eM, msfile):
+    run_hanning = import_eM['run_hanning']
+    if run_hanning == 'auto':
+        #logger.info('run_hanning = "auto" means check if data are L band.')
+        band = check_band(msfile)
+        if band == 'L':
+            logger.info('L band dataset. Hanning smoothing will be executed.')
+            apply_hanning = True
+        else:
+            logger.info('Dataset is not L band. Hanning smoothing not needed.')
+            apply_hanning = False
+    elif run_hanning > 1:
+        apply_hanning = True
+    elif run_hanning == 0:
+        apply_hanning = False
+    else:
+        logger.warning('Not valid run_hanning parameter (use "auto", 0 or 1)')
+        exit_pipeline()
+    return apply_hanning
+
+
+def mixed_mode(msfile):
+    tb.open(msfile + '/SPECTRAL_WINDOW')
+    bw_spw = np.array(tb.getcol('TOTAL_BANDWIDTH'))
+    tb.close()
+    is_mixed_mode = len(np.unique(bw_spw)) != 1
+    if is_mixed_mode:
+        cont_spw = ','.join(np.where(bw_spw==np.max(np.unique(bw_spw)))[0].astype('str'))
+        line_spw =','.join(np.where(bw_spw!=np.max(np.unique(bw_spw)))[0].astype('str'))
+        spw_separation = [cont_spw, line_spw] # Example ['0,1,2,3','4,5']
+    else:
+        spw_separation = ['']
+    return is_mixed_mode, spw_separation
+
+def import_eMERLIN_fitsIDI(eMCP):
+    rmdir(eMCP['inputs']['inbase'] + '.ms')
+    rmdir(eMCP['inputs']['inbase'] + '.mms')
+    rmdir(eMCP['inputs']['inbase'] + '_sp.ms')
+    rmdir(eMCP['inputs']['inbase'] + '_sp.mms')
+    import_eM = eMCP['defaults']['import_eM']
+    logger.info('Starting import eMERLIN fitsIDI procedure')
     fits_path = backslash_check(eMCP['inputs']['fits_path'])
-    doaverage = eMCP['inputs']['run_importfits']
-    msfile = eMCP['inputs']['inbase']+'.ms'
-    eMCP['msfile'] = msfile
-    rmdir(msfile)
+    msfile_name = eMCP['inputs']['inbase']
+
+    # importfitsIDI
+    constobsid = import_eM['constobsid']
+    scanreindexgap_s = import_eM['scanreindexgap_s']
     fitsfiles =[]
     for infile in os.listdir(fits_path):
         if infile.endswith('fits') or infile.endswith('FITS'):
             fitsfiles = fitsfiles + [fits_path+infile]
             logger.info('FITS file found to be imported: {0}'.format(infile))
     logger.info('Start importfitsIDI')
-    importfitsidi(fitsidifile=fitsfiles, vis=msfile, constobsid=True, scanreindexgap_s=15.0)
-    ms.writehistory(message='eMER_CASA_Pipeline: Import fitsidi to ms, complete',msname=msfile)
-     #if setorder:
-     #    logger.info('Setting MS order with setToCasaOrder')
-     #    mvdir(msfile, msfile+'_noorder')
-     #    setToCasaOrder(inputMS=msfile+'_noorder', outputMS=msfile)
-     #    rmdir(msfile+'_noorder')
-     #ms.writehistory(message='eMER_CASA_Pipeline: setToCasaOrder, complete',msname=msfile)
+    msfile0 = msfile_name+'_imported.ms'
+    rmdir(msfile0)
+    importfitsidi(fitsidifile=fitsfiles, vis=msfile0,
+                  constobsid=constobsid, scanreindexgap_s=scanreindexgap_s)
+    logger.info('Created file: {}'.format(msfile0))
     logger.info('End importfitsIDI')
-
-    if doaverage > 1:
-        logger.info('Start average0')
-        timebin = '{}s'.format(doaverage)
-        rmdir(msfile+'_tavg')
-        logger.info('Averaging raw data to {}'.format(timebin))
-        mstransform(vis=msfile, outputvis=msfile+'_tavg', datacolumn='data',
-                    timeaverage=True, timebin=timebin)
-        if os.path.isdir(msfile+'_tavg') == True:
-            rmdir(msfile)
-        else:
-            logger.critical('Problem generating averaged ms. Stopping pipeline')
-            logger.warning('File {0}.tavg was not created.'.format(msfile))
-            exit_pipeline(eMCP)
-        mvdir(msfile+'_tavg', msfile)
-        logger.info('End average0')
-    logger.info('Start FIXVIS')
-    fixvis(vis=msfile,outputvis=msfile+'.uvfix',reuse=False)
-    logger.info('End FIXVIS')
-    if os.path.isdir(msfile+'.uvfix') == True:
-        rmdir(msfile)
-    else:
-        logger.critical('Problem generating FIXVIS ms. Stopping pipeline')
-        logger.warning('File {0}.uvfix was not created. {0} was not corrected.'.format(msfile))
-        exit_pipeline(eMCP)
-    mvdir(msfile+'.uvfix', msfile)
-    logger.info('Start flagdata_autocorr')
-    flagdata(vis=msfile,mode='manual',autocorr=True)
-    ms.writehistory(message='eMER_CASA_Pipeline: Fixed uv coordinates & remove autocorr',msname=msfile)
-    logger.info('End flagdata_autocorr')
-    logger.debug('You have been transformed from an ugly UVFITS to beautiful MS')
-    run_listobs(msfile)
-    msg = ''
+    msg = 'constobsid={0}, scanreindexgap_s={1}'.format(constobsid,
+                                                       scanreindexgap_s)
+    eMCP['msfile'] = eMCP['inputs']['inbase']+'.ms'
     eMCP = add_step_time('importfitsIDI', eMCP, msg, doweblog=False)
-    return eMCP
 
-##Hanning smoothing and flag of autocorrelations, will delete original and rename
-def hanning(eMCP):
-    run_hanning = eMCP['defaults']['hanning']['run_hanning']
-    deloriginal = eMCP['defaults']['hanning']['deloriginal']
-    apply_hanning = False
-    msfile = eMCP['msfile']
-    if run_hanning == 1:
-        logger.info('hanning = 1 means check if data are L band.')
-        band = check_band(eMCP['msfile'])
-        if band == 'L':
-            logger.info('L band dataset. Hanning smoothing will be executed.')
-            apply_hanning = True
-        else:
-            logger.info('Dataset is not L band. Hanning smoothing not needed.')
-    elif run_hanning > 1:
-        apply_hanning = True
-    if apply_hanning:
-        logger.info('Start hanning')
-        filename, extension = os.path.splitext(msfile)
-        outputvis = filename+'_hanning'+extension
-        rmdir(outputvis)
-        mstransform(vis=msfile,outputvis=outputvis,hanning=True,datacolumn='data')
-        # Check if hanning smoothed data was not produced:
-        if os.path.isdir(outputvis) == False:
-            logger.critical('Problem generating Hanning smoothed ms. Stopping pipeline')
-            logger.warning('File {0} was not created. {1} was not modified.'.format(outputvis, inputvis))
-            exit_pipeline()
-        # Delete or move original
-        if deloriginal==True:
-            rmdir(msfile)
-            rmdir(msfile+'.flagversions')
-        else:
-            mvdir(msfile, msfile+'_prehanning')
-            mvdir(msfile+'.flagversions', msfile+'_prehanning.flagversions')
-        mvdir(outputvis, msfile)
-        mvdir(outputvis+'.flagversions', msfile+'.flagversions')
-        ms.writehistory(message='eMER_CASA_Pipeline: Hanning smoothed data, complete',msname=msfile)
-        logger.info('End hanning')
-        msg = ''
-        eMCP = add_step_time('hanning', eMCP, msg)
-    return eMCP
+    # mstransform
+    datacolumn = 'data'
+    if import_eM['antenna'] == '':
+        antenna = '*&*'
+    else:
+        antenna = '*&*;'+import_eM['antenna']
+        logger.info('Splitting antennas: {}'.format(antenna))
+    timeaverage = import_eM['timeaverage']
+    timebin = import_eM['timebin']
+    chanaverage = import_eM['chanaverage']
+    chanbin = import_eM['chanbin']
+    usewtspectrum = import_eM['usewtspectrum']
+    do_hanning = decide_hanning(import_eM, msfile0)
+    do_ms2mms = import_eM['ms2mms']
+    is_mixed_mode, spw_separation = mixed_mode(msfile0)
+    eMCP['is_mixed_mode'] = is_mixed_mode
+    ext_ms = {False:'.ms',True:'.mms'}
+    msfile1 = msfile_name+'_transformed' + ext_ms[do_ms2mms]
+    if timeaverage:
+        logger.info('Data will be averaged to {}'.format(timebin))
+    if chanaverage:
+        logger.info('Data will be averaged to {} chan/spw'.format(chanbin))
+    if do_hanning:
+        logger.info('Running Hanning smoothing')
+    else:
+        logger.info('Not running Hanning smoothing')
+    if do_ms2mms:
+        logger.info('Data will be converted to MMS')
+    logger.info('Start mstransform')
+    rmdir(msfile1)
+    mstransform(vis = msfile0,
+                outputvis = msfile1,
+                keepflags = True,
+                datacolumn = datacolumn,
+                antenna = antenna,
+                spw = spw_separation[0],
+                timeaverage = timeaverage, timebin=timebin,
+                chanaverage = chanaverage, chanbin=chanbin,
+                usewtspectrum = usewtspectrum,
+                hanning = do_hanning,
+                createmms = do_ms2mms
+                )
+    logger.info('Transformed: {0} into {1}'.format(msfile0, msfile1))
+    if do_hanning:
+        ms.writehistory(message='Hanning smoothing applied',msname=msfile1)
+    if is_mixed_mode: # No hanning and no channel average
+        logger.info('Mixed mode data detected')
+        msfile1_sp = msfile_name+'_transformed_sp' + ext_ms[do_ms2mms]
+        logger.info('Running mstransform on spectral line data')
+        rmdir(msfile1_sp)
+        mstransform(vis = msfile0,
+                outputvis = msfile1_sp,
+                keepflags = True,
+                datacolumn = datacolumn,
+                antenna = antenna,
+                spw = spw_separation[1],
+                timeaverage = timeaverage, timebin=timebin,
+                usewtspectrum = usewtspectrum,
+                createmms = do_ms2mms
+                )
+        logger.info('Transformed: {0} into {1}'.format(msfile0, msfile1_sp))
+    if os.path.isdir(msfile1) == True:
+        rmdir(msfile0)
+    else:
+        logger.critical('Problem generating {}. Stopping ' \
+                        'pipeline'.format(msfile1))
+        exit_pipeline(eMCP)
+    logger.info('End mstransform')
+    msg = 'hanning={0}, createmms={1}'.format(do_hanning,
+                                              do_ms2mms)
+    if timeaverage:
+        msg += ', timebin={0}'.format(timebin)
+    if chanaverage:
+        msg += ', chanbin={0}'.format(chanbin)
+    if import_eM['antenna'] != '':
+        msg += ', antenna="{}"'.format(antenna)
+    eMCP = add_step_time('mstransform', eMCP, msg, doweblog=False)
 
-def run_rfigui(vis):
-    logger.info('Start run_rfigui')
-    """This function should output the new strategies to /aoflagger_strategies/user/<field>.rfis in
-    either the local folder or the pipeline folder."""
-    os.system('rfigui '+vis)
-    logger.info('End run_rfigui')
+    # FIXVIS
+    msfile = eMCP['inputs']['inbase'] + ext_ms[do_ms2mms]
+    logger.info('Start FIXVIS')
+    fixvis(vis = msfile1,
+           outputvis = msfile,
+           reuse = False)
+    logger.info('Fixed {0} into {1}'.format(msfile1, msfile))
+    run_listobs(msfile)
+    if os.path.isdir(msfile) == True:
+        rmdir(msfile1)
+    else:
+        logger.critical('Problem generating {}. Stopping ' \
+                        'pipeline'.format(msfile))
+        exit_pipeline(eMCP)
+    if is_mixed_mode:
+        msfile_sp = eMCP['inputs']['inbase'] + '_sp' + ext_ms[do_ms2mms]
+        logger.info('Running FIXVIS on spectral line data')
+        fixvis(vis = msfile1_sp,
+           outputvis = msfile_sp,
+           reuse = False)
+        logger.info('Fixed {0} into {1}'.format(msfile1_sp, msfile_sp))
+        run_listobs(msfile_sp)
+        if os.path.isdir(msfile_sp) == True:
+            rmdir(msfile1_sp)
+        else:
+            logger.critical('Problem generating FIXVIS ms. Stopping pipeline')
+            exit_pipeline(eMCP)
+    logger.info('End FIXVIS')
+    msg = ''
+    eMCP = add_step_time('fixvis', eMCP, msg, doweblog=False)
+    eMCP['msfile'] = msfile
+    return eMCP
 
 
 def run_aoflagger_fields(eMCP):
@@ -1049,6 +1117,9 @@ def run_split(eMCP):
     sources = eMCP['msinfo']['sources']
     timebin = '{}s'.format(eMCP['inputs']['average'])
     datacolumn = eMCP['defaults']['average']['datacolumn']
+    scan = eMCP['defaults']['average']['scan']
+    antenna = eMCP['defaults']['average']['antenna']
+    timerange = eMCP['defaults']['average']['timerange']
     mssources = find_mssources(msfile)
     # Check that all sources are there:
     sources_not_in_msfile = [s for s in
@@ -1071,8 +1142,10 @@ def run_split(eMCP):
     logger.info('width={0}, timebin={1}'.format(width, timebin))
     logger.info('Fields: {0}'.format(fields))
     logger.info('Data column: {0}'.format(datacolumn))
-    split(vis=msfile, outputvis=outputmsfile, field=fields, width=width,
-          timebin=timebin, datacolumn=datacolumn, keepflags=False)
+    split(vis=msfile, outputvis=outputmsfile, field=fields,
+          timerange=timerange, scan=scan, antenna=antenna,
+          timebin=timebin,  width=width,
+          datacolumn=datacolumn, keepflags=True)
     run_listobs(outputmsfile)
     logger.info('End split')
     msg = 'width={0}, timebin={1}, datacolumn={2}'.format(width, timebin,
@@ -2417,8 +2490,8 @@ def eMCP_info_start_steps():
     default_value = [0, '']
     steps = collections.OrderedDict()
     steps['importfitsIDI'] = default_value
-    steps['hanning'] = default_value
-    steps['ms2mms'] = default_value
+    steps['mstransform'] = default_value
+    steps['fixvis'] = default_value
     steps['aoflagger'] = default_value
     steps['flag_apriori'] = default_value
     steps['flag_manual'] = default_value

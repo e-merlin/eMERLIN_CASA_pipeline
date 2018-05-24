@@ -13,7 +13,7 @@ from tasks import *
 import casadef
 
 
-current_version = 'v0.8.5'
+current_version = 'v0.8.6'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -76,6 +76,7 @@ def run_pipeline(inputs=None, inputs_path=''):
     except:
         eMCP = collections.OrderedDict()
         eMCP['steps'] = em.eMCP_info_start_steps()
+        eMCP['is_mixed_mode'] = 'unknown'
 
     eMCP['inputs'] = inputs
     eMCP['defaults'] = defaults
@@ -122,18 +123,19 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     ## Pipeline processes, inputs are read from the inputs dictionary
     if inputs['run_importfits'] > 0:
-        eMCP = em.run_importfitsIDI(eMCP)
-        em.check_mixed_mode(eMCP['msfile'], mode='split')
-        if eMCP['defaults']['hanning']['run_hanning']:
-            eMCP = em.hanning(eMCP)
+        eMCP = em.import_eMERLIN_fitsIDI(eMCP)
+#        eMCP = em.run_importfitsIDI(eMCP)
+#        em.check_mixed_mode(eMCP['msfile'], mode='split')
+#        if eMCP['defaults']['hanning']['run_hanning']:
+#            eMCP = em.hanning(eMCP)
 
     if os.path.isdir('./'+inputs['inbase']+'.ms') == True:
         msfile = inputs['inbase']+'.ms'
         eMCP, msinfo, msfile = em.get_msinfo(eMCP, msfile)
 
-    ### Convert MS to MMS ###
-    if eMCP['defaults']['ms2mms']['run_ms2mms']:
-        eMCP = em.ms2mms(eMCP)
+#    ### Convert MS to MMS ###
+#    if eMCP['defaults']['ms2mms']['run_ms2mms']:
+#        eMCP = em.ms2mms(eMCP)
 
     ### check for parallelisation
     if os.path.isdir('./'+inputs['inbase']+'.mms') == True:
@@ -315,6 +317,7 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     try:
         os.system('mv ipython-*.log casa-*.log *.last ./logs')
+        logger.info('Moved ipython-*.log casa-*.log *.last to ./logs')
     except:
         pass
     logger.info('Pipeline finished')

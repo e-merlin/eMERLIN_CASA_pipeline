@@ -2,13 +2,17 @@ import collections
 
 defaults = collections.OrderedDict()
 
-defaults['hanning'] = collections.OrderedDict()
-defaults['hanning']['run_hanning']            = True
-defaults['hanning']['deloriginal']            = True
-
-defaults['ms2mms'] = collections.OrderedDict()
-defaults['ms2mms']['run_ms2mms']              = False
-defaults['ms2mms']['mode']                    = 'parallel'
+defaults['import_eM'] = collections.OrderedDict()
+defaults['import_eM']['constobsid']            = True
+defaults['import_eM']['scanreindexgap_s']      = 15.0
+defaults['import_eM']['antenna']               = ''
+defaults['import_eM']['timeaverage']           = False
+defaults['import_eM']['timebin']               = '4s'
+defaults['import_eM']['chanaverage']           = False
+defaults['import_eM']['chanbin']               = 4
+defaults['import_eM']['usewtspectrum']         = False
+defaults['import_eM']['run_hanning']           = 'auto'
+defaults['import_eM']['ms2mms']                = False
 
 defaults['aoflagger'] = collections.OrderedDict()
 defaults['aoflagger']['fields']               = 'all'
@@ -19,6 +23,9 @@ defaults['flag_apriori']['do_quack']          = True
 defaults['average'] = collections.OrderedDict()
 defaults['average']['width']                  = 4
 defaults['average']['datacolumn']             = 'data'
+defaults['average']['timerange']              = ''
+defaults['average']['scan']                   = ''
+defaults['average']['antenna']                = ''
 
 defaults['plot_data'] = collections.OrderedDict()
 defaults['plot_data']['num_proc']             = 1
