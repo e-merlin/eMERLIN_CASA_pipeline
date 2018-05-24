@@ -395,25 +395,21 @@ def get_distances(msfile, directions=''):
             sep_file.write('{0:10} {1:10} {2:7.2f}deg\n'.format(f1, f2, separations[f1+'-'+f2]))
     return separations
 
-def get_integration_time(msfile, usemsmd = False):
+def get_integration_time(msfile, usemsmd=True):
     if usemsmd:
+        ms.open(msfile)
+        axis_info = ms.getdata(['scan_number'],ifraxis=True)
+        ms.close()
+        first_scan_number = min(axis_info['scan_number'])
         msmd.open(msfile)
-        int_time = 0    # If cannot find any, set it to 0
-        for i in range(1, 10):
-            "This loop is just to check the first scan. If not, search up to 10"
-            try:
-                int_time = msmd.exposuretime(i)['value']
-                break
-            except:
-                pass
+        int_time = msmd.exposuretime(first_scan_number)['value']
         msmd.done()
-    else:
+    else: # For CASA versions <5
         ms.open(msfile)
         axis_info = ms.getdata(['axis_info'],ifraxis=True)
         t_mjd   = axis_info['axis_info']['time_axis']['MJDseconds']
         ms.close()
         int_time = stats.mode(np.diff(t_mjd))[0][0]
-    #logger.info('Integration time: {0:.1f}s'.format(int_time['value']))
     return int_time
 
 
