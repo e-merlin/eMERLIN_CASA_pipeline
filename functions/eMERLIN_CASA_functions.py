@@ -1060,7 +1060,8 @@ def run_split(eMCP):
                              if s not in mssources.split(',')]
     if len(sources_not_in_msfile) > 0:
         fields = mssources
-        logger.warning('Fields {} not present in MS but listed in inputs file.'.format(','.join(sources_not_in_msfile)))
+        logger.warning('Fields {} not present in MS but listed in ' \
+                       'inputs file.'.format(','.join(sources_not_in_msfile)))
         logger.warning('All fields will be included in the averaged MS.')
     else:
         fields = sources['allsources']
@@ -1078,7 +1079,8 @@ def run_split(eMCP):
           timebin=timebin, datacolumn=datacolumn, keepflags=False)
     run_listobs(outputmsfile)
     logger.info('End split')
-    msg = 'width={0}, timebin={1}'.format(width, timebin)
+    msg = 'width={0}, timebin={1}, datacolumn={2}'.format(width, timebin,
+                                                          datacolumn)
     eMCP['steps']['average'] = add_step_time(eMCP, msg)
     return eMCP
 
@@ -2232,8 +2234,8 @@ def dfluxpy(freq,baseline):
 
 
 def plot_image(eMCP, imagename, dozoom=False):
-    imstat_residual = imstat(imagename+'.residual')
-    imstat_image = imstat(imagename+'.image')
+    imstat_residual = imstat(imagename+'.residual.tt0')
+    imstat_image = imstat(imagename+'.image.tt0')
     noise = imstat_residual['rms'][0]
     peak = imstat_image['max'][0]
     #scaling =  np.min([0, -np.log(1.0*peak/noise)+4])
@@ -2243,7 +2245,7 @@ def plot_image(eMCP, imagename, dozoom=False):
     levels = level0*np.sqrt(3**np.arange(20))
     center = 512
     zoom_range = 150
-    for extension in ['image']:
+    for extension in ['image.tt0']:
         filename = '{0}.{1}'.format(imagename, extension)
         imview(raster={'file':filename,
                        #'range':[0, 0.032],
@@ -2270,22 +2272,22 @@ def plot_image_add(imagename, dozoom=False):
     filename = imagename
     center = 512
     zoom_range = 150
-    imview(raster={'file':filename+'.residual',
+    imview(raster={'file':filename+'.residual.tt0',
                    #'range':[0, 0.032],
                    #'scaling': float(scaling),
                    'colorwedge':True},
            contour = {'file':filename+'.mask',
                'levels':[1]},
-           out = filename+'.residual.png')
+           out = filename+'.residual.tt0.png')
     if dozoom:
-        imview(raster={'file':filename+'.residual',
+        imview(raster={'file':filename+'.residual.tt0',
                #'range':[0, 0.032],
                #'scaling': float(scaling),
                'colorwedge':True},
         contour = {'file':filename+'.mask',
                    'levels':[1]},
         zoom = {'blc':[center-zoom_range,center-zoom_range],'trc':[center+zoom_range, center+zoom_range]},
-        out = filename+'.residual_zoom.png')
+        out = filename+'.residual.tt0_zoom.png')
 
 
 def single_tclean(eMCP, s, num):
@@ -2301,6 +2303,9 @@ def single_tclean(eMCP, s, num):
     imsize = imgpar['imsize']
     cell = cellsize[msinfo['band']]
     niter = imgpar['niter']
+    gain = imgpar['gain']
+    deconvolver = imgpar['deconvolver']
+    nterms = imgpar['nterms']
     weighting = imgpar['weighting']
     robust = imgpar['robust']
     usemask = 'auto-thresh'
@@ -2315,13 +2320,15 @@ def single_tclean(eMCP, s, num):
                 usemask, maskthreshold, maskresolution, nmask))
     tclean(vis=msinfo['msfile'], field=s, datacolumn='corrected',
            imagename=imagename,
-           imsize=imsize, cell=cell, deconvolver='hogbom',
+           imsize=imsize, cell=cell, deconvolver=deconvolver,
+           gain=gain,
+           nterms=nterms,
            weighting=weighting,
            robust=robust, niter=niter, usemask=usemask,
            maskthreshold=maskthreshold, # sigma
            maskresolution=maskresolution, # 2xbmaj
            nmask=nmask,
-           savemodel='none', parallel=True)
+           savemodel='none', parallel=False)
     plot_image(eMCP, imagename, dozoom=True)
     plot_image_add(imagename, dozoom=True)
 

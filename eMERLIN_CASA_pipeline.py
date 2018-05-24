@@ -13,7 +13,7 @@ from tasks import *
 import casadef
 
 
-current_version = 'v0.8.2'
+current_version = 'v0.8.3'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -29,7 +29,7 @@ sys.path.append(pipeline_path)
 import functions.eMERLIN_CASA_functions as em
 import functions.weblog as emwlog
 import functions.eMERLIN_CASA_plots as emplt
-from functions.default_params import defaults
+from default_params import defaults
 
 casalog.setlogfile('casa_eMCP.log')
 
