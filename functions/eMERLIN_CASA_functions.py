@@ -203,12 +203,13 @@ def prt_dict_tofile(d, tofilename=None, addfile='', pre=' '):
             f.write('{}\n'.format(pre+key_inner))
             prt_dict_tofile(d[key_inner], addfile=f, pre=pre+pre)
 
-def add_step_time(eMCP, msg, doweblog=True):
+def add_step_time(step, eMCP, msg, doweblog=True):
+    timestamp = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+    eMCP['steps'][step] = [timestamp, msg]
     save_obj(eMCP, info_dir + 'eMCP_info.pkl')
     if doweblog:
-        emwlog.start_weblog(eMCP, silent=True)
-    timestamp = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
-    return timestamp, msg
+        emwlog.start_weblog(eMCP)
+    return eMCP
 
 def check_pipeline_conflict(eMCP, pipeline_version):
     try:
@@ -533,13 +534,13 @@ def run_importfitsIDI(eMCP):
             exit_pipeline(eMCP)
         mvdir(msfile+'_tavg', msfile)
         logger.info('End average0')
-    logger.info('Start UVFIX')
+    logger.info('Start FIXVIS')
     fixvis(vis=msfile,outputvis=msfile+'.uvfix',reuse=False)
-    logger.info('End UVFIX')
+    logger.info('End FIXVIS')
     if os.path.isdir(msfile+'.uvfix') == True:
         rmdir(msfile)
     else:
-        logger.critical('Problem generating UVFIXEd ms. Stopping pipeline')
+        logger.critical('Problem generating FIXVIS ms. Stopping pipeline')
         logger.warning('File {0}.uvfix was not created. {0} was not corrected.'.format(msfile))
         exit_pipeline(eMCP)
     mvdir(msfile+'.uvfix', msfile)
@@ -550,7 +551,7 @@ def run_importfitsIDI(eMCP):
     logger.debug('You have been transformed from an ugly UVFITS to beautiful MS')
     run_listobs(msfile)
     msg = ''
-    eMCP['steps']['importfitsIDI'] = add_step_time(eMCP, msg, doweblog=False)
+    eMCP = add_step_time('importfitsIDI', eMCP, msg, doweblog=False)
     return eMCP
 
 ##Hanning smoothing and flag of autocorrelations, will delete original and rename
@@ -592,7 +593,7 @@ def hanning(eMCP):
         ms.writehistory(message='eMER_CASA_Pipeline: Hanning smoothed data, complete',msname=msfile)
         logger.info('End hanning')
         msg = ''
-        eMCP['steps']['hanning'] = add_step_time(eMCP, msg)
+        eMCP = add_step_time('hanning', eMCP, msg)
     return eMCP
 
 def run_rfigui(vis):
@@ -660,7 +661,7 @@ def run_aoflagger_fields(eMCP):
     #flag_applied(flags, 'flagdata0_aoflagger')
     logger.info('End run_aoflagger_fields')
     msg = ''
-    eMCP['steps']['aoflagger'] = add_step_time(eMCP, msg)
+    eMCP = add_step_time('aoflagger', eMCP, msg)
     return eMCP
 
 def check_command(command):
@@ -712,9 +713,10 @@ def ms2mms(eMCP):
         if os.path.isdir(msfile[:-3]+'.ms') == True:
            rmdir(msfile)
            rmdir(msfile+'.flagversions')
+    run_listobs(msfile[:-3]+'.mms')
     logger.info('End ms2mms')
     msg = ''
-    eMCP['steps']['ms2mms'] = add_step_time(eMCP, msg)
+    eMCP = add_step_time('ms2mms', eMCP, msg)
     return eMCP
 
 def find_quacktime(msinfo, s1, s2):
@@ -799,7 +801,7 @@ def flagdata1_apriori(eMCP):
     #flag_applied(flags, 'flagdata1_apriori')
     msg = ''
     logger.info('End flagdata1_apriori')
-    eMCP['steps']['flag_apriori'] = add_step_time(eMCP, msg)
+    eMCP = add_step_time('flag_apriori', eMCP, msg)
     return eMCP
 
 def flagdata_manual(eMCP, run_name='flagdata_manual'):
@@ -820,7 +822,7 @@ def flagdata_manual(eMCP, run_name='flagdata_manual'):
     flagdata(vis=msfile, mode='list', inpfile=inpfile)
     logger.info('End {}'.format(run_name))
     msg = 'file={0}'.format(inpfile)
-    eMCP['steps'][run_name] = add_step_time(eMCP, msg)
+    eM = add_step_time([run_name], eMCP, msg)
     return eMCP
 
 def flagdata_tfcropBP(eMCP, caltables):
@@ -865,7 +867,7 @@ def flagdata_tfcropBP(eMCP, caltables):
            ntime={4}".format(tfcrop['winsize'], tfcrop['timecutoff'],
                              tfcrop['freqcutoff'], tfcrop['maxnpieces'],
                              tfcrop['ntime'])
-    eMCP['steps']['flag_tfcropBP'] = add_step_time(eMCP, msg)
+    eMCP = add_step_time('flag_tfcropBP', eMCP, msg)
     return eMCP
 
 #def flagdata_tfcrop_bright(msfile, sources, datacolumn='DATA'):
@@ -919,7 +921,7 @@ def flagdata_rflag(eMCP):
             rflag['ntime'],
             rflag['timedevscale'],
             rflag['freqdevscale'])
-    eMCP['steps']['flag_rflag'] = add_step_time(eMCP, msg)
+    eMCP = add_step_time('flag_rflag', eMCP, msg)
     return eMCP
 
 
@@ -1021,23 +1023,21 @@ def plot_caltable(msinfo, caltable, plot_file, xaxis='', yaxis='', title='',
 
 def saveflagstatus(eMCP):
     msinfo = eMCP['msinfo']
-    logger.info('Start saveflagstatus')
+    logger.info('Starting saveflagstatus')
     logger.info('Saving current flagging status to versionname=\'initialize_flags\'')
     flagmanager(msinfo['msfile'], mode='save', versionname='initialize_flags',
              comment='Restore this version to restart calibration without the flags produced by the calibration',
              merge='replace')
-    logger.info('End saveflagstatus')
     msg = 'versionname=initialize_flags'
-    eMCP['steps']['save_flags'] = add_step_time(eMCP, msg)
+    eMCP = add_step_time('save_flags', eMCP, msg)
     return eMCP
 
 
 def restoreflagstatus(msinfo):
-    logger.info('Start restoreflagstatus')
+    logger.info('Starting restoreflagstatus')
     logger.info('Restoring flagging status in versionname=\'initialize_flags\'')
     flagmanager(msinfo['msfile'], mode='restore', versionname='initialize_flags',
              merge='replace')
-    logger.info('End restoreflagstatus')
 
 
 ### Run CASA calibration functions
@@ -1077,7 +1077,7 @@ def run_split(eMCP):
     logger.info('End split')
     msg = 'width={0}, timebin={1}, datacolumn={2}'.format(width, timebin,
                                                           datacolumn)
-    eMCP['steps']['average'] = add_step_time(eMCP, msg)
+    eMCP = add_step_time('average', eMCP, msg)
     return eMCP
 
 
@@ -1107,7 +1107,7 @@ def run_initialize_models(eMCP):
           model=model_3C286, scalebychan=True, usescratch=True)
     logger.info('End init_models')
     msg = ''
-    eMCP['steps']['init_models'] = add_step_time(eMCP, msg)
+    eMCP = add_step_time('init_models', eMCP, msg)
     return eMCP
 
 
@@ -1351,7 +1351,7 @@ def solve_delays(eMCP, caltables):
     msg = 'solint={0}, combine={1}, minsnr={2}'.format(delay['solint'],
                                                        delay['combine'],
                                                        delay['minsnr'])
-    eMCP['steps']['delay'] = add_step_time(eMCP, msg)
+    eMCP = add_step_time('delay', eMCP, msg)
     return eMCP, caltables
 
 
@@ -1563,7 +1563,7 @@ def initial_bp_cal(eMCP, caltables):
                     msinfo['sources']['bpcal'],
                     bp['bp_combine'],
                     bp['bp_solint'])
-    eMCP['steps']['bandpass'] = add_step_time(eMCP, msg)
+    eMCP = add_step_time('bandpass', eMCP, msg)
     return eMCP, caltables
 
 
@@ -1697,21 +1697,26 @@ def initial_gaincal(eMCP, caltables):
     save_obj(caltables, caltables['calib_dir']+'caltables.pkl')
     msg = 'p_solint={0}, jitter_solint={1}, ap_solint={2}'.format(
         gain_p_ap['p_solint'], gain_p_ap['ji_solint'], gain_p_ap['ap_solint'])
-    eMCP['steps']['gain_p_ap'] = add_step_time(eMCP, msg)
+    eMCP = add_step_time('gain_p_ap', eMCP, msg)
     return eMCP, caltables
 
 
 
 def find_anten_fluxscale(antennas):
+    if 'Lo' in antennas:
+        anten_for_flux = '!Lo'
+    else:
+        anten_for_flux = ''
+    # Previous logic, antenna selection
     # This function tries to remove Lo and De from the fluxscale determination.
     # But only if there are enough antennas to have at least 4 of them.
     # I found unstable solutions if too few antennas are used
-    if len(antennas) > 4:
-         anten_for_flux = [x for x in antennas if x != "Lo"]
-         if len(anten_for_flux) > 4:
-             anten_for_flux = [x for x in anten_for_flux if x != "De"]
-    else:
-        anten_for_flux = antennas
+    #if len(antennas) > 4:
+    #     anten_for_flux = [x for x in antennas if x != "Lo"]
+    #     if len(anten_for_flux) > 4:
+    #         anten_for_flux = [x for x in anten_for_flux if x != "De"]
+    #else:
+    #    anten_for_flux = antennas
     return anten_for_flux
 
 
@@ -1837,7 +1842,7 @@ def eM_fluxscale(eMCP, caltables):
         run_applycal(eMCP, caltables, step = 'fluxscale')
     save_obj(caltables, caltables['calib_dir']+'caltables.pkl')
     msg = ''
-    eMCP['steps']['fluxscale'] = add_step_time(eMCP, msg)
+    eMCP = add_step_time('fluxscale', eMCP, msg)
     return eMCP, caltables
 
 
@@ -1885,7 +1890,7 @@ def bandpass_sp(eMCP, caltables):
                     msinfo['sources']['bpcal'],
                     bp_sp['bp_combine'],
                     bp_sp['bp_solint'])
-    eMCP['steps']['bandpass_sp'] = add_step_time(eMCP, msg)
+    eMCP = add_step_time('bandpass_sp', eMCP, msg)
     return eMCP, caltables
 
 
@@ -1996,7 +2001,7 @@ def gain_amp_sp(eMCP, caltables):
         run_applycal(eMCP, caltables, step = 'gain_amp_sp')
     save_obj(caltables, caltables['calib_dir']+'caltables.pkl')
     msg = 'ap_solint={0}'.format(amp_sp['ap_solint'])
-    eMCP['steps']['gain_amp_sp'] = add_step_time(eMCP, msg)
+    eMCP = add_step_time('gain_amp_sp', eMCP, msg)
     return eMCP, caltables
 
 def applycal_all(eMCP, caltables):
@@ -2004,7 +2009,7 @@ def applycal_all(eMCP, caltables):
     run_applycal(eMCP, caltables, step='applycal_all')
     #logger.info('End applycal_all')
     msg = ''
-    eMCP['steps']['applycal_all'] = add_step_time(eMCP, msg)
+    eMCP = add_step_time('applycal_all', eMCP, msg)
     return eMCP
 
 
@@ -2338,7 +2343,7 @@ def run_first_images(eMCP):
         single_tclean(eMCP, s, num)
     logger.info('End run_first_images')
     msg = ''
-    eMCP['steps']['first_images'] = add_step_time(eMCP, msg)
+    eMCP = add_step_time('first_images', eMCP, msg)
     return eMCP
 
 def shift_field_position(msfile, shift):
@@ -2404,7 +2409,7 @@ def shift_all_positions(eMCP):
     logger.info('Listobs file in: {0}'.format(msfile+'.listobs.txt'))
     logger.info('End shift_all_pos')
     msg = 'file={0}'.format(shifts_file)
-    eMCP['steps']['shift_field_pos'] = add_step_time(eMCP, msg)
+    eMCP = add_step_time('shift_field_pos', eMCP, msg)
     return eMCP
 
 

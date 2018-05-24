@@ -60,9 +60,13 @@ def makedir(pathdir):
         logger.debug('Cannot create directory: {}'.format(pathdir))
         pass
 
-def add_step_time(eMCP):
+def add_step_time(step, eMCP, msg, doweblog=True):
+    timestamp = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+    eMCP['steps'][step] = [timestamp, msg]
     save_obj(eMCP, info_dir + 'eMCP_info.pkl')
-    return datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+    if doweblog:
+        emwlog.start_weblog(eMCP)
+    return eMCP
 
 def get_scans(msfile, field):
     ms.open(msfile)
@@ -247,7 +251,8 @@ def make_4plots(eMCP, datacolumn='data'):
     if datacolumn == 'corrected':
         make_uvplt(eMCP)
     logger.info('End plot_{}'.format(datacolumn))
-    eMCP['steps']['plot_'+datacolumn] = add_step_time(eMCP)
+    msg = ''
+    eMCP = add_step_time('plot_'+datacolumn, eMCP, msg, doweblog=False)
     return eMCP
 
 def single_uvplt((msinfo, field, plots_data_dir)):

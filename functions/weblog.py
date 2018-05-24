@@ -72,6 +72,7 @@ def weblog_header(wlog, section, project):
     wlog.write(weblog_button(weblog_link, 'Calibration', 'calibration'))
     wlog.write(weblog_button(weblog_link, 'Plots', 'plots'))
     wlog.write(weblog_button(weblog_link, 'Images', 'images'))
+    wlog.write(weblog_button(weblog_link, 'Download data', 'download'))
     wlog.write('</form>\n')
     #wlog.write('<br>\n')
     wlog.write('<h2>{0}</h2>\n'.format(section))
@@ -448,23 +449,30 @@ def makedir(pathdir):
         pass
 
 
+def weblog_download(msinfo):
+    ###### Images page
+    wlog = open(weblog_dir + "download.html","w")
+    weblog_header(wlog, 'Download data', msinfo['run'])
+    #------------------------------------------
+    wlog.write('This tar file contains the MS and all the plots in the weblog:<br>')
+    filepath = '../{}.tar'.format(msinfo['run'])
+    wlog.write('{0}: <a href="../{1}" target="_blank">tar</a><br>\n'.format(msinfo['run'], filepath))
+    #------------------------------------------
+    weblog_foot(wlog)
+    wlog.close()
+
+
 def start_weblog(eMCP, silent=False):
     msinfo = eMCP['msinfo']
-    if not silent:
-        logger.info('Start weblog')
-    else:
-        logger.info('Updating weblog')
+    logger.info('Updating weblog')
     ###  Start weblog  ###
-
     weblog_index(msinfo)
     weblog_obssum(msinfo)
     weblog_pipelineinfo(eMCP)
     weblog_calibration(msinfo)
     weblog_plots(msinfo)
     weblog_images(msinfo)
-    if not silent:
-        logger.info('End weblog')
-
+    weblog_download(msinfo)
 
 
 
