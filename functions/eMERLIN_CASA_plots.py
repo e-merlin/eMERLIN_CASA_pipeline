@@ -10,6 +10,8 @@ import datetime
 
 plt.ioff()
 
+import functions.weblog as emwlog
+
 # CASA imports
 from taskinit import *
 from tasks import *
@@ -88,50 +90,50 @@ def get_freqs(msfile, allfreqs=False):
     return freqs
 
 
-def single_4plot_old(msfile, field, baseline, datacolumn, plot_file):
-    logger.info('Baseline: {0:6s}, Output: {1}'.format(baseline, plot_file))
-    tb.open(msfile+'/SPECTRAL_WINDOW')
-    nchan = str(tb.getcol('NUM_CHAN')[0])
-    tb.close()
-    gridrows = gridcols = 2
-    showgui=False
-    avgtime = '300'
-
-    plotms(vis=msfile, xaxis='time', yaxis='amp', title='Amp vs Time {0} {1} (color=spw)'.format(field, baseline),
-    gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=0, plotindex=0,
-    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
-    antenna=baseline, field=field,
-    averagedata = True, avgchannel = nchan, #avgtime='16',
-    xselfscale = True, xsharedaxis = True, coloraxis = 'spw', plotrange=[-1,-1,0,-1],
-    plotfile = '', expformat = 'png', customsymbol = True, symbolshape = 'circle',
-    overwrite=True,  showgui=showgui, symbolsize=4)
-
-    plotms(vis=msfile, xaxis='time', yaxis='phase', title='Phase vs Time {0} {1} (color=spw)'.format(field, baseline),
-    gridrows=gridrows, gridcols=gridcols, rowindex=1, colindex=0, plotindex=1,
-    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
-    antenna=baseline, field=field,
-    averagedata = True, avgchannel = nchan, #avgtime='16',
-    xselfscale = True, xsharedaxis = True, coloraxis   = 'spw', plotrange=[-1,-1,-180,180],
-    plotfile = '', expformat = 'png', customsymbol = True, symbolshape = 'circle',
-    overwrite=True,  showgui=showgui, symbolsize=4, clearplots=False)
-
-    plotms(vis=msfile, xaxis='freq', yaxis='amp', title='Amp vs Frequency {0} {1} (color=corr)'.format(field, baseline),
-    gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=1, plotindex=2,
-    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
-    antenna=baseline, field=field,
-    averagedata = True, avgtime=avgtime,
-    xselfscale = True, xsharedaxis = True, coloraxis   = 'corr', plotrange=[-1,-1,0,-1],
-    plotfile = '', expformat = 'png', customsymbol = True, symbolshape = 'circle',
-    overwrite=True,  showgui=showgui, symbolsize=4, clearplots=False)
-
-    plotms(vis=msfile, xaxis='freq', yaxis='phase', title='Phase vs Frequency {0} {1} (color=corr)'.format(field, baseline),
-    gridrows=gridrows, gridcols=gridcols, rowindex=1, colindex=1, plotindex=3,
-    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
-    antenna=baseline, field=field,
-    averagedata = True, avgtime=avgtime,
-    xselfscale = True, xsharedaxis = True, coloraxis   = 'corr', plotrange=[-1,-1,-180,180],
-    plotfile = plot_file, expformat = 'png', customsymbol = True, symbolshape = 'circle',
-    width=2600, height=1200, symbolsize=4,clearplots=False, overwrite=True, showgui=showgui)
+#def single_4plot_old(msfile, field, baseline, datacolumn, plot_file):
+#    logger.info('Baseline: {0:6s}, Output: {1}'.format(baseline, plot_file))
+#    tb.open(msfile+'/SPECTRAL_WINDOW')
+#    nchan = str(tb.getcol('NUM_CHAN')[0])
+#    tb.close()
+#    gridrows = gridcols = 2
+#    showgui=False
+#    avgtime = '300'
+#
+#    plotms(vis=msfile, xaxis='time', yaxis='amp', title='Amp vs Time {0} {1} (color=spw)'.format(field, baseline),
+#    gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=0, plotindex=0,
+#    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
+#    antenna=baseline, field=field,
+#    averagedata = True, avgchannel = nchan, #avgtime='16',
+#    xselfscale = True, xsharedaxis = True, coloraxis = 'spw', plotrange=[-1,-1,0,-1],
+#    plotfile = '', expformat = 'png', customsymbol = True, symbolshape = 'circle',
+#    overwrite=True,  showgui=showgui, symbolsize=4)
+#
+#    plotms(vis=msfile, xaxis='time', yaxis='phase', title='Phase vs Time {0} {1} (color=spw)'.format(field, baseline),
+#    gridrows=gridrows, gridcols=gridcols, rowindex=1, colindex=0, plotindex=1,
+#    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
+#    antenna=baseline, field=field,
+#    averagedata = True, avgchannel = nchan, #avgtime='16',
+#    xselfscale = True, xsharedaxis = True, coloraxis   = 'spw', plotrange=[-1,-1,-180,180],
+#    plotfile = '', expformat = 'png', customsymbol = True, symbolshape = 'circle',
+#    overwrite=True,  showgui=showgui, symbolsize=4, clearplots=False)
+#
+#    plotms(vis=msfile, xaxis='freq', yaxis='amp', title='Amp vs Frequency {0} {1} (color=corr)'.format(field, baseline),
+#    gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=1, plotindex=2,
+#    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
+#    antenna=baseline, field=field,
+#    averagedata = True, avgtime=avgtime,
+#    xselfscale = True, xsharedaxis = True, coloraxis   = 'corr', plotrange=[-1,-1,0,-1],
+#    plotfile = '', expformat = 'png', customsymbol = True, symbolshape = 'circle',
+#    overwrite=True,  showgui=showgui, symbolsize=4, clearplots=False)
+#
+#    plotms(vis=msfile, xaxis='freq', yaxis='phase', title='Phase vs Frequency {0} {1} (color=corr)'.format(field, baseline),
+#    gridrows=gridrows, gridcols=gridcols, rowindex=1, colindex=1, plotindex=3,
+#    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
+#    antenna=baseline, field=field,
+#    averagedata = True, avgtime=avgtime,
+#    xselfscale = True, xsharedaxis = True, coloraxis   = 'corr', plotrange=[-1,-1,-180,180],
+#    plotfile = plot_file, expformat = 'png', customsymbol = True, symbolshape = 'circle',
+#    width=2600, height=1200, symbolsize=4,clearplots=False, overwrite=True, showgui=showgui)
 
 
 #def make_4plots_old(msfile, msinfo, datacolumn='data'):
@@ -174,7 +176,7 @@ def single_4plot((msinfo, field, datacolumn, plots_data_dir)):
     gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=0, plotindex=0,
     xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
     antenna=baseline, field=field, iteraxis='baseline',
-    averagedata = True, avgchannel = nchan, #avgtime='16',
+    averagedata = True, avgchannel = nchan, avgtime='4',
     xselfscale = True, xsharedaxis = True, coloraxis = 'spw', plotrange=[-1,-1,0,-1],
     plotfile = plot_file+'0.png', expformat = 'png', customsymbol = True, symbolshape = 'circle',
     width=w, height=h, symbolsize=4,clearplots=False, overwrite=True, showgui=showgui)
@@ -183,7 +185,7 @@ def single_4plot((msinfo, field, datacolumn, plots_data_dir)):
     gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=0, plotindex=0,
     xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
     antenna=baseline, field=field, iteraxis='baseline',
-    averagedata = True, avgchannel = nchan, #avgtime='16',
+    averagedata = True, avgchannel = nchan, avgtime='4',
     xselfscale = True, xsharedaxis = True, coloraxis   = 'spw', plotrange=[-1,-1,-180,180],
     plotfile = plot_file+'1.png', expformat = 'png', customsymbol = True, symbolshape = 'circle',
     width=w, height=h, symbolsize=4,clearplots=False, overwrite=True, showgui=showgui)
@@ -192,7 +194,7 @@ def single_4plot((msinfo, field, datacolumn, plots_data_dir)):
     gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=0, plotindex=0,
     xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
     antenna=baseline, field=field, iteraxis='baseline',
-    averagedata = True, avgtime=avgtime,
+    averagedata = True, avgtime=avgtime, avgchannel='4',
     xselfscale = True, xsharedaxis = True, coloraxis   = 'corr', plotrange=[-1,-1,0,-1],
     plotfile = plot_file+'2.png', expformat = 'png', customsymbol = True, symbolshape = 'circle',
     width=w, height=h, symbolsize=4,clearplots=False, overwrite=True, showgui=showgui)
@@ -201,7 +203,7 @@ def single_4plot((msinfo, field, datacolumn, plots_data_dir)):
     gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=0, plotindex=0,
     xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
     antenna=baseline, field=field, iteraxis='baseline',
-    averagedata = True, avgtime=avgtime,
+    averagedata = True, avgtime=avgtime, avgchannel='4',
     xselfscale = True, xsharedaxis = True, coloraxis   = 'corr', plotrange=[-1,-1,-180,180],
     plotfile = plot_file+'3.png', expformat = 'png', customsymbol = True, symbolshape = 'circle',
     width=w, height=h, symbolsize=4,clearplots=False, overwrite=True, showgui=showgui)
@@ -261,7 +263,7 @@ def single_uvplt((msinfo, field, plots_data_dir)):
     msfile = msinfo['msfile']
     nchan = msinfo['nchan']
     datacolumn='corrected'
-    avgtime = ''
+    avgtime = '16'
     showgui = False
     gridrows = 1
     gridcols = 2

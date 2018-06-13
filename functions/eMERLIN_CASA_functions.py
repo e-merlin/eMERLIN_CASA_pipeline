@@ -872,7 +872,7 @@ def flagdata1_apriori(eMCP):
     eMCP = add_step_time('flag_apriori', eMCP, msg)
     return eMCP
 
-def flagdata_manual(eMCP, run_name='flagdata_manual'):
+def flagdata_manual(eMCP, run_name='flag_manual'):
     msfile = eMCP['msinfo']['msfile']
     if run_name == 'flag_manual':
         inpfile = './inputfg.flags'
@@ -890,7 +890,7 @@ def flagdata_manual(eMCP, run_name='flagdata_manual'):
     flagdata(vis=msfile, mode='list', inpfile=inpfile)
     logger.info('End {}'.format(run_name))
     msg = 'file={0}'.format(inpfile)
-    eM = add_step_time([run_name], eMCP, msg)
+    eM = add_step_time(run_name, eMCP, msg)
     return eMCP
 
 def flagdata_tfcropBP(eMCP, caltables):
@@ -1777,9 +1777,9 @@ def initial_gaincal(eMCP, caltables):
 
 def find_anten_fluxscale(antennas):
     if 'Lo' in antennas:
-        anten_for_flux = '!Lo'
+        anten_for_flux = ['!Lo']
     else:
-        anten_for_flux = ''
+        anten_for_flux = ['']
     # Previous logic, antenna selection
     # This function tries to remove Lo and De from the fluxscale determination.
     # But only if there are enough antennas to have at least 4 of them.
