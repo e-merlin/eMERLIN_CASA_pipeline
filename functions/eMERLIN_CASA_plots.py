@@ -330,7 +330,7 @@ def make_uvplt(eMCP):
     # UVplot model, calibrators
     calsources = msinfo['sources']['calsources'].split(',')
     pool = multiprocessing.Pool(num_proc)
-    input_args = [(msinfo, field, plots_data_dir) for field in fields]
+    input_args = [(msinfo, field, plots_data_dir) for field in calsources]
     pool.map(single_uvplt_model, input_args)
     pool.close()
     pool.join()
