@@ -291,7 +291,7 @@ def single_uvplt_model((msinfo, field, plots_data_dir)):
     msfile = msinfo['msfile']
     nchan = msinfo['nchan']
     datacolumn='model'
-    avgtime = ''
+    avgtime = '600'
     showgui = False
     gridrows = 1
     gridcols = 2
@@ -299,7 +299,7 @@ def single_uvplt_model((msinfo, field, plots_data_dir)):
     gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=0, plotindex=0,
     xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR,LL',
     antenna='*&*', field=field,
-    averagedata = True, avgtime=avgtime, avgchannel = str(nchan),
+    averagedata = True, avgtime=avgtime, avgchannel = str(int(nchan/16)),
     xselfscale = True, xsharedaxis = True, coloraxis   = 'spw',
     plotfile = '', expformat = 'png', customsymbol = True, symbolshape = 'circle',
     symbolsize=4, clearplots=True, overwrite=True, showgui=showgui)
