@@ -204,9 +204,11 @@ def prt_dict_tofile(d, tofilename=None, addfile='', pre=' '):
             f.write('{}\n'.format(pre+key_inner))
             prt_dict_tofile(d[key_inner], addfile=f, pre=pre+pre)
 
-def add_step_time(step, eMCP, msg, doweblog=True):
-    timestamp = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
-    eMCP['steps'][step] = [timestamp, msg]
+def add_step_time(step, eMCP, msg, t0, doweblog=True):
+    t1 = datetime.datetime.utcnow()
+    timestamp = t1.strftime('%Y-%m-%d %H:%M:%S')
+    delta_t_min = (t1-t0).total_seconds()/60.
+    eMCP['steps'][step] = [timestamp, delta_t_min, msg]
     save_obj(eMCP, info_dir + 'eMCP_info.pkl')
     os.system('cp eMCP.log {}eMCP.log.txt'.format(info_dir))
     os.system('cp casa_eMCP.log {}casa_eMCP.log.txt'.format(info_dir))
@@ -559,6 +561,9 @@ def import_eMERLIN_fitsIDI(eMCP):
     logger.info('Starting import eMERLIN fitsIDI procedure')
     fits_path = backslash_check(eMCP['inputs']['fits_path'])
     msfile_name = eMCP['inputs']['inbase']
+    msg = 'first execution'
+    t0 = datetime.datetime.utcnow()
+    eMCP = add_step_time('start_pipeline', eMCP, msg, t0, doweblog=False)
 
     # importfitsIDI
     constobsid = import_eM['constobsid']
@@ -569,6 +574,7 @@ def import_eMERLIN_fitsIDI(eMCP):
             fitsfiles = fitsfiles + [fits_path+infile]
             logger.info('FITS file found to be imported: {0}'.format(infile))
     logger.info('Start importfitsIDI')
+    t0 = datetime.datetime.utcnow()
     msfile0 = msfile_name+'_imported.ms'
     rmdir(msfile0)
     importfitsidi(fitsidifile=fitsfiles, vis=msfile0,
@@ -580,7 +586,7 @@ def import_eMERLIN_fitsIDI(eMCP):
     eMCP['msfile'] = eMCP['inputs']['inbase']+'.ms'
     msfile = msfile0
     eMCP, msinfo, msfile = get_msinfo(eMCP, msfile)
-    eMCP = add_step_time('importfitsIDI', eMCP, msg, doweblog=True)
+    eMCP = add_step_time('importfitsIDI', eMCP, msg, t0, doweblog=True)
 
     # mstransform
     datacolumn = 'data'
@@ -611,6 +617,7 @@ def import_eMERLIN_fitsIDI(eMCP):
     if do_ms2mms:
         logger.info('Data will be converted to MMS')
     logger.info('Start mstransform')
+    t0 = datetime.datetime.utcnow()
     rmdir(msfile1)
     mstransform(vis = msfile0,
                 outputvis = msfile1,
@@ -660,11 +667,12 @@ def import_eMERLIN_fitsIDI(eMCP):
         msg += ', antenna="{}"'.format(antenna)
     msfile = msfile1
     eMCP, msinfo, msfile = get_msinfo(eMCP, msfile)
-    eMCP = add_step_time('mstransform', eMCP, msg, doweblog=True)
+    eMCP = add_step_time('mstransform', eMCP, msg, t0, doweblog=True)
 
     # FIXVIS
     msfile = eMCP['inputs']['inbase'] + ext_ms[do_ms2mms]
     logger.info('Start FIXVIS')
+    t0 = datetime.datetime.utcnow()
     fixvis(vis = msfile1,
            outputvis = msfile,
            reuse = False)
@@ -692,7 +700,7 @@ def import_eMERLIN_fitsIDI(eMCP):
     logger.info('End FIXVIS')
     msg = ''
     eMCP, msinfo, msfile = get_msinfo(eMCP, msfile)
-    eMCP = add_step_time('fixvis', eMCP, msg, doweblog=True)
+    eMCP = add_step_time('fixvis', eMCP, msg, t0, doweblog=True)
     eMCP['msfile'] = msfile
     return eMCP
 
@@ -704,6 +712,7 @@ def run_aoflagger_fields(eMCP):
     msfile = eMCP['msinfo']['msfile']
 
     logger.info('Start run_aoflagger_fields')
+    t0 = datetime.datetime.utcnow()
     inputs_aoflagger = eMCP['inputs']['flag_aoflagger']
     if inputs_aoflagger == 1:
         separate_bands = True
@@ -754,7 +763,7 @@ def run_aoflagger_fields(eMCP):
     #flag_applied(flags, 'flagdata0_aoflagger')
     logger.info('End run_aoflagger_fields')
     msg = ''
-    eMCP = add_step_time('aoflagger', eMCP, msg)
+    eMCP = add_step_time('aoflagger', eMCP, msg, t0)
     return eMCP
 
 def check_command(command):
@@ -849,6 +858,7 @@ def flagdata1_apriori(eMCP):
     Lo_dropout_scans = eMCP['inputs']['Lo_dropout_scans']
     sources = msinfo['sources']
     logger.info('Start flagdata1_apriori')
+    t0 = datetime.datetime.utcnow()
     antennas = get_antennas(msfile)
     # Check if all sources are in the MS:
     check_sources_in_ms(eMCP)
@@ -899,7 +909,7 @@ def flagdata1_apriori(eMCP):
     #flag_applied(flags, 'flagdata1_apriori')
     msg = ''
     logger.info('End flagdata1_apriori')
-    eMCP = add_step_time('flag_apriori', eMCP, msg)
+    eMCP = add_step_time('flag_apriori', eMCP, msg, t0)
     return eMCP
 
 def flagdata_manual(eMCP, run_name='flag_manual'):
@@ -912,6 +922,7 @@ def flagdata_manual(eMCP, run_name='flag_manual'):
         logger.warning('Wrong run_name specified')
         inpfile = ''
     logger.info('Start {}'.format(run_name))
+    t0 = datetime.datetime.utcnow()
     if not os.path.isfile(inpfile) == True:
         logger.critical('Manual flagging step requested but cannot access file: {0}'.format(inpfile))
         logger.warning('Stopping pipeline at this step')
@@ -920,7 +931,7 @@ def flagdata_manual(eMCP, run_name='flag_manual'):
     flagdata(vis=msfile, mode='list', inpfile=inpfile)
     logger.info('End {}'.format(run_name))
     msg = 'file={0}'.format(inpfile)
-    eM = add_step_time(run_name, eMCP, msg)
+    eM = add_step_time(run_name, eMCP, msg, t0)
     return eMCP
 
 def flagdata_tfcropBP(eMCP, caltables):
@@ -928,6 +939,7 @@ def flagdata_tfcropBP(eMCP, caltables):
     if eMCP['inputs']['bandpass'] != 2:
         run_applycal(eMCP, caltables, step = 'bandpass')
     logger.info('Start flagdata_tfcropBP')
+    t0 = datetime.datetime.utcnow()
     msinfo = eMCP['msinfo']
     msfile = eMCP['msinfo']['msfile']
     tfcrop = eMCP['defaults']['flag_tfcrop']
@@ -965,7 +977,7 @@ def flagdata_tfcropBP(eMCP, caltables):
            ntime={4}".format(tfcrop['winsize'], tfcrop['timecutoff'],
                              tfcrop['freqcutoff'], tfcrop['maxnpieces'],
                              tfcrop['ntime'])
-    eMCP = add_step_time('flag_tfcropBP', eMCP, msg)
+    eMCP = add_step_time('flag_tfcropBP', eMCP, msg, t0)
     return eMCP
 
 #def flagdata_tfcrop_bright(msfile, sources, datacolumn='DATA'):
@@ -989,6 +1001,7 @@ def flagdata_tfcropBP(eMCP, caltables):
 
 def flagdata_rflag(eMCP):
     logger.info('Start flagdata_rflag')
+    t0 = datetime.datetime.utcnow()
     logger.warning('RFLAG only works on calibrated data. Make sure you applied calibration before running this step.')
     msinfo = eMCP['msinfo']
     msfile = eMCP['msinfo']['msfile']
@@ -1019,7 +1032,7 @@ def flagdata_rflag(eMCP):
             rflag['ntime'],
             rflag['timedevscale'],
             rflag['freqdevscale'])
-    eMCP = add_step_time('flag_rflag', eMCP, msg)
+    eMCP = add_step_time('flag_rflag', eMCP, msg, t0)
     return eMCP
 
 
@@ -1122,12 +1135,13 @@ def plot_caltable(msinfo, caltable, plot_file, xaxis='', yaxis='', title='',
 def saveflagstatus(eMCP):
     msinfo = eMCP['msinfo']
     logger.info('Starting saveflagstatus')
+    t0 = datetime.datetime.utcnow()
     logger.info('Saving current flagging status to versionname=\'initialize_flags\'')
     flagmanager(msinfo['msfile'], mode='save', versionname='initialize_flags',
              comment='Restore this version to restart calibration without the flags produced by the calibration',
              merge='replace')
     msg = 'versionname=initialize_flags'
-    eMCP = add_step_time('save_flags', eMCP, msg)
+    eMCP = add_step_time('save_flags', eMCP, msg, t0)
     return eMCP
 
 
@@ -1178,6 +1192,7 @@ def check_table_exists(caltables, tablename):
 
 def run_split(eMCP):
     logger.info('Start average')
+    t0 = datetime.datetime.utcnow()
     width = eMCP['defaults']['average']['width']
     msfile = eMCP['msinfo']['msfile']
     sources = eMCP['msinfo']['sources']
@@ -1206,12 +1221,13 @@ def run_split(eMCP):
     logger.info('End average')
     msg = 'width={0}, timebin={1}, datacolumn={2}'.format(width, timebin,
                                                           datacolumn)
-    eMCP = add_step_time('average', eMCP, msg)
+    eMCP = add_step_time('average', eMCP, msg, t0)
     return eMCP
 
 
 def run_initialize_models(eMCP):
     logger.info('Start init_models')
+    t0 = datetime.datetime.utcnow()
     # Check if all sources are in the MS: 
     check_sources_in_ms(eMCP)
     msfile = eMCP['msinfo']['msfile']
@@ -1238,7 +1254,7 @@ def run_initialize_models(eMCP):
           model=model_3C286, scalebychan=True, usescratch=True)
     logger.info('End init_models')
     msg = ''
-    eMCP = add_step_time('init_models', eMCP, msg)
+    eMCP = add_step_time('init_models', eMCP, msg, t0)
     return eMCP
 
 
@@ -1449,6 +1465,7 @@ def run_applycal(eMCP, caltables, step):
 
 def solve_delays(eMCP, caltables):
     logger.info('Start solve_delays')
+    t0 = datetime.datetime.utcnow()
     # Check if all sources are in the MS: 
     check_sources_in_ms(eMCP)
     delay = eMCP['defaults']['delay']
@@ -1493,7 +1510,7 @@ def solve_delays(eMCP, caltables):
     msg = 'solint={0}, combine={1}, minsnr={2}'.format(delay['solint'],
                                                        delay['combine'],
                                                        delay['minsnr'])
-    eMCP = add_step_time('delay', eMCP, msg)
+    eMCP = add_step_time('delay', eMCP, msg, t0)
     return eMCP, caltables
 
 
@@ -1575,6 +1592,7 @@ def make_spw(msinfo, spw_list):
 
 def initial_bp_cal(eMCP, caltables):
     logger.info('Start initial_bp_cal')
+    t0 = datetime.datetime.utcnow()
     # Check if all sources are in the MS: 
     check_sources_in_ms(eMCP)
     bp = eMCP['defaults']['bandpass']
@@ -1709,12 +1727,13 @@ def initial_bp_cal(eMCP, caltables):
                     msinfo['sources']['bpcal'],
                     bp['bp_combine'],
                     bp['bp_solint'])
-    eMCP = add_step_time('bandpass', eMCP, msg)
+    eMCP = add_step_time('bandpass', eMCP, msg, t0)
     return eMCP, caltables
 
 
 def initial_gaincal(eMCP, caltables):
     logger.info('Start gain_p_ap')
+    t0 = datetime.datetime.utcnow()
     # Check if all sources are in the MS: 
     check_sources_in_ms(eMCP)
     gain_p_ap = eMCP['defaults']['gain_p_ap']
@@ -1845,7 +1864,7 @@ def initial_gaincal(eMCP, caltables):
     save_obj(caltables, caltables['calib_dir']+'caltables.pkl')
     msg = 'p_solint={0}, jitter_solint={1}, ap_solint={2}'.format(
         gain_p_ap['p_solint'], gain_p_ap['ji_solint'], gain_p_ap['ap_solint'])
-    eMCP = add_step_time('gain_p_ap', eMCP, msg)
+    eMCP = add_step_time('gain_p_ap', eMCP, msg, t0)
     return eMCP, caltables
 
 
@@ -1904,8 +1923,8 @@ def read_source_model(model, field, msinfo, eMcalflux):
 
 
 def eM_fluxscale(eMCP, caltables):
-#def eM_fluxscale(msfile, msinfo, caltables, ampcal_table, sources, antennas):
     logger.info('Start eM_fluxscale')
+    t0 = datetime.datetime.utcnow()
     # Check if all sources are in the MS: 
     check_sources_in_ms(eMCP)
     flux = eMCP['defaults']['fluxscale']
@@ -1996,14 +2015,14 @@ def eM_fluxscale(eMCP, caltables):
         run_applycal(eMCP, caltables, step = 'fluxscale')
     save_obj(caltables, caltables['calib_dir']+'caltables.pkl')
     msg = ''
-    eMCP = add_step_time('fluxscale', eMCP, msg)
+    eMCP = add_step_time('fluxscale', eMCP, msg, t0)
     return eMCP, caltables
 
 
 
 def bandpass_sp(eMCP, caltables):
-#def bandpass_sp(msfile, msinfo, caltables, previous_cal):
     logger.info('Start bandpass_sp')
+    t0 = datetime.datetime.utcnow()
     # Check if all sources are in the MS: 
     check_sources_in_ms(eMCP)
     bp_sp = eMCP['defaults']['bandpass_sp']
@@ -2046,12 +2065,13 @@ def bandpass_sp(eMCP, caltables):
                     msinfo['sources']['bpcal'],
                     bp_sp['bp_combine'],
                     bp_sp['bp_solint'])
-    eMCP = add_step_time('bandpass_sp', eMCP, msg)
+    eMCP = add_step_time('bandpass_sp', eMCP, msg, t0)
     return eMCP, caltables
 
 
 def gain_amp_sp(eMCP, caltables):
     logger.info('Start gain_amp_sp')
+    t0 = datetime.datetime.utcnow()
     # Check if all sources are in the MS: 
     check_sources_in_ms(eMCP)
     amp_sp = eMCP['defaults']['gain_amp_sp']
@@ -2159,15 +2179,16 @@ def gain_amp_sp(eMCP, caltables):
         run_applycal(eMCP, caltables, step = 'gain_amp_sp')
     save_obj(caltables, caltables['calib_dir']+'caltables.pkl')
     msg = 'ap_solint={0}'.format(amp_sp['ap_solint'])
-    eMCP = add_step_time('gain_amp_sp', eMCP, msg)
+    eMCP = add_step_time('gain_amp_sp', eMCP, msg, t0)
     return eMCP, caltables
 
 def applycal_all(eMCP, caltables):
     #logger.info('Start applycal_all')
+    t0 = datetime.datetime.utcnow()
     run_applycal(eMCP, caltables, step='applycal_all')
     #logger.info('End applycal_all')
     msg = ''
-    eMCP = add_step_time('applycal_all', eMCP, msg)
+    eMCP = add_step_time('applycal_all', eMCP, msg, t0)
     return eMCP
 
 
@@ -2496,12 +2517,13 @@ def single_tclean(eMCP, s, num):
 def run_first_images(eMCP):
     msinfo = eMCP['msinfo']
     logger.info('Start run_first_images')
+    t0 = datetime.datetime.utcnow()
     num = 0
     for s in msinfo['sources']['targets_phscals'].split(','):
         single_tclean(eMCP, s, num)
     logger.info('End run_first_images')
     msg = ''
-    eMCP = add_step_time('first_images', eMCP, msg)
+    eMCP = add_step_time('first_images', eMCP, msg, t0)
     return eMCP
 
 def shift_field_position(msfile, shift):
@@ -2551,6 +2573,7 @@ def read_shifts_file(shifts_file):
 def shift_all_positions(eMCP):
     msfile = eMCP['msinfo']['msfile']
     logger.info('Start shift_all_pos')
+    t0 = datetime.datetime.utcnow()
     shifts_file = './shift_phasecenter.txt'
     try:
         shifts_list = read_shifts_file(shifts_file)
@@ -2567,13 +2590,14 @@ def shift_all_positions(eMCP):
     logger.info('Listobs file in: {0}'.format(msfile+'.listobs.txt'))
     logger.info('End shift_all_pos')
     msg = 'file={0}'.format(shifts_file)
-    eMCP = add_step_time('shift_field_pos', eMCP, msg)
+    eMCP = add_step_time('shift_field_pos', eMCP, msg, t0)
     return eMCP
 
 
 def eMCP_info_start_steps():
-    default_value = [0, '']
+    default_value = [0, 0, '']
     steps = collections.OrderedDict()
+    steps['start_pipeline'] = default_value
     steps['importfitsIDI'] = default_value
     steps['mstransform'] = default_value
     steps['fixvis'] = default_value

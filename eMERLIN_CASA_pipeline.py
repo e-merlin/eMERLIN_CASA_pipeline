@@ -13,7 +13,7 @@ from tasks import *
 import casadef
 
 
-current_version = 'v0.8.10'
+current_version = 'v0.8.11'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -285,24 +285,6 @@ def run_pipeline(inputs=None, inputs_path=''):
             emplt.flag_statistics(msinfo)
         except:
             pass
-
-    ### Write weblog ###
-#    try:
-    if True:
-        eMCP['msinfo'] = msinfo
-        run_weblog = 1
-        if run_weblog > 0:
-            elevplot = plots_dir + 'plots_observation/{0}_elevation.png'.format(
-                                                        msinfo['msfilename'])
-            if os.path.isfile(elevplot):
-                logger.info('Elevation plot found.')
-                logger.info('To regenerate elev and uvcov plots remove {}.'.format(elevplot))
-            else:
-                emplt.make_elevation(msfile, msinfo)
-                emplt.make_uvcov(msfile, msinfo)
-            emwlog.start_weblog(eMCP)
-#    except:
-#        pass
 
     # Keep important files
     save_obj(eMCP, info_dir + 'eMCP_info.pkl')

@@ -307,22 +307,36 @@ def table_colors(steps, step, prev_steps):
         color = '#000000'
     return color
 
+def elapsed_time(delta_min):
+    if delta_min > 0.0 and delta_min < 1:
+        delta_t = '<1 min'
+    elif delta_min >= 1 and delta_min < 50:
+        delta_t = '{0:2.0f} min'.format(delta_min)
+    elif delta_min >= 50:
+        delta_t = '{0:4.1f} h'.format(delta_min/60.)
+    else:
+        delta_t = '-'
+    return delta_t
+
 
 def table_steps(eMCP):
     table_txt = '<br><h4>Execution summary</h4>\n'
     table_txt += ('<table bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:80%">\n')
     table_txt += ("<tr><th style='width: 15%;'>Step</th>" \
-                  "<th style='width: 5%;'>Code</th>" \
-                  "<th style='width: 20%;'>Execution</th>" \
-                  "<th style='width: 60%;'>Notes</th></tr>\n")
+                  "<th style='width: 4%;'>Code</th>" \
+                  "<th style='width: 25%;'>Execution ended</th>" \
+                  "<th style='width: 15%;'>Execution time (min)</th>" \
+                  "<th style='width: 70%;'>Notes</th></tr>\n")
     prev_steps = []
     nosteps = ['plot_data', 'save_flags', 'plot_corrected', 'first_images']
     for step, step_info in eMCP['steps'].items():
-        time_s, msg = step_info
+        time_s, delta_min, msg = step_info
+        delta_t = elapsed_time(delta_min)
         color = table_colors(eMCP['steps'], step, prev_steps)
         table_txt += ('<tr><td>{0}</td>'.format(step))
         table_txt += ('<td bgcolor={0}></td>\n'.format(color))
         table_txt += ('<td align="center">{0}</td>\n'.format(time_s))
+        table_txt += ('<td align="center">{0}</td>\n'.format(delta_t))
         table_txt += ('<td>{0}</td></tr>\n'.format(msg))
         if (eMCP['steps'][step][0] != 0) and (step not in nosteps):
             prev_steps.append(step)
