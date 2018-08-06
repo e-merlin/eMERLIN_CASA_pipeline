@@ -132,6 +132,7 @@ def run_pipeline(inputs=None, inputs_path=''):
     if os.path.isdir('./'+inputs['inbase']+'.ms') == True:
         msfile = inputs['inbase']+'.ms'
         eMCP, msinfo, msfile = em.get_msinfo(eMCP, msfile)
+        em.plot_elev_uvcov(eMCP)
 
 #    ### Convert MS to MMS ###
 #    if eMCP['defaults']['ms2mms']['run_ms2mms']:
@@ -141,6 +142,7 @@ def run_pipeline(inputs=None, inputs_path=''):
     if os.path.isdir('./'+inputs['inbase']+'.mms') == True:
         msfile = inputs['inbase']+'.mms'
         eMCP, msinfo, msfile = em.get_msinfo(eMCP, msfile)
+        em.plot_elev_uvcov(eMCP)
 
     ### Run AOflagger
     if inputs['flag_aoflagger'] > 0:
@@ -166,9 +168,11 @@ def run_pipeline(inputs=None, inputs_path=''):
     if os.path.isdir('./'+inputs['inbase']+'_avg.mms') == True:
         msfile = './'+inputs['inbase']+'_avg.mms'
         eMCP, msinfo, msfile = em.get_msinfo(eMCP, msfile)
+        em.plot_elev_uvcov(eMCP)
     elif os.path.isdir('./'+inputs['inbase']+'_avg.ms') == True:
         msfile = './'+inputs['inbase']+'_avg.ms'
         eMCP, msinfo, msfile = em.get_msinfo(eMCP, msfile)
+        em.plot_elev_uvcov(eMCP)
 
     ### Produce some plots ###
     if inputs['plot_data'] == 1:

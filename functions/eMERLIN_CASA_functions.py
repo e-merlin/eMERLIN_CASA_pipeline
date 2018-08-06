@@ -15,6 +15,7 @@ from scipy import stats
 import logging
 
 import functions.weblog as emwlog
+import functions.eMERLIN_CASA_plots as emplt
 
 # CASA imports
 from taskinit import *
@@ -207,6 +208,8 @@ def add_step_time(step, eMCP, msg, doweblog=True):
     timestamp = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
     eMCP['steps'][step] = [timestamp, msg]
     save_obj(eMCP, info_dir + 'eMCP_info.pkl')
+    os.system('cp eMCP.log {}eMCP.log.txt'.format(info_dir))
+    os.system('cp casa_eMCP.log {}casa_eMCP.log.txt'.format(info_dir))
     if doweblog:
         emwlog.start_weblog(eMCP)
     return eMCP
@@ -532,6 +535,21 @@ def mixed_mode(msfile):
         spw_separation = ['']
     return is_mixed_mode, spw_separation
 
+
+def plot_elev_uvcov(eMCP):
+    msfile = eMCP['msinfo']['msfile']
+    msinfo = eMCP['msinfo']
+    elevplot = plots_dir + 'plots_observation/{0}_elevation.png'.format(
+                                                eMCP['msinfo']['msfilename'])
+    if os.path.isfile(elevplot):
+        logger.info('Elevation plot found.')
+        logger.info('To regenerate elev and uvcov plots remove {}.'.format(elevplot))
+    else:
+        emplt.make_elevation(msfile, msinfo)
+        emplt.make_uvcov(msfile, msinfo)
+    emwlog.start_weblog(eMCP)
+
+
 def import_eMERLIN_fitsIDI(eMCP):
     rmdir(eMCP['inputs']['inbase'] + '.ms')
     rmdir(eMCP['inputs']['inbase'] + '.mms')
@@ -560,7 +578,9 @@ def import_eMERLIN_fitsIDI(eMCP):
     msg = 'constobsid={0}, scanreindexgap_s={1}'.format(constobsid,
                                                        scanreindexgap_s)
     eMCP['msfile'] = eMCP['inputs']['inbase']+'.ms'
-    eMCP = add_step_time('importfitsIDI', eMCP, msg, doweblog=False)
+    msfile = msfile0
+    eMCP, msinfo, msfile = get_msinfo(eMCP, msfile)
+    eMCP = add_step_time('importfitsIDI', eMCP, msg, doweblog=True)
 
     # mstransform
     datacolumn = 'data'
@@ -638,7 +658,9 @@ def import_eMERLIN_fitsIDI(eMCP):
         msg += ', chanbin={0}'.format(chanbin)
     if import_eM['antenna'] != '':
         msg += ', antenna="{}"'.format(antenna)
-    eMCP = add_step_time('mstransform', eMCP, msg, doweblog=False)
+    msfile = msfile1
+    eMCP, msinfo, msfile = get_msinfo(eMCP, msfile)
+    eMCP = add_step_time('mstransform', eMCP, msg, doweblog=True)
 
     # FIXVIS
     msfile = eMCP['inputs']['inbase'] + ext_ms[do_ms2mms]
@@ -669,7 +691,8 @@ def import_eMERLIN_fitsIDI(eMCP):
             exit_pipeline(eMCP)
     logger.info('End FIXVIS')
     msg = ''
-    eMCP = add_step_time('fixvis', eMCP, msg, doweblog=False)
+    eMCP, msinfo, msfile = get_msinfo(eMCP, msfile)
+    eMCP = add_step_time('fixvis', eMCP, msg, doweblog=True)
     eMCP['msfile'] = msfile
     return eMCP
 
