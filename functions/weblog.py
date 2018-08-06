@@ -163,7 +163,10 @@ def weblog_obssum(msinfo):
                 try:
                     separation = '{0:5.2f}'.format(separations[s1+'-'+s2])
                 except:
-                    separation = '{0:5.2f}'.format(separations[s2+'-'+s1])
+                    try:
+                        separation = '{0:5.2f}'.format(separations[s2+'-'+s1])
+                    except:
+                        separation = '0.0'
             wlog.write('<tr><td>{0} </td><td> {1}</td><td>{2}</td>\n'.format(s1, s2, separation))
         wlog.write('</table><br>\n')
     wlog.write('<table bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:30%">\n')

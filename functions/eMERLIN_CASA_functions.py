@@ -803,7 +803,10 @@ def find_quacktime(msinfo, s1, s2):
         try:
             separation = float('{0:5.2f}'.format(separations[s1+'-'+s2]))
         except:
-            separation = float('{0:5.2f}'.format(separations[s2+'-'+s1]))
+            try:
+                separation = '{0:5.2f}'.format(separations[s2+'-'+s1])
+            except:
+                separation = 0.0
     if separation < 1.0:
         quacktime = 20.
     elif 1.0 <= separation < 2.0:
@@ -1135,7 +1138,7 @@ def check_sources_in_ms(eMCP):
 
 def check_table_exists(caltables, tablename):
     try:
-        if os.path.isdir(caltables[tablename]):
+        if os.path.isdir(caltables[tablename]['table']):
             it_exists = True
         else:
             it_exists = False
@@ -1392,8 +1395,8 @@ def run_applycal(eMCP, caltables, step):
     if previous_cal_targets == '':
         previous_cal_targets = previous_cal
     for i, s in enumerate(sources['targets'].split(',')):
-        if s != '':
-            phscal = sources['phscals'].split(',')[i]
+        phscal = sources['phscals'].split(',')[i]
+        if s != '' and s != phscal:
             # Check if tables exist:
             for table_i in previous_cal_targets:
                 check_table_exists(caltables, table_i)
@@ -1413,6 +1416,8 @@ def run_applycal(eMCP, caltables, step):
                      gainfield = gainfield,
                      interp    = interp,
                      spwmap    = spwmap)
+        else:
+            logger.warning('Source {} is not phase-referenced'.format(s))
     logger.info('End applycal')
 
 
