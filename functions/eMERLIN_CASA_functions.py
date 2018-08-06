@@ -306,8 +306,10 @@ def user_sources(inputs):
     sources['bpcal']   = inputs['bpcal']
     sources['ptcal']   = inputs['ptcal']
     sources['calsources'] = join_lists([sources['phscals'], sources['fluxcal'],sources['bpcal'], sources['ptcal']])
+    sources['calsources'] = sources['calsources'].strip(',')
     sources['maincal'] = join_lists([sources['fluxcal'],sources['bpcal'], sources['ptcal']])
     sources['allsources'] = join_lists([sources['calsources'], sources['targets']])
+    sources['allsources'] = sources['allsources'].strip(',')
     sources['no_fluxcal'] = sources['allsources'].replace(sources['fluxcal'], '').replace(',,',',').strip(',')
     sources['cals_no_fluxcal'] = sources['calsources'].replace(sources['fluxcal'], '').replace(',,',',').strip(',')
     sources['targets_phscals'] = join_lists([sources['targets'],sources['phscals']])
@@ -760,32 +762,32 @@ def check_aoflagger_version():
         old_aoflagger = False
     return old_aoflagger
 
-def ms2mms(eMCP):
-    mode = eMCP['defaults']['ms2mms']['mode']
-    msfile = eMCP['msfile']
-    logger.info('Start ms2mms')
-    if mode == 'parallel':
-        partition(vis=msfile,outputvis=msfile[:-3]+'.mms',createmms=True,separationaxis="auto",numsubms="auto",flagbackup=True,datacolumn=
-"all",field="",spw="",scan="",antenna="",correlation="",timerange="",intent="",array="",uvrange="",observation="",feed="",disableparallel=None,ddistart=None
-,taql=None)
-        if os.path.isdir(msfile[:-3]+'.mms') == True:
-            rmdir(msfile)
-            rmdir(msfile+'.flagversions')
-        ms.writehistory(message='eMER_CASA_Pipeline: Converted MS to MMS for parallelisation',msname=msfile[:-3]+'.mms')
-
-    ## Need to use single if you need to aoflag the data later
-    if mode == 'single':
-        partition(vis=msfile,outputvis=msfile[:-3]+'.ms',createmms=False,separationaxis="auto",numsubms="auto",flagbackup=True,datacolumn=
-"all",field="",spw="",scan="",antenna="",correlation="",timerange="",intent="",array="",uvrange="",observation="",feed="",disableparallel=None,ddistart=None
-,taql=None)
-        if os.path.isdir(msfile[:-3]+'.ms') == True:
-           rmdir(msfile)
-           rmdir(msfile+'.flagversions')
-    run_listobs(msfile[:-3]+'.mms')
-    logger.info('End ms2mms')
-    msg = ''
-    eMCP = add_step_time('ms2mms', eMCP, msg)
-    return eMCP
+#def ms2mms(eMCP):
+#    mode = eMCP['defaults']['ms2mms']['mode']
+#    msfile = eMCP['msfile']
+#    logger.info('Start ms2mms')
+#    if mode == 'parallel':
+#        partition(vis=msfile,outputvis=msfile[:-3]+'.mms',createmms=True,separationaxis="auto",numsubms="auto",flagbackup=True,datacolumn=
+#"all",field="",spw="",scan="",antenna="",correlation="",timerange="",intent="",array="",uvrange="",observation="",feed="",disableparallel=None,ddistart=None
+#,taql=None)
+#        if os.path.isdir(msfile[:-3]+'.mms') == True:
+#            rmdir(msfile)
+#            rmdir(msfile+'.flagversions')
+#        ms.writehistory(message='eMER_CASA_Pipeline: Converted MS to MMS for parallelisation',msname=msfile[:-3]+'.mms')
+#
+#    ## Need to use single if you need to aoflag the data later
+#    if mode == 'single':
+#        partition(vis=msfile,outputvis=msfile[:-3]+'.ms',createmms=False,separationaxis="auto",numsubms="auto",flagbackup=True,datacolumn=
+#"all",field="",spw="",scan="",antenna="",correlation="",timerange="",intent="",array="",uvrange="",observation="",feed="",disableparallel=None,ddistart=None
+#,taql=None)
+#        if os.path.isdir(msfile[:-3]+'.ms') == True:
+#           rmdir(msfile)
+#           rmdir(msfile+'.flagversions')
+#    run_listobs(msfile[:-3]+'.mms')
+#    logger.info('End ms2mms')
+#    msg = ''
+#    eMCP = add_step_time('ms2mms', eMCP, msg)
+#    return eMCP
 
 def find_quacktime(msinfo, s1, s2):
     separations = msinfo['separations']
@@ -822,6 +824,8 @@ def flagdata1_apriori(eMCP):
     sources = msinfo['sources']
     logger.info('Start flagdata1_apriori')
     antennas = get_antennas(msfile)
+    # Check if all sources are in the MS:
+    check_sources_in_ms(eMCP)
     # Find number of channels in MS:
     ms.open(msfile)
     axis_info = ms.getdata(['axis_info'], ifraxis=True)
@@ -1107,11 +1111,47 @@ def restoreflagstatus(msinfo):
     flagmanager(msinfo['msfile'], mode='restore', versionname='initialize_flags',
              merge='replace')
 
+def check_sources_in_ms(eMCP):
+    msfile = eMCP['msinfo']['msfile']
+    sources = eMCP['msinfo']['sources']
+    mssources = find_mssources(msfile)
+    targets = sources['targets']
+    phscals = sources['phscals']
+    # Check that targets/phscals are not empty:
+    if targets == '' or phscals == '':
+        logger.critical('Targets or phase calibrators not specified')
+        logger.warning('Stopping pipeline at this step')
+        exit_pipeline()
+    # Check that all sources are in the MS:
+    sources_not_in_msfile = [s for s in
+                             sources['allsources'].split(',')
+                             if s not in mssources.split(',')]
+    if len(sources_not_in_msfile) > 0:
+        fields = mssources
+        logger.critical('Fields {} not present in MS but listed in ' \
+                       'inputs file.'.format(','.join(sources_not_in_msfile)))
+        logger.warning('Stopping pipeline at this step')
+        exit_pipeline()
+
+def check_table_exists(caltables, tablename):
+    try:
+        if os.path.isdir(caltables[tablename]):
+            it_exists = True
+        else:
+            it_exists = False
+    except:
+            it_exists = False
+    if it_exists == False:
+        logger.critical('Calibration table {} required but ' \
+                        'not available'.format(tablename))
+        logger.warning('Stopping pipeline at this step')
+        exit_pipeline()
+
 
 ### Run CASA calibration functions
 
 def run_split(eMCP):
-    logger.info('Start split')
+    logger.info('Start average')
     width = eMCP['defaults']['average']['width']
     msfile = eMCP['msinfo']['msfile']
     sources = eMCP['msinfo']['sources']
@@ -1120,18 +1160,8 @@ def run_split(eMCP):
     scan = eMCP['defaults']['average']['scan']
     antenna = eMCP['defaults']['average']['antenna']
     timerange = eMCP['defaults']['average']['timerange']
-    mssources = find_mssources(msfile)
-    # Check that all sources are there:
-    sources_not_in_msfile = [s for s in
-                             sources['allsources'].split(',')
-                             if s not in mssources.split(',')]
-    if len(sources_not_in_msfile) > 0:
-        fields = mssources
-        logger.warning('Fields {} not present in MS but listed in ' \
-                       'inputs file.'.format(','.join(sources_not_in_msfile)))
-        logger.warning('All fields will be included in the averaged MS.')
-    else:
-        fields = sources['allsources']
+    # Check if all sources are in the MS: 
+    check_sources_in_ms(eMCP)
     name = '.'.join(msfile.split('.')[:-1])
     exte = ''.join(msfile.split('.')[-1])
     outputmsfile = name+'_avg.'+exte
@@ -1147,7 +1177,7 @@ def run_split(eMCP):
           timebin=timebin,  width=width,
           datacolumn=datacolumn, keepflags=True)
     run_listobs(outputmsfile)
-    logger.info('End split')
+    logger.info('End average')
     msg = 'width={0}, timebin={1}, datacolumn={2}'.format(width, timebin,
                                                           datacolumn)
     eMCP = add_step_time('average', eMCP, msg)
@@ -1156,6 +1186,8 @@ def run_split(eMCP):
 
 def run_initialize_models(eMCP):
     logger.info('Start init_models')
+    # Check if all sources are in the MS: 
+    check_sources_in_ms(eMCP)
     msfile = eMCP['msinfo']['msfile']
     init_models = eMCP['defaults']['init_models']
     models_path = eMCP['pipeline_path']+init_models['calibrator_models']
@@ -1334,11 +1366,15 @@ def run_applycal(eMCP, caltables, step):
     # 1 correct non-target sources:
     logger.info('Applying calibration to calibrator sources')
     logger.info('Fields: {0}'.format(sources['calsources']))
+    # Check if tables exist:
+    for table_i in previous_cal:
+        check_table_exists(caltables, table_i)
     # Previous calibration
     gaintable = [caltables[p]['table'] for p in previous_cal]
     interp    = [caltables[p]['interp'] for p in previous_cal]
     spwmap    = [caltables[p]['spwmap'] for p in previous_cal]
     gainfield = [caltables[p]['gainfield'] if len(np.atleast_1d(caltables[p]['gainfield'].split(',')))<2 else '' for p in previous_cal]
+
     logger.info('Previous calibration applied: {0}'.format(str(previous_cal)))
     logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
     logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
@@ -1358,6 +1394,9 @@ def run_applycal(eMCP, caltables, step):
     for i, s in enumerate(sources['targets'].split(',')):
         if s != '':
             phscal = sources['phscals'].split(',')[i]
+            # Check if tables exist:
+            for table_i in previous_cal_targets:
+                check_table_exists(caltables, table_i)
             # Previous calibration
             gaintable = [caltables[p]['table'] for p in previous_cal_targets]
             interp    = [caltables[p]['interp'] for p in previous_cal_targets]
@@ -1382,6 +1421,8 @@ def run_applycal(eMCP, caltables, step):
 
 def solve_delays(eMCP, caltables):
     logger.info('Start solve_delays')
+    # Check if all sources are in the MS: 
+    check_sources_in_ms(eMCP)
     delay = eMCP['defaults']['delay']
     msfile = eMCP['msinfo']['msfile']
     msinfo = eMCP['msinfo']
@@ -1433,6 +1474,8 @@ def delay_fringefit(eMCP, caltables):
     # Currently does not combine spws because that is not correctly implemented
     # in the pre-release version of task fringefit
     logger.info('Start delay_fringefit')
+    # Check if all sources are in the MS: 
+    check_sources_in_ms(eMCP)
     delay = eMCP['defaults']['delay']
     msfile = eMCP['msinfo']['msfile']
     msinfo = eMCP['msinfo']
@@ -1504,6 +1547,8 @@ def make_spw(msinfo, spw_list):
 
 def initial_bp_cal(eMCP, caltables):
     logger.info('Start initial_bp_cal')
+    # Check if all sources are in the MS: 
+    check_sources_in_ms(eMCP)
     bp = eMCP['defaults']['bandpass']
     msfile = eMCP['msinfo']['msfile']
     msinfo = eMCP['msinfo']
@@ -1642,6 +1687,8 @@ def initial_bp_cal(eMCP, caltables):
 
 def initial_gaincal(eMCP, caltables):
     logger.info('Start gain_p_ap')
+    # Check if all sources are in the MS: 
+    check_sources_in_ms(eMCP)
     gain_p_ap = eMCP['defaults']['gain_p_ap']
     msfile = eMCP['msinfo']['msfile']
     msinfo = eMCP['msinfo']
@@ -1826,9 +1873,13 @@ def read_source_model(model, field, msinfo, eMcalflux):
         outfile = scaled_model[1])
     return scaled_model
 
+
+
 def eM_fluxscale(eMCP, caltables):
 #def eM_fluxscale(msfile, msinfo, caltables, ampcal_table, sources, antennas):
     logger.info('Start eM_fluxscale')
+    # Check if all sources are in the MS: 
+    check_sources_in_ms(eMCP)
     flux = eMCP['defaults']['fluxscale']
     msfile = eMCP['msinfo']['msfile']
     msinfo = eMCP['msinfo']
@@ -1839,6 +1890,8 @@ def eM_fluxscale(eMCP, caltables):
     cals_to_scale = sources['cals_no_fluxcal']
     fluxcal = sources['fluxcal']
     caltable_name = flux['tablename']
+    # Check if table allcal_ap.G1 exists:
+    check_table_exists(caltables, ampcal_table)
     caltables[caltable_name] = copy.copy(caltables[ampcal_table])
     caltables[caltable_name]['table']=caltables[ampcal_table]['table']+'_fluxscaled'
     fluxes_txt = info_dir+ caltables[caltable_name]['name']+'_fluxes.txt'
@@ -1923,6 +1976,8 @@ def eM_fluxscale(eMCP, caltables):
 def bandpass_sp(eMCP, caltables):
 #def bandpass_sp(msfile, msinfo, caltables, previous_cal):
     logger.info('Start bandpass_sp')
+    # Check if all sources are in the MS: 
+    check_sources_in_ms(eMCP)
     bp_sp = eMCP['defaults']['bandpass_sp']
     msfile = eMCP['msinfo']['msfile']
     msinfo = eMCP['msinfo']
@@ -1969,6 +2024,8 @@ def bandpass_sp(eMCP, caltables):
 
 def gain_amp_sp(eMCP, caltables):
     logger.info('Start gain_amp_sp')
+    # Check if all sources are in the MS: 
+    check_sources_in_ms(eMCP)
     amp_sp = eMCP['defaults']['gain_amp_sp']
     msfile = eMCP['msinfo']['msfile']
     msinfo = eMCP['msinfo']
