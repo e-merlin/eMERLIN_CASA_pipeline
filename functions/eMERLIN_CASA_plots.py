@@ -62,10 +62,14 @@ def makedir(pathdir):
         logger.debug('Cannot create directory: {}'.format(pathdir))
         pass
 
-def add_step_time(step, eMCP, msg, doweblog=True):
-    timestamp = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
-    eMCP['steps'][step] = [timestamp, msg]
+def add_step_time(step, eMCP, msg, t0, doweblog=True):
+    t1 = datetime.datetime.utcnow()
+    timestamp = t1.strftime('%Y-%m-%d %H:%M:%S')
+    delta_t_min = (t1-t0).total_seconds()/60.
+    eMCP['steps'][step] = [timestamp, delta_t_min, msg]
     save_obj(eMCP, info_dir + 'eMCP_info.pkl')
+    os.system('cp eMCP.log {}eMCP.log.txt'.format(info_dir))
+    os.system('cp casa_eMCP.log {}casa_eMCP.log.txt'.format(info_dir))
     if doweblog:
         emwlog.start_weblog(eMCP)
     return eMCP
@@ -234,6 +238,7 @@ def make_4plots(eMCP, datacolumn='data'):
     msinfo = eMCP['msinfo']
     msfile = eMCP['msinfo']['msfile']
     logger.info('Start plot_{}'.format(datacolumn))
+    t0 = datetime.datetime.utcnow()
     if datacolumn == 'data':
         plots_data_dir = './weblog/plots/plots_data/'
     elif datacolumn == 'corrected':
@@ -254,7 +259,7 @@ def make_4plots(eMCP, datacolumn='data'):
         make_uvplt(eMCP)
     logger.info('End plot_{}'.format(datacolumn))
     msg = ''
-    eMCP = add_step_time('plot_'+datacolumn, eMCP, msg)
+    eMCP = add_step_time('plot_'+datacolumn, eMCP, msg, t0)
     return eMCP
 
 def single_uvplt((msinfo, field, plots_data_dir)):

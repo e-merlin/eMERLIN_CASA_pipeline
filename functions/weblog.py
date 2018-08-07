@@ -325,7 +325,7 @@ def table_steps(eMCP):
     table_txt += ("<tr><th style='width: 15%;'>Step</th>" \
                   "<th style='width: 4%;'>Code</th>" \
                   "<th style='width: 25%;'>Execution ended</th>" \
-                  "<th style='width: 15%;'>Execution time (min)</th>" \
+                  "<th style='width: 15%;'>Execution time</th>" \
                   "<th style='width: 70%;'>Notes</th></tr>\n")
     prev_steps = []
     nosteps = ['plot_data', 'save_flags', 'plot_corrected', 'first_images']

@@ -708,24 +708,29 @@ def import_eMERLIN_fitsIDI(eMCP):
 def run_aoflagger_fields(eMCP):
     """This version of the autoflagger iterates through the ms within the mms structure selecting individual fields. It uses pre-defined strategies. The np.unique in the loop below is needed for single source files. The mms thinks there are many filds (one per mms). I think it is a bug from virtualconcat."""
     fields = eMCP['defaults']['aoflagger']['fields']
+    separate_bands = eMCP['defaults']['aoflagger']['separate_bands']
     pipeline_path = eMCP['pipeline_path']
     msfile = eMCP['msinfo']['msfile']
 
     logger.info('Start run_aoflagger_fields')
     t0 = datetime.datetime.utcnow()
-    inputs_aoflagger = eMCP['inputs']['flag_aoflagger']
-    if inputs_aoflagger == 1:
-        separate_bands = True
+    if separate_bands == True:
         logger.info('Bands will be processed separately.')
-    elif inputs_aoflagger == 2:
-        separate_bands = False
+    elif separate_bands == False:
         logger.info('Bands will be processed all together.')
     else:
-        logger.warning('flag_aoflagger can only be 1 or 2')
+        logger.warning('separate_bands can only be True or False')
         exit_pipeline()
+    # Check if aoflagger is available:
     aoflagger_available = check_command('aoflagger')
     if not aoflagger_available:
         logger.critical('aoflagger requested but not available.')
+        logger.warning('Exiting pipeline.')
+        exit_pipeline()
+    # Check that version is at least 2.9+
+    old_aoflagger = check_aoflagger_version()
+    if old_aoflagger:
+        logger.critical('aoflagger version <2.9 does not work correctly.')
         logger.warning('Exiting pipeline.')
         exit_pipeline()
     vis_fields = vishead(msfile,mode='list',listitems='field')['field'][0]
@@ -1203,6 +1208,7 @@ def run_split(eMCP):
     timerange = eMCP['defaults']['average']['timerange']
     # Check if all sources are in the MS: 
     check_sources_in_ms(eMCP)
+    fields = sources['allsources']
     name = '.'.join(msfile.split('.')[:-1])
     exte = ''.join(msfile.split('.')[-1])
     outputmsfile = name+'_avg.'+exte

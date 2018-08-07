@@ -16,6 +16,7 @@ defaults['import_eM']['ms2mms']                = False
 
 defaults['aoflagger'] = collections.OrderedDict()
 defaults['aoflagger']['fields']               = 'all'
+defaults['aoflagger']['separate_bands']       = True
 
 defaults['flag_apriori'] = collections.OrderedDict()
 defaults['flag_apriori']['do_quack']          = True
