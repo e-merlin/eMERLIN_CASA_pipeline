@@ -4,7 +4,7 @@ import numpy as np
 import pickle
 import matplotlib
 import matplotlib.pyplot as plt
-import multiprocessing
+#import multiprocessing
 from matplotlib.ticker import MultipleLocator
 import datetime
 
@@ -94,74 +94,7 @@ def get_freqs(msfile, allfreqs=False):
     return freqs
 
 
-#def single_4plot_old(msfile, field, baseline, datacolumn, plot_file):
-#    logger.info('Baseline: {0:6s}, Output: {1}'.format(baseline, plot_file))
-#    tb.open(msfile+'/SPECTRAL_WINDOW')
-#    nchan = str(tb.getcol('NUM_CHAN')[0])
-#    tb.close()
-#    gridrows = gridcols = 2
-#    showgui=False
-#    avgtime = '300'
-#
-#    plotms(vis=msfile, xaxis='time', yaxis='amp', title='Amp vs Time {0} {1} (color=spw)'.format(field, baseline),
-#    gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=0, plotindex=0,
-#    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
-#    antenna=baseline, field=field,
-#    averagedata = True, avgchannel = nchan, #avgtime='16',
-#    xselfscale = True, xsharedaxis = True, coloraxis = 'spw', plotrange=[-1,-1,0,-1],
-#    plotfile = '', expformat = 'png', customsymbol = True, symbolshape = 'circle',
-#    overwrite=True,  showgui=showgui, symbolsize=4)
-#
-#    plotms(vis=msfile, xaxis='time', yaxis='phase', title='Phase vs Time {0} {1} (color=spw)'.format(field, baseline),
-#    gridrows=gridrows, gridcols=gridcols, rowindex=1, colindex=0, plotindex=1,
-#    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
-#    antenna=baseline, field=field,
-#    averagedata = True, avgchannel = nchan, #avgtime='16',
-#    xselfscale = True, xsharedaxis = True, coloraxis   = 'spw', plotrange=[-1,-1,-180,180],
-#    plotfile = '', expformat = 'png', customsymbol = True, symbolshape = 'circle',
-#    overwrite=True,  showgui=showgui, symbolsize=4, clearplots=False)
-#
-#    plotms(vis=msfile, xaxis='freq', yaxis='amp', title='Amp vs Frequency {0} {1} (color=corr)'.format(field, baseline),
-#    gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=1, plotindex=2,
-#    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
-#    antenna=baseline, field=field,
-#    averagedata = True, avgtime=avgtime,
-#    xselfscale = True, xsharedaxis = True, coloraxis   = 'corr', plotrange=[-1,-1,0,-1],
-#    plotfile = '', expformat = 'png', customsymbol = True, symbolshape = 'circle',
-#    overwrite=True,  showgui=showgui, symbolsize=4, clearplots=False)
-#
-#    plotms(vis=msfile, xaxis='freq', yaxis='phase', title='Phase vs Frequency {0} {1} (color=corr)'.format(field, baseline),
-#    gridrows=gridrows, gridcols=gridcols, rowindex=1, colindex=1, plotindex=3,
-#    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
-#    antenna=baseline, field=field,
-#    averagedata = True, avgtime=avgtime,
-#    xselfscale = True, xsharedaxis = True, coloraxis   = 'corr', plotrange=[-1,-1,-180,180],
-#    plotfile = plot_file, expformat = 'png', customsymbol = True, symbolshape = 'circle',
-#    width=2600, height=1200, symbolsize=4,clearplots=False, overwrite=True, showgui=showgui)
-
-
-#def make_4plots_old(msfile, msinfo, datacolumn='data'):
-#    if datacolumn == 'data':
-#        plots_data_dir = './weblog/plots/plots_data/'
-#    elif datacolumn == 'corrected':
-#        plots_data_dir = './weblog/plots/plots_corrected/'
-#    else:
-#        plots_data_dir = './weblog/plots/'
-#    makedir(plots_data_dir)
-#    for f in msinfo['sources']['allsources'].split(','):
-#        logger.info('Generating plot for msfile: {0}, field: {1}, column: {2}'.format(
-#                                                    (msfile), f, datacolumn))
-#        for baseline in msinfo['baselines']:
-#            plot_file = plots_data_dir+'{0}_4plot_{1}_{2}_{3}.png'.format(
-#                                                         msinfo['msfilename'], f,
-#                                                         baseline.replace('&','-'),
-#                                                         datacolumn)
-#            single_4plot_old(msfile, f, baseline, datacolumn, plot_file)
-#
-
-
-
-def single_4plot((msinfo, field, datacolumn, plots_data_dir)):
+def single_4plot(msinfo, field, datacolumn, plots_data_dir):
     logger.info('Visibility plots for field: {0}, datacolumn: {1}'.format(field, datacolumn))
     msfile = msinfo['msfile']
     tb.open(msfile+'/SPECTRAL_WINDOW')
@@ -213,26 +146,6 @@ def single_4plot((msinfo, field, datacolumn, plots_data_dir)):
     width=w, height=h, symbolsize=4,clearplots=False, overwrite=True, showgui=showgui)
     logger.info('Finished field: {0}, output: {1}{{0-4}}.png'.format(field, plot_file))
 
-#def make_4plots((msinfo, field, datacolumn, plots_data_dir)):
-#    msfile = msinfo['msfile']
-#    plot_file = plots_data_dir+'{0}_4plot_{1}_{2}'.format(msinfo['msfilename'],
-#                                                          field, datacolumn)
-#    if datacolumn == 'data':
-#        plots_data_dir = './weblog/plots/plots_data/'
-#    elif datacolumn == 'corrected':
-#        plots_data_dir = './weblog/plots/plots_corrected/'
-#    else:
-#        plots_data_dir = './weblog/plots/'
-#    makedir(plots_data_dir)
-#    for f in msinfo['sources']['mssources'].split(','):
-#        if f != '':
-#            logger.info('Generating plot for msfile: {0}, field: {1}, column: {2}'.format(
-#                                                    (msfile), field, datacolumn))
-#            plot_file = plots_data_dir+'{0}_4plot_{1}_{2}'.format(
-#                                                         msinfo['msfilename'],
-#                                                         field, datacolumn)
-#            num_baselines = len(msinfo['baselines'])
-#            single_4plot(msfile, field, num_baselines, datacolumn, plot_file)
 
 def make_4plots(eMCP, datacolumn='data'):
     msinfo = eMCP['msinfo']
@@ -248,12 +161,14 @@ def make_4plots(eMCP, datacolumn='data'):
     makedir(plots_data_dir)
     fields = msinfo['sources']['allsources'].split(',')
     logger.info('Producing in parallel visibility plots for fields: {}'.format(msinfo['sources']['allsources']))
-    num_proc = eMCP['defaults']['plot_data']['num_proc']
-    pool = multiprocessing.Pool(num_proc)
-    input_args = [(msinfo, field, datacolumn, plots_data_dir) for field in fields]
-    p = pool.map(single_4plot, input_args)
-    pool.close()
-    pool.join()
+    for field in fields:
+        single_4plot(msinfo, field, datacolumn, plots_data_dir)
+##    num_proc = eMCP['defaults']['plot_data']['num_proc']
+##    pool = multiprocessing.Pool(num_proc)
+##    input_args = [(msinfo, field, datacolumn, plots_data_dir) for field in fields]
+##    p = pool.map(single_4plot, input_args)
+##    pool.close()
+##    pool.join()
     logger.info('Visibility plots finished')
     if datacolumn == 'corrected':
         make_uvplt(eMCP)
@@ -262,7 +177,7 @@ def make_4plots(eMCP, datacolumn='data'):
     eMCP = add_step_time('plot_'+datacolumn, eMCP, msg, t0)
     return eMCP
 
-def single_uvplt((msinfo, field, plots_data_dir)):
+def single_uvplt(msinfo, field, plots_data_dir):
     logger.info('uvplt for field: {}'.format(field))
     plot_file =  plots_data_dir+'{0}_uvplt_{1}.png'.format(msinfo['msfilename'], field)
     msfile = msinfo['msfile']
@@ -290,7 +205,7 @@ def single_uvplt((msinfo, field, plots_data_dir)):
     plotfile = plot_file, expformat = 'png', customsymbol = True, symbolshape = 'circle',
     width=1200, height=573, symbolsize=4, clearplots=False, overwrite=True, showgui=showgui)
 
-def single_uvplt_model((msinfo, field, plots_data_dir)):
+def single_uvplt_model(msinfo, field, plots_data_dir):
     logger.info('uvplt (model) for field: {}'.format(field))
     plot_file =  plots_data_dir+'{0}_uvpltmodel_{1}.png'.format(msinfo['msfilename'], field)
     msfile = msinfo['msfile']
@@ -327,18 +242,22 @@ def make_uvplt(eMCP):
     fields = msinfo['sources']['allsources'].split(',')
     logger.info('Producing in parallel uvplot for fields: {}'.format(msinfo['sources']['allsources']))
     # UVplot all sources
-    pool = multiprocessing.Pool(num_proc)
-    input_args = [(msinfo, field, plots_data_dir) for field in fields]
-    pool.map(single_uvplt, input_args)
-    pool.close()
-    pool.join()
+    for field in fields:
+        single_uvplt(msinfo, field, plots_data_dir)
+##    pool = multiprocessing.Pool(num_proc)
+##    input_args = [(msinfo, field, plots_data_dir) for field in fields]
+##    pool.map(single_uvplt, input_args)
+##    pool.close()
+##    pool.join()
     # UVplot model, calibrators
     calsources = msinfo['sources']['calsources'].split(',')
-    pool = multiprocessing.Pool(num_proc)
-    input_args = [(msinfo, field, plots_data_dir) for field in calsources]
-    pool.map(single_uvplt_model, input_args)
-    pool.close()
-    pool.join()
+    for field in calsources:
+        single_uvplt_model(msinfo, field, plots_data_dir)
+##    pool = multiprocessing.Pool(num_proc)
+##    input_args = [(msinfo, field, plots_data_dir) for field in calsources]
+##    pool.map(single_uvplt_model, input_args)
+##    pool.close()
+##    pool.join()
     logger.info('uvplts finished')
 
 def single_uvcov(field, u, v, freqs, plot_file):

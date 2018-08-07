@@ -332,6 +332,8 @@ def table_steps(eMCP):
     for step, step_info in eMCP['steps'].items():
         time_s, delta_min, msg = step_info
         delta_t = elapsed_time(delta_min)
+        if step == 'start_pipeline':
+            delta_t = '-'
         color = table_colors(eMCP['steps'], step, prev_steps)
         table_txt += ('<tr><td>{0}</td>'.format(step))
         table_txt += ('<td bgcolor={0}></td>\n'.format(color))
