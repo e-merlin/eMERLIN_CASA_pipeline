@@ -420,7 +420,8 @@ def weblog_plots(msinfo):
     weblog_foot(wlog)
     wlog.close()
 
-def weblog_images(msinfo):
+def weblog_images(eMCP):
+    msinfo = eMCP['msinfo']
     ###### Images page
     wlog = open(weblog_dir + "images.html","w")
     weblog_header(wlog, 'Crude images', msinfo['run'])
@@ -431,32 +432,50 @@ def weblog_images(msinfo):
     for i in range(len(msinfo['sources']['targets'].split(','))):
         img_dir = weblog_dir + 'images/{0}/'.format(msinfo['sources']['targets'].split(',')[i])
         if (os.path.isdir(img_dir)) and (os.listdir(img_dir)):
-            show_image(msinfo, wlog, i)
+            show_image(eMCP, wlog, i)
     #------------------------------------------
     weblog_foot(wlog)
     wlog.close()
 
-def show_image(msinfo, wlog, i):
+def show_image(eMCP, wlog, i):
+    msinfo = eMCP['msinfo']
+    nterms = eMCP['defaults']['first_images']['nterms']
     num = 0
+    if nterms == 1:
+        ext = ''
+    else:
+        ext = '.tt0'
     target = msinfo['sources']['targets'].split(',')[i]
     phscal = msinfo['sources']['phscals'].split(',')[i]
+    try:
+        peak_target, noise_target = eMCP['img_stats'][target]
+        peak_phscal, noise_phscal = eMCP['img_stats'][phscal]
+    except:
+        peak_target, noise_target = 0.0, 0.0
+        peak_phscal, noise_phscal = 0.0, 0.0
     img_target = weblog_dir+'images/{0}/{1}_{0}_img{2:02d}'.format(target, msinfo['msfilename'], num)
     img_phscal = weblog_dir+'images/{0}/{1}_{0}_img{2:02d}'.format(phscal, msinfo['msfilename'], num)
     wlog.write('<hr>\n')
     wlog.write('<h3>{}</h3>\n'.format(target))
     wlog.write('<table bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:30%">\n')
-    wlog.write('<tr><td><b>{0}</b> (target image)</td><td>Residual</td>\n'.format(target))
-    wlog.write('<tr><td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(img_target+'.image.tt0.png'))
-    wlog.write('<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>\n'.format(img_target+'.residual.tt0.png'))
+    wlog.write('<tr><td><b>{0}</b> (Target image) Peak: {1:3.3f} mJy</td>' \
+               '<td>(Target residual) rms: {2:5.3f} mJy</td>\n'.format(target,
+                                                               peak_target*1000.,
+                                                               noise_target*1000.))
+    wlog.write('<tr><td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(img_target+'.image'+ext+'.png'))
+    wlog.write('<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>\n'.format(img_target+'.residual'+ext+'.png'))
     wlog.write('<tr><td>{0} image</td><td>{0} residual</td>\n'.format('zoom'))
-    wlog.write('<tr><td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(img_target+'.image.tt0_zoom.png'))
-    wlog.write('<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>\n'.format(img_target+'.residual.tt0_zoom.png'))
-    wlog.write('<tr><td><b>{0}</b> (phasecal image) </td><td>Residual</td>\n'.format(phscal))
-    wlog.write('<tr><td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(img_phscal+'.image.tt0.png'))
-    wlog.write('<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>\n'.format(img_phscal+'.residual.tt0.png'))
+    wlog.write('<tr><td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(img_target+'.image'+ext+'_zoom.png'))
+    wlog.write('<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>\n'.format(img_target+'.residual'+ext+'_zoom.png'))
+    wlog.write('<tr><td><b>{0}</b> (Phasecal image) Peak: {1:3.1f} mJy</td>' \
+               '<td>(Phasecal residual) rms: {2:5.3f} mJy</td>\n'.format(phscal,
+                                                               peak_phscal*1000.,
+                                                               noise_phscal*1000.))
+    wlog.write('<tr><td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(img_phscal+'.image'+ext+'.png'))
+    wlog.write('<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>\n'.format(img_phscal+'.residual'+ext+'.png'))
     wlog.write('<tr><td>{0} image</td><td>{0} residual</td>\n'.format('zoom'))
-    wlog.write('<tr><td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(img_phscal+'.image.tt0_zoom.png'))
-    wlog.write('<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>\n'.format(img_phscal+'.residual.tt0_zoom.png'))
+    wlog.write('<tr><td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(img_phscal+'.image'+ext+'_zoom.png'))
+    wlog.write('<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>\n'.format(img_phscal+'.residual'+ext+'_zoom.png'))
     wlog.write('</table><br>\n')
 
 def makedir(pathdir):
@@ -490,7 +509,7 @@ def start_weblog(eMCP, silent=False):
     weblog_pipelineinfo(eMCP)
     weblog_calibration(msinfo)
     weblog_plots(msinfo)
-    weblog_images(msinfo)
+    weblog_images(eMCP)
     weblog_download(msinfo)
 
 

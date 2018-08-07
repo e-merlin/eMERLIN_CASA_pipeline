@@ -2419,22 +2419,26 @@ def dfluxpy(freq,baseline):
     return vlaflux, merlinflux, resolved_percent, caution_res_pc, thisbl
 
 
-def plot_image(eMCP, imagename, dozoom=False):
-    imstat_residual = imstat(imagename+'.residual.tt0')
-    imstat_image = imstat(imagename+'.image.tt0')
+def plot_image(eMCP, imagename, ext='.tt0', dozoom=False):
+    imstat_residual = imstat(imagename+'.residual'+ext)
+    imstat_image = imstat(imagename+'.image'+ext)
     noise = imstat_residual['rms'][0]
     peak = imstat_image['max'][0]
-    #scaling =  np.min([0, -np.log(1.0*peak/noise)+4])
-    scaling = np.min([0.0, -int(np.log(1.0*peak/noise)+1)])
+    scaling =  np.min([0, -np.log(1.0*peak/noise)+3])
+    #scaling = np.min([0.0, -int(np.log(1.0*peak/noise)+1)])
     imgpar = eMCP['defaults']['first_images']
     level0 = imgpar['level0']
     levels = level0*np.sqrt(3**np.arange(20))
     center = 512
     zoom_range = 150
-    for extension in ['image.tt0']:
+    for extension in ['image'+ext]:
         filename = '{0}.{1}'.format(imagename, extension)
+        logger.info('Creating png for image: {0}'.format(filename))
+        logger.info('Peak: {0:5.2e} mJy, noise: {1:5.2e} mJy, ' \
+                    'scaling: {2:3.1f}'.format(peak*1000.,
+                                               noise*1000.,
+                                               scaling))
         imview(raster={'file':filename,
-                       #'range':[0, 0.032],
                        'scaling': float(scaling),
                        'colorwedge':True},
                contour = {'file':filename,
@@ -2444,7 +2448,6 @@ def plot_image(eMCP, imagename, dozoom=False):
                out = filename+'.png')
         if dozoom:
             imview(raster={'file':filename,
-                           #'range':[0, 0.032],
                            'scaling': float(scaling),
                            'colorwedge':True},
                    contour = {'file':filename,
@@ -2453,28 +2456,25 @@ def plot_image(eMCP, imagename, dozoom=False):
                               'unit':float(noise)*2.},
                    zoom = {'blc':[center-zoom_range,center-zoom_range],'trc':[center+zoom_range, center+zoom_range]},
                    out = filename+'_zoom.png')
+    return peak, noise
 
-def plot_image_add(imagename, dozoom=False):
+def plot_image_add(imagename, ext='.tt0', dozoom=False):
     filename = imagename
     center = 512
     zoom_range = 150
-    imview(raster={'file':filename+'.residual.tt0',
-                   #'range':[0, 0.032],
-                   #'scaling': float(scaling),
+    imview(raster={'file':filename+'.residual'+ext,
                    'colorwedge':True},
            contour = {'file':filename+'.mask',
                'levels':[1]},
-           out = filename+'.residual.tt0.png')
+           out = filename+'.residual'+ext+'.png')
     if dozoom:
-        imview(raster={'file':filename+'.residual.tt0',
-               #'range':[0, 0.032],
-               #'scaling': float(scaling),
+        imview(raster={'file':filename+'.residual'+ext,
                'colorwedge':True},
         contour = {'file':filename+'.mask',
                    'levels':[1]},
         zoom = {'blc':[center-zoom_range,center-zoom_range],'trc':[center+zoom_range, center+zoom_range]},
-        out = filename+'.residual.tt0_zoom.png')
-
+        out = filename+'.residual'+ext+'_zoom.png')
+    return
 
 def single_tclean(eMCP, s, num):
     msinfo = eMCP['msinfo']
@@ -2494,16 +2494,19 @@ def single_tclean(eMCP, s, num):
     nterms = imgpar['nterms']
     weighting = imgpar['weighting']
     robust = imgpar['robust']
-    usemask = 'auto-thresh'
-    maskthreshold = float(imgpar['maskthreshold']) # sigma
-    maskresolution = float(imgpar['maskresolution']) # 2xbmaj
-    nmask = imgpar['nmask']
+    usemask = 'auto-multithresh'
+    nsigma = imgpar['nsigma']
+    sidelobethreshold = imgpar['sidelobethreshold']
+    noisethreshold = imgpar['noisethreshold']
+    lownoisethreshold = imgpar['lownoisethreshold']
+    minbeamfrac = imgpar['minbeamfrac']
+    growiterations = imgpar['growiterations']
     logger.info('imsize = {0}, cell = {1}, niter = {2}'.format(
                 imsize, cell, niter))
     logger.info('weighting = {0}, robust = {1}'.format(
                 weighting, robust))
-    logger.info('usemask = {0}, maskthreshold = {1}, maskresolution = {2}, nmask = {3}'.format(
-                usemask, maskthreshold, maskresolution, nmask))
+    logger.info('usemask = {0}, growiterations = {1}'.format(usemask,
+                                                             growiterations))
     tclean(vis=msinfo['msfile'], field=s, datacolumn='corrected',
            imagename=imagename,
            imsize=imsize, cell=cell, deconvolver=deconvolver,
@@ -2511,13 +2514,21 @@ def single_tclean(eMCP, s, num):
            nterms=nterms,
            weighting=weighting,
            robust=robust, niter=niter, usemask=usemask,
-           maskthreshold=maskthreshold, # sigma
-           maskresolution=maskresolution, # 2xbmaj
-           nmask=nmask,
+           nsigma=nsigma,
+           sidelobethreshold=sidelobethreshold,
+           noisethreshold=noisethreshold,
+           lownoisethreshold=lownoisethreshold,
+           minbeamfrac=minbeamfrac,
+           growiterations=growiterations,
            savemodel='none', parallel=False)
-    plot_image(eMCP, imagename, dozoom=True)
-    plot_image_add(imagename, dozoom=True)
-
+    if nterms > 1:
+        ext = '.tt0'
+    else:
+        ext = ''
+    peak, noise = plot_image(eMCP, imagename, ext=ext, dozoom=True)
+    plot_image_add(imagename, ext=ext, dozoom=True)
+    eMCP['img_stats'][s] = [peak, noise]
+    return eMCP
 
 
 def run_first_images(eMCP):
@@ -2525,8 +2536,9 @@ def run_first_images(eMCP):
     logger.info('Start run_first_images')
     t0 = datetime.datetime.utcnow()
     num = 0
+    eMCP['img_stats'] = collections.OrderedDict()
     for s in msinfo['sources']['targets_phscals'].split(','):
-        single_tclean(eMCP, s, num)
+        eMCP = single_tclean(eMCP, s, num)
     logger.info('End run_first_images')
     msg = ''
     eMCP = add_step_time('first_images', eMCP, msg, t0)

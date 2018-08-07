@@ -13,7 +13,7 @@ from tasks import *
 import casadef
 
 
-current_version = 'v0.8.13'
+current_version = 'v0.8.14'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -77,6 +77,7 @@ def run_pipeline(inputs=None, inputs_path=''):
         eMCP = collections.OrderedDict()
         eMCP['steps'] = em.eMCP_info_start_steps()
         eMCP['is_mixed_mode'] = 'unknown'
+        eMCP['img_stats'] = collections.OrderedDict()
 
     eMCP['inputs'] = inputs
     eMCP['defaults'] = defaults
