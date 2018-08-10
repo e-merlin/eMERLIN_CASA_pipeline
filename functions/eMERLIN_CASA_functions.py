@@ -276,16 +276,16 @@ def check_band(msfile):
     return band
 
 def get_baselines(msfile):
-    ms.open(msfile)
-    baselines0 = ms.getdata(['axis_info'],ifraxis=True)['axis_info']['ifr_axis']['ifr_name']
-    ms.close()
+    msmd.open(msfile)
+    antennas0 = msmd.antennanames()
+    baselines0 = msmd.baselines()
+    msmd.close()
     baselines = []
-    for bsl_name in baselines0:
-        ant =  bsl_name.split('-')
-        bsl = bsl_name.replace('-', '&')
-        if ant[0] != ant[1]:
-            baselines.append(bsl)
-    return baselines
+    for i, a in enumerate(antennas0):
+        for j, b in enumerate(antennas0):
+            if j > i:
+                baselines.append('{0}-{1}'.format(a, b))
+    return np.array(baselines)
 
 def get_dates(d):
     t_mjd   = d['axis_info']['time_axis']['MJDseconds']/60./60./24.
@@ -327,26 +327,33 @@ def user_sources(inputs):
 
 def get_antennas(msfile):
     # Antenna list 
-    ms.open(msfile)
-    d = ms.getdata(['axis_info'],ifraxis=True)
-    ms.close()
-    antennas = np.unique('-'.join(d['axis_info']['ifr_axis']['ifr_name']).split('-'))
+    msmd.open(msfile)
+    antennas = msmd.antennanames()
+    msmd.close()
     nice_order = ['Lo', 'Mk2', 'Pi', 'Da', 'Kn', 'De', 'Cm']
     antennas = [a for a in nice_order if a in antennas]
     #logger.info('Antennas in MS {0}: {1}'.format(msfile, antennas))
     return antennas
 
-def get_timefreq(msfile):
-    # Date and time of observation
-    ms.open(msfile)
-    axis_info = ms.getdata(['axis_info'], ifraxis=True)
-    ms.close()
-    t_mjd, t = get_dates(axis_info)
-    freq_ini = np.min(axis_info['axis_info']['freq_axis']['chan_freq'])/1e9
-    freq_end = np.max(axis_info['axis_info']['freq_axis']['chan_freq'])/1e9
-    chan_res = np.mean(axis_info['axis_info']['freq_axis']['resolution'])/1e9
-    nchan = len(axis_info['axis_info']['freq_axis']['chan_freq'][:,0])
-    return t[0], t[-1], freq_ini, freq_end, chan_res, nchan
+def get_obstime(msfile):
+    # returns datetime object of first and last times in obs_id 0
+    msmd.open(msfile)
+    t_ini = mjdtodate(msmd.timerangeforobs(0)['begin']['m0']['value'])
+    t_end = mjdtodate(msmd.timerangeforobs(0)['end']['m0']['value'])
+    msmd.done()
+    return t_ini, t_end
+
+def get_obsfreq(msfile):
+    # Returns freq of first channel, end chan, channel resolution
+    # and number of channels (first spw) in GHz
+    msmd.open(msfile)
+    nspw = msmd.nspw()
+    freq_ini = msmd.chanfreqs(0)[0]/1e9
+    freq_end = msmd.chanfreqs(nspw-1)[-1]/1e9
+    chan_res = msmd.chanwidths(0)[0]/1e9
+    nchan = len(msmd.chanwidths(0))
+    msmd.done()
+    return freq_ini, freq_end, chan_res, nchan
 
 def find_mssources(msfile):
     mssources = ','.join(vishead(msfile,mode='list',listitems='field')['field'][0])
@@ -370,28 +377,24 @@ def get_polarization(msfile):
     return ', '.join(polarization[:,0])
 
 def get_directions(msfile):
-    ms.open(msfile)
-    d = ms.getdata(['field_id', 'axis_info'],ifraxis=True)
-    ms.close()
-    field_ids = np.unique(d['field_id'])
-    tb.open(msfile+'/FIELD')
-    field_names = tb.getcol('NAME')
-    tb.close()
     directions = collections.OrderedDict()
-    for field in field_ids:
-        field_name = field_names[np.argwhere(field_ids == field)[0][0]]
+    msmd.open(msfile)
+    field_names = msmd.namesforfields()
+    msmd.done()
+    for field_id, field_name in enumerate(field_names):
         vhead = vishead(msfile, mode = 'list', listitems = 'ptcs')
-        ra_float = vhead['ptcs'][0]['r'+str(field+1)][0][0][0]*180./np.pi
-        de_float = vhead['ptcs'][0]['r'+str(field+1)][1][0][0]*180./np.pi
+        ra_float = vhead['ptcs'][0]['r'+str(field_id+1)][0][0][0]*180./np.pi
+        de_float = vhead['ptcs'][0]['r'+str(field_id+1)][1][0][0]*180./np.pi
         directions[field_name] = me.direction('J2000', '{}deg'.format(ra_float), '{}deg'.format(de_float))
     return directions
+
 
 def get_distances(msfile, directions=''):
     if directions == '':
         directions = get_directions(msfile)
-    tb.open(msfile+'/FIELD')
-    field_names = tb.getcol('NAME')
-    tb.close()
+    msmd.open(msfile)
+    field_names = msmd.namesforfields()
+    msmd.done()
     separations = collections.OrderedDict()
     # Write all separations in a txt file
     sep_file = open(info_dir+'source_separations.txt', 'wb')
@@ -405,11 +408,8 @@ def get_distances(msfile, directions=''):
 
 def get_integration_time(msfile, usemsmd=True):
     if usemsmd:
-        ms.open(msfile)
-        axis_info = ms.getdata(['scan_number'],ifraxis=True)
-        ms.close()
-        first_scan_number = min(axis_info['scan_number'])
         msmd.open(msfile)
+        first_scan_number = msmd.scannumbers()[0]
         int_time = msmd.exposuretime(first_scan_number)['value']
         msmd.done()
     else: # For CASA versions <5
@@ -437,7 +437,8 @@ def get_msinfo(eMCP, msfile, doprint=False):
     msinfo['band'] = check_band(msfile)
     msinfo['baselines'] = get_baselines(msfile)
     msinfo['num_spw'] = len(vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
-    t_ini, t_end, freq_ini, freq_end, chan_res, nchan = get_timefreq(msfile)
+    t_ini, t_end = get_obstime(msfile)
+    freq_ini, freq_end, chan_res, nchan = get_obsfreq(msfile)
     msinfo['t_ini'] = t_ini
     msinfo['t_end'] = t_end
     msinfo['freq_ini'] = freq_ini
@@ -455,7 +456,7 @@ def get_msinfo(eMCP, msfile, doprint=False):
     logger.info('> Number of spw: {0}'.format(msinfo['num_spw']))
     logger.info('> Channels per spw: {0}'.format(msinfo['nchan']))
     logger.info('> Itegration time {0:3.1f}s'.format(msinfo['int_time']))
-    save_obj(msinfo, info_dir + msinfo['msfilename']+'.msinfo.pkl')
+    #save_obj(msinfo, info_dir + msinfo['msfilename']+'.msinfo.pkl')
     if doprint:
         prt_dict(msinfo)
     eMCP['msinfo'] = msinfo
