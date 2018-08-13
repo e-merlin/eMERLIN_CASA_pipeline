@@ -263,16 +263,19 @@ def check_mixed_mode(vis,mode):
 
 def check_band(msfile):
     # Take first frequency in the MS
-    ms.open(msfile)
-    freq = ms.getdata(['axis_info'])['axis_info']['freq_axis']['chan_freq'][0][0]/1e9
-    ms.close()
+    msmd.open(msfile)
+    freq = msmd.chanfreqs(0)[0]/1e9
+    msmd.done()
     band = ''
     if (freq > 1.2) and (freq < 1.7):
         band = 'L'
-    if (freq > 4) and (freq < 8):
+    elif (freq > 4) and (freq < 8):
         band = 'C'
-    if (freq > 22) and (freq < 24):
+    elif (freq > 22) and (freq < 24):
         band = 'K'
+    else:
+        logger.critical('Cannot determine band from frequency {}'.format(freq))
+        exit_pipeline(eMCP)
     return band
 
 def get_baselines(msfile):
@@ -869,10 +872,9 @@ def flagdata1_apriori(eMCP):
     # Check if all sources are in the MS:
     check_sources_in_ms(eMCP)
     # Find number of channels in MS:
-    ms.open(msfile)
-    axis_info = ms.getdata(['axis_info'], ifraxis=True)
-    ms.close()
-    nchan = len(axis_info['axis_info']['freq_axis']['chan_freq'][:,0])
+    msmd.open(msfile)
+    nchan = len(msmd.chanwidths(0))
+    msmd.done()
     # Flag Lo-Mk2
     if 'Lo' in antennas and 'Mk2' in antennas:
         logger.info('Flagging Lo-Mk2 baseline')
