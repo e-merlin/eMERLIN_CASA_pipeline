@@ -305,9 +305,7 @@ def make_uvcov(msfile, msinfo):
     plots_obs_dir = './weblog/plots/plots_observation/'
     makedir(plots_obs_dir)
     freqs = get_freqs(msfile, allfreqs=True)
-    tb.open(msfile+'/FIELD')
-    fields_ms = tb.getcol('NAME')
-    tb.close()
+    fields_ms = msinfo['sources']['allsources'].split(',')
     #for f in msinfo['sources']['allsources'].split(','):
     for f in fields_ms:
         if f in fields_ms:

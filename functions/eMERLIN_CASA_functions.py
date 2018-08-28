@@ -359,7 +359,10 @@ def get_obsfreq(msfile):
     return freq_ini, freq_end, chan_res, nchan
 
 def find_mssources(msfile):
-    mssources = ','.join(vishead(msfile,mode='list',listitems='field')['field'][0])
+    #mssources = ','.join(vishead(msfile,mode='list',listitems='field')['field'][0])
+    msmd.open(msfile)
+    mssources = ','.join(msmd.fieldnames())
+    msmd.done()
     #logger.info('Sources in MS {0}: {1}'.format(msfile, mssources))
     return mssources
 
