@@ -1410,7 +1410,7 @@ def smooth_caltable(msfile, tablein, plotdir, caltable='', field='', smoothtype=
     return
 
 
-def run_applycal(eMCP, caltables, step):
+def run_applycal(eMCP, caltables, step, dotarget=False):
     logger.info('Start applycal')
     logger.info('Applying calibration up to step: {}'.format(step))
     previous_cal = eMCP['defaults'][step]['apply_calibrators']
@@ -1441,34 +1441,38 @@ def run_applycal(eMCP, caltables, step):
              spwmap    = spwmap)
 
     # 2 correct targets
-    logger.info('Applying calibration to target sources')
-    logger.info('Target fields: {0}'.format(sources['targets']))
-    if previous_cal_targets == '':
-        previous_cal_targets = previous_cal
-    for i, s in enumerate(sources['targets'].split(',')):
-        phscal = sources['phscals'].split(',')[i]
-        if s != '' and s != phscal:
-            # Check if tables exist:
-            for table_i in previous_cal_targets:
-                check_table_exists(caltables, table_i)
-            # Previous calibration
-            gaintable = [caltables[p]['table'] for p in previous_cal_targets]
-            interp    = [caltables[p]['interp'] for p in previous_cal_targets]
-            spwmap    = [caltables[p]['spwmap'] for p in previous_cal_targets]
-            gainfield = [caltables[p]['gainfield'] if len(np.atleast_1d(caltables[p]['gainfield'].split(',')))<2 else phscal for p in previous_cal_targets]
-            logger.info('Field: {0}. Phase calibrator: {1}'.format(s, phscal))
-            logger.info('Previous calibration applied: {0}'.format(str(previous_cal_targets)))
-            logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
-            logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
-            logger.info('Previous calibration interp: {0}'.format(str(interp)))
-            applycal(vis=msfile,
-                     field = s,
-                     gaintable = gaintable,
-                     gainfield = gainfield,
-                     interp    = interp,
-                     spwmap    = spwmap)
-        else:
-            logger.warning('Source {} is not phase-referenced'.format(s))
+    if dotarget:
+        logger.info('Applying calibration to target sources')
+        logger.info('Target fields: {0}'.format(sources['targets']))
+        if previous_cal_targets == '':
+            previous_cal_targets = previous_cal
+        for i, s in enumerate(sources['targets'].split(',')):
+            phscal = sources['phscals'].split(',')[i]
+            if s != '' and s != phscal:
+                # Check if tables exist:
+                for table_i in previous_cal_targets:
+                    check_table_exists(caltables, table_i)
+                # Previous calibration
+                gaintable = [caltables[p]['table'] for p in previous_cal_targets]
+                interp    = [caltables[p]['interp'] for p in previous_cal_targets]
+                spwmap    = [caltables[p]['spwmap'] for p in previous_cal_targets]
+                gainfield = [caltables[p]['gainfield'] if len(np.atleast_1d(caltables[p]['gainfield'].split(',')))<2 else phscal for p in previous_cal_targets]
+                logger.info('Field: {0}. Phase calibrator: {1}'.format(s, phscal))
+                logger.info('Previous calibration applied: {0}'.format(str(previous_cal_targets)))
+                logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
+                logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
+                logger.info('Previous calibration interp: {0}'.format(str(interp)))
+                applycal(vis=msfile,
+                         field = s,
+                         gaintable = gaintable,
+                         gainfield = gainfield,
+                         interp    = interp,
+                         spwmap    = spwmap)
+            else:
+                logger.warning('Source {} is not phase-referenced'.format(s))
+    else:
+        logger.info('Not applying calibration to target sources at this stage')
+
     logger.info('End applycal')
 
 
@@ -1871,7 +1875,7 @@ def initial_gaincal(eMCP, caltables):
     logger.info('End gain_p_ap')
     # Apply calibration if requested:
     if eMCP['inputs']['gain_p_ap'] == 2:
-        logger.warning('Applying short-solint tables to target.')
+        #logger.warning('Applying short-solint tables to target.')
         run_applycal(eMCP, caltables, step = 'gain_p_ap')
     save_obj(caltables, caltables['calib_dir']+'caltables.pkl')
     msg = 'p_solint={0}, jitter_solint={1}, ap_solint={2}'.format(
@@ -2023,7 +2027,7 @@ def eM_fluxscale(eMCP, caltables):
     logger.info('End eM_fluxscale')
     # Apply calibration if requested:
     if eMCP['inputs']['fluxscale'] == 2:
-        logger.warning('Applying short-solint tables to target.')
+        #logger.warning('Applying short-solint tables to target.')
         run_applycal(eMCP, caltables, step = 'fluxscale')
     save_obj(caltables, caltables['calib_dir']+'caltables.pkl')
     msg = ''
@@ -2197,7 +2201,7 @@ def gain_amp_sp(eMCP, caltables):
 def applycal_all(eMCP, caltables):
     #logger.info('Start applycal_all')
     t0 = datetime.datetime.utcnow()
-    run_applycal(eMCP, caltables, step='applycal_all')
+    run_applycal(eMCP, caltables, step='applycal_all', dotarget=True)
     #logger.info('End applycal_all')
     msg = ''
     eMCP = add_step_time('applycal_all', eMCP, msg, t0)
