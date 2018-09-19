@@ -13,7 +13,7 @@ from tasks import *
 import casadef
 
 
-current_version = 'v0.8.16'
+current_version = 'v0.9.01'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -251,6 +251,35 @@ def run_pipeline(inputs=None, inputs_path=''):
     if inputs['gain_p_ap'] > 0:
         eMCP, caltables = em.initial_gaincal(eMCP, caltables)
 
+        logger.info('FLAGDATA with mode RFLAG')
+        flagdata(vis=msfile,
+                 mode='rflag',
+                 field=eMCP['msinfo']['sources']['calsources'],
+                 correlation='ABS_LL,RR',
+                 combinescans = False,
+                 datacolumn='corrected',
+                 winsize=3,
+                 timedevscale=4.0,
+                 freqdevscale=4.0,
+                 extendflags=False,
+                 action='apply',
+                 flagbackup = True)
+    
+        ######## REPEAT   #########
+    
+        logger.warning('REPEATING delay and gain_p_ap calibration!!')
+        ### Delay calibration ###
+        if inputs['delay'] > 0:
+            if not eMCP['defaults']['delay']['use_fringefit']:
+                eMCP, caltables = em.solve_delays(eMCP, caltables)
+            else:
+                logger.info('Full fringe fit selected.')
+                eMCP, caltables = em.delay_fringefit(eMCP, caltables)
+    
+        ### Initial gain calibration ###
+        if inputs['gain_p_ap'] > 0:
+            eMCP, caltables = em.initial_gaincal(eMCP, caltables)
+
     ### Flux scale ###
     if inputs['fluxscale'] > 0:
         eMCP, caltables = em.eM_fluxscale(eMCP, caltables)
@@ -277,6 +306,8 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     ### First images ###
     if inputs['first_images'] > 0:
+        logger.info('Running statwt')
+        statwt(vis=msfile)
         eMCP = em.run_first_images(eMCP)
 
     ### Plot flagstatistics ###

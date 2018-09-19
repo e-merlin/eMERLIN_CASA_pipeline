@@ -1016,7 +1016,6 @@ def flagdata_rflag(eMCP):
     logger.warning('RFLAG only works on calibrated data. Make sure you applied calibration before running this step.')
     msinfo = eMCP['msinfo']
     msfile = eMCP['msinfo']['msfile']
-    sources = eMCP['msinfo']['sources']['allsources']
     rflag = eMCP['defaults']['flag_rflag']
     logger.info("Running flagdata, mode = '{}'".format(rflag['mode']))
     logger.info("ntime='{0}', combinescans={1}, datacolumn='{2}'".format(
@@ -1025,7 +1024,7 @@ def flagdata_rflag(eMCP):
                 rflag['timedevscale'], rflag['freqdevscale']))
     flagdata(vis=msfile,
              mode=rflag['mode'],
-             field=sources,
+             field=eMCP['msinfo']['sources'][rflag['sources']],
              antenna=rflag['antenna'],
              scan=rflag['scan'],
              spw=rflag['spw'],
@@ -1380,7 +1379,7 @@ def run_bandpass(msfile, caltables, caltable_name, minblperant=3, minsnr=2):
              spw       = caltables[caltable_name]['spw'],
              solnorm   = caltables[caltable_name]['solnorm'],
              uvrange   = caltables[caltable_name]['uvrange'],
-             fillgaps  = 16,
+             fillgaps  = caltables[caltable_name]['fillgaps'],
              refant    = caltables['refant'],
              gaintable = gaintable,
              gainfield = gainfield,
@@ -1441,7 +1440,8 @@ def run_applycal(eMCP, caltables, step, dotarget=False):
              spwmap    = spwmap)
 
     # 2 correct targets
-    if dotarget:
+    if previous_cal_targets != []:
+        previous_cal_targets= eMCP['defaults'][step]['apply_targets']
         logger.info('Applying calibration to target sources')
         logger.info('Target fields: {0}'.format(sources['targets']))
         if previous_cal_targets == '':
@@ -1585,7 +1585,7 @@ def delay_fringefit(eMCP, caltables):
     #logger.info('Fringe calibration (rates) plot in: {0}'.format(caltableplot))
     logger.info('Delay calibration plot: {0}'.format(caltableplot))
     logger.info('End delay_fringefit')
-    return caltables
+    return eMCP, caltables
 
 def make_spwmap(caltables, combine):
     if 'spw' in combine:
@@ -1671,6 +1671,10 @@ def initial_bp_cal(eMCP, caltables):
     plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Phase',
                   xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=3)
     logger.info('Bandpass0 phase calibration plot: {0}'.format(caltableplot))
+    logger.warning('Apply phase calibration flags to bandpass, applymode=flagonly')
+    applycal(vis=msfile, gaintable=caltables[caltable_name]['table'],
+             field=msinfo['sources']['bpcal'],
+             applymode='flagonly')
 
     # 2 Amplitude calibration
     caltable_name = bp['ap_tablename']
@@ -1717,6 +1721,7 @@ def initial_bp_cal(eMCP, caltables):
     caltables[caltable_name]['spw'] = make_spw(msinfo, bp['bp_spw'])
     caltables[caltable_name]['combine'] = bp['bp_combine']
     caltables[caltable_name]['uvrange'] = bp['bp_uvrange']
+    caltables[caltable_name]['fillgaps'] = bp['bp_fillgaps']
     caltables[caltable_name]['solnorm'] = bp['bp_solnorm']
     caltables[caltable_name]['spwmap'] = make_spwmap(caltables,bp['bp_combine'])
     caltables[caltable_name]['interp'] = bp['bp_interp']
@@ -1784,33 +1789,37 @@ def initial_gaincal(eMCP, caltables):
     plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Phase',
                   xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=3)
     logger.info('Gain phase calibration plot: {0}'.format(caltableplot))
+    logger.warning('Apply phase calibration flags to calibrators, applymode=flagonly')
+    applycal(vis=msfile, gaintable=caltables[caltable_name]['table'],
+             field=msinfo['sources']['calsources'],
+             applymode='flagonly')
 
-    # 1b Phase jitter correction
-    caltable_name = gain_p_ap['ji_tablename']
-    caltables[caltable_name] = collections.OrderedDict()
-    caltables[caltable_name]['name'] = caltable_name
-    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
-    caltables[caltable_name]['previous_cal'] = gain_p_ap['ji_prev_cal']
-    caltables[caltable_name]['gaintype'] = 'G'
-    caltables[caltable_name]['calmode'] = 'p'
-    caltables[caltable_name]['field'] = msinfo['sources']['calsources']
-    caltables[caltable_name]['solint'] = gain_p_ap['ji_solint']
-    caltables[caltable_name]['combine'] = gain_p_ap['ji_combine']
-    caltables[caltable_name]['spw'] = make_spw(msinfo, gain_p_ap['ji_spw'])
-    caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
-    caltables[caltable_name]['spwmap'] = make_spwmap(caltables,gain_p_ap['ji_combine'])
-    caltables[caltable_name]['interp'] = gain_p_ap['ji_interp']
-    caltables[caltable_name]['minblperant'] = gain_p_ap['ji_minblperant']
-    caltables[caltable_name]['minsnr'] = gain_p_ap['ji_minsnr']
-    caltable = caltables[caltable_name]['table']
-    # Calibration
-    run_gaincal(msfile, caltables, caltable_name)
-    if caltables['Lo_dropout_scans'] != '':
-        remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
-    caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
-    plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Phase',
-                  xaxis='time', yaxis='phase', ymin=-1, ymax=-1, coloraxis='field', symbolsize=3)
-    logger.info('Gain phase calibration {0}: {1}'.format(caltable_name,caltable))
+#    # 1b Phase jitter correction
+#    caltable_name = gain_p_ap['ji_tablename']
+#    caltables[caltable_name] = collections.OrderedDict()
+#    caltables[caltable_name]['name'] = caltable_name
+#    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+#    caltables[caltable_name]['previous_cal'] = gain_p_ap['ji_prev_cal']
+#    caltables[caltable_name]['gaintype'] = 'G'
+#    caltables[caltable_name]['calmode'] = 'p'
+#    caltables[caltable_name]['field'] = msinfo['sources']['calsources']
+#    caltables[caltable_name]['solint'] = gain_p_ap['ji_solint']
+#    caltables[caltable_name]['combine'] = gain_p_ap['ji_combine']
+#    caltables[caltable_name]['spw'] = make_spw(msinfo, gain_p_ap['ji_spw'])
+#    caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
+#    caltables[caltable_name]['spwmap'] = make_spwmap(caltables,gain_p_ap['ji_combine'])
+#    caltables[caltable_name]['interp'] = gain_p_ap['ji_interp']
+#    caltables[caltable_name]['minblperant'] = gain_p_ap['ji_minblperant']
+#    caltables[caltable_name]['minsnr'] = gain_p_ap['ji_minsnr']
+#    caltable = caltables[caltable_name]['table']
+#    # Calibration
+#    run_gaincal(msfile, caltables, caltable_name)
+#    if caltables['Lo_dropout_scans'] != '':
+#        remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
+#    caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
+#    plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Phase',
+#                  xaxis='time', yaxis='phase', ymin=-1, ymax=-1, coloraxis='field', symbolsize=3)
+#    logger.info('Gain phase calibration {0}: {1}'.format(caltable_name,caltable))
 
     # 2 Amplitude calibration
     caltable_name = gain_p_ap['ap_tablename']
@@ -1846,40 +1855,14 @@ def initial_gaincal(eMCP, caltables):
                   xaxis='time', yaxis='amp', ymin=-1, ymax=-1, coloraxis='spw', symbolsize=5)
     logger.info('Gain amplitude calibration plot: {0}'.format(caltableplot))
 
-###    # 3 Phase calibration on phasecal: scan-averaged phase solutions
-###    caltable_name = 'phscal_p_scan.G2'
-###    caltables[caltable_name] = collections.OrderedDict()
-###    caltables[caltable_name]['name'] = caltable_name
-###    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
-###    caltables[caltable_name]['field'] = msinfo['sources']['phscals']
-###    caltables[caltable_name]['gaintype'] = 'G'
-###    caltables[caltable_name]['calmode'] = 'p'
-###    caltables[caltable_name]['solint'] = 'inf'
-###    caltables[caltable_name]['interp'] = 'linear'
-###    caltables[caltable_name]['gainfield'] = msinfo['sources']['phscals']
-###    caltables[caltable_name]['spwmap'] = []
-###    caltables[caltable_name]['combine'] = ''
-###    caltables[caltable_name]['spw'] = '*:'+msinfo['innerchan']
-###    caltable = caltables[caltable_name]['table']
-###    caltables[caltable_name]['previous_cal'] = previous_cal
-###    # Calibration
-###    run_gaincal(msfile, caltables, caltable_name)
-###    if caltables['Lo_dropout_scans'] != '':
-###        remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
-###    logger.info('Gain phase calibration {0}: {1}'.format(caltable_name,caltable))
-###    # Plots
-###    caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
-###    plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Phase',
-###                  xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=5)
-###    logger.info('Gain phase calibration plot: {0}'.format(caltableplot))
     logger.info('End gain_p_ap')
     # Apply calibration if requested:
     if eMCP['inputs']['gain_p_ap'] == 2:
         #logger.warning('Applying short-solint tables to target.')
         run_applycal(eMCP, caltables, step = 'gain_p_ap')
     save_obj(caltables, caltables['calib_dir']+'caltables.pkl')
-    msg = 'p_solint={0}, jitter_solint={1}, ap_solint={2}'.format(
-        gain_p_ap['p_solint'], gain_p_ap['ji_solint'], gain_p_ap['ap_solint'])
+    msg = 'p_solint={0}, ap_solint={1}'.format(
+        gain_p_ap['p_solint'], gain_p_ap['ap_solint'])
     eMCP = add_step_time('gain_p_ap', eMCP, msg, t0)
     return eMCP, caltables
 
@@ -2055,6 +2038,7 @@ def bandpass_sp(eMCP, caltables):
     caltables[caltable_name]['spw'] = make_spw(msinfo, bp_sp['bp_spw'])
     caltables[caltable_name]['combine'] = bp_sp['bp_combine']
     caltables[caltable_name]['uvrange'] = bp_sp['bp_uvrange']
+    caltables[caltable_name]['fillgaps'] = bp_sp['bp_fillgaps']
     caltables[caltable_name]['solnorm'] = bp_sp['bp_solnorm']
     caltables[caltable_name]['spwmap'] = make_spwmap(caltables,bp_sp['bp_combine'])
     caltables[caltable_name]['interp'] = bp_sp['bp_interp']
@@ -2135,11 +2119,11 @@ def gain_amp_sp(eMCP, caltables):
     caltables[caltable_name]['previous_cal'] = amp_sp['p_scan_prev_cal']
     caltables[caltable_name]['gaintype'] = 'G'
     caltables[caltable_name]['calmode'] = 'p'
-    caltables[caltable_name]['field'] = msinfo['sources']['calsources']
+    caltables[caltable_name]['field'] = msinfo['sources']['phscals']
     caltables[caltable_name]['solint'] = amp_sp['p_scan_solint']
     caltables[caltable_name]['combine'] = amp_sp['p_scan_combine']
     caltables[caltable_name]['spw'] = make_spw(msinfo, amp_sp['p_scan_spw'])
-    caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
+    caltables[caltable_name]['gainfield'] = msinfo['sources']['phscals']
     caltables[caltable_name]['spwmap'] = make_spwmap(caltables,amp_sp['p_scan_combine'])
     caltables[caltable_name]['interp'] = amp_sp['p_scan_interp']
     caltables[caltable_name]['minblperant'] = amp_sp['p_scan_minblperant']
@@ -2164,11 +2148,11 @@ def gain_amp_sp(eMCP, caltables):
     caltables[caltable_name]['previous_cal'] = amp_sp['ap_scan_prev_cal']
     caltables[caltable_name]['gaintype'] = 'G'
     caltables[caltable_name]['calmode'] = 'ap'
-    caltables[caltable_name]['field'] = msinfo['sources']['calsources']
+    caltables[caltable_name]['field'] = msinfo['sources']['phscals']
     caltables[caltable_name]['solint'] = amp_sp['ap_scan_solint']
     caltables[caltable_name]['combine'] = amp_sp['ap_scan_combine']
     caltables[caltable_name]['spw'] = make_spw(msinfo, amp_sp['ap_scan_spw'])
-    caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
+    caltables[caltable_name]['gainfield'] = msinfo['sources']['phscals']
     caltables[caltable_name]['spwmap'] = make_spwmap(caltables,amp_sp['ap_scan_combine'])
     caltables[caltable_name]['interp'] = amp_sp['ap_scan_interp']
     caltables[caltable_name]['minblperant'] = amp_sp['ap_scan_minblperant']
