@@ -491,4 +491,31 @@ def flag_statistics(msinfo):
     logger.info('End flagstatistics')
 
 
+def plot_Lo_drops(phscal_scans, scans, amp_mean, lo_dropout_scans, phscal, eMCP):
+    msinfo = eMCP['msinfo']
+    drops = np.array([scan in lo_dropout_scans for scan in phscal_scans])
+    fig = plt.figure(figsize=(30,8))
+    ax1 = fig.add_subplot(111)
+
+    ax1.bar(scans-0.5, np.ones_like(scans)*np.max(amp_mean)*1.2, alpha=0.2,
+            color='0.5', width=1),
+
+    ax1.bar(phscal_scans-0.5, amp_mean, alpha=1.0,
+            color='0.5', width=1,
+            label='{0}'.format(phscal))
+    ax1.bar(phscal_scans[drops]-0.5, amp_mean[drops], alpha=1.0,
+            color='r', width=1,
+            label='{0} Lo dropouts'.format(phscal))
+
+    ax1.legend(loc=0)
+    ax1.xaxis.set_major_locator(MultipleLocator(5))
+    ax1.set_xlim(np.min(phscal_scans)-0.5, np.max(phscal_scans)+0.5)
+    ax1.set_ylim(0, np.max(amp_mean)*1.2)
+    ax1.set_xlabel('Scan number')
+    ax1.set_ylabel('Mean spw Lo raw amplitude')
+
+    plots_obs_dir = './weblog/plots/plots_flagstats/'
+    plot_file_Lo = plots_obs_dir+'{0}_Lo_dropout_scans{1}.png'.format(msinfo['msfilename'],
+                                                       phscal)
+    fig.savefig(plot_file_Lo, bbox_inches='tight')
 

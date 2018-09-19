@@ -13,7 +13,7 @@ from tasks import *
 import casadef
 
 
-current_version = 'v0.9.01'
+current_version = 'v0.9.02'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -125,19 +125,11 @@ def run_pipeline(inputs=None, inputs_path=''):
     ## Pipeline processes, inputs are read from the inputs dictionary
     if inputs['run_importfits'] > 0:
         eMCP = em.import_eMERLIN_fitsIDI(eMCP)
-#        eMCP = em.run_importfitsIDI(eMCP)
-#        em.check_mixed_mode(eMCP['msfile'], mode='split')
-#        if eMCP['defaults']['hanning']['run_hanning']:
-#            eMCP = em.hanning(eMCP)
 
     if os.path.isdir('./'+inputs['inbase']+'.ms') == True:
         msfile = inputs['inbase']+'.ms'
         eMCP, msinfo, msfile = em.get_msinfo(eMCP, msfile)
         em.plot_elev_uvcov(eMCP)
-
-#    ### Convert MS to MMS ###
-#    if eMCP['defaults']['ms2mms']['run_ms2mms']:
-#        eMCP = em.ms2mms(eMCP)
 
     ### check for parallelisation
     if os.path.isdir('./'+inputs['inbase']+'.mms') == True:
@@ -215,7 +207,7 @@ def run_pipeline(inputs=None, inputs_path=''):
                    'phscal_ap_scan.G3']    # This is just used to know which tables to search in weblog
         caltables['all_calsteps'] = all_calsteps
         logger.info('New caltables dictionary created. Saved to: {0}'.format(calib_dir+'caltables.pkl'))
-        caltables['Lo_dropout_scans'] = inputs['Lo_dropout_scans']
+        caltables['Lo_dropout_scans'] = eMCP['msinfo']['Lo_dropout_scans']
         caltables['refant'] = msinfo['refant']
         save_obj(caltables, calib_dir+'caltables.pkl')
 

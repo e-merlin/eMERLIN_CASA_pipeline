@@ -457,6 +457,12 @@ def get_msinfo(eMCP, msfile, doprint=False):
     msinfo['refant'] = define_refant(msfile, msinfo, inputs)
     msinfo['directions'] = get_directions(msfile)
     msinfo['separations'] = get_distances(msfile, directions=msinfo['directions'])
+    # If eMCP['Lo_dropout_scans'] already there, it may have been recomputed in
+    # flag_apriori step.
+    try:
+        msinfo['Lo_dropout_scans'] = eMCP['msinfo']['Lo_dropout_scans']
+    except:
+        msinfo['Lo_dropout_scans'] = eMCP['defaults']['flag_apriori']['Lo_dropout']
     logger.info('> Sources ({0}): {1}'.format(len(msinfo['sources']['mssources'].split(',')),
                                                  msinfo['sources']['mssources']))
     logger.info('> Number of spw: {0}'.format(msinfo['num_spw']))
@@ -864,10 +870,8 @@ def find_quacktime(msinfo, s1, s2):
     return quacktime
 
 def flagdata1_apriori(eMCP):
-    do_quack = eMCP['defaults']['flag_apriori']['do_quack']
     msinfo = eMCP['msinfo']
     msfile = msinfo['msfile']
-    Lo_dropout_scans = eMCP['inputs']['Lo_dropout_scans']
     sources = msinfo['sources']
     logger.info('Start flagdata1_apriori')
     t0 = datetime.datetime.utcnow()
@@ -878,50 +882,68 @@ def flagdata1_apriori(eMCP):
     msmd.open(msfile)
     nchan = len(msmd.chanwidths(0))
     msmd.done()
-    # Flag Lo-Mk2
-    if 'Lo' in antennas and 'Mk2' in antennas:
-        logger.info('Flagging Lo-Mk2 baseline')
-        flagdata(vis=msfile, mode='manual', antenna='Lo*&Mk2*')
     # Subband edges
     channels_to_flag = '*:0~{0};{1}~{2}'.format(nchan/128-1, nchan-nchan/128, nchan-1)
     logger.info('MS has {} channels/spw'.format(nchan))
     logger.info('Flagging edge channels {0}'.format(channels_to_flag))
     flagdata(vis=msfile, mode='manual', spw=channels_to_flag)
     # Slewing (typical):
-    ## Target and phase reference, 20 sec
-    logger.info('Flagging first 20 sec of all sources.')
-    flagdata(vis=msfile, mode='quack', quackinterval=20)
-    # Main calibrators, 5 min
-    bright_cal = join_lists([si for si in ['1331+305','1407+284','0319+415'] if si in
-                  msinfo['sources']['mssources']])
-    if bright_cal != '':
-        logger.info('Flagging 5 min from bright calibrators')
-        flagdata(vis=msfile, field=bright_cal, mode='quack', quackinterval=300)
+    do_quack = eMCP['defaults']['flag_apriori']['do_quack']
+    if do_quack:
+        ## Target and phase reference, 20 sec
+        logger.info('Flagging first 20 sec of all sources.')
+        flagdata(vis=msfile, mode='quack', quackinterval=20)
+        # Main calibrators, 5 min
+        bright_cal = join_lists([si for si in ['1331+305','1407+284','0319+415'] if si in
+                      msinfo['sources']['mssources']])
+        if bright_cal != '':
+            logger.info('Flagging 5 min from bright calibrators')
+            flagdata(vis=msfile, field=bright_cal, mode='quack', quackinterval=300)
+        else:
+            logger.warning('No main calibrators (1331+305, 1407+284, 0319+415) found in data set')
+        for s1, s2 in zip(msinfo['sources']['targets'].split(','),
+                          msinfo['sources']['phscals'].split(',')):
+            sources_in_ms = msinfo['sources']['mssources'].split(',')
+            missing_sources = [si for si in [s1,s2] if si not in sources_in_ms]
+            if missing_sources == []:
+                quacktime = find_quacktime(msinfo, s1, s2)
+                if s1 != '':
+                    logger.info('Flagging first {0} sec of target {1} and phasecal {2}'.format(quacktime, s1, s2))
+                    flagdata(vis=msfile, field=','.join([s1,s2]), mode='quack', quackinterval=quacktime)
+            else:
+                logger.warning('Warning, source(s) {} not present in MS, will not flag this pair'.format(','.join(missing_sources)))
     else:
-        logger.warning('No main calibrators (1331+305, 1407+284, 0319+415) found in data set')
-    for s1, s2 in zip(msinfo['sources']['targets'].split(','),
-                      msinfo['sources']['phscals'].split(',')):
-        sources_in_ms = msinfo['sources']['mssources'].split(',')
-        missing_sources = [si for si in [s1,s2] if si not in sources_in_ms]
-        if missing_sources == []:
-            quacktime = find_quacktime(msinfo, s1, s2)
-            if s1 != '':
-                logger.info('Flagging first {0} sec of target {1} and phasecal {2}'.format(quacktime, s1, s2))
-                flagdata(vis=msfile, field=','.join([s1,s2]), mode='quack', quackinterval=quacktime)
+        logger.info('No quacking selected')
+    # Search for Lo dropouts
+    Lo_dropout_scans = eMCP['defaults']['flag_apriori']['Lo_dropout']
+    if 'Lo' in antennas:
+        if Lo_dropout_scans == 'none':
+            eMCP['msinfo']['Lo_dropout_scans'] = ''
+        elif Lo_dropout_scans == '':
+            if msinfo['sources']['phscals'] != '':
+                logger.info('Searching for Lo dropout scans')
+                logger.info("To avoid this, set deafult Lo_dropout_scans = 'none' "
+                            "and rerun flag_apriori")
+                phscals = msinfo['sources']['phscals'].split(',')
+                Lo_drop_list = find_Lo_drops(msfile,
+                                             phscals, eMCP)
+                eMCP['msinfo']['Lo_dropout_scans'] = ','.join(Lo_drop_list.astype('str'))
+                logger.info('Flagging Lo dropout scans: '
+                            '{0}'.format(eMCP['msinfo']['Lo_dropout_scans']))
+                flagdata(vis=msfile, antenna='Lo', scan=eMCP['msinfo']['Lo_dropout_scans'])
         else:
-            logger.warning('Warning, source(s) {} not present in MS, will not flag this pair'.format(','.join(missing_sources)))
-    # We can add more (Lo is slower, etc).
-    if Lo_dropout_scans != '':
-        if msinfo['sources']['phscals'] != '':
-            logger.info('Flagging Lo dropout scans: {0}. Assuming phasecal is: {1}'.format(Lo_dropout_scans, sources['phscals']))
-            flagdata(vis=msfile, antenna='Lo', field=sources['phscals'], scan=Lo_dropout_scans)
-        else:
-            logger.warning('Lo_dropout_scans selected but no name for phasecal. Please fill the phscal field in the inputs file.')
-    #flag_applied(flags, 'flagdata1_apriori')
+            eMCP['msinfo']['Lo_dropout_scans'] = Lo_dropout_scans
+
+
+    # Flag Lo-Mk2
+    if 'Lo' in antennas and 'Mk2' in antennas:
+        logger.info('Flagging Lo-Mk2 baseline')
+        flagdata(vis=msfile, mode='manual', antenna='Lo*&Mk2*')
     msg = ''
     logger.info('End flagdata1_apriori')
     eMCP = add_step_time('flag_apriori', eMCP, msg, t0)
     return eMCP
+
 
 def flagdata_manual(eMCP, run_name='flag_manual'):
     msfile = eMCP['msinfo']['msfile']
@@ -2635,3 +2657,126 @@ def eMCP_info_start_steps():
     steps['plot_corrected'] = default_value
     steps['first_images'] = default_value
     return steps
+
+
+#########  Search Lo dropout scans  #########
+
+def find_fields_scans(msfile):
+    msmd.open(msfile)
+    scans = msmd.scannumbers()
+    dict_scans = msmd.fieldsforscans(scans, True, asmap=True, obsid=0, arrayid=0)
+    msmd.done()
+    field_for_scan = np.array([dict_scans[str(scan)][0] for scan in scans])
+    return scans, field_for_scan
+
+def find_Lo_amp_spw(msfile, phscal, phscal_scans, spw, eMCP):
+    amp_mean = np.ones_like(phscal_scans) * np.nan
+    amp_std = np.ones_like(phscal_scans) * np.nan
+    Lo_defaults = eMCP['defaults']['flag_apriori']
+    results_tmp = visstat(msfile, scan='',
+                          field = phscal,
+                          antenna='Lo&*',
+                          spw = spw + ':'+eMCP['msinfo']['innerchan'],
+                          datacolumn = Lo_defaults['Lo_datacolumn'],
+                          useflags = Lo_defaults['Lo_useflags'],
+                          correlation = 'RR,LL',
+                          timeaverage = True,
+                          timebin = '9999999s',
+                          timespan = '')
+    for key in results_tmp.keys():
+        scan = key.split(',')[1].split('=')[-1]
+        scan_idx = np.where(phscal_scans==int(scan))[0][0]
+        amp_mean[scan_idx] = results_tmp[key]['median']
+        amp_std[scan_idx] = results_tmp[key]['stddev']
+    return  amp_mean, amp_std
+
+def find_Lo_amp(msfile, phscal, phscal_scans, eMCP, spws):
+    amp_means = np.zeros((len(spws), len(phscal_scans)))
+    amp_stds = np.zeros((len(spws), len(phscal_scans)))
+    logger.info('Analysing {0} scans for phscal: {1}'.format(len(phscal_scans),
+                                                       phscal))
+    for i, spw in enumerate(spws):
+        logger.info('Processing spw: {}'.format(spw))
+        amp_means_i, amp_std_i = find_Lo_amp_spw(msfile, phscal, phscal_scans,
+                                                 spw, eMCP)
+        amp_means[i] = amp_means_i
+        amp_stds[i] = amp_std_i
+    amp_mean = np.average(amp_means, weights=1.0/amp_stds, axis=0)
+    amp_std = np.average(amp_stds, axis=0)
+    return amp_mean, amp_std
+
+def plot_Lo_drops(phscal_scans, amp_mean, lo_dropout_scans, phscal, eMCP):
+    msinfo = eMCP['msinfo']
+    drops = np.array([scan in lo_dropout_scans for scan in phscal_scans])
+    fig = plt.figure(figsize=(30,8))
+    ax1 = fig.add_subplot(111)
+
+    scans, field_for_scan = find_scans(msfile)
+    ax1.bar(scans-0.5, np.ones_like(scans)*np.max(amp_mean)*1.2, alpha=0.2,
+            color='0.5', width=1),
+
+    ax1.bar(phscal_scans-0.5, amp_mean, alpha=1.0,
+            color='0.5', width=1,
+            label='{0}'.format(phscal))
+    ax1.bar(phscal_scans[drops]-0.5, amp_mean[drops], alpha=1.0,
+            color='r', width=1,
+            label='{0} Lo dropouts'.format(phscal))
+
+    ax1.legend(loc=0)
+    ax1.xaxis.set_major_locator(MultipleLocator(5))
+    ax1.set_xlim(np.min(phscal_scans)-0.5, np.max(phscal_scans)+0.5)
+    ax1.set_ylim(0, np.max(amp_mean)*1.2)
+    ax1.set_xlabel('Scan number')
+    ax1.set_ylabel('Mean spw Lo raw amplitude')
+
+    plots_obs_dir = './weblog/plots/plots_flagstats/'
+    plot_file_Lo = plots_obs_dir+'{0}_Lo_dropout_scans{1}.png'.format(msinfo['msfilename'],
+                                                       phscal)
+    fig.savefig(plot_file_Lo, bbox_inches='tight')
+
+def calc_Lo_drops(amp_mean, phscal_scans, threshold=0.5):
+    # Sort amplitude values:
+    a = np.sort(amp_mean[~np.isnan(amp_mean)])
+    # Iterate to create two groups. Compute sum of std of both groups
+    # That sum will be minimum when the two groups are divided by the 
+    # amplitude intersecting the two real distributions
+    astd = np.array([0.0])
+    for i in range(1,len(a)):
+        astd=np.append(astd,np.std(a[:i])+np.std(a[i:]))
+
+    if astd[1:].min() > threshold*astd[1:].max():
+        logger.info('No evidence of bimodality. Lo_drop_scans will be empty')
+        lo_dropout_scans = []
+    else:
+        astd[0]=astd.max()
+        idxmin = np.argmin(astd)
+        separation_amp = a[idxmin]
+        drops = amp_mean<separation_amp
+        lo_dropout_scans = phscal_scans[drops]
+    return lo_dropout_scans
+
+def find_Lo_drops(msfile, phscals, eMCP):
+    spws = eMCP['defaults']['flag_apriori']['Lo_spws']
+    min_scans = eMCP['defaults']['flag_apriori']['Lo_min_scans']
+    logger.info('Searching for possible Lo dropout scans on phscal scans')
+    lo_dropout_scans = np.array([], dtype='int')
+    scans, field_for_scan = find_fields_scans(msfile)
+    for phscal in phscals:
+        logger.info('Now searching for phasecal: {}'.format(phscal))
+        phscal_scans = scans[field_for_scan == phscal]
+        amp_mean, amp_std = find_Lo_amp(msfile, phscal, phscal_scans, eMCP,
+                                        spws)
+        threshold = eMCP['defaults']['flag_apriori']['Lo_threshold']
+        lo_dropout_scans_i = calc_Lo_drops(amp_mean, phscal_scans, threshold)
+        emplt.plot_Lo_drops(phscal_scans, scans, amp_mean,
+                            lo_dropout_scans_i, phscal, eMCP)
+        logger.info('Potential dropout scans: '
+                    '{0}'.format(','.join(lo_dropout_scans_i.astype('str'))))
+        if len(lo_dropout_scans_i) >= min_scans:
+            lo_dropout_scans = np.hstack([lo_dropout_scans, lo_dropout_scans_i])
+        else:
+            logger.info('Less than {} dropout scans, not considered '
+                        'persistent drops'.format(min_scans))
+            lo_dropout_scans = []
+    return lo_dropout_scans
+
