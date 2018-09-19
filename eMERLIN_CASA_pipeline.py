@@ -13,7 +13,7 @@ from tasks import *
 import casadef
 
 
-current_version = 'v0.9.02'
+current_version = 'v0.9.03'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -181,7 +181,7 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     # All the calibration steps will be saved in the dictionary caltables.pkl
     # located in the calib directory. If it does not exist a new one is created.
-    any_calsteps = ['bandpass', 'delay', 'flag_tfcropBP','gain_p_ap','fluxscale','bandpass_sp','gain_amp_sp','applycal_all']
+    any_calsteps = ['bandpass', 'delay', 'gain_p_ap','fluxscale','bandpass_sp','gain_amp_sp','applycal_all']
     if np.array([inputs[cal]>0 for cal in any_calsteps]).any():
         try:
             caltables = load_obj(calib_dir+'caltables.pkl')
@@ -225,41 +225,36 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     ### Initial BandPass calibration ###
     if inputs['bandpass'] > 0:
-        eMCP, caltables = em.initial_bp_cal(eMCP, caltables)
-
-    ### Flagdata using TFCROP and bandpass shape B0
-    if inputs['flag_tfcropBP'] > 0:
+        t0 = datetime.datetime.utcnow()
+        eMCP, caltables = em.initial_bp_cal(eMCP, caltables, doplots=False)
         eMCP = em.flagdata_tfcropBP(eMCP, caltables)
+        logger.info('Repeating initial_bp_cal')
+        eMCP, caltables = em.initial_bp_cal(eMCP, caltables, t0=t0)
+
+#    ### Flagdata using TFCROP and bandpass shape B0
+#    if inputs['flag_tfcropBP'] > 0:
+#        eMCP = em.flagdata_tfcropBP(eMCP, caltables)
 
     ### Delay calibration ###
     if inputs['delay'] > 0:
         if not eMCP['defaults']['delay']['use_fringefit']:
-            eMCP, caltables = em.solve_delays(eMCP, caltables)
+            if inputs['gain_p_ap'] > 0:
+                doplots_delay = False
+            else:
+                doplots_delay = True
+            eMCP, caltables = em.solve_delays(eMCP, caltables, doplots=doplots_delay)
         else:
             logger.info('Full fringe fit selected.')
             eMCP, caltables = em.delay_fringefit(eMCP, caltables)
 
     ### Initial gain calibration ###
     if inputs['gain_p_ap'] > 0:
-        eMCP, caltables = em.initial_gaincal(eMCP, caltables)
+        t0 = datetime.datetime.utcnow()
+        eMCP, caltables = em.initial_gaincal(eMCP, caltables, doplots=False)
+        em.flagdata_rflag_gain_p_ap(eMCP)
 
-        logger.info('FLAGDATA with mode RFLAG')
-        flagdata(vis=msfile,
-                 mode='rflag',
-                 field=eMCP['msinfo']['sources']['calsources'],
-                 correlation='ABS_LL,RR',
-                 combinescans = False,
-                 datacolumn='corrected',
-                 winsize=3,
-                 timedevscale=4.0,
-                 freqdevscale=4.0,
-                 extendflags=False,
-                 action='apply',
-                 flagbackup = True)
-    
-        ######## REPEAT   #########
-    
-        logger.warning('REPEATING delay and gain_p_ap calibration!!')
+        ### REPEAT gain_p_ap
+        logger.info('Repeating delay and gain_p_ap calibration')
         ### Delay calibration ###
         if inputs['delay'] > 0:
             if not eMCP['defaults']['delay']['use_fringefit']:
@@ -267,10 +262,9 @@ def run_pipeline(inputs=None, inputs_path=''):
             else:
                 logger.info('Full fringe fit selected.')
                 eMCP, caltables = em.delay_fringefit(eMCP, caltables)
-    
-        ### Initial gain calibration ###
-        if inputs['gain_p_ap'] > 0:
-            eMCP, caltables = em.initial_gaincal(eMCP, caltables)
+
+        ### Repeat initial gain calibration ###
+        eMCP, caltables = em.initial_gaincal(eMCP, caltables, t0=t0)
 
     ### Flux scale ###
     if inputs['fluxscale'] > 0:
@@ -298,8 +292,6 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     ### First images ###
     if inputs['first_images'] > 0:
-        logger.info('Running statwt')
-        statwt(vis=msfile)
         eMCP = em.run_first_images(eMCP)
 
     ### Plot flagstatistics ###
@@ -315,6 +307,7 @@ def run_pipeline(inputs=None, inputs_path=''):
     os.system('cp eMCP.log {}eMCP.log.txt'.format(info_dir))
     os.system('cp casa_eMCP.log {}casa_eMCP.log.txt'.format(info_dir))
 
+    emwlog.start_weblog(eMCP)
 
     ### Run monitoring for bright sources:
     try:

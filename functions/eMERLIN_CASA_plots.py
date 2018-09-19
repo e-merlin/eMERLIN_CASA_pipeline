@@ -436,7 +436,7 @@ def plot_flagstatistics(flag_stats, msinfo):
     ax4.set_ylim(0,1)
     ax5.set_ylim(0,1)
 
-    ax1.set_xlim(0.5, len(i_scan)+0.5)
+    ax1.set_xlim(np.min(i_scan)-0.5, np.max(i_scan)+0.5)
     ax2.set_xlim(-0.5, len(i_field)-0.5)
     ax3.set_xlim(-0.5, len(i_corr)-0.5)
     ax4.set_xlim(-0.5, len(i_spw)-0.5)
@@ -462,7 +462,7 @@ def plot_flagstatistics(flag_stats, msinfo):
 
     ax1.legend(loc=0)
     ax1.xaxis.set_major_locator(MultipleLocator(5))
-    ax1.set_xlim(0.5, len(i_scan)+0.5)
+    ax1.set_xlim(np.min(i_scan)-0.5, np.max(i_scan)+0.5)
     ax1.set_ylim(0,1)
     ax1.set_xlabel('Scan number')
     ax1.set_ylabel('Flagged fraction')
@@ -492,6 +492,8 @@ def flag_statistics(msinfo):
 
 
 def plot_Lo_drops(phscal_scans, scans, amp_mean, lo_dropout_scans, phscal, eMCP):
+    plots_obs_dir = './weblog/plots/plots_flagstats/'
+    makedir(plots_obs_dir)
     msinfo = eMCP['msinfo']
     drops = np.array([scan in lo_dropout_scans for scan in phscal_scans])
     fig = plt.figure(figsize=(30,8))
