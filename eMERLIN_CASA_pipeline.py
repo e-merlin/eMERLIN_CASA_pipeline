@@ -213,7 +213,7 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     ### Restore flag status at to this point
     if inputs['restore_flags'] == 1:
-        em.restoreflagstatus(msinfo)
+        eMCP = em.restoreflagstatus(eMCP)
 
     ### Load manual flagging file
     if inputs['flag_manual_avg'] == 1:
@@ -296,13 +296,6 @@ def run_pipeline(inputs=None, inputs_path=''):
     if inputs['first_images'] > 0:
         eMCP = em.run_first_images(eMCP)
 
-    ### Plot flagstatistics ###
-    run_flag_statistics = 1
-    if run_flag_statistics > 0:
-        try:
-            emplt.flag_statistics(msinfo)
-        except:
-            pass
 
     # Keep important files
     save_obj(eMCP, info_dir + 'eMCP_info.pkl')

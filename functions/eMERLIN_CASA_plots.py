@@ -369,7 +369,7 @@ def count_flags(flag_stats, label, list_order=[]):
     return item_sorted,flagged_sorted
 
 
-def plot_flagstatistics(flag_stats, msinfo):
+def plot_flagstatistics(flag_stats, msinfo, step):
     # Different colors for each field
     scan_summary = read_scan_summary(msinfo['msfile'])
     scan_fieldID_dict =  {si:scan_summary[str(si)]['0']['FieldId'] for si in scan_summary.keys()}
@@ -382,13 +382,21 @@ def plot_flagstatistics(flag_stats, msinfo):
     i_spw, f_spw = count_flags(flag_stats, 'spw')
     i_ant, f_ant = count_flags(flag_stats, 'antenna', list_order=msinfo['antennas'])
 
-    fig = plt.figure(figsize=(12,14))
-    plt.subplots_adjust(hspace=0.3)
-    ax1 = fig.add_subplot(311)
-    ax2 = fig.add_subplot(323)
-    ax3 = fig.add_subplot(324)
-    ax4 = fig.add_subplot(325)
-    ax5 = fig.add_subplot(326)
+#    fig = plt.figure(figsize=(12,14))
+#    plt.subplots_adjust(hspace=0.3)
+#    ax1 = fig.add_subplot(311)
+#    ax2 = fig.add_subplot(323)
+#    ax3 = fig.add_subplot(324)
+#    ax4 = fig.add_subplot(325)
+#    ax5 = fig.add_subplot(326)
+
+    fig = plt.figure(figsize=(25,4))
+    plt.subplots_adjust(wspace=0.01)
+    ax1 = fig.add_subplot(141)
+    ax2 = fig.add_subplot(142, sharey=ax1)
+#    ax3 = fig.add_subplot(153)
+    ax4 = fig.add_subplot(143, sharey=ax1)
+    ax5 = fig.add_subplot(144, sharey=ax1)
 
     scan_fieldID = np.array([scan_fieldID_dict[str(si)] for si in i_scan])
     for i, fi in enumerate(vis_fields):
@@ -400,21 +408,24 @@ def plot_flagstatistics(flag_stats, msinfo):
                 color=plt.cm.Set1(1.0*i/len(i_field)), width=1,
                 label='{0} ({1})'.format(fi, i), align='center')
 
-    ax3.bar(range(len(i_corr)), f_corr, alpha=0.5, color='k', width=1, align='center')
+#    ax3.bar(range(len(i_corr)), f_corr, alpha=0.5, color='k', width=1, align='center')
     ax4.bar(range(len(i_spw)), f_spw, alpha=0.5, color='k', width=1, align='center')
     ax5.bar(range(len(i_ant)), f_ant, alpha=0.5, color='k', width=1, align='center')
 
     ax2.axes.set_xticks(range(len(i_field)))
-    ax3.axes.set_xticks(range(len(i_corr)))
+#    ax3.axes.set_xticks(range(len(i_corr)))
     ax5.axes.set_xticks(range(len(i_ant)))
     ax2.axes.set_xticks(range(len(i_field)))
     ax2.axes.set_xticklabels([])
-    ax3.axes.set_xticks(range(len(i_corr)))
-    ax3.axes.set_xticklabels(i_corr)
+#    ax3.axes.set_xticks(range(len(i_corr)))
+#    ax3.axes.set_xticklabels(i_corr)
     ax4.axes.set_xticks(range(len(i_spw)))
     ax4.axes.set_xticklabels(range(len(i_spw)))
     ax5.axes.set_xticks(range(len(i_ant)))
     ax5.axes.set_xticklabels(i_ant)
+    ax2.axes.set_yticklabels([])
+    ax4.axes.set_yticklabels([])
+    ax5.axes.set_yticklabels([])
 
     [ax2.annotate('{0} ({1})'.format(si, i), (i+0.1, 0.95), va='top', ha='right', rotation=90) for i, si in enumerate(i_field)]
     #[ax3.annotate(si, (i+0.5, f_corr[i])) for i, si in enumerate(i_corr)]
@@ -422,7 +433,7 @@ def plot_flagstatistics(flag_stats, msinfo):
 
     ax1.set_title('Scan')
     ax2.set_title('Field')
-    ax3.set_title('Correlation')
+#    ax3.set_title('Correlation')
     ax4.set_title('spw')
     ax5.set_title('Antenna')
 
@@ -430,18 +441,18 @@ def plot_flagstatistics(flag_stats, msinfo):
     ax4.set_xlabel('spw')
     ax1.xaxis.set_major_locator(MultipleLocator(10))
     ax1.set_ylabel('Flagged fraction')
-    ax2.set_ylabel('Flagged fraction')
-    ax4.set_ylabel('Flagged fraction')
+    #ax2.set_ylabel('Flagged fraction')
+    #ax4.set_ylabel('Flagged fraction')
 
     ax1.set_ylim(0,1)
     ax2.set_ylim(0,1)
-    ax3.set_ylim(0,1)
+#    ax3.set_ylim(0,1)
     ax4.set_ylim(0,1)
     ax5.set_ylim(0,1)
 
     ax1.set_xlim(np.min(i_scan)-0.5, np.max(i_scan)+0.5)
     ax2.set_xlim(-0.5, len(i_field)-0.5)
-    ax3.set_xlim(-0.5, len(i_corr)-0.5)
+#    ax3.set_xlim(-0.5, len(i_corr)-0.5)
     ax4.set_xlim(-0.5, len(i_spw)-0.5)
     ax5.set_xlim(-0.5, len(i_ant)-0.5)
 
@@ -449,8 +460,8 @@ def plot_flagstatistics(flag_stats, msinfo):
     #ax2.legend(loc=0)
 
     plots_obs_dir = './weblog/plots/plots_flagstats/'
-    plot_file1 = plots_obs_dir+'{0}_flagstats_all.png'.format(msinfo['msfilename'])
-    logger.info('Plot flagstats all: {0}'.format(plot_file1))
+    plot_file1 = plots_obs_dir+'{0}_flagstats_{1}.png'.format(msinfo['msfilename'], step)
+    logger.info('Plot flagstats: {0}'.format(plot_file1))
     fig.savefig(plot_file1, bbox_inches='tight')
 
     # Plot only scans:
@@ -470,30 +481,10 @@ def plot_flagstatistics(flag_stats, msinfo):
     ax1.set_xlabel('Scan number')
     ax1.set_ylabel('Flagged fraction')
 
-    plot_file2 = plots_obs_dir+'{0}_flagstats_scans.png'.format(msinfo['msfilename'])
+    plot_file2 = plots_obs_dir+'{0}_flagstats_scans_{1}.png'.format(msinfo['msfilename'],
+                                                       step)
     logger.info('Plot flagstats scans: {0}'.format(plot_file2))
     fig.savefig(plot_file2, bbox_inches='tight')
-
-
-def flag_statistics(msinfo):
-    logger.info(line0)
-    plots_obs_dir = './weblog/plots/plots_flagstats/'
-    makedir(plots_obs_dir)
-    logger.info('Start flagstatistics')
-    logger.info('Running flagdata on {0}')
-    logger.info('mode="summary", action="calculate", antenna="*&*"'.format(msinfo['msfile']))
-    flag_stats = flagdata(vis=msinfo['msfile'], mode='summary', action='calculate', display='none', antenna='*&*')
-    save_obj(flag_stats, weblog_dir + 'plots/plots_flagstats/flagstats.pkl')
-    logger.info('flagstats file saved to: ./weblog/plots/plots_flagstats/flagstats.pkl')
-    # For testing (read instead of producing):
-#    try:
-#        flag_stats = load_obj('./weblog/plots/plots_flagstats/flagstats')
-#    except:
-#       flag_stats = flagdata(vis=msinfo['msfile'], mode='summary', action='calculate', display='none', antenna='*&*') 
-#        save_obj(flag_stats, 'flagstats')
-    logger.info('Flag statistics ready. Now plotting.')
-    plot_flagstatistics(flag_stats, msinfo)
-    logger.info('End flagstatistics')
 
 
 def plot_Lo_drops(phscal_scans, scans, amp_mean, lo_dropout_scans, phscal, eMCP):

@@ -718,6 +718,8 @@ def import_eMERLIN_fitsIDI(eMCP):
     eMCP, msinfo, msfile = get_msinfo(eMCP, msfile)
     eMCP = add_step_time('fixvis', eMCP, msg, t0, doweblog=True)
     eMCP['msfile'] = msfile
+    flag_statistics(eMCP, step='import')
+    kk = raw_input('continue...')
     return eMCP
 
 
@@ -782,6 +784,7 @@ def run_aoflagger_fields(eMCP):
             logger.info('Last AOFlagger command: {}'.format(flagcommand))
         ms.writehistory(message='eMER_CASA_Pipeline: AOFlag field {0} with strategy {1}:'.format(field, aostrategy),msname=msfile)
     #flag_applied(flags, 'flagdata0_aoflagger')
+    flag_statistics(eMCP, step='aoflagger')
     logger.info('End run_aoflagger_fields')
     msg = ''
     eMCP = add_step_time('aoflagger', eMCP, msg, t0)
@@ -943,6 +946,7 @@ def flagdata1_apriori(eMCP):
     if 'Lo' in antennas and 'Mk2' in antennas:
         logger.info('Flagging Lo-Mk2 baseline')
         flagdata(vis=msfile, mode='manual', antenna='Lo*&Mk2*')
+    flag_statistics(eMCP, step='apriori')
     msg = ''
     logger.info('End flagdata1_apriori')
     eMCP = add_step_time('flag_apriori', eMCP, msg, t0)
@@ -966,6 +970,7 @@ def flagdata_manual(eMCP, run_name='flag_manual'):
         exit_pipeline()
     logger.info('Applying manual flags from file: {0}'.format(inpfile))
     flagdata(vis=msfile, mode='list', inpfile=inpfile)
+    flag_statistics(eMCP, step=run_name)
     logger.info('End {}'.format(run_name))
     msg = 'file={0}'.format(inpfile)
     eM = add_step_time(run_name, eMCP, msg, t0)
@@ -1085,6 +1090,7 @@ def flagdata_rflag(eMCP):
              action=rflag['action'],
              display=rflag['display'],
              flagbackup=rflag['flagbackup'])
+    flag_statistics(eMCP, step='flag_rflag')
     logger.info('End flagdata_rflag')
     msg = "ntime={0}, timedevscale={1}, freqdevscale={2}".format(
             rflag['ntime'],
@@ -1161,65 +1167,6 @@ def find_refant(msfile, field, spw='3'):
     logger.info('Preference antennas refant = {0}'.format(refant))
     return refant, refant_pref
 
-#def find_refant(msfile, field, antennas='', spws='', scan=''):
-#    logger.info('Searching refant automatically')
-#    ms.open(msfile)
-#    d = ms.getdata(['axis_info'],ifraxis=True)
-#    ms.close()
-#    if len(antennas)==0:
-#        antennas = np.unique('-'.join(d['axis_info']['ifr_axis']['ifr_name']).split('-'))
-#    else:
-#        antennas = np.array(antennas.strip(' ').split(','))
-#    nchan = len(d['axis_info']['freq_axis']['chan_freq'][:,0])
-#    num_spw = len(vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
-#    channels = ':{0}~{1}'.format(nchan - 3*nchan/4, nchan - 1*nchan/4)
-#    if spws == '':
-#        spws = range(num_spw)
-#    else:
-#        spws = spws.strip(' ').split(',')
-#
-#    logger.info('Searching best antenna among {0}'.format(','.join(antennas)))
-#    logger.info('Considering best S/N for spw {0}, channels {1}, field {2}'.format(','.join(spws), channels, field))
-#
-#    snr = np.zeros((2, len(antennas), len(spws)))
-#    for i, corr in enumerate(['RR', 'LL']):
-#        for j, anten in enumerate(antennas):
-#            print('Checking antenna {0}, corr {1}'.format(anten, corr))
-#            for k, spw in enumerate(spws):
-#                snrj = []
-#                for basel in antennas:
-#                    if basel != anten:
-#                        try:
-#                            d2 = visstat(msfile, antenna='{}&{}'.format(anten, basel),
-#                                         field=field, axis='amplitude', scan=scan,
-#                                         spw=str(spw)+channels, correlation=corr)
-#                            snrj.append(d2['DATA']['median']/d2['DATA']['stddev'])
-#                        except:
-#                            snrj.append(0.0)
-#                snr[i, j, k] = np.mean(snrj)
-#
-#    # Sorting antennas by average S/N, averaged in polarization and spw.
-#    snr_avg = np.mean(snr, axis=(0,2))
-#    pref_ant = antennas[np.argsort(snr_avg)][::-1]
-#    snr_avg_sorted = snr_avg[np.argsort(snr_avg)][::-1]
-#
-#    logger.info('Average S/N on baselines to each antenna:')
-#    for p, s in zip(pref_ant, snr_avg_sorted):
-#        logger.info('{0:3s}  {1:4.1f}'.format(p, s))
-#
-#    # This will check if Mk2, Pi or Da are part of the best three antennas and give them
-#    # priority. Then, it will add any other except Lo.
-#    u, ind = np.unique([a for a  in pref_ant[:3] if a in ['Mk2','Pi','Da']] +\
-#    [a for a  in pref_ant if a in ['Mk2','Pi','Da','Kn', 'Cm', 'De']], return_index=True)
-#
-#    refant = ','.join(u[np.argsort(ind)])
-#    refant_pref = collections.OrderedDict()
-#    refant_pref['snr'] = snr
-#    refant_pref['pref_ant'] = pref_ant
-#    refant_pref['snr_avg_sorted'] = snr_avg_sorted
-#    logger.info('Preference antennas refant = {0}'.format(refant))
-#    return refant, refant_pref
-
 
 def plot_caltable(msinfo, caltable, plot_file, xaxis='', yaxis='', title='',
                   ymin=-1, ymax=-1, coloraxis='spw', symbolsize=8):
@@ -1253,11 +1200,17 @@ def saveflagstatus(eMCP):
     return eMCP
 
 
-def restoreflagstatus(msinfo):
+def restoreflagstatus(eMCP):
+    msinfo = eMCP['msinfo']
+    t0 = datetime.datetime.utcnow()
     logger.info('Starting restoreflagstatus')
     logger.info('Restoring flagging status in versionname=\'initialize_flags\'')
     flagmanager(msinfo['msfile'], mode='restore', versionname='initialize_flags',
              merge='replace')
+    flag_statistics(eMCP, step='restore_flags')
+    msg = 'versionname=initialize_flags'
+    eMCP = add_step_time('restore_flags', eMCP, msg, t0)
+    return eMCP
 
 def check_sources_in_ms(eMCP):
     msfile = eMCP['msinfo']['msfile']
@@ -1859,6 +1812,7 @@ def initial_bp_cal(eMCP, caltables, doplots=True, t0='none', forceapply=False):
     # Apply calibration if requested:
     if eMCP['inputs']['bandpass'] == 2 or forceapply:
         run_applycal(eMCP, caltables, step='bandpass')
+    flag_statistics(eMCP, step='initial_bpcal')
     save_obj(caltables, caltables['calib_dir']+'caltables.pkl')
     msg = 'field={0}, combine={1}, solint={2}'.format(
                     msinfo['sources']['bpcal'],
@@ -1952,6 +1906,7 @@ def initial_gaincal(eMCP, caltables, doplots=True, t0='none', forceapply=False):
     if eMCP['inputs']['gain_p_ap'] == 2 or forceapply:
         #logger.warning('Applying short-solint tables to target.')
         run_applycal(eMCP, caltables, step = 'gain_p_ap')
+    flag_statistics(eMCP, step='initial_gaincal')
     save_obj(caltables, caltables['calib_dir']+'caltables.pkl')
     msg = 'p_solint={0}, ap_solint={1}'.format(
         gain_p_ap['p_solint'], gain_p_ap['ap_solint'])
@@ -2279,6 +2234,7 @@ def applycal_all(eMCP, caltables):
     t0 = datetime.datetime.utcnow()
     run_applycal(eMCP, caltables, step='applycal_all', dotarget=True)
     #logger.info('End applycal_all')
+    flag_statistics(eMCP, step='applycal_all')
     msg = ''
     eMCP = add_step_time('applycal_all', eMCP, msg, t0)
     return eMCP
@@ -2716,6 +2672,7 @@ def eMCP_info_start_steps():
     steps['average'] = default_value
     steps['plot_data'] = default_value
     steps['save_flags'] = default_value
+    steps['restore_flags'] = default_value
     steps['flag_manual_avg'] = default_value
     steps['init_models'] = default_value
     steps['bandpass'] = default_value
@@ -2727,7 +2684,6 @@ def eMCP_info_start_steps():
     steps['gain_amp_sp'] = default_value
     steps['applycal_all'] = default_value
     steps['flag_rflag'] = default_value
-    steps['applycal_all'] = default_value
     steps['plot_corrected'] = default_value
     steps['first_images'] = default_value
     return steps
@@ -2854,3 +2810,19 @@ def find_Lo_drops(msfile, phscals, eMCP):
             lo_dropout_scans = []
     return lo_dropout_scans
 
+
+def flag_statistics(eMCP, step):
+    msinfo = eMCP['msinfo']
+    logger.info(line0)
+    logger.info('Start flagstatistics')
+    plots_obs_dir = './weblog/plots/plots_flagstats/'
+    makedir(plots_obs_dir)
+    logger.info('Running flagdata on {0}'.format(step))
+    logger.info('mode="summary", action="calculate", antenna="*&*"'.format(msinfo['msfile']))
+    flag_stats = flagdata(vis=msinfo['msfile'], mode='summary', action='calculate', display='none', antenna='*&*')
+    outfile = weblog_dir + 'plots/plots_flagstats/flagstats_{}.pkl'.format(step)
+    save_obj(flag_stats, outfile)
+    logger.info('flagstats file saved to: {}'.format(outfile))
+    logger.info('Flag statistics ready. Now plotting.')
+    emplt.plot_flagstatistics(flag_stats, msinfo, step)
+    logger.info('End flagstatistics')

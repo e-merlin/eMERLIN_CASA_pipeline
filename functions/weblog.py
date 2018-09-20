@@ -19,6 +19,7 @@ calib_dir  = './weblog/calib/'
 plots_dir  = './weblog/plots/'
 logs_dir   = './logs/'
 images_dir = './weblog/images/'
+flagstats_dir = './weblog/flagstats/'
 
 weblog_link= './'
 info_link  = './info/'
@@ -71,6 +72,7 @@ def weblog_header(wlog, section, project):
     wlog.write(weblog_button(weblog_link, 'Pipeline info', 'pipelineinfo'))
     wlog.write(weblog_button(weblog_link, 'Calibration', 'calibration'))
     wlog.write(weblog_button(weblog_link, 'Plots', 'plots'))
+    wlog.write(weblog_button(weblog_link, 'Flag statistics', 'flagstats'))
     wlog.write(weblog_button(weblog_link, 'Images', 'images'))
     wlog.write(weblog_button(weblog_link, 'Download data', 'download'))
     wlog.write('</form>\n')
@@ -267,16 +269,16 @@ def plots_uvplt(msinfo, wlog):
             wlog.write('<td><a href = ".{0}"><img style="max-width:960px" src=".{0}"></a></td>\n'.format(p_model))
         wlog.write('</tr></table><br><br>\n<hr>\n')
 
-def plots_flagstats(msinfo, wlog):
-    wlog.write('<h3>Flag statistics</h3>\n')
-    all_plots = np.sort(glob.glob('./weblog/plots/plots_flagstats/*png'))
-    #wlog.write('<h4>{0}</h4>\n'.format(msinfo['msfilename']))
-    plots_obs_dir = './weblog/plots/plots_flagstats/'
-    plot_file1 = plots_obs_dir+'{0}_flagstats_all.png'.format(msinfo['msfilename'])
-    plot_file2 = plots_obs_dir+'{0}_flagstats_scans.png'.format(msinfo['msfilename'])
-    wlog.write('<a href = ".{0}"><img style="max-width:960px" src=".{0}"></a><br>\n'.format(plot_file1))
-    wlog.write('High definition per scan:<br>\n')
-    wlog.write('<a href = ".{0}"><img style="max-width:960px" src=".{0}"></a><br>\n'.format(plot_file2))
+#def plots_flagstats(msinfo, wlog):
+#    wlog.write('<h3>Flag statistics</h3>\n')
+#    all_plots = np.sort(glob.glob('./weblog/plots/plots_flagstats/*png'))
+#    #wlog.write('<h4>{0}</h4>\n'.format(msinfo['msfilename']))
+#    plots_obs_dir = './weblog/plots/plots_flagstats/'
+#    plot_file1 = plots_obs_dir+'{0}_flagstats_all.png'.format(msinfo['msfilename'])
+#    plot_file2 = plots_obs_dir+'{0}_flagstats_scans.png'.format(msinfo['msfilename'])
+#    wlog.write('<a href = ".{0}"><img style="max-width:960px" src=".{0}"></a><br>\n'.format(plot_file1))
+#    wlog.write('High definition per scan:<br>\n')
+#    wlog.write('<a href = ".{0}"><img style="max-width:960px" src=".{0}"></a><br>\n'.format(plot_file2))
 
 def write_caltable(caltable, wlog):
     wlog.write('<table bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:40%">\n')
@@ -399,6 +401,42 @@ def weblog_calibration(msinfo):
     wlog.close()
 
 
+def weblog_flagstats(msinfo):
+    ###### Flag statistics page
+    wlog = open(weblog_dir + "flagstats.html","w")
+    weblog_header(wlog, 'Flag statistics', msinfo['run'])
+    #------------------------------------------
+    wlog.write('High-resolution plots in step title.<br><br>')
+    flagstats_steps = ['import','aoflagger',
+                       'apriori',
+                       'flag_manual',
+                       'restore_flags',
+                       'flag_manual_avg',
+                       'initial_bpcal',
+                       'initial_gaincal',
+                       'applycal_all',
+                       'flag_rflag']
+    prev_perc_flagged = 0.0
+    for step in flagstats_steps:
+        try:
+            flag_stats = load_obj('./weblog/plots/plots_flagstats/flagstats_{}.pkl'.format(step))
+            perc_flagged = flag_stats['flagged']/flag_stats['total']*100.
+            all_plots = np.sort(glob.glob('./weblog/plots/plots_flagstats/*{}.png'.format(step)))
+            if len(all_plots) > 0:
+                wlog.write('<a href=".{0}" target="_blank">{1}</a> (Total: '
+                           '{2:3.1f}%. Increase: {3:3.1f}%)<br>\n'.format(all_plots[1],
+                                                                step,
+                                                                perc_flagged,
+                                                                perc_flagged-prev_perc_flagged))
+                wlog.write('<a href = ".{0}"><img style="max-width:1200px" src=".{0}"></a><br>\n'.format(all_plots[0]))
+            prev_perc_flagged = perc_flagged
+        except:
+            pass
+    #------------------------------------------
+    weblog_foot(wlog)
+    wlog.close()
+
+
 def weblog_plots(msinfo):
     ###### Plots page
     wlog = open(weblog_dir + "plots.html","w")
@@ -413,9 +451,9 @@ def weblog_plots(msinfo):
     if (os.path.isdir('./weblog/plots/plots_uvplt/')) and \
        (os.listdir('./weblog/plots/plots_uvplt/')):
         plots_uvplt(msinfo, wlog)
-    if (os.path.isdir('./weblog/plots/plots_flagstats/')) and \
-    (os.listdir('./weblog/plots/plots_flagstats/')):
-        plots_flagstats(msinfo, wlog)
+#    if (os.path.isdir('./weblog/plots/plots_flagstats/')) and \
+#    (os.listdir('./weblog/plots/plots_flagstats/')):
+#        plots_flagstats(msinfo, wlog)
     #------------------------------------------
     weblog_foot(wlog)
     wlog.close()
@@ -509,6 +547,7 @@ def start_weblog(eMCP, silent=False):
     weblog_pipelineinfo(eMCP)
     weblog_calibration(msinfo)
     weblog_plots(msinfo)
+    weblog_flagstats(msinfo)
     weblog_images(eMCP)
     weblog_download(msinfo)
 
