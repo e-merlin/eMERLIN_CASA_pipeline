@@ -32,6 +32,8 @@ calib_link = './calib/'
 plots_link = './plots/'
 images_link= './images/'
 
+line0 = '-'*10
+
 # Functions to save and load dictionaries
 def save_obj(obj, name):
     with open(name, 'wb') as f:
@@ -144,10 +146,11 @@ def single_4plot(msinfo, field, datacolumn, plots_data_dir):
     xselfscale = True, xsharedaxis = True, coloraxis   = 'corr', plotrange=[-1,-1,-180,180],
     plotfile = plot_file+'3.png', expformat = 'png', customsymbol = True, symbolshape = 'circle',
     width=w, height=h, symbolsize=4,clearplots=False, overwrite=True, showgui=showgui)
-    logger.info('Finished field: {0}, output: {1}{{0-4}}.png'.format(field, plot_file))
+    logger.info('Finished {0}: {1}{{0-4}}.png'.format(field, plot_file))
 
 
 def make_4plots(eMCP, datacolumn='data'):
+    logger.info(line0)
     msinfo = eMCP['msinfo']
     msfile = eMCP['msinfo']['msfile']
     logger.info('Start plot_{}'.format(datacolumn))
@@ -160,7 +163,7 @@ def make_4plots(eMCP, datacolumn='data'):
         plots_data_dir = './weblog/plots/'
     makedir(plots_data_dir)
     fields = msinfo['sources']['allsources'].split(',')
-    logger.info('Producing in parallel visibility plots for fields: {}'.format(msinfo['sources']['allsources']))
+    logger.info('Producing visibility plots for: {}'.format(msinfo['sources']['allsources']))
     for field in fields:
         single_4plot(msinfo, field, datacolumn, plots_data_dir)
 ##    num_proc = eMCP['defaults']['plot_data']['num_proc']
@@ -240,7 +243,7 @@ def make_uvplt(eMCP):
     plots_data_dir = './weblog/plots/plots_uvplt/'
     makedir(plots_data_dir)
     fields = msinfo['sources']['allsources'].split(',')
-    logger.info('Producing in parallel uvplot for fields: {}'.format(msinfo['sources']['allsources']))
+    logger.info('Producing uvplot for: {}'.format(msinfo['sources']['allsources']))
     # UVplot all sources
     for field in fields:
         single_uvplt(msinfo, field, plots_data_dir)
@@ -447,7 +450,7 @@ def plot_flagstatistics(flag_stats, msinfo):
 
     plots_obs_dir = './weblog/plots/plots_flagstats/'
     plot_file1 = plots_obs_dir+'{0}_flagstats_all.png'.format(msinfo['msfilename'])
-    logger.info('Plotting flagstats all: {0}'.format(plot_file1))
+    logger.info('Plot flagstats all: {0}'.format(plot_file1))
     fig.savefig(plot_file1, bbox_inches='tight')
 
     # Plot only scans:
@@ -468,15 +471,17 @@ def plot_flagstatistics(flag_stats, msinfo):
     ax1.set_ylabel('Flagged fraction')
 
     plot_file2 = plots_obs_dir+'{0}_flagstats_scans.png'.format(msinfo['msfilename'])
-    logger.info('Plotting flagstats scans: {0}'.format(plot_file2))
+    logger.info('Plot flagstats scans: {0}'.format(plot_file2))
     fig.savefig(plot_file2, bbox_inches='tight')
 
 
 def flag_statistics(msinfo):
+    logger.info(line0)
     plots_obs_dir = './weblog/plots/plots_flagstats/'
     makedir(plots_obs_dir)
     logger.info('Start flagstatistics')
-    logger.info('Running flagdata on {0}, mode="summary", action="calculate", antenna="*&*"'.format(msinfo['msfile']))
+    logger.info('Running flagdata on {0}')
+    logger.info('mode="summary", action="calculate", antenna="*&*"'.format(msinfo['msfile']))
     flag_stats = flagdata(vis=msinfo['msfile'], mode='summary', action='calculate', display='none', antenna='*&*')
     save_obj(flag_stats, weblog_dir + 'plots/plots_flagstats/flagstats.pkl')
     logger.info('flagstats file saved to: ./weblog/plots/plots_flagstats/flagstats.pkl')

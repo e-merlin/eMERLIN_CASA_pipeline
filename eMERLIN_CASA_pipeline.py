@@ -13,7 +13,7 @@ from tasks import *
 import casadef
 
 
-current_version = 'v0.9.03'
+current_version = 'v0.9.04'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -199,7 +199,6 @@ def run_pipeline(inputs=None, inputs_path=''):
                    'bpcal.B0',
                    'delay.K1',
                    'allcal_p.G0',
-                   'allcal_p_jitter.G0',
                    'allcal_ap.G1',
                    'bpcal_sp.B1',
                    'allcal_ap.G3',
@@ -209,6 +208,7 @@ def run_pipeline(inputs=None, inputs_path=''):
         logger.info('New caltables dictionary created. Saved to: {0}'.format(calib_dir+'caltables.pkl'))
         caltables['Lo_dropout_scans'] = eMCP['msinfo']['Lo_dropout_scans']
         caltables['refant'] = msinfo['refant']
+        caltables['refantmode'] = eMCP['defaults']['global']['refantmode']
         save_obj(caltables, calib_dir+'caltables.pkl')
 
     ### Restore flag status at to this point
@@ -226,7 +226,8 @@ def run_pipeline(inputs=None, inputs_path=''):
     ### Initial BandPass calibration ###
     if inputs['bandpass'] > 0:
         t0 = datetime.datetime.utcnow()
-        eMCP, caltables = em.initial_bp_cal(eMCP, caltables, doplots=False)
+        eMCP, caltables = em.initial_bp_cal(eMCP, caltables, doplots=False,
+                                            forceapply=True)
         eMCP = em.flagdata_tfcropBP(eMCP, caltables)
         logger.info('Repeating initial_bp_cal')
         eMCP, caltables = em.initial_bp_cal(eMCP, caltables, t0=t0)
@@ -250,7 +251,8 @@ def run_pipeline(inputs=None, inputs_path=''):
     ### Initial gain calibration ###
     if inputs['gain_p_ap'] > 0:
         t0 = datetime.datetime.utcnow()
-        eMCP, caltables = em.initial_gaincal(eMCP, caltables, doplots=False)
+        eMCP, caltables = em.initial_gaincal(eMCP, caltables, doplots=False,
+                                             forceapply=True)
         em.flagdata_rflag_gain_p_ap(eMCP)
 
         ### REPEAT gain_p_ap

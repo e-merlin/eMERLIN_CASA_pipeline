@@ -40,6 +40,8 @@ calib_link = './calib/'
 plots_link = './plots/'
 images_link= './images/'
 
+line0 = '-'*10
+
 def check_in(pipeline_path):
     try:
         opts, arg = getopt.getopt(sys.argv[1:],'i:c:hg',['help','input=','gui'])
@@ -454,7 +456,7 @@ def get_msinfo(eMCP, msfile, doprint=False):
     msinfo['nchan'] = nchan
     msinfo['innerchan'] = '{0:.0f}~{1:.0f}'.format(0.1*(nchan-nchan/512.), 0.9*(nchan-nchan/512.))
     msinfo['polarizations'] = get_polarization(msfile)
-    msinfo['refant'] = define_refant(msfile, msinfo, inputs)
+    msinfo['refant'] = define_refant(eMCP, msfile)
     msinfo['directions'] = get_directions(msfile)
     msinfo['separations'] = get_distances(msfile, directions=msinfo['directions'])
     # If eMCP['Lo_dropout_scans'] already there, it may have been recomputed in
@@ -558,7 +560,8 @@ def plot_elev_uvcov(eMCP):
                                                 eMCP['msinfo']['msfilename'])
     if os.path.isfile(elevplot):
         logger.info('Elevation plot found.')
-        logger.info('To regenerate elev and uvcov plots remove {}.'.format(elevplot))
+        logger.info('To regenerate elev and uvcov plots remove:')
+        logger.info('{}.'.format(elevplot))
     else:
         emplt.make_elevation(msfile, msinfo)
         emplt.make_uvcov(msfile, msinfo)
@@ -923,7 +926,7 @@ def flagdata1_apriori(eMCP):
             if msinfo['sources']['phscals'] != '':
                 logger.info('Searching for Lo dropout scans')
                 logger.info("To avoid this, set deafult Lo_dropout_scans = 'none' "
-                            "and rerun flag_apriori")
+                            "when rerun flag_apriori")
                 phscals = msinfo['sources']['phscals'].split(',')
                 Lo_drop_list = find_Lo_drops(msfile,
                                              phscals, eMCP)
@@ -933,7 +936,8 @@ def flagdata1_apriori(eMCP):
                 flagdata(vis=msfile, antenna='Lo', scan=eMCP['msinfo']['Lo_dropout_scans'])
         else:
             eMCP['msinfo']['Lo_dropout_scans'] = Lo_dropout_scans
-
+    else:
+        eMCP['msinfo']['Lo_dropout_scans'] = ''
 
     # Flag Lo-Mk2
     if 'Lo' in antennas and 'Mk2' in antennas:
@@ -968,11 +972,10 @@ def flagdata_manual(eMCP, run_name='flag_manual'):
     return eMCP
 
 def flagdata_tfcropBP(eMCP, caltables):
+    logger.info(line0)
     logger.info('Start flagdata_tfcropBP')
     # If B0 has not been applied before, do it now
-    if eMCP['inputs']['bandpass'] != 2:
-        run_applycal(eMCP, caltables, step = 'bandpass')
-    t0 = datetime.datetime.utcnow()
+    #t0 = datetime.datetime.utcnow()
     msinfo = eMCP['msinfo']
     msfile = eMCP['msinfo']['msfile']
     tfcrop = eMCP['defaults']['bandpass']['flag_tfcrop']
@@ -1056,6 +1059,7 @@ def flagdata_rflag_gain_p_ap(eMCP):
     return eMCP
 
 def flagdata_rflag(eMCP):
+    logger.info(line0)
     logger.info('Start flagdata_rflag')
     t0 = datetime.datetime.utcnow()
     msinfo = eMCP['msinfo']
@@ -1090,81 +1094,131 @@ def flagdata_rflag(eMCP):
     return eMCP
 
 
-def define_refant(msfile, msinfo, inputs):
-    refant0 = inputs['refant']
-    refant_user = refant0.replace(' ', '').split(',')
-    refant_in_ms = (np.array([ri in msinfo['antennas'] for ri in refant_user])).all()
-    if not refant_in_ms:
-        if refant0 != '':
-            logger.warning('Selected reference antenna(s) {0} not in MS! User selection will be ignored'.format(refant0))
-        # Finding best antennas for refant
-        logger.info('Estimating best reference antenna. To avoid this, set a reference antenna in the inputs file.')
-        refant, refant_pref = find_refant(msfile, field=msinfo['sources']['bpcal'],
-                                             antennas='Mk2,Pi,Da,Kn', spws='2,3', scan='')
+def define_refant(eMCP, msfile):
+    if eMCP['inputs']['refant'] == 'compute':
+        recompute = True
+        logger.info('Forcing recompute of refant')
+    elif eMCP['inputs']['refant'] == '':
+        try:
+            refant = eMCP['msinfo']['refant']
+            logger.info('Refant already in eMCP["msinfo"], will not recompute')
+            recompute = False
+        except:
+            logger.info('No refant specified. Will compute optimal')
+            recompute = True
     else:
-        refant = ','.join(refant_user)
-    #logger.info('Refant: {}'.format(refant))
+        recompute = False
+        refant = eMCP['inputs']['refant']
+    if recompute:
+        logger.info('Recomputing best reference antenna')
+        refant0 = eMCP['inputs']['refant']
+        refant_user = refant0.replace(' ', '').split(',')
+        antennas = get_antennas(msfile)
+        refant_in_ms = (np.array([ri in antennas for ri in refant_user])).all()
+        if not refant_in_ms:
+            if refant0 != '' and eMCP['inputs']['refant'] != 'compute':
+                logger.warning('Selected reference antenna(s) {0} not in MS! User selection will be ignored'.format(refant0))
+            # Finding best antennas for refant
+            logger.info('Estimating best reference antenna.')
+            logger.info('To avoid this, set a reference antenna in the inputs file.')
+            refant, refant_pref = find_refant(msfile, field=eMCP['inputs']['bpcal'])
+        else:
+            refant = ','.join(refant_user)
+    logger.info('Refant in eMCP: {}'.format(refant))
     return refant
 
-
-def find_refant(msfile, field, antennas='', spws='', scan=''):
-    logger.info('Searching refant automatically')
-    ms.open(msfile)
-    d = ms.getdata(['axis_info'],ifraxis=True)
-    ms.close()
-    if len(antennas)==0:
-        antennas = np.unique('-'.join(d['axis_info']['ifr_axis']['ifr_name']).split('-'))
+def find_refant(msfile, field, spw='3'):
+    antennas = get_antennas(msfile)
+    v = {}
+    snr = {}
+    for anten in antennas:
+        try:
+            v[anten] = visstat(msfile, field='1407+284', antenna='{}&*'.format(anten), axis='amplitude', spw=str(spw), correlation='RR,LL')
+            snr[anten] = v[anten]['DATA_DESC_ID=3']['median']/v[anten]['DATA_DESC_ID=3']['stddev']
+        except:
+            v[anten] = None
+            snr[anten] = 0.0
+            logger.warning('No data found for bpcal for antenna: '
+                           '{}'.format(anten))
+    for i in np.argsort(snr.values())[::-1]:
+        logger.info('{0:3}: {1:3.1f}'.format(snr.keys()[i], snr.values()[i]))
+    pref_ant = [snr.keys()[i] for i in np.argsort(snr.values())][::-1]
+    snr_sorted = [snr.values()[i] for i in np.argsort(snr.values())][::-1]
+    if 'Lo' in antennas:
+        priorities = ['Pi','Da','Kn']
+        secondary = ['Pi','Da','Kn', 'Cm', 'De']
     else:
-        antennas = np.array(antennas.strip(' ').split(','))
-    nchan = len(d['axis_info']['freq_axis']['chan_freq'][:,0])
-    num_spw = len(vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
-    channels = ':{0}~{1}'.format(nchan - 3*nchan/4, nchan - 1*nchan/4)
-    if spws == '':
-        spws = range(num_spw)
-    else:
-        spws = spws.strip(' ').split(',')
-
-    logger.info('Searching best antenna among {0}'.format(','.join(antennas)))
-    logger.info('Considering best S/N for spw {0}, channels {1}, field {2}'.format(','.join(spws), channels, field))
-
-    snr = np.zeros((2, len(antennas), len(spws)))
-    for i, corr in enumerate(['RR', 'LL']):
-        for j, anten in enumerate(antennas):
-            print('Checking antenna {0}, corr {1}'.format(anten, corr))
-            for k, spw in enumerate(spws):
-                snrj = []
-                for basel in antennas:
-                    if basel != anten:
-                        try:
-                            d2 = visstat(msfile, antenna='{}&{}'.format(anten, basel),
-                                         field=field, axis='amplitude', scan=scan,
-                                         spw=str(spw)+channels, correlation=corr)
-                            snrj.append(d2['DATA']['median']/d2['DATA']['stddev'])
-                        except:
-                            snrj.append(0.0)
-                snr[i, j, k] = np.mean(snrj)
-
-    # Sorting antennas by average S/N, averaged in polarization and spw.
-    snr_avg = np.mean(snr, axis=(0,2))
-    pref_ant = antennas[np.argsort(snr_avg)][::-1]
-    snr_avg_sorted = snr_avg[np.argsort(snr_avg)][::-1]
-
-    logger.info('Average S/N on baselines to each antenna:')
-    for p, s in zip(pref_ant, snr_avg_sorted):
-        logger.info('{0:3s}  {1:4.1f}'.format(p, s))
-
-    # This will check if Mk2, Pi or Da are part of the best three antennas and give them
-    # priority. Then, it will add any other except Lo.
-    u, ind = np.unique([a for a  in pref_ant[:3] if a in ['Mk2','Pi','Da']] +\
-    [a for a  in pref_ant if a in ['Mk2','Pi','Da','Kn', 'Cm', 'De']], return_index=True)
-
+        priorities = ['Mk2','Pi','Da']
+        secondary = ['Mk2','Pi','Da','Kn', 'Cm', 'De']
+    u, ind = np.unique([a for a in pref_ant[:3] if a in priorities] +\
+                       [a for a  in pref_ant if a in secondary],
+                       return_index=True)
     refant = ','.join(u[np.argsort(ind)])
     refant_pref = collections.OrderedDict()
-    refant_pref['snr'] = snr
-    refant_pref['pref_ant'] = pref_ant
-    refant_pref['snr_avg_sorted'] = snr_avg_sorted
+    refant_pref['snr'] = snr_sorted
+    refant_pref['sorted_antennas'] = pref_ant
+    refant_pref['refant'] = refant
     logger.info('Preference antennas refant = {0}'.format(refant))
     return refant, refant_pref
+
+#def find_refant(msfile, field, antennas='', spws='', scan=''):
+#    logger.info('Searching refant automatically')
+#    ms.open(msfile)
+#    d = ms.getdata(['axis_info'],ifraxis=True)
+#    ms.close()
+#    if len(antennas)==0:
+#        antennas = np.unique('-'.join(d['axis_info']['ifr_axis']['ifr_name']).split('-'))
+#    else:
+#        antennas = np.array(antennas.strip(' ').split(','))
+#    nchan = len(d['axis_info']['freq_axis']['chan_freq'][:,0])
+#    num_spw = len(vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
+#    channels = ':{0}~{1}'.format(nchan - 3*nchan/4, nchan - 1*nchan/4)
+#    if spws == '':
+#        spws = range(num_spw)
+#    else:
+#        spws = spws.strip(' ').split(',')
+#
+#    logger.info('Searching best antenna among {0}'.format(','.join(antennas)))
+#    logger.info('Considering best S/N for spw {0}, channels {1}, field {2}'.format(','.join(spws), channels, field))
+#
+#    snr = np.zeros((2, len(antennas), len(spws)))
+#    for i, corr in enumerate(['RR', 'LL']):
+#        for j, anten in enumerate(antennas):
+#            print('Checking antenna {0}, corr {1}'.format(anten, corr))
+#            for k, spw in enumerate(spws):
+#                snrj = []
+#                for basel in antennas:
+#                    if basel != anten:
+#                        try:
+#                            d2 = visstat(msfile, antenna='{}&{}'.format(anten, basel),
+#                                         field=field, axis='amplitude', scan=scan,
+#                                         spw=str(spw)+channels, correlation=corr)
+#                            snrj.append(d2['DATA']['median']/d2['DATA']['stddev'])
+#                        except:
+#                            snrj.append(0.0)
+#                snr[i, j, k] = np.mean(snrj)
+#
+#    # Sorting antennas by average S/N, averaged in polarization and spw.
+#    snr_avg = np.mean(snr, axis=(0,2))
+#    pref_ant = antennas[np.argsort(snr_avg)][::-1]
+#    snr_avg_sorted = snr_avg[np.argsort(snr_avg)][::-1]
+#
+#    logger.info('Average S/N on baselines to each antenna:')
+#    for p, s in zip(pref_ant, snr_avg_sorted):
+#        logger.info('{0:3s}  {1:4.1f}'.format(p, s))
+#
+#    # This will check if Mk2, Pi or Da are part of the best three antennas and give them
+#    # priority. Then, it will add any other except Lo.
+#    u, ind = np.unique([a for a  in pref_ant[:3] if a in ['Mk2','Pi','Da']] +\
+#    [a for a  in pref_ant if a in ['Mk2','Pi','Da','Kn', 'Cm', 'De']], return_index=True)
+#
+#    refant = ','.join(u[np.argsort(ind)])
+#    refant_pref = collections.OrderedDict()
+#    refant_pref['snr'] = snr
+#    refant_pref['pref_ant'] = pref_ant
+#    refant_pref['snr_avg_sorted'] = snr_avg_sorted
+#    logger.info('Preference antennas refant = {0}'.format(refant))
+#    return refant, refant_pref
 
 
 def plot_caltable(msinfo, caltable, plot_file, xaxis='', yaxis='', title='',
@@ -1281,6 +1335,7 @@ def run_split(eMCP):
 
 
 def run_initialize_models(eMCP):
+    logger.info(line0)
     logger.info('Start init_models')
     t0 = datetime.datetime.utcnow()
     # Check if all sources are in the MS: 
@@ -1302,7 +1357,8 @@ def run_initialize_models(eMCP):
     else:
         logger.warning('No model available!')
         model_3C286 = ''
-    logger.info('Initializing 3C286 model using: {0}'.format(model_3C286))
+    logger.info('Initializing model for 3C286')
+    logger.info('Model {0}'.format('./'+'/'.join(model_3C286.split('/')[-2:])))
     if fluxcal != '1331+305':
         logger.warning('Using a model for 3C286 (1331+305) but your flux calibrator source is: {0}. Model may be wrong for that source'.format(fluxcal))
     setjy(vis=msfile, field=fluxcal, standard='Perley-Butler 2013',
@@ -1333,7 +1389,7 @@ def run_fringefit(msfile, caltables, caltable_name, minblperant=3, minsnr=2, smo
     logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
     logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
     logger.info('Previous calibration interp: {0}'.format(str(interp)))
-    logger.info('Generating calibration table: {0}'.format(caltables[caltable_name]['table']))
+    logger.info('Generating cal table: {0}'.format(caltables[caltable_name]['table']))
     # Run CASA task fringefit
     fringefit(vis=msfile,
             caltable  = caltables[caltable_name]['table'],
@@ -1353,6 +1409,7 @@ def run_fringefit(msfile, caltables, caltable_name, minblperant=3, minsnr=2, smo
 
 
 def run_gaincal(msfile, caltables, caltable_name):
+    logger.info(line0)
     rmdir(caltables[caltable_name]['table'])
     logger.info('Running gaincal to generate: {0}'.format(caltables[caltable_name]['name']))
     logger.info('Field(s) = {0}, gaintype = {1}, calmode = {2}'.format(
@@ -1373,7 +1430,7 @@ def run_gaincal(msfile, caltables, caltable_name):
     logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
     logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
     logger.info('Previous calibration interp: {0}'.format(str(interp)))
-    logger.info('Generating calibration table: {0}'.format(caltables[caltable_name]['table']))
+    logger.info('Generating cal table: {0}'.format(caltables[caltable_name]['table']))
     # Run CASA task gaincal
     gaincal(vis=msfile,
             caltable  = caltables[caltable_name]['table'],
@@ -1384,16 +1441,24 @@ def run_gaincal(msfile, caltables, caltable_name):
             combine   = caltables[caltable_name]['combine'],
             spw       = caltables[caltable_name]['spw'],
             refant    = caltables['refant'],
+            refantmode= caltables['refantmode'],
             gaintable = gaintable,
             gainfield = gainfield,
             interp    = interp,
             spwmap    = spwmap,
             minblperant= caltables[caltable_name]['minblperant'],
             minsnr    = caltables[caltable_name]['minsnr'])
+#    if caltables[caltable_name]['calmode'] == 'p' and  caltables[caltable_name]['gaintype'] == 'G':
+#        refant = caltables['refant'].split(',')[0]
+#        logger.info('Running rerefant to refant'
+#                    ' {}'.format(refant))
+#        rerefant(vis=msfile, tablein=caltables[caltable_name]['table'],
+#                 refantmode='strict', refant =refant)
     logger.info('caltable {0} in {1}'.format(caltables[caltable_name]['name'],
                                               caltables[caltable_name]['table']))
 
 def run_bandpass(msfile, caltables, caltable_name, minblperant=3, minsnr=2):
+    logger.info(line0)
     rmdir(caltables[caltable_name]['table'])
     logger.info('Running bandpass to generate: {0}'.format(caltables[caltable_name]['name']))
     logger.info('Field(s) {0}, solint = {1}, spw = {2}, combine = {3}, solnorm = {4}'.format(
@@ -1402,7 +1467,7 @@ def run_bandpass(msfile, caltables, caltable_name, minblperant=3, minsnr=2):
                  caltables[caltable_name]['spw'],
                  caltables[caltable_name]['combine'],
                  caltables[caltable_name]['solnorm']))
-    logger.info('uvrange = {0}'.format(caltables[caltable_name]['uvrange']))
+    #logger.info('uvrange = {0}'.format(caltables[caltable_name]['uvrange']))
     # Previous calibration
     previous_cal = caltables[caltable_name]['previous_cal']
     gaintable = [caltables[p]['table'] for p in previous_cal]
@@ -1413,7 +1478,7 @@ def run_bandpass(msfile, caltables, caltable_name, minblperant=3, minsnr=2):
     logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
     logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
     logger.info('Previous calibration interp: {0}'.format(str(interp)))
-    logger.info('Generating calibration table: {0}'.format(caltables[caltable_name]['table']))
+    logger.info('Generating cal table: {0}'.format(caltables[caltable_name]['table']))
     # Run CASA task bandpass
     bandpass(vis=msfile,
              caltable  = caltables[caltable_name]['table'],
@@ -1454,6 +1519,7 @@ def smooth_caltable(msfile, tablein, plotdir, caltable='', field='', smoothtype=
 
 
 def run_applycal(eMCP, caltables, step, dotarget=False):
+    logger.info(line0)
     logger.info('Start applycal')
     logger.info('Applying calibration up to step: {}'.format(step))
     previous_cal = eMCP['defaults'][step]['apply_calibrators']
@@ -1552,7 +1618,7 @@ def solve_delays(eMCP, caltables, doplots=True):
     run_gaincal(msfile, caltables, caltable_name)
     if caltables['Lo_dropout_scans'] != '':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
-    logger.info('Delay calibration {0}: {1}'.format(caltable_name, caltable))
+#    logger.info('Delay calibration {0}: {1}'.format(caltable_name, caltable))
     # Plots
     if doplots:
         # 1 No range
@@ -1560,9 +1626,9 @@ def solve_delays(eMCP, caltables, doplots=True):
         plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Delay',
                       xaxis='time', yaxis='delay', ymin=-1, ymax=-1, coloraxis='field', symbolsize=8)
         caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_2.png'
-        plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Delay',
-                      xaxis='time', yaxis='delay', ymin=-20, ymax=20, coloraxis='field', symbolsize=8)
-        logger.info('Delay calibration plot: {0}'.format(caltableplot))
+#        plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Delay',
+#                      xaxis='time', yaxis='delay', ymin=-20, ymax=20, coloraxis='field', symbolsize=8)
+        logger.info('Delay plot: {0}'.format(caltableplot))
         logger.info('End solve_delays')
     # Apply calibration if requested:
     if eMCP['inputs']['delay'] == 2:
@@ -1606,7 +1672,7 @@ def delay_fringefit(eMCP, caltables):
     run_fringefit(msfile, caltables, caltable_name)
     if caltables['Lo_dropout_scans'] != '':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
-    logger.info('Fringe calibration {0}: {1}'.format(caltable_name, caltable))
+#    logger.info('Fringe calibration {0}: {1}'.format(caltable_name, caltable))
     # Plots
     # 1 Phases
     caltableplot =  caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
@@ -1651,7 +1717,7 @@ def make_spw(msinfo, spw_list):
     return '{0}{1}'.format(spws, chans)
 
 
-def initial_bp_cal(eMCP, caltables, doplots=True, t0='none'):
+def initial_bp_cal(eMCP, caltables, doplots=True, t0='none', forceapply=False):
     logger.info('Start initial_bp_cal')
     if t0 == 'none':
         t0 = datetime.datetime.utcnow()
@@ -1682,13 +1748,13 @@ def initial_bp_cal(eMCP, caltables, doplots=True, t0='none'):
     run_gaincal(msfile, caltables, caltable_name)
     if caltables['Lo_dropout_scans'] != '':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
-    logger.info('Delay calibration of bpcal {0}: {1}'.format(caltable_name, caltable))
+#    logger.info('Delay calibration {0}: {1}'.format(caltable_name, caltable))
     # Plots
     if doplots:
         caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_1.png'
         plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Delay',
                       xaxis='time', yaxis='delay', ymin=-1, ymax=-1, coloraxis='corr', symbolsize=8)
-        logger.info('Delay calibration plot in: {0}'.format(caltableplot))
+        logger.info('Delay plot in: {0}'.format(caltableplot))
 
     # 1 Phase calibration
     caltable_name = bp['phase_tablename']
@@ -1712,13 +1778,13 @@ def initial_bp_cal(eMCP, caltables, doplots=True, t0='none'):
     run_gaincal(msfile, caltables, caltable_name)
     if caltables['Lo_dropout_scans'] != '':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
-    logger.info('Bandpass0 phase calibration {0}: {1}'.format(caltable_name,caltable))
+#    logger.info('Bandpass0 phase calibration {0}: {1}'.format(caltable_name,caltable))
     # Plots
     if doplots:
         caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
         plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Phase',
                       xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=3)
-        logger.info('Bandpass0 phase calibration plot: {0}'.format(caltableplot))
+        logger.info('BP0_p phase plot: {0}'.format(caltableplot))
     logger.info('Apply phase calibration flags to bandpass, applymode=flagonly')
     applycal(vis=msfile, gaintable=caltables[caltable_name]['table'],
              field=msinfo['sources']['bpcal'],
@@ -1746,18 +1812,18 @@ def initial_bp_cal(eMCP, caltables, doplots=True, t0='none'):
     run_gaincal(msfile, caltables, caltable_name)
     if caltables['Lo_dropout_scans'] != '':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
-    logger.info('Bandpass0 amplitude calibration {0}: {1}'.format(caltable_name,caltable))
+#    logger.info('Bandpass0 amplitude calibration {0}: {1}'.format(caltable_name,caltable))
 #    smooth_caltable(msfile=msfile, plotdir=plotdir, tablein=caltable2, caltable='', field='', smoothtype='median', smoothtime=60*20.)
     # Plots
     if doplots:
         caltableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
         plot_caltable(msinfo, caltables[caltable_name], caltableplot_phs, title='Phase',
                       xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=5)
-        logger.info('Bandpass0 phase calibration plot: {0}'.format(caltableplot_phs))
+        logger.info('BP0_ap phase plot: {0}'.format(caltableplot_phs))
         caltableplot_amp = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_amp.png'
         plot_caltable(msinfo, caltables[caltable_name], caltableplot_amp, title='Amp',
                       xaxis='time', yaxis='amp', ymin=-1, ymax=-1, coloraxis='spw', symbolsize=5)
-        logger.info('Bandpass0 amplitude calibration plot: {0}'.format(caltableplot_amp))
+        logger.info('BP0_ap amp plot: {0}'.format(caltableplot_amp))
 
     # 3 Bandpass calibration
     caltable_name = bp['bp_tablename']
@@ -1778,20 +1844,20 @@ def initial_bp_cal(eMCP, caltables, doplots=True, t0='none'):
     # Calibration
     run_bandpass(msfile, caltables, caltable_name)
     caltables[caltable_name]['gainfield'] = get_unique_field(caltables[caltable_name]['table'])
-    logger.info('Bandpass0 BP {0}: {1}'.format(caltable_name,bptable))
+#    logger.info('Bandpass0 {0}: {1}'.format(caltable_name,bptable))
     # Plots
     if doplots:
         bptableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
         bptableplot_amp = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_amp.png'
         plot_caltable(msinfo, caltables[caltable_name], bptableplot_phs, title='Bandpass phase',
                       xaxis='freq', yaxis='phase', ymin=-180, ymax=180, coloraxis='corr', symbolsize=5)
-        logger.info('Bandpass0 BP phase plot: {0}'.format(bptableplot_phs))
+        logger.info('BP0 phase plot: {0}'.format(bptableplot_phs))
         plot_caltable(msinfo, caltables[caltable_name], bptableplot_amp, title='Bandpass amp',
                       xaxis='freq', yaxis='amp', ymin=-1, ymax=-1, coloraxis='corr', symbolsize=5)
-        logger.info('Bandpass0 BP amplitude plot: {0}'.format(bptableplot_amp))
+        logger.info('BP0 amplitude plot: {0}'.format(bptableplot_amp))
     logger.info('End initial_bp_cal')
     # Apply calibration if requested:
-    if eMCP['inputs']['bandpass'] == 2:
+    if eMCP['inputs']['bandpass'] == 2 or forceapply:
         run_applycal(eMCP, caltables, step='bandpass')
     save_obj(caltables, caltables['calib_dir']+'caltables.pkl')
     msg = 'field={0}, combine={1}, solint={2}'.format(
@@ -1802,7 +1868,7 @@ def initial_bp_cal(eMCP, caltables, doplots=True, t0='none'):
     return eMCP, caltables
 
 
-def initial_gaincal(eMCP, caltables, doplots=True, t0='none'):
+def initial_gaincal(eMCP, caltables, doplots=True, t0='none', forceapply=False):
     logger.info('Start gain_p_ap')
     if t0 == 'none':
         t0 = datetime.datetime.utcnow()
@@ -1834,13 +1900,13 @@ def initial_gaincal(eMCP, caltables, doplots=True, t0='none'):
     run_gaincal(msfile, caltables, caltable_name)
     if caltables['Lo_dropout_scans'] != '':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
-    logger.info('Gain phase calibration {0}: {1}'.format(caltable_name,caltable))
+#    logger.info('G0 phase {0}: {1}'.format(caltable_name,caltable))
     # Plots
     if doplots:
         caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
         plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Phase',
                       xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=3)
-        logger.info('Gain phase calibration plot: {0}'.format(caltableplot))
+        logger.info('G0 phase plot: {0}'.format(caltableplot))
     logger.info('Apply phase calibration flags to calibrators, applymode=flagonly')
     applycal(vis=msfile, gaintable=caltables[caltable_name]['table'],
              field=msinfo['sources']['calsources'],
@@ -1868,22 +1934,22 @@ def initial_gaincal(eMCP, caltables, doplots=True, t0='none'):
     run_gaincal(msfile, caltables, caltable_name)
     if caltables['Lo_dropout_scans'] != '':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
-    logger.info('Gain amplitude calibration {0}: {1}'.format(caltable_name,caltable))
+#    logger.info('Gain amplitude calibration {0}: {1}'.format(caltable_name,caltable))
 #    smooth_caltable(msfile=msfile, plotdir=plotdir, tablein=caltable2, caltable='', field='', smoothtype='median', smoothtime=60*20.)
     # Plots
     if doplots:
         caltableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
         plot_caltable(msinfo, caltables[caltable_name], caltableplot_phs, title='Phase',
                       xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=3)
-        logger.info('Gain phase calibration plot: {0}'.format(caltableplot_phs))
+        logger.info('G1_ap phase plot: {0}'.format(caltableplot_phs))
         caltableplot_amp = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_amp.png'
         plot_caltable(msinfo, caltables[caltable_name], caltableplot_amp, title='Amp',
                       xaxis='time', yaxis='amp', ymin=-1, ymax=-1, coloraxis='spw', symbolsize=5)
-        logger.info('Gain amplitude calibration plot: {0}'.format(caltableplot_amp))
+        logger.info('G1_ap amp plot: {0}'.format(caltableplot_amp))
 
     logger.info('End gain_p_ap')
     # Apply calibration if requested:
-    if eMCP['inputs']['gain_p_ap'] == 2:
+    if eMCP['inputs']['gain_p_ap'] == 2 or forceapply:
         #logger.warning('Applying short-solint tables to target.')
         run_applycal(eMCP, caltables, step = 'gain_p_ap')
     save_obj(caltables, caltables['calib_dir']+'caltables.pkl')
@@ -2125,17 +2191,17 @@ def gain_amp_sp(eMCP, caltables):
     run_gaincal(msfile, caltables, caltable_name)
     if caltables['Lo_dropout_scans'] != '':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
-    logger.info('Gain amplitude calibration {0}: {1}'.format(caltable_name,caltable))
+#    logger.info('Gain amplitude calibration {0}: {1}'.format(caltable_name,caltable))
 #    smooth_caltable(msfile=msfile, plotdir=plotdir, tablein=caltable2, caltable='', field='', smoothtype='median', smoothtime=60*20.)
     # Plots
     caltableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
     plot_caltable(msinfo, caltables[caltable_name], caltableplot_phs, title='Phase',
                   xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=5)
-    #logger.info('Bandpass0 phase calibration plot: {0}'.format(caltableplot_phs))
+    logger.info('{0} phase plot: {1}'.format(caltable_name,caltableplot_phs))
     caltableplot_amp = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_amp.png'
     plot_caltable(msinfo, caltables[caltable_name], caltableplot_amp, title='Amp',
                   xaxis='time', yaxis='amp', ymin=-1, ymax=-1, coloraxis='spw', symbolsize=5)
-    logger.info('Amplitude amplitude calibration plot: {0}'.format(caltableplot_amp))
+    logger.info('{0} amp plot: {1}'.format(caltable_name,caltableplot_amp))
 
     # 2 Scan-averaged phase calibration
     caltable_name = amp_sp['p_scan_tablename']
@@ -2159,7 +2225,7 @@ def gain_amp_sp(eMCP, caltables):
     run_gaincal(msfile, caltables, caltable_name)
     if caltables['Lo_dropout_scans'] != '':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
-    logger.info('Gain scan-averaged phase calibration {0}: {1}'.format(caltable_name,caltable))
+#    logger.info('{0}: {1}'.format(caltable_name,caltable))
 #    smooth_caltable(msfile=msfile, plotdir=plotdir, tablein=caltable2, caltable='', field='', smoothtype='median', smoothtime=60*20.)
     # Plots
     caltableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
@@ -2188,17 +2254,17 @@ def gain_amp_sp(eMCP, caltables):
     run_gaincal(msfile, caltables, caltable_name)
     if caltables['Lo_dropout_scans'] != '':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
-    logger.info('Gain scan-average amplitude calibration {0}: {1}'.format(caltable_name,caltable))
+#    logger.info('{0}: {1}'.format(caltable_name,caltable))
 #    smooth_caltable(msfile=msfile, plotdir=plotdir, tablein=caltable2, caltable='', field='', smoothtype='median', smoothtime=60*20.)
     # Plots
     caltableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
     plot_caltable(msinfo, caltables[caltable_name], caltableplot_phs, title='Phase',
                   xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=5)
-    logger.info('Scan-average phase calibration plot: {0}'.format(caltableplot_phs))
+    logger.info('{0} phase plot: {1}'.format(caltable_name,caltableplot_phs))
     caltableplot_amp = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_amp.png'
     plot_caltable(msinfo, caltables[caltable_name], caltableplot_amp, title='Amp',
                   xaxis='time', yaxis='amp', ymin=-1, ymax=-1, coloraxis='spw', symbolsize=5)
-    logger.info('Scan-average amplitude calibration plot: {0}'.format(caltableplot_amp))
+    logger.info('{0} amp plot: {1}'.format(caltable_name,caltableplot_amp))
     logger.info('End gain_amp_sp')
     # Apply calibration if requested:
     if eMCP['inputs']['gain_amp_sp'] == 2:
@@ -2444,7 +2510,7 @@ def plot_image(eMCP, imagename, ext='.tt0', dozoom=False):
     imstat_image = imstat(imagename+'.image'+ext)
     noise = imstat_residual['rms'][0]
     peak = imstat_image['max'][0]
-    scaling =  np.min([0, -np.log(1.0*peak/noise)+3])
+    scaling =  np.min([0, -np.log(1.0*peak/noise)+4])
     #scaling = np.min([0.0, -int(np.log(1.0*peak/noise)+1)])
     imgpar = eMCP['defaults']['first_images']
     level0 = imgpar['level0']
@@ -2553,6 +2619,7 @@ def single_tclean(eMCP, s, num):
 
 def run_first_images(eMCP):
     msinfo = eMCP['msinfo']
+    logger.info(line0)
     logger.info('Start run_first_images')
     t0 = datetime.datetime.utcnow()
     if eMCP['defaults']['first_images']['run_statwt']:

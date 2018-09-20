@@ -2,6 +2,9 @@ import collections
 
 defaults = collections.OrderedDict()
 
+defaults['global'] = collections.OrderedDict()
+defaults['global']['refantmode']               = 'flex'
+
 defaults['import_eM'] = collections.OrderedDict()
 defaults['import_eM']['constobsid']            = True
 defaults['import_eM']['scanreindexgap_s']      = 15.0
@@ -218,7 +221,7 @@ defaults['flag_rflag']['flagbackup']          = True
 defaults['first_images'] = collections.OrderedDict()
 defaults['first_images']['run_statwt']        = True
 defaults['first_images']['imsize']            = 1024
-defaults['first_images']['niter']             = 200
+defaults['first_images']['niter']             = 80
 defaults['first_images']['deconvolver']       = 'hogbom'
 defaults['first_images']['nterms']            = 1
 #defaults['first_images']['deconvolver']       = 'mtmfs'
