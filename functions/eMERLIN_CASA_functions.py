@@ -719,7 +719,6 @@ def import_eMERLIN_fitsIDI(eMCP):
     eMCP = add_step_time('fixvis', eMCP, msg, t0, doweblog=True)
     eMCP['msfile'] = msfile
     flag_statistics(eMCP, step='import')
-    kk = raw_input('continue...')
     return eMCP
 
 
@@ -1252,6 +1251,7 @@ def check_table_exists(caltables, tablename):
 ### Run CASA calibration functions
 
 def run_split(eMCP):
+    logger.info(line0)
     logger.info('Start average')
     t0 = datetime.datetime.utcnow()
     width = eMCP['defaults']['average']['width']
@@ -1314,7 +1314,7 @@ def run_initialize_models(eMCP):
     logger.info('Model {0}'.format('./'+'/'.join(model_3C286.split('/')[-2:])))
     if fluxcal != '1331+305':
         logger.warning('Using a model for 3C286 (1331+305) but your flux calibrator source is: {0}. Model may be wrong for that source'.format(fluxcal))
-    setjy(vis=msfile, field=fluxcal, standard='Perley-Butler 2013',
+    setjy(vis=msfile, field=fluxcal, standard='',
           model=model_3C286, scalebychan=True, usescratch=True)
     logger.info('End init_models')
     msg = ''

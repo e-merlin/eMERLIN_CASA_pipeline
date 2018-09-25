@@ -15,6 +15,8 @@ import functions.weblog as emwlog
 # CASA imports
 from taskinit import *
 from tasks import *
+from casac import casac
+msmd = casac.msmetadata()
 
 import logging
 logger = logging.getLogger('logger')
@@ -95,6 +97,19 @@ def get_freqs(msfile, allfreqs=False):
         freqs = axis_info['axis_info']['freq_axis']['chan_freq'].mean(axis=0)
     return freqs
 
+def count_active_baselines(msfile):
+    msmd.open(msfile)
+    a = np.array(msmd.antennanames())
+    b = np.array(msmd.baselines())
+    msmd.done()
+    active_baselines = 0
+    for i, ant1 in enumerate(a):
+        for ant2 in a[i+1:]:
+            j = np.argwhere(ant2==a)[0][0]
+            if b[i,j]:
+                active_baselines += 1
+    return active_baselines
+
 
 def single_4plot(msinfo, field, datacolumn, plots_data_dir):
     logger.info('Visibility plots for field: {0}, datacolumn: {1}'.format(field, datacolumn))
@@ -104,7 +119,7 @@ def single_4plot(msinfo, field, datacolumn, plots_data_dir):
     tb.close()
     plot_file = plots_data_dir+'{0}_4plot_{1}_{2}'.format(msinfo['msfilename'],
                                                           field, datacolumn)
-    num_baselines = len(msinfo['baselines'])
+    num_baselines = count_active_baselines(msfile)
     gridrows = num_baselines
     gridcols = 1
     showgui=False
@@ -382,21 +397,13 @@ def plot_flagstatistics(flag_stats, msinfo, step):
     i_spw, f_spw = count_flags(flag_stats, 'spw')
     i_ant, f_ant = count_flags(flag_stats, 'antenna', list_order=msinfo['antennas'])
 
-#    fig = plt.figure(figsize=(12,14))
-#    plt.subplots_adjust(hspace=0.3)
-#    ax1 = fig.add_subplot(311)
-#    ax2 = fig.add_subplot(323)
-#    ax3 = fig.add_subplot(324)
-#    ax4 = fig.add_subplot(325)
-#    ax5 = fig.add_subplot(326)
-
     fig = plt.figure(figsize=(25,4))
     plt.subplots_adjust(wspace=0.01)
-    ax1 = fig.add_subplot(141)
-    ax2 = fig.add_subplot(142, sharey=ax1)
+    ax1 = fig.add_subplot(1,5,(1,2))
+    ax2 = fig.add_subplot(153, sharey=ax1)
 #    ax3 = fig.add_subplot(153)
-    ax4 = fig.add_subplot(143, sharey=ax1)
-    ax5 = fig.add_subplot(144, sharey=ax1)
+    ax4 = fig.add_subplot(154, sharey=ax1)
+    ax5 = fig.add_subplot(155, sharey=ax1)
 
     scan_fieldID = np.array([scan_fieldID_dict[str(si)] for si in i_scan])
     for i, fi in enumerate(vis_fields):
