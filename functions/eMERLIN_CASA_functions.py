@@ -1213,7 +1213,7 @@ def check_table_exists(caltables, tablename):
 
 ### Run CASA calibration functions
 
-def run_split(eMCP):
+def run_average(eMCP):
     logger.info(line0)
     logger.info('Start average')
     t0 = datetime.datetime.utcnow()
@@ -1226,8 +1226,8 @@ def run_split(eMCP):
     antenna = eMCP['defaults']['average']['antenna']
     timerange = eMCP['defaults']['average']['timerange']
     # Check if all sources are in the MS: 
-    check_sources_in_ms(eMCP)
-    fields = sources['allsources']
+    #check_sources_in_ms(eMCP)
+    fields = eMCP['defaults']['average']['field']
     name = '.'.join(msfile.split('.')[:-1])
     exte = ''.join(msfile.split('.')[-1])
     outputmsfile = name+'_avg.'+exte
@@ -1238,15 +1238,19 @@ def run_split(eMCP):
     logger.info('width={0}, timebin={1}'.format(width, timebin))
     logger.info('Fields: {0}'.format(fields))
     logger.info('Data column: {0}'.format(datacolumn))
-    split(vis=msfile, outputvis=outputmsfile, field=fields,
-          timerange=timerange, scan=scan, antenna=antenna,
-          timebin=timebin,  width=width,
-          datacolumn=datacolumn, keepflags=True)
+    mstransform(vis=msfile, outputvis=outputmsfile, field=fields,
+                timeaverage=True, chanaverage=True,
+                timerange=timerange, scan=scan, antenna=antenna,
+                timebin=timebin,  chanbin=width,
+                datacolumn=datacolumn, keepflags=True)
     run_listobs(outputmsfile)
     logger.info('End average')
     msg = 'width={0}, timebin={1}, datacolumn={2}'.format(width, timebin,
                                                           datacolumn)
     eMCP = add_step_time('average', eMCP, msg, t0)
+
+    if eMCP['defaults']['average']['shift_phasecenter']:
+        shift_all_positions(eMCP)
     return eMCP
 
 
@@ -1288,6 +1292,7 @@ def run_initialize_models(eMCP):
 def initialize_cal_dict(inputs, eMCP):
     # All the calibration steps will be saved in the dictionary caltables.pkl
     # located in the calib directory. If it does not exist a new one is created.
+    msinfo = eMCP['msinfo']
     any_calsteps = ['bandpass', 'initial_gaincal','fluxscale','bandpass_sp','gain_amp_sp','applycal_all']
     if np.array([inputs[cal]>0 for cal in any_calsteps]).any():
         try:
@@ -2631,7 +2636,7 @@ def run_first_images(eMCP):
     eMCP = add_step_time('first_images', eMCP, msg, t0)
     return eMCP
 
-def shift_field_position(msfile, shift):
+def shift_field_position(eMCP, msfile, shift):
     field = shift['field']
     new_pos = shift['new_position']
     position_name = shift['new_field_name']
@@ -2654,13 +2659,33 @@ def shift_field_position(msfile, shift):
     st.putcol('NAME', '{0}'.format(position_name))
     st.done()
     tb.close()
+    # Average individual field
+    width = eMCP['defaults']['average']['width']
+    timebin = '{}s'.format(eMCP['inputs']['average'])
+    datacolumn = eMCP['defaults']['average']['datacolumn']
+    scan = eMCP['defaults']['average']['scan']
+    antenna = eMCP['defaults']['average']['antenna']
+    timerange = eMCP['defaults']['average']['timerange']
+    rmdir(msfile_split+'_avg')
+    mstransform(vis=msfile_split, outputvis=msfile_split+'_avg',
+                timeaverage=True, chanaverage=True,
+                timerange=timerange, scan=scan, antenna=antenna,
+                timebin=timebin,  chanbin=width,
+                datacolumn=datacolumn, keepflags=True)
+    if os.path.isdir(msfile_split+'_avg') == True:
+        rmdir(msfile_split)
     # Concatenate again
-    logger.info('Concatenating {0} into {1}'.format(msfile_split, msfile))
-    concat(vis= msfile_split, concatvis= msfile)
-    logger.info('Updating listobs for MS: {}'.format(msfile))
-    run_listobs(msfile)
-    rmdir(msfile_split)
+    s = msfile.split('.')
+    sn, se = s[:-1], s[-1]
+    msfile0 = '.'.join(sn)+'_avg.'+se
+    logger.info('Concatenating {0} into {1}'.format(msfile_split+'_avg',
+                                                    msfile0))
+    concat(vis= msfile_split+'_avg', concatvis= msfile0)
+    rmdir(msfile_split+'_avg')
+    logger.info('Updating listobs for MS: {}'.format(msfile0))
+    run_listobs(msfile0)
     logger.warning('New field: {} in MS. Make sure you include it in the inputs file'.format(position_name))
+
 
 def read_shifts_file(shifts_file):
     shifts_list = []
@@ -2676,6 +2701,7 @@ def read_shifts_file(shifts_file):
 
 
 def shift_all_positions(eMCP):
+    logger.info(line0)
     msfile = eMCP['msinfo']['msfile']
     logger.info('Start shift_all_pos')
     t0 = datetime.datetime.utcnow()
@@ -2690,10 +2716,9 @@ def shift_all_positions(eMCP):
     mvdir(listobs_file + '.listobs.txt', listobs_file+'preshift_listobs.txt')
     logger.info('Found {0} shifts to apply. {0} new fields will be added'.format(len(shifts_list)))
     for shift in shifts_list:
-        shift_field_position(msfile, shift)
-    run_listobs(msfile)
-    logger.info('Listobs file in: {0}'.format(msfile+'.listobs.txt'))
+        shift_field_position(eMCP, msfile, shift)
     logger.info('End shift_all_pos')
+
     msg = 'file={0}'.format(shifts_file)
     eMCP = add_step_time('shift_field_pos', eMCP, msg, t0)
     return eMCP
@@ -2709,8 +2734,8 @@ def eMCP_info_start_steps():
     steps['aoflagger'] = default_value
     steps['flag_apriori'] = default_value
     steps['flag_manual'] = default_value
-    steps['shift_field_pos'] = default_value
     steps['average'] = default_value
+    steps['shift_field_pos'] = default_value
     steps['plot_data'] = default_value
     steps['save_flags'] = default_value
     steps['restore_flags'] = default_value
@@ -2718,9 +2743,6 @@ def eMCP_info_start_steps():
     steps['init_models'] = default_value
     steps['bandpass'] = default_value
     steps['initial_gaincal'] = default_value
-##    steps['flag_tfcropBP'] = default_value
-##    steps['delay'] = default_value
-##    steps['gain_p_ap'] = default_value
     steps['fluxscale'] = default_value
     steps['bandpass_sp'] = default_value
     steps['gain_amp_sp'] = default_value

@@ -408,7 +408,7 @@ def weblog_calibration(msinfo):
         caltables = load_obj('./weblog/calib/caltables.pkl')
         for calstep in all_calsteps:
             try:
-                if calstep == 'fluxscale':
+                if calstep == 'fluxscale' and os.path.isfile(info_dir + 'allcal_ap.G1_fluxes.txt'):
                     wlog.write('<h4>{}</h4>\n'.format('fluxscale'))
                     write_fluxscale(wlog)
                     wlog.write('\n<hr>\n')

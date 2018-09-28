@@ -31,11 +31,13 @@ defaults['flag_apriori']['Lo_threshold']              = 0.5
 defaults['flag_apriori']['Lo_min_scans']              = 4
 
 defaults['average'] = collections.OrderedDict()
+defaults['average']['field']                          = ''
 defaults['average']['width']                          = 4
 defaults['average']['datacolumn']                     = 'data'
 defaults['average']['timerange']                      = ''
 defaults['average']['scan']                           = ''
 defaults['average']['antenna']                        = ''
+defaults['average']['shift_phasecenter']              = False
 
 defaults['plot_data'] = collections.OrderedDict()
 defaults['plot_data']['num_proc']                     = 1

@@ -350,8 +350,6 @@ def make_elevation(msfile, msinfo):
 
 
 
-
-
 ### Flag statistics
 def fperc(x):
     return 1.0*x['flagged']/x['total']
@@ -486,7 +484,7 @@ def plot_flagstatistics(flag_stats, msinfo, step):
 
     plots_obs_dir = './weblog/plots/plots_flagstats/'
     plot_file1 = plots_obs_dir+'{0}_flagstats_{1}.png'.format(msinfo['msfilename'], step)
-    logger.info('Plot flagstats: {0}'.format(plot_file1))
+    #logger.info('Plot flagstats: {0}'.format(plot_file1))
     fig.savefig(plot_file1, bbox_inches='tight')
 
     # Plot only scans:
@@ -510,7 +508,7 @@ def plot_flagstatistics(flag_stats, msinfo, step):
 
     plot_file2 = plots_obs_dir+'{0}_flagstats_scans_{1}.png'.format(msinfo['msfilename'],
                                                        step)
-    logger.info('Plot flagstats scans: {0}'.format(plot_file2))
+    #logger.info('Plot flagstats scans: {0}'.format(plot_file2))
     fig.savefig(plot_file2, bbox_inches='tight')
 
 

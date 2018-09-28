@@ -14,26 +14,24 @@ refant          = 'Mk2'
 # 2. Process inputs
 
 ## Pre-processing (0=don't run, 1=run):
-run_importfits  = 0
-flag_aoflagger  = 0
-flag_apriori    = 0
+run_importfits  = 1
+flag_aoflagger  = 1
+flag_apriori    = 1
 flag_manual     = 0   # Commands in ./inputfg.flags
-shift_field_pos = 0   # Shift positions in ./shift_phasecenter.txt
-average         = 0   # Value will be seconds to average
-plot_data       = 0
-save_flags      = 0
+average         = 4   # Value will be seconds to average
+plot_data       = 1
+save_flags      = 1
 
 ## Calibration (0=don't run, 1=run):
 restore_flags   = 0
 flag_manual_avg = 0   # Commands in ./inputfg_avg.flags
-init_models     = 0
-bandpass        = 0
-delay           = 0
-gain_p_ap       = 0
-fluxscale       = 0
-bandpass_sp     = 0
-gain_amp_sp     = 0
-applycal_all    = 0
-flag_rflag      = 0
-plot_corrected  = 0
-first_images    = 0
+init_models     = 1
+bandpass        = 1
+initial_gaincal = 1
+fluxscale       = 1
+bandpass_sp     = 1
+gain_amp_sp     = 1
+applycal_all    = 1
+flag_target     = 1
+plot_corrected  = 1
+first_images    = 1

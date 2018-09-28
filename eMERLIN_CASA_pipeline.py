@@ -149,13 +149,9 @@ def run_pipeline(inputs=None, inputs_path=''):
     if inputs['flag_manual'] > 0:
         eMCP = em.flagdata_manual(eMCP, run_name='flag_manual')
 
-    ### Multi phase center ###
-    if inputs['shift_field_pos'] > 0:
-        eMCP = em.shift_all_positions(eMCP)
-
     ### Average data ###
     if inputs['average'] > 0:
-        eMCP = em.run_split(eMCP)
+        eMCP = em.run_average(eMCP)
 
     # Check if averaged data already generated
     if os.path.isdir('./'+inputs['inbase']+'_avg.mms') == True:
