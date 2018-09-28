@@ -15,9 +15,10 @@ defaults['import_eM']['chanaverage']                  = False
 defaults['import_eM']['chanbin']                      = 4
 defaults['import_eM']['usewtspectrum']                = False
 defaults['import_eM']['run_hanning']                  = 'auto'
-defaults['import_eM']['ms2mms']                       = False
+defaults['import_eM']['ms2mms']                       = True
 
 defaults['aoflagger'] = collections.OrderedDict()
+defaults['aoflagger']['run']                          = 'auto'
 defaults['aoflagger']['fields']                       = 'all'
 defaults['aoflagger']['separate_bands']               = False
 

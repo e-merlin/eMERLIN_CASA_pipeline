@@ -417,7 +417,8 @@ def plot_flagstatistics(flag_stats, msinfo, step):
         ax2.bar(i, field_value, alpha=1.0,
                 color=plt.cm.Set1(1.0*i/len(i_field)), width=1,
                 label='{0} ({1})'.format(fi, i), align='center', zorder=10)
-        ax2.text(i-0.1, 0.9*field_value, "{0:2.0f}".format(field_value*100.), color='k', va='center')
+        ax2.text(i-0.1, 0.9*field_value, "{0:2.0f}".format(field_value*100.),
+                 color='k', va='center', zorder=12)
 
 #    ax3.bar(range(len(i_corr)), f_corr, alpha=0.5, color='k', width=1, align='center')
     ax4.bar(range(len(i_spw)), f_spw, alpha=1.0, color='0.5', width=1,
@@ -445,9 +446,11 @@ def plot_flagstatistics(flag_stats, msinfo, step):
     #[ax5.annotate(si, (i+0.3, f_ant[i])) for i, si in enumerate(i_ant)]
 
     for i, v in enumerate(f_spw):
-        ax4.text(i-0.1, 0.9*v,"{0:2.0f}".format(v*100.), color='k', va='center')
+        ax4.text(i-0.1, 0.9*v,"{0:2.0f}".format(v*100.), color='k',
+                 va='center', zorder=12)
     for i, v in enumerate(f_ant):
-        ax5.text(i-0.1, 0.9*v,"{0:2.0f}".format(v*100.), color='k', va='center')
+        ax5.text(i-0.1, 0.9*v,"{0:2.0f}".format(v*100.), color='k',
+                 va='center', zorder=12)
 
     ax1.set_title('Scan')
     ax2.set_title('Field')

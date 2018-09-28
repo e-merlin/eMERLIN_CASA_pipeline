@@ -728,6 +728,18 @@ def run_aoflagger_fields(eMCP):
     separate_bands = eMCP['defaults']['aoflagger']['separate_bands']
     pipeline_path = eMCP['pipeline_path']
     msfile = eMCP['msinfo']['msfile']
+    run_input = eMCP['defaults']['aoflagger']['run']
+    if run_input == 'auto':
+        logger.info('aoflagger mode "auto"')
+        if eMCP['msinfo']['band'] == 'L':
+            logger.info('L-band data, aoflagger will be executed')
+            run_aoflagger = True
+        else:
+            run_aoflagger = False
+            logger.info('Not L band, aoflagger will NOT be executed')
+            return eMCP
+    elif run_input == '':
+        run_aoflagger = True
 
     logger.info('Start run_aoflagger_fields')
     t0 = datetime.datetime.utcnow()
