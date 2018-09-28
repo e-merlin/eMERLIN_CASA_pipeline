@@ -324,11 +324,11 @@ def make_uvcov(msfile, msinfo):
     makedir(plots_obs_dir)
     freqs = get_freqs(msfile, allfreqs=True)
     fields_ms = msinfo['sources']['allsources'].split(',')
-    #for f in msinfo['sources']['allsources'].split(','):
+    logger.info('Plotting uvcov for:')
     for f in fields_ms:
         if f in fields_ms:
             plot_file = plots_obs_dir+'{0}_uvcov_{1}.png'.format(msinfo['msfilename'],f)
-            logger.info('Plotting uvcov for {0}: {1}'.format(f, plot_file))
+            logger.info('{0}'.format(f))
             u, v = read_uvw(msfile, f)
             single_uvcov(f, u, v, freqs, plot_file)
         else:
@@ -339,7 +339,8 @@ def make_elevation(msfile, msinfo):
     plots_obs_dir = './weblog/plots/plots_observation/'
     makedir(plots_obs_dir)
     plot_file = plots_obs_dir+'{0}_elevation.png'.format(msinfo['msfilename'])
-    logger.info('Plotting elevation to: {}'.format(plot_file))
+    logger.info('Plotting elevation to:')
+    logger.info('{}'.format(plot_file))
     avgtime = '32'
     showgui = False
     plotms(vis=msfile, xaxis='time', yaxis='elevation', correlation = 'RR',

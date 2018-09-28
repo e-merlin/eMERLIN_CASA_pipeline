@@ -975,14 +975,14 @@ def flagdata_manual(eMCP, run_name='flag_manual'):
     eM = add_step_time(run_name, eMCP, msg, t0)
     return eMCP
 
-def flagdata_tfcropBP(eMCP, caltables):
+def flagdata_tfcrop(eMCP, defaults):
     logger.info(line0)
-    logger.info('Start flagdata_tfcropBP')
-    # If B0 has not been applied before, do it now
-    #t0 = datetime.datetime.utcnow()
+    if defaults == 'flag_target':
+        t0 = datetime.datetime.utcnow()
+        logger.info('Start flag_target')
     msinfo = eMCP['msinfo']
     msfile = eMCP['msinfo']['msfile']
-    tfcrop = eMCP['defaults']['bandpass']['flag_tfcrop']
+    tfcrop = eMCP['defaults'][defaults]['tfcrop']
     logger.info("Running flagdata, mode = '{}'".format(tfcrop['mode']))
     logger.info("correlation='{}'".format(tfcrop['correlation']))
     logger.info("ntime='{0}', combinescans={1}, datacolumn='{2}'".format(
@@ -991,7 +991,7 @@ def flagdata_tfcropBP(eMCP, caltables):
         tfcrop['winsize'], tfcrop['timecutoff'], tfcrop['freqcutoff'],
         tfcrop['maxnpieces']))
     logger.info("usewindowstats='{0}', halfwin={1}, extendflags={2}".format(
-        tfcrop['usewindowstats'], tfcrop['halfwin'], tfcrop['extendflags']))
+        tfcrop['uwstats'], tfcrop['halfwin'], tfcrop['extendflags']))
     flagdata(vis=msfile,
              mode = 'tfcrop',
              field = eMCP['msinfo']['sources'][tfcrop['sources']],
@@ -1006,69 +1006,30 @@ def flagdata_tfcropBP(eMCP, caltables):
              timecutoff= tfcrop['timecutoff'],
              freqcutoff = tfcrop['freqcutoff'],
              maxnpieces = tfcrop['maxnpieces'],
-             usewindowstats = tfcrop['usewindowstats'],
+             usewindowstats = tfcrop['uwstats'],
              halfwin = tfcrop['halfwin'],
              extendflags = tfcrop['extendflags'],
              action = tfcrop['action'],
              display = tfcrop['display'],
              flagbackup = tfcrop['flagbackup'])
-    logger.info('Finished flagdata_tfcropBP')
+    if defaults == 'flag_target':
+        msg = "mode={0}, maxnpieces={1}, timecutoff={2}, freqcutoff={3}".format(
+                'tfcrop',
+                tfcrop['maxnpieces'],
+                tfcrop['timecutoff'],
+                tfcrop['freqcutoff'])
+        eMCP = add_step_time('flag_target', eMCP, msg, t0)
+        logger.info('End flag_target')
     return eMCP
 
-#def flagdata_tfcrop_bright(msfile, sources, datacolumn='DATA'):
-#    logger.info('Start flagdata_tfcrop_bright')
-#    logger.info("Running flagdata, mode = 'tfcrop'")
-#    logger.info("correlation='ABS_ALL'")
-#    logger.info("ntime='90min', combinescans=True, datacolumn='{}'".format(datacolumn))
-#    logger.info("winsize=3, timecutoff=4.0, freqcutoff=3.0, maxnpieces=5")
-#    logger.info("usewindowstats='sum', halfwin=3, extendflags=True")
-#    flagdata(vis=msfile, mode='tfcrop', field=sources['allsources'],
-#             antenna='', scan='',spw='', correlation='ABS_ALL',
-#             ntime='90min', combinescans=True, datacolumn=datacolumn,
-#             winsize=3, timecutoff=3.6, freqcutoff=3.6, maxnpieces=2,
-#             usewindowstats='sum', halfwin=3, extendflags=True,
-#             action='apply', display='', flagbackup=True)
-#    flagdata(vis=msfile, mode='extend', ntime='90min', extendpols=False,
-#             growtime=50, growfreq=0)
-#    #flag_applied(flags, 'flagdata_tfcrop_bright')
-#    logger.info('End flagdata_tfcrop_bright')
-#    return datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
-
-def flagdata_rflag_gain_p_ap(eMCP):
-    logger.info('Flagging data using flagdata rflag before repeating calibration')
-    msinfo = eMCP['msinfo']
-    msfile = eMCP['msinfo']['msfile']
-    rflag = eMCP['defaults']['gain_p_ap']['rflag']
-    logger.info("Running flagdata, mode = '{}'".format(rflag['mode']))
-    logger.info("ntime='{0}', combinescans={1}, datacolumn='{2}'".format(
-                rflag['ntime'], rflag['combinescans'], rflag['datacolumn']))
-    logger.info("timedevscale = {0}, freqdevscale = {1}".format(
-                rflag['timedevscale'], rflag['freqdevscale']))
-    flagdata(vis=msfile,
-             mode=rflag['mode'],
-             field=eMCP['msinfo']['sources'][rflag['sources']],
-             antenna=rflag['antenna'],
-             scan=rflag['scan'],
-             spw=rflag['spw'],
-             correlation=rflag['correlation'],
-             ntime=rflag['ntime'],
-             combinescans=rflag['combinescans'],
-             datacolumn=rflag['datacolumn'],
-             timedevscale=rflag['timedevscale'],
-             freqdevscale=rflag['freqdevscale'],
-             action=rflag['action'],
-             display=rflag['display'],
-             flagbackup=rflag['flagbackup'])
-    logger.info('RFLAG flagging finished')
-    return eMCP
-
-def flagdata_rflag(eMCP):
+def flagdata_rflag(eMCP, defaults):
     logger.info(line0)
-    logger.info('Start flagdata_rflag')
-    t0 = datetime.datetime.utcnow()
+    if defaults == 'flag_target':
+        t0 = datetime.datetime.utcnow()
+        logger.info('Start flag_target')
     msinfo = eMCP['msinfo']
     msfile = eMCP['msinfo']['msfile']
-    rflag = eMCP['defaults']['flag_rflag']
+    rflag = eMCP['defaults'][defaults]['rflag']
     logger.info("Running flagdata, mode = '{}'".format(rflag['mode']))
     logger.info("ntime='{0}', combinescans={1}, datacolumn='{2}'".format(
                 rflag['ntime'], rflag['combinescans'], rflag['datacolumn']))
@@ -1089,13 +1050,15 @@ def flagdata_rflag(eMCP):
              action=rflag['action'],
              display=rflag['display'],
              flagbackup=rflag['flagbackup'])
-    flag_statistics(eMCP, step='flag_rflag')
-    logger.info('End flagdata_rflag')
-    msg = "ntime={0}, timedevscale={1}, freqdevscale={2}".format(
-            rflag['ntime'],
-            rflag['timedevscale'],
-            rflag['freqdevscale'])
-    eMCP = add_step_time('flag_rflag', eMCP, msg, t0)
+    if defaults == 'flag_target':
+        flag_statistics(eMCP, step='flag_target')
+        msg = "mode={0}, ntime={1}, timedevscale={2}, freqdevscale={3}".format(
+                'rflag',
+                rflag['ntime'],
+                rflag['timedevscale'],
+                rflag['freqdevscale'])
+        eMCP = add_step_time('flag_target', eMCP, msg, t0)
+        logger.info('End flag_target')
     return eMCP
 
 
@@ -1322,43 +1285,26 @@ def run_initialize_models(eMCP):
     return eMCP
 
 
-def run_fringefit(msfile, caltables, caltable_name, minblperant=3, minsnr=2, smodel=[]):
-    previous_cal = caltables[caltable_name]['previous_cal']
-    rmdir(caltables[caltable_name]['table'])
-    logger.info('Running fringefit to generate: {0}'.format(caltables[caltable_name]['name']))
-    logger.info('Field(s) = {0}, zerorates = {1}'.format(
-                caltables[caltable_name]['field'],
-                caltables[caltable_name]['zerorates']))
-    logger.info('solint = {0}, spw = {1},  combine = {2}'.format(
-                caltables[caltable_name]['solint'],
-                caltables[caltable_name]['spw'],
-                caltables[caltable_name]['combine']))
-    # Previous calibration
-    gaintable = [caltables[p]['table'] for p in previous_cal]
-    interp    = [caltables[p]['interp'] for p in previous_cal]
-    spwmap    = [caltables[p]['spwmap'] for p in previous_cal]
-    gainfield = [caltables[p]['gainfield'] if len(np.atleast_1d(caltables[p]['gainfield'].split(',')))<2 else '' for p in previous_cal]
-    logger.info('Previous calibration applied: {0}'.format(str(previous_cal)))
-    logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
-    logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
-    logger.info('Previous calibration interp: {0}'.format(str(interp)))
-    logger.info('Generating cal table: {0}'.format(caltables[caltable_name]['table']))
-    # Run CASA task fringefit
-    fringefit(vis=msfile,
-            caltable  = caltables[caltable_name]['table'],
-            field     = caltables[caltable_name]['field'],
-            solint    = caltables[caltable_name]['solint'],
-            combine   = caltables[caltable_name]['combine'],
-            spw       = caltables[caltable_name]['spw'],
-            refant    = caltables['refant'],
-            antenna   = '*&*',
-            gaintable = gaintable,
-            gainfield = gainfield,
-            interp    = interp,
-            spwmap    = spwmap,
-            zerorates = caltables[caltable_name]['zerorates'])
-    logger.info('caltable {0} in {1}'.format(caltables[caltable_name]['name'],
-                                              caltables[caltable_name]['table']))
+def initialize_cal_dict(inputs, eMCP):
+    # All the calibration steps will be saved in the dictionary caltables.pkl
+    # located in the calib directory. If it does not exist a new one is created.
+    any_calsteps = ['bandpass', 'initial_gaincal','fluxscale','bandpass_sp','gain_amp_sp','applycal_all']
+    if np.array([inputs[cal]>0 for cal in any_calsteps]).any():
+        try:
+            caltables = load_obj(calib_dir+'caltables.pkl')
+            logger.info('Loaded previous calibration tables from: {0}'.format(calib_dir+'caltables.pkl'))
+        except:
+            caltables = {}
+            caltables['inbase'] = inputs['inbase']
+            caltables['plots_dir'] = plots_dir
+            caltables['calib_dir'] = calib_dir
+            caltables['num_spw'] = msinfo['num_spw']
+        logger.info('New caltables dictionary created. Saved to: {0}'.format(calib_dir+'caltables.pkl'))
+        caltables['Lo_dropout_scans'] = eMCP['msinfo']['Lo_dropout_scans']
+        caltables['refant'] = msinfo['refant']
+        caltables['refantmode'] = eMCP['defaults']['global']['refantmode']
+        save_obj(caltables, calib_dir+'caltables.pkl')
+        return caltables
 
 
 def run_gaincal(msfile, caltables, caltable_name):
@@ -1542,138 +1488,40 @@ def run_applycal(eMCP, caltables, step, dotarget=False):
 
 ### Calibration steps
 
-def solve_delays(eMCP, caltables, doplots=True):
-    logger.info('Start solve_delays')
+def initial_bp_cal(eMCP, caltables):
+    logger.info('Start initial_bpcal')
     t0 = datetime.datetime.utcnow()
-    # Check if all sources are in the MS: 
-    check_sources_in_ms(eMCP)
-    delay = eMCP['defaults']['delay']
-    msfile = eMCP['msinfo']['msfile']
-    msinfo = eMCP['msinfo']
-    caltable_name = delay['tablename']
-    caltables[caltable_name] = collections.OrderedDict()
-    caltables[caltable_name]['name'] = caltable_name
-    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
-    caltables[caltable_name]['previous_cal'] = delay['prev_cal']
-    caltables[caltable_name]['field'] = msinfo['sources']['calsources']
-    caltables[caltable_name]['gaintype'] = 'K'
-    caltables[caltable_name]['calmode'] = 'p'
-    caltables[caltable_name]['solint'] = delay['solint']
-    caltables[caltable_name]['spw'] = make_spw(msinfo, delay['spw'])
-    caltables[caltable_name]['combine'] = delay['combine']
-    caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
-    caltables[caltable_name]['spwmap'] = make_spwmap(caltables,delay['combine'])
-    caltables[caltable_name]['interp'] = delay['interp']
-    caltables[caltable_name]['minblperant'] = delay['minblperant']
-    caltables[caltable_name]['minsnr'] = delay['minsnr']
-    caltable = caltables[caltable_name]['table']
-    # Calibration
-    run_gaincal(msfile, caltables, caltable_name)
-    if caltables['Lo_dropout_scans'] != '':
-        remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
-#    logger.info('Delay calibration {0}: {1}'.format(caltable_name, caltable))
-    # Plots
-    if doplots:
-        # 1 No range
-        caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_1.png'
-        plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Delay',
-                      xaxis='time', yaxis='delay', ymin=-1, ymax=-1, coloraxis='field', symbolsize=8)
-        caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_2.png'
-#        plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Delay',
-#                      xaxis='time', yaxis='delay', ymin=-20, ymax=20, coloraxis='field', symbolsize=8)
-        logger.info('Delay plot: {0}'.format(caltableplot))
-        logger.info('End solve_delays')
+    # Pass 1
+    logger.info('Starting pass 1 of initial_bpcal')
+    eMCP, caltables = run_bpcal(eMCP, caltables, doplots=False)
+
+    # Apply solutions
+    run_applycal(eMCP, caltables, step = 'bandpass')
+
+    # Flagging
+    eMCP = flagdata_tfcrop(eMCP, defaults='bandpass')
+
+    # Pass 2
+    logger.info('Starting pass 2 of initial_bpcal')
+    eMCP, caltables = run_bpcal(eMCP, caltables)
+
     # Apply calibration if requested:
-    if eMCP['inputs']['delay'] == 2:
-        run_applycal(eMCP, caltables, step='delay')
+    if eMCP['inputs']['bandpass'] == 2:
+        run_applycal(eMCP, caltables, step='bandpass')
+
+    flag_statistics(eMCP, step='initial_bpcal')
     save_obj(caltables, caltables['calib_dir']+'caltables.pkl')
-    msg = 'solint={0}, combine={1}, minsnr={2}'.format(delay['solint'],
-                                                       delay['combine'],
-                                                       delay['minsnr'])
-    eMCP = add_step_time('delay', eMCP, msg, t0)
+    bp = eMCP['defaults']['bandpass']
+    msg = 'field={0}, combine={1}, solint={2}'.format(
+                    eMCP['msinfo']['sources']['bpcal'],
+                    bp['bp_combine'],
+                    bp['bp_solint'])
+    eMCP = add_step_time('bandpass', eMCP, msg, t0)
+    logger.info('End initial_bpcal')
     return eMCP, caltables
 
 
-
-def delay_fringefit(eMCP, caltables):
-    # Currently does not combine spws because that is not correctly implemented
-    # in the pre-release version of task fringefit
-    logger.info('Start delay_fringefit')
-    # Check if all sources are in the MS: 
-    check_sources_in_ms(eMCP)
-    delay = eMCP['defaults']['delay']
-    msfile = eMCP['msinfo']['msfile']
-    msinfo = eMCP['msinfo']
-    caltable_name = delay['tablename']
-    caltables[caltable_name] = collections.OrderedDict()
-    caltables[caltable_name]['name'] = caltable_name
-    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
-    caltables[caltable_name]['previous_cal'] = delay['prev_cal']
-    caltables[caltable_name]['field'] = msinfo['sources']['calsources']
-    caltables[caltable_name]['solint'] = delay['solint']
-    caltables[caltable_name]['spw'] = make_spw(msinfo, delay['spw'])
-    caltables[caltable_name]['combine'] = delay['combine']
-    caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
-    caltables[caltable_name]['spwmap'] = make_spwmap(caltables,delay['combine'])
-    caltables[caltable_name]['interp'] = delay['interp']
-    caltables[caltable_name]['zerorates'] = delay['zerorates']
-    caltables[caltable_name]['minblperant'] = delay['minblperant']
-    caltables[caltable_name]['minsnr'] = delay['minsnr']
-    caltable = caltables[caltable_name]['table']
-
-    # Calibration
-    run_fringefit(msfile, caltables, caltable_name)
-    if caltables['Lo_dropout_scans'] != '':
-        remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
-#    logger.info('Fringe calibration {0}: {1}'.format(caltable_name, caltable))
-    # Plots
-    # 1 Phases
-    caltableplot =  caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
-    plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Phase',
-                  xaxis='time', yaxis='phase', ymin=-180, ymax=-180, coloraxis='field')
-    logger.info('Fringe calibration (phases) plot in: {0}'.format(caltableplot))
-    # 2 Delays
-    caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_dela.png'
-    plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Phase',
-                  xaxis='time', yaxis='delay', ymin=-1, ymax=-1, coloraxis='field', symbolsize=8)
-    logger.info('Fringe calibration (delays) plot in: {0}'.format(caltableplot))
-    caltableplot =  caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_dela2.png'
-    plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Phase',
-                  xaxis='time', yaxis='delay', ymin=-20, ymax=-20, coloraxis='field', symbolsize=8)
-    logger.info('Fringe calibration (delays range) plot in: {0}'.format(caltableplot))
-    ## 3 Rates (they are zeroed)
-    #caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_rate.png'
-    #plotcal(caltable=caltable,xaxis='time',yaxis='rate',subplot=sub_plot,iteration='antenna',
-    #        showgui=False,figfile=caltableplot, fontsize = 8, plotrange =
-    #        [-1,-1,-1,-1])
-    #logger.info('Fringe calibration (rates) plot in: {0}'.format(caltableplot))
-    logger.info('Delay calibration plot: {0}'.format(caltableplot))
-    logger.info('End delay_fringefit')
-    return eMCP, caltables
-
-def make_spwmap(caltables, combine):
-    if 'spw' in combine:
-        spwmap = [0]*caltables['num_spw']
-    else:
-        spwmap = []
-    return spwmap
-
-def make_spw(msinfo, spw_list):
-    spws = spw_list[0]
-    chans = spw_list[1]
-    if chans == 'innerchan':
-        chans = ':'+msinfo['innerchan']
-    elif chans == '':
-        chans = ''
-    else:
-        chans = ':'+chans
-    return '{0}{1}'.format(spws, chans)
-
-
-def initial_bp_cal(eMCP, caltables, doplots=True, t0='none', forceapply=False):
-    logger.info('Start initial_bp_cal')
-    if t0 == 'none':
-        t0 = datetime.datetime.utcnow()
+def run_bpcal(eMCP, caltables, doplots=True):
     # Check if all sources are in the MS: 
     check_sources_in_ms(eMCP)
     bp = eMCP['defaults']['bandpass']
@@ -1808,27 +1656,229 @@ def initial_bp_cal(eMCP, caltables, doplots=True, t0='none', forceapply=False):
         plot_caltable(msinfo, caltables[caltable_name], bptableplot_amp, title='Bandpass amp',
                       xaxis='freq', yaxis='amp', ymin=-1, ymax=-1, coloraxis='corr', symbolsize=5)
         logger.info('BP0 amplitude plot: {0}'.format(bptableplot_amp))
-    logger.info('End initial_bp_cal')
-    # Apply calibration if requested:
-    if eMCP['inputs']['bandpass'] == 2 or forceapply:
-        run_applycal(eMCP, caltables, step='bandpass')
-    flag_statistics(eMCP, step='initial_bpcal')
-    save_obj(caltables, caltables['calib_dir']+'caltables.pkl')
-    msg = 'field={0}, combine={1}, solint={2}'.format(
-                    msinfo['sources']['bpcal'],
-                    bp['bp_combine'],
-                    bp['bp_solint'])
-    eMCP = add_step_time('bandpass', eMCP, msg, t0)
     return eMCP, caltables
 
 
-def initial_gaincal(eMCP, caltables, doplots=True, t0='none', forceapply=False):
-    logger.info('Start gain_p_ap')
-    if t0 == 'none':
-        t0 = datetime.datetime.utcnow()
+def initial_gaincal(eMCP, caltables):
+    logger.info('Start initial_gaincal')
+    t0 = datetime.datetime.utcnow()
+    # Pass 1
+    logger.info('Starting pass 1 of initial_gaincal')
+    # Delay calibration #
+    if not eMCP['defaults']['initial_gaincal']['delay']['use_fringefit']:
+        eMCP, caltables = solve_delays(eMCP, caltables, doplots=False)
+    else:
+        logger.info('Full fringe fit selected.')
+        eMCP, caltables = delay_fringefit(eMCP, caltables)
+
+    # Initial gain calibration #
+    eMCP, caltables = gain_p_ap(eMCP, caltables, doplots=False)
+    run_applycal(eMCP, caltables, step = 'initial_gaincal')
+
+    # Flagging steps:
+    flagmode = ''
+    if eMCP['defaults']['initial_gaincal']['flagmode'] == 'tfcrop':
+        eMCP = flagdata_tfcrop(eMCP, 'initial_gaincal')
+        flagmode += 'tfcrop'
+    elif eMCP['defaults']['initial_gaincal']['flagmode'] == 'rflag':
+        eMCP = flagdata_rflag(eMCP, 'initial_gaincal')
+        flagmode += 'rflag'
+    else:
+        logger.info('No flagging selected')
+
+    ### Pass2
+    logger.info('Starting pass 2 of initial_gaincal')
+    # Delay calibration #
+    if not eMCP['defaults']['initial_gaincal']['delay']['use_fringefit']:
+        eMCP, caltables = solve_delays(eMCP, caltables)
+    else:
+        logger.info('Full fringe fit selected.')
+        eMCP, caltables = delay_fringefit(eMCP, caltables)
+
+    # Initial gain calibration #
+    eMCP, caltables = gain_p_ap(eMCP, caltables)
+
+    # Apply calibration if requested:
+    if eMCP['inputs']['initial_gaincal'] == 2:
+        run_applycal(eMCP, caltables, step='initial_gaincal')
+    flag_statistics(eMCP, step='initial_gaincal')
+    save_obj(caltables, caltables['calib_dir']+'caltables.pkl')
+    ini_gaincal = eMCP['defaults']['initial_gaincal']
+    msg = 'delay solint={0}, combine={1}, flagmode={2}, p_solint={3}, ' \
+          'ap_solint={4}'.format(ini_gaincal['delay']['solint'],
+                                 ini_gaincal['delay']['combine'],
+                                 flagmode,
+                                 ini_gaincal['p_solint'],
+                                 ini_gaincal['ap_solint'])
+    eMCP = add_step_time('initial_gaincal', eMCP, msg, t0)
+    logger.info('End initial_gaincal')
+    return eMCP, caltables
+
+
+def solve_delays(eMCP, caltables, doplots=True):
+    logger.info('Starting solve_delays')
+    #t0 = datetime.datetime.utcnow()
     # Check if all sources are in the MS: 
     check_sources_in_ms(eMCP)
-    gain_p_ap = eMCP['defaults']['gain_p_ap']
+    delay = eMCP['defaults']['initial_gaincal']['delay']
+    msfile = eMCP['msinfo']['msfile']
+    msinfo = eMCP['msinfo']
+    caltable_name = delay['tablename']
+    caltables[caltable_name] = collections.OrderedDict()
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['previous_cal'] = delay['prev_cal']
+    caltables[caltable_name]['field'] = msinfo['sources']['calsources']
+    caltables[caltable_name]['gaintype'] = 'K'
+    caltables[caltable_name]['calmode'] = 'p'
+    caltables[caltable_name]['solint'] = delay['solint']
+    caltables[caltable_name]['spw'] = make_spw(msinfo, delay['spw'])
+    caltables[caltable_name]['combine'] = delay['combine']
+    caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
+    caltables[caltable_name]['spwmap'] = make_spwmap(caltables,delay['combine'])
+    caltables[caltable_name]['interp'] = delay['interp']
+    caltables[caltable_name]['minblperant'] = delay['minblperant']
+    caltables[caltable_name]['minsnr'] = delay['minsnr']
+    caltable = caltables[caltable_name]['table']
+    # Calibration
+    run_gaincal(msfile, caltables, caltable_name)
+    if caltables['Lo_dropout_scans'] != '':
+        remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
+#    logger.info('Delay calibration {0}: {1}'.format(caltable_name, caltable))
+    # Plots
+    if doplots:
+        # 1 No range
+        caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_1.png'
+        plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Delay',
+                      xaxis='time', yaxis='delay', ymin=-1, ymax=-1, coloraxis='field', symbolsize=8)
+        caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_2.png'
+#        plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Delay',
+#                      xaxis='time', yaxis='delay', ymin=-20, ymax=20, coloraxis='field', symbolsize=8)
+        logger.info('Delay plot: {0}'.format(caltableplot))
+        logger.info('End solve_delays')
+    return eMCP, caltables
+
+
+
+def run_fringefit(msfile, caltables, caltable_name, minblperant=3, minsnr=2, smodel=[]):
+    previous_cal = caltables[caltable_name]['previous_cal']
+    rmdir(caltables[caltable_name]['table'])
+    logger.info('Running fringefit to generate: {0}'.format(caltables[caltable_name]['name']))
+    logger.info('Field(s) = {0}, zerorates = {1}'.format(
+                caltables[caltable_name]['field'],
+                caltables[caltable_name]['zerorates']))
+    logger.info('solint = {0}, spw = {1},  combine = {2}'.format(
+                caltables[caltable_name]['solint'],
+                caltables[caltable_name]['spw'],
+                caltables[caltable_name]['combine']))
+    # Previous calibration
+    gaintable = [caltables[p]['table'] for p in previous_cal]
+    interp    = [caltables[p]['interp'] for p in previous_cal]
+    spwmap    = [caltables[p]['spwmap'] for p in previous_cal]
+    gainfield = [caltables[p]['gainfield'] if len(np.atleast_1d(caltables[p]['gainfield'].split(',')))<2 else '' for p in previous_cal]
+    logger.info('Previous calibration applied: {0}'.format(str(previous_cal)))
+    logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
+    logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
+    logger.info('Previous calibration interp: {0}'.format(str(interp)))
+    logger.info('Generating cal table: {0}'.format(caltables[caltable_name]['table']))
+    # Run CASA task fringefit
+    fringefit(vis=msfile,
+            caltable  = caltables[caltable_name]['table'],
+            field     = caltables[caltable_name]['field'],
+            solint    = caltables[caltable_name]['solint'],
+            combine   = caltables[caltable_name]['combine'],
+            spw       = caltables[caltable_name]['spw'],
+            refant    = caltables['refant'],
+            antenna   = '*&*',
+            gaintable = gaintable,
+            gainfield = gainfield,
+            interp    = interp,
+            spwmap    = spwmap,
+            zerorates = caltables[caltable_name]['zerorates'])
+    logger.info('caltable {0} in {1}'.format(caltables[caltable_name]['name'],
+                                              caltables[caltable_name]['table']))
+
+def delay_fringefit(eMCP, caltables):
+    # Currently does not combine spws because that is not correctly implemented
+    # in the pre-release version of task fringefit
+    logger.info('Starting delay_fringefit')
+    # Check if all sources are in the MS: 
+    check_sources_in_ms(eMCP)
+    delay = eMCP['defaults']['initial_gaincal']['delay']
+    msfile = eMCP['msinfo']['msfile']
+    msinfo = eMCP['msinfo']
+    caltable_name = delay['tablename']
+    caltables[caltable_name] = collections.OrderedDict()
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['previous_cal'] = delay['prev_cal']
+    caltables[caltable_name]['field'] = msinfo['sources']['calsources']
+    caltables[caltable_name]['solint'] = delay['solint']
+    caltables[caltable_name]['spw'] = make_spw(msinfo, delay['spw'])
+    caltables[caltable_name]['combine'] = delay['combine']
+    caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
+    caltables[caltable_name]['spwmap'] = make_spwmap(caltables,delay['combine'])
+    caltables[caltable_name]['interp'] = delay['interp']
+    caltables[caltable_name]['zerorates'] = delay['zerorates']
+    caltables[caltable_name]['minblperant'] = delay['minblperant']
+    caltables[caltable_name]['minsnr'] = delay['minsnr']
+    caltable = caltables[caltable_name]['table']
+
+    # Calibration
+    run_fringefit(msfile, caltables, caltable_name)
+    if caltables['Lo_dropout_scans'] != '':
+        remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
+#    logger.info('Fringe calibration {0}: {1}'.format(caltable_name, caltable))
+    # Plots
+    # 1 Phases
+    caltableplot =  caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
+    plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Phase',
+                  xaxis='time', yaxis='phase', ymin=-180, ymax=-180, coloraxis='field')
+    logger.info('Fringe calibration (phases) plot in: {0}'.format(caltableplot))
+    # 2 Delays
+    caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_dela.png'
+    plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Phase',
+                  xaxis='time', yaxis='delay', ymin=-1, ymax=-1, coloraxis='field', symbolsize=8)
+    logger.info('Fringe calibration (delays) plot in: {0}'.format(caltableplot))
+    caltableplot =  caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_dela2.png'
+    plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Phase',
+                  xaxis='time', yaxis='delay', ymin=-20, ymax=-20, coloraxis='field', symbolsize=8)
+    logger.info('Fringe calibration (delays range) plot in: {0}'.format(caltableplot))
+    ## 3 Rates (they are zeroed)
+    #caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_rate.png'
+    #plotcal(caltable=caltable,xaxis='time',yaxis='rate',subplot=sub_plot,iteration='antenna',
+    #        showgui=False,figfile=caltableplot, fontsize = 8, plotrange =
+    #        [-1,-1,-1,-1])
+    #logger.info('Fringe calibration (rates) plot in: {0}'.format(caltableplot))
+    logger.info('Delay calibration plot: {0}'.format(caltableplot))
+    logger.info('End delay_fringefit')
+    return eMCP, caltables
+
+def make_spwmap(caltables, combine):
+    if 'spw' in combine:
+        spwmap = [0]*caltables['num_spw']
+    else:
+        spwmap = []
+    return spwmap
+
+def make_spw(msinfo, spw_list):
+    spws = spw_list[0]
+    chans = spw_list[1]
+    if chans == 'innerchan':
+        chans = ':'+msinfo['innerchan']
+    elif chans == '':
+        chans = ''
+    else:
+        chans = ':'+chans
+    return '{0}{1}'.format(spws, chans)
+
+
+def gain_p_ap(eMCP, caltables, doplots=True):
+    logger.info('Running gain_p_ap')
+    #t0 = datetime.datetime.utcnow()
+    # Check if all sources are in the MS: 
+    check_sources_in_ms(eMCP)
+    gain_p_ap = eMCP['defaults']['initial_gaincal']
     msfile = eMCP['msinfo']['msfile']
     msinfo = eMCP['msinfo']
 
@@ -1901,16 +1951,7 @@ def initial_gaincal(eMCP, caltables, doplots=True, t0='none', forceapply=False):
                       xaxis='time', yaxis='amp', ymin=-1, ymax=-1, coloraxis='spw', symbolsize=5)
         logger.info('G1_ap amp plot: {0}'.format(caltableplot_amp))
 
-    logger.info('End gain_p_ap')
-    # Apply calibration if requested:
-    if eMCP['inputs']['gain_p_ap'] == 2 or forceapply:
-        #logger.warning('Applying short-solint tables to target.')
-        run_applycal(eMCP, caltables, step = 'gain_p_ap')
-    flag_statistics(eMCP, step='initial_gaincal')
-    save_obj(caltables, caltables['calib_dir']+'caltables.pkl')
-    msg = 'p_solint={0}, ap_solint={1}'.format(
-        gain_p_ap['p_solint'], gain_p_ap['ap_solint'])
-    eMCP = add_step_time('gain_p_ap', eMCP, msg, t0)
+    logger.info('Finished gain_p_ap')
     return eMCP, caltables
 
 
@@ -2676,14 +2717,15 @@ def eMCP_info_start_steps():
     steps['flag_manual_avg'] = default_value
     steps['init_models'] = default_value
     steps['bandpass'] = default_value
+    steps['initial_gaincal'] = default_value
 ##    steps['flag_tfcropBP'] = default_value
-    steps['delay'] = default_value
-    steps['gain_p_ap'] = default_value
+##    steps['delay'] = default_value
+##    steps['gain_p_ap'] = default_value
     steps['fluxscale'] = default_value
     steps['bandpass_sp'] = default_value
     steps['gain_amp_sp'] = default_value
     steps['applycal_all'] = default_value
-    steps['flag_rflag'] = default_value
+    steps['flag_target'] = default_value
     steps['plot_corrected'] = default_value
     steps['first_images'] = default_value
     return steps

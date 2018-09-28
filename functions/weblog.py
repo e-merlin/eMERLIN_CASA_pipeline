@@ -377,23 +377,49 @@ def weblog_pipelineinfo(eMCP):
     weblog_foot(wlog)
     wlog.close()
 
+def write_fluxscale(wlog):
+    with open(info_dir + 'allcal_ap.G1_fluxes.txt') as f:
+        lines = f.readlines()
+    wlog.write('\n<pre>')
+    for line in lines:
+        wlog.write(line)
+    wlog.write('\n</pre>\n<br>')
+
 
 def weblog_calibration(msinfo):
     ###### Calibration page
     wlog = open(weblog_dir + "calibration.html","w")
     weblog_header(wlog, 'Calibration', msinfo['run'])
     #------------------------------------------
+    all_calsteps = [
+           'bpcal_d.K0',
+           'bpcal_p.G0',
+           'bpcal_ap.G1',
+           'bpcal.B0',
+           'delay.K1',
+           'allcal_p.G0',
+           'allcal_ap.G1',
+           'fluxscale',
+           'bpcal_sp.B1',
+           'allcal_ap.G3',
+           'phscal_p_scan.G3',
+           'phscal_ap_scan.G3']
     if os.path.isfile('./weblog/calib/caltables.pkl'):
         caltables = load_obj('./weblog/calib/caltables.pkl')
-        for calstep in caltables['all_calsteps']:
+        for calstep in all_calsteps:
             try:
-                wlog.write('<h4>{}</h4>\n'.format(caltables[calstep]['name']))
-                wlog.write('<table cellspacing = "20" cellpadding = "4px" style="width:40%">\n<tr> <td valign="top">\n')
-                write_caltable(caltables[calstep], wlog)
-                all_plots = np.sort(glob.glob('./weblog/plots/caltables/*{}*.png'.format(calstep)))
-                for p in all_plots:
-                    wlog.write('<td><a href = ".{0}"><img style="max-width:700px" src=".{0}"></a></td>\n'.format(p))
-                wlog.write('</table><br><br>\n<hr>\n')
+                if calstep == 'fluxscale':
+                    wlog.write('<h4>{}</h4>\n'.format('fluxscale'))
+                    write_fluxscale(wlog)
+                    wlog.write('\n<hr>\n')
+                else:
+                    wlog.write('<h4>{}</h4>\n'.format(caltables[calstep]['name']))
+                    wlog.write('<table cellspacing = "20" cellpadding = "4px" style="width:40%">\n<tr> <td valign="top">\n')
+                    write_caltable(caltables[calstep], wlog)
+                    all_plots = np.sort(glob.glob('./weblog/plots/caltables/*{}*.png'.format(calstep)))
+                    for p in all_plots:
+                        wlog.write('<td><a href = ".{0}"><img style="max-width:700px" src=".{0}"></a></td>\n'.format(p))
+                    wlog.write('</table><br><br>\n<hr>\n')
             except:
                 pass
     #------------------------------------------
@@ -415,7 +441,7 @@ def weblog_flagstats(msinfo):
                        'initial_bpcal',
                        'initial_gaincal',
                        'applycal_all',
-                       'flag_rflag']
+                       'flag_target']
     prev_perc_flagged = 0.0
     for step in flagstats_steps:
         try:

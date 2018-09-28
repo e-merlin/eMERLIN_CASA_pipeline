@@ -13,7 +13,7 @@ from tasks import *
 import casadef
 
 
-current_version = 'v0.9.06'
+current_version = 'v0.9.07'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -179,37 +179,8 @@ def run_pipeline(inputs=None, inputs_path=''):
     ### CALIBRATION ###
     ###################
 
-    # All the calibration steps will be saved in the dictionary caltables.pkl
-    # located in the calib directory. If it does not exist a new one is created.
-    any_calsteps = ['bandpass', 'delay', 'gain_p_ap','fluxscale','bandpass_sp','gain_amp_sp','applycal_all']
-    if np.array([inputs[cal]>0 for cal in any_calsteps]).any():
-        try:
-            caltables = load_obj(calib_dir+'caltables.pkl')
-            logger.info('Loaded previous calibration tables from: {0}'.format(calib_dir+'caltables.pkl'))
-        except:
-            caltables = {}
-            caltables['inbase'] = inputs['inbase']
-            caltables['plots_dir'] = plots_dir
-            caltables['calib_dir'] = calib_dir
-            caltables['num_spw'] = msinfo['num_spw']
-        all_calsteps = [
-               'bpcal_d.K0',
-                   'bpcal_p.G0',
-                   'bpcal_ap.G1',
-                   'bpcal.B0',
-                   'delay.K1',
-                   'allcal_p.G0',
-                   'allcal_ap.G1',
-                   'bpcal_sp.B1',
-                   'allcal_ap.G3',
-                   'phscal_p_scan.G3',
-                   'phscal_ap_scan.G3']    # This is just used to know which tables to search in weblog
-        caltables['all_calsteps'] = all_calsteps
-        logger.info('New caltables dictionary created. Saved to: {0}'.format(calib_dir+'caltables.pkl'))
-        caltables['Lo_dropout_scans'] = eMCP['msinfo']['Lo_dropout_scans']
-        caltables['refant'] = msinfo['refant']
-        caltables['refantmode'] = eMCP['defaults']['global']['refantmode']
-        save_obj(caltables, calib_dir+'caltables.pkl')
+    ### Initialize caltable dictionary
+    caltables = em.initialize_cal_dict(inputs, eMCP)
 
     ### Restore flag status at to this point
     if inputs['restore_flags'] == 1:
@@ -225,48 +196,11 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     ### Initial BandPass calibration ###
     if inputs['bandpass'] > 0:
-        t0 = datetime.datetime.utcnow()
-        eMCP, caltables = em.initial_bp_cal(eMCP, caltables, doplots=False,
-                                            forceapply=True)
-        eMCP = em.flagdata_tfcropBP(eMCP, caltables)
-        logger.info('Repeating initial_bp_cal')
-        eMCP, caltables = em.initial_bp_cal(eMCP, caltables, t0=t0)
+        eMCP, caltables = em.initial_bp_cal(eMCP, caltables)
 
-#    ### Flagdata using TFCROP and bandpass shape B0
-#    if inputs['flag_tfcropBP'] > 0:
-#        eMCP = em.flagdata_tfcropBP(eMCP, caltables)
-
-    ### Delay calibration ###
-    if inputs['delay'] > 0:
-        if not eMCP['defaults']['delay']['use_fringefit']:
-            if inputs['gain_p_ap'] > 0:
-                doplots_delay = False
-            else:
-                doplots_delay = True
-            eMCP, caltables = em.solve_delays(eMCP, caltables, doplots=doplots_delay)
-        else:
-            logger.info('Full fringe fit selected.')
-            eMCP, caltables = em.delay_fringefit(eMCP, caltables)
-
-    ### Initial gain calibration ###
-    if inputs['gain_p_ap'] > 0:
-        t0 = datetime.datetime.utcnow()
-        eMCP, caltables = em.initial_gaincal(eMCP, caltables, doplots=False,
-                                             forceapply=True)
-        em.flagdata_rflag_gain_p_ap(eMCP)
-
-        ### REPEAT gain_p_ap
-        logger.info('Repeating delay and gain_p_ap calibration')
-        ### Delay calibration ###
-        if inputs['delay'] > 0:
-            if not eMCP['defaults']['delay']['use_fringefit']:
-                eMCP, caltables = em.solve_delays(eMCP, caltables)
-            else:
-                logger.info('Full fringe fit selected.')
-                eMCP, caltables = em.delay_fringefit(eMCP, caltables)
-
-        ### Repeat initial gain calibration ###
-        eMCP, caltables = em.initial_gaincal(eMCP, caltables, t0=t0)
+    ### Initial gaincal = delay, p, ap ###
+    if inputs['initial_gaincal'] > 0:
+        eMCP, caltables = em.initial_gaincal(eMCP, caltables)
 
     ### Flux scale ###
     if inputs['fluxscale'] > 0:
@@ -285,8 +219,11 @@ def run_pipeline(inputs=None, inputs_path=''):
         eMCP = em.applycal_all(eMCP, caltables)
 
     ### RFLAG automatic flagging ###
-    if inputs['flag_rflag'] > 0:
-        eMCP = em.flagdata_rflag(eMCP)
+    if inputs['flag_target'] > 0:
+        if eMCP['defaults']['flag_target']['mode_to_run'] == 'rflag':
+            eMCP = em.flagdata_rflag(eMCP, 'flag_target')
+        elif eMCP['defaults']['flag_target']['mode_to_run'] == 'tfcrop':
+            eMCP = em.flagdata_tfcrop(eMCP, 'flag_target')
 
     ### Produce some visibility plots ###
     if inputs['plot_corrected'] > 0:
@@ -304,18 +241,18 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     emwlog.start_weblog(eMCP)
 
-    ### Run monitoring for bright sources:
-    try:
-        if inputs['monitoring'] > 0:
-            caltables = em.monitoring(msfile=msfile, msinfo=msinfo,
-                                             caltables=caltables,
-                                             previous_cal=[''])
-    except:
-        pass
+#    ### Run monitoring for bright sources:
+#    try:
+#        if inputs['monitoring'] > 0:
+#            caltables = em.monitoring(msfile=msfile, msinfo=msinfo,
+#                                             caltables=caltables,
+#                                             previous_cal=[''])
+#    except:
+#        pass
 
     try:
-        os.system('mv ipython-*.log casa-*.log *.last ./logs')
-        logger.info('Moved ipython-*.log casa-*.log *.last to ./logs')
+        os.system('mv casa-*.log *.last ./logs')
+        logger.info('Moved casa-*.log *.last to ./logs')
     except:
         pass
     logger.info('Pipeline finished')
