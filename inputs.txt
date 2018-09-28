@@ -10,8 +10,6 @@ fluxcal         = '1331+305'
 bpcal           = '1407+284'
 ptcal           = '0319+415'
 refant          = 'Mk2'
-Lo_dropout_scans= ''
-
 
 # 2. Process inputs
 
@@ -30,7 +28,6 @@ restore_flags   = 0
 flag_manual_avg = 0   # Commands in ./inputfg_avg.flags
 init_models     = 0
 bandpass        = 0
-flag_tfcropBP   = 0
 delay           = 0
 gain_p_ap       = 0
 fluxscale       = 0

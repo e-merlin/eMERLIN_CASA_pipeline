@@ -388,7 +388,10 @@ def plot_flagstatistics(flag_stats, msinfo, step):
     # Different colors for each field
     scan_summary = read_scan_summary(msinfo['msfile'])
     scan_fieldID_dict =  {si:scan_summary[str(si)]['0']['FieldId'] for si in scan_summary.keys()}
-    vis_fields = vishead(msinfo['msfile'],mode='list',listitems='field')['field'][0]
+    #vis_fields = vishead(msinfo['msfile'],mode='list',listitems='field')['field'][0]
+    msmd.open(msinfo['msfile'])
+    vis_fields = np.array(msmd.fieldnames())
+    msmd.done()
 
     # Compute % statistics
     i_scan, f_scan = count_flags(flag_stats, 'scan')
@@ -400,24 +403,28 @@ def plot_flagstatistics(flag_stats, msinfo, step):
     fig = plt.figure(figsize=(25,4))
     plt.subplots_adjust(wspace=0.01)
     ax1 = fig.add_subplot(1,5,(1,2))
-    ax2 = fig.add_subplot(153, sharey=ax1)
+    ax2 = fig.add_subplot(153)
 #    ax3 = fig.add_subplot(153)
-    ax4 = fig.add_subplot(154, sharey=ax1)
-    ax5 = fig.add_subplot(155, sharey=ax1)
+    ax4 = fig.add_subplot(154, sharey=ax2)
+    ax5 = fig.add_subplot(155, sharey=ax2)
 
     scan_fieldID = np.array([scan_fieldID_dict[str(si)] for si in i_scan])
     for i, fi in enumerate(vis_fields):
         cond = scan_fieldID == i
         ax1.bar(i_scan[cond]-0.5, f_scan[cond], alpha=1.0,
                 color=plt.cm.Set1(1.0*i/len(i_field)), width=1,
-                label='{0} ({1})'.format(fi, i))
-        ax2.bar(i, f_field[np.argwhere(i_field==fi)[0][0]], alpha=1.0,
+                label='{0} ({1})'.format(fi, i), zorder=10)
+        field_value = f_field[np.argwhere(i_field==fi)[0][0]]
+        ax2.bar(i, field_value, alpha=1.0,
                 color=plt.cm.Set1(1.0*i/len(i_field)), width=1,
-                label='{0} ({1})'.format(fi, i), align='center')
+                label='{0} ({1})'.format(fi, i), align='center', zorder=10)
+        ax2.text(i-0.1, 0.9*field_value, "{0:2.0f}".format(field_value*100.), color='k', va='center')
 
 #    ax3.bar(range(len(i_corr)), f_corr, alpha=0.5, color='k', width=1, align='center')
-    ax4.bar(range(len(i_spw)), f_spw, alpha=0.5, color='k', width=1, align='center')
-    ax5.bar(range(len(i_ant)), f_ant, alpha=0.5, color='k', width=1, align='center')
+    ax4.bar(range(len(i_spw)), f_spw, alpha=1.0, color='0.5', width=1,
+            align='center', zorder=10)
+    ax5.bar(range(len(i_ant)), f_ant, alpha=1.0, color='0.5', width=1,
+            align='center', zorder=10)
 
     ax2.axes.set_xticks(range(len(i_field)))
 #    ax3.axes.set_xticks(range(len(i_corr)))
@@ -438,6 +445,11 @@ def plot_flagstatistics(flag_stats, msinfo, step):
     #[ax3.annotate(si, (i+0.5, f_corr[i])) for i, si in enumerate(i_corr)]
     #[ax5.annotate(si, (i+0.3, f_ant[i])) for i, si in enumerate(i_ant)]
 
+    for i, v in enumerate(f_spw):
+        ax4.text(i-0.1, 0.9*v,"{0:2.0f}".format(v*100.), color='k', va='center')
+    for i, v in enumerate(f_ant):
+        ax5.text(i-0.1, 0.9*v,"{0:2.0f}".format(v*100.), color='k', va='center')
+
     ax1.set_title('Scan')
     ax2.set_title('Field')
 #    ax3.set_title('Correlation')
@@ -450,6 +462,11 @@ def plot_flagstatistics(flag_stats, msinfo, step):
     ax1.set_ylabel('Flagged fraction')
     #ax2.set_ylabel('Flagged fraction')
     #ax4.set_ylabel('Flagged fraction')
+
+    ax1.grid(axis='y', zorder = -1000, ls='-', color='0.6')
+    ax2.grid(axis='y', zorder = -1000, ls='-', color='0.6')
+    ax4.grid(axis='y', zorder = -1000, ls='-', color='0.6')
+    ax5.grid(axis='y', zorder = -1000, ls='-', color='0.6')
 
     ax1.set_ylim(0,1)
     ax2.set_ylim(0,1)
@@ -479,9 +496,11 @@ def plot_flagstatistics(flag_stats, msinfo, step):
         cond = scan_fieldID == i
         ax1.bar(i_scan[cond]-0.5, f_scan[cond], alpha=1.0,
                 color=plt.cm.Set1(1.0*i/len(i_field)), width=1,
-                label='{0} ({1})'.format(fi, i))
+                label='{0} ({1})'.format(fi, i), zorder=10)
 
     ax1.legend(loc=0)
+    ax1.grid(axis='y', zorder = -1000, ls='-', color='0.6')
+
     ax1.xaxis.set_major_locator(MultipleLocator(5))
     ax1.set_xlim(np.min(i_scan)-0.5, np.max(i_scan)+0.5)
     ax1.set_ylim(0,1)

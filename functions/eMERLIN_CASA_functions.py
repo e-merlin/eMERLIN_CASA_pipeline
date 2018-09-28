@@ -1314,7 +1314,7 @@ def run_initialize_models(eMCP):
     logger.info('Model {0}'.format('./'+'/'.join(model_3C286.split('/')[-2:])))
     if fluxcal != '1331+305':
         logger.warning('Using a model for 3C286 (1331+305) but your flux calibrator source is: {0}. Model may be wrong for that source'.format(fluxcal))
-    setjy(vis=msfile, field=fluxcal, standard='',
+    setjy(vis=msfile, field=fluxcal,
           model=model_3C286, scalebychan=True, usescratch=True)
     logger.info('End init_models')
     msg = ''

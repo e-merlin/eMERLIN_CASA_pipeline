@@ -85,7 +85,7 @@ def weblog_foot(wlog):
     wlog.write('<hr><br>\n')
     wlog.write('<small>')
     links = collections.OrderedDict()
-    links['e-MERLIN Pipeline Github'] = 'https://github.com/e-merlin/casa_emerlin_pipeline'
+    links['e-MERLIN Pipeline Github'] = 'https://github.com/e-merlin/eMERLIN_CASA_pipeline'
     links['e-MERLIN']  = 'http://www.e-merlin.ac.uk/'
     links['User support and data reduction for e-MERLIN'] = 'http://www.e-merlin.ac.uk/data_red/'
     links['CASA'] = 'https://casa.nrao.edu/'
@@ -421,15 +421,16 @@ def weblog_flagstats(msinfo):
         try:
             flag_stats = load_obj('./weblog/plots/plots_flagstats/flagstats_{}.pkl'.format(step))
             perc_flagged = flag_stats['flagged']/flag_stats['total']*100.
+            diff_flagged = perc_flagged-prev_perc_flagged
+            prev_perc_flagged = perc_flagged
             all_plots = np.sort(glob.glob('./weblog/plots/plots_flagstats/*{}.png'.format(step)))
             if len(all_plots) > 0:
                 wlog.write('<a href=".{0}" target="_blank">{1}</a> (Total: '
                            '{2:3.1f}%. Increase: {3:3.1f}%)<br>\n'.format(all_plots[1],
                                                                 step,
                                                                 perc_flagged,
-                                                                perc_flagged-prev_perc_flagged))
+                                                                diff_flagged))
                 wlog.write('<a href = ".{0}"><img style="max-width:1200px" src=".{0}"></a><br>\n'.format(all_plots[0]))
-            prev_perc_flagged = perc_flagged
         except:
             pass
     #------------------------------------------
