@@ -1013,6 +1013,7 @@ def flagdata_tfcrop(eMCP, defaults):
              display = tfcrop['display'],
              flagbackup = tfcrop['flagbackup'])
     if defaults == 'flag_target':
+        flag_statistics(eMCP, step='flag_target')
         msg = "mode={0}, maxnpieces={1}, timecutoff={2}, freqcutoff={3}".format(
                 'tfcrop',
                 tfcrop['maxnpieces'],
@@ -1060,6 +1061,14 @@ def flagdata_rflag(eMCP, defaults):
         eMCP = add_step_time('flag_target', eMCP, msg, t0)
         logger.info('End flag_target')
     return eMCP
+
+
+def run_flag_target(eMCP):
+    mode = eMCP['defaults']['flag_target']['mode_to_run']
+    if mode == 'rflag':
+        eMCP = em.flagdata_rflag(eMCP, 'flag_target')
+    elif mode == 'tfcrop':
+        eMCP = em.flagdata_tfcrop(eMCP, 'flag_target')
 
 
 def define_refant(eMCP, msfile):

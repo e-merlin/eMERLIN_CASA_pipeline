@@ -13,7 +13,7 @@ from tasks import *
 import casadef
 
 
-current_version = 'v0.9.07'
+current_version = 'v0.9.08'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -151,7 +151,7 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     ### Average data ###
     if inputs['average'] > 0:
-        eMCP = em.run_average(eMCP)
+        eMCP = em.run_split(eMCP)
 
     # Check if averaged data already generated
     if os.path.isdir('./'+inputs['inbase']+'_avg.mms') == True:
