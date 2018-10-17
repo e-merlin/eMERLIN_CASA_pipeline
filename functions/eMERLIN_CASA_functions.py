@@ -1122,15 +1122,17 @@ def find_refant(msfile, field, spw='3'):
     snr = {}
     for anten in antennas:
         try:
-            v[anten] = visstat(msfile, field='1407+284', antenna='{}&*'.format(anten), axis='amplitude', spw=str(spw), correlation='RR,LL')
-            snr[anten] = v[anten]['DATA_DESC_ID=3']['median']/v[anten]['DATA_DESC_ID=3']['stddev']
+            v[anten] = visstat(msfile, field=field, antenna='{}&*'.format(anten), axis='amplitude', spw=str(spw), correlation='RR,LL')
+            snr[anten] = v[anten]['DATA_DESC_ID=3']['median']#/v[anten]['DATA_DESC_ID=3']['stddev']
+            # I have removed the std because empty antenna (=pure noise) have
+            # very low stddev
         except:
             v[anten] = None
             snr[anten] = 0.0
             logger.warning('No data found for bpcal for antenna: '
                            '{}'.format(anten))
     for i in np.argsort(snr.values())[::-1]:
-        logger.info('{0:3}: {1:3.1f}'.format(snr.keys()[i], snr.values()[i]))
+        logger.info('{0:3}: {1:3.1g}'.format(snr.keys()[i], snr.values()[i]))
     pref_ant = [snr.keys()[i] for i in np.argsort(snr.values())][::-1]
     snr_sorted = [snr.values()[i] for i in np.argsort(snr.values())][::-1]
     if 'Lo' in antennas:
@@ -1285,6 +1287,8 @@ def run_initialize_models(eMCP):
     init_models = eMCP['defaults']['init_models']
     models_path = eMCP['pipeline_path']+init_models['calibrator_models']
     fluxcal = eMCP['msinfo']['sources']['fluxcal']
+    logger.info('Resseting corrected column with clearcal')
+    clearcal(vis=msfile)
     logger.info('Deleting model of all sources')
     delmod(vis=msfile, otf=True, scr=True) #scr to delete MODEL column
     # Check dataset frequency:
@@ -1313,7 +1317,11 @@ def run_initialize_models(eMCP):
 def initialize_cal_dict(inputs, eMCP):
     # All the calibration steps will be saved in the dictionary caltables.pkl
     # located in the calib directory. If it does not exist a new one is created.
-    msinfo = eMCP['msinfo']
+    try:
+        msinfo = eMCP['msinfo']
+    except:
+        logger.warning('No msinfo found')
+        sys.exit()
     any_calsteps = ['bandpass', 'initial_gaincal','fluxscale','bandpass_sp','gain_amp_sp','applycal_all']
     if np.array([inputs[cal]>0 for cal in any_calsteps]).any():
         try:
@@ -1350,7 +1358,7 @@ def run_gaincal(msfile, caltables, caltable_name):
     gaintable = [caltables[p]['table'] for p in previous_cal]
     interp    = [caltables[p]['interp'] for p in previous_cal]
     spwmap    = [caltables[p]['spwmap'] for p in previous_cal]
-    gainfield = [caltables[p]['gainfield'] if len(np.atleast_1d(caltables[p]['gainfield'].split(',')))<2 else '' for p in previous_cal]
+    gainfield = [caltables[p]['gainfield'] if len(np.atleast_1d(caltables[p]['gainfield'].split(',')))<2 else 'nearest' for p in previous_cal]
     logger.info('Previous calibration applied: {0}'.format(str(previous_cal)))
     logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
     logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
@@ -1373,12 +1381,6 @@ def run_gaincal(msfile, caltables, caltable_name):
             spwmap    = spwmap,
             minblperant= caltables[caltable_name]['minblperant'],
             minsnr    = caltables[caltable_name]['minsnr'])
-#    if caltables[caltable_name]['calmode'] == 'p' and  caltables[caltable_name]['gaintype'] == 'G':
-#        refant = caltables['refant'].split(',')[0]
-#        logger.info('Running rerefant to refant'
-#                    ' {}'.format(refant))
-#        rerefant(vis=msfile, tablein=caltables[caltable_name]['table'],
-#                 refantmode='strict', refant =refant)
     logger.info('caltable {0} in {1}'.format(caltables[caltable_name]['name'],
                                               caltables[caltable_name]['table']))
 
@@ -1398,7 +1400,7 @@ def run_bandpass(msfile, caltables, caltable_name, minblperant=3, minsnr=2):
     gaintable = [caltables[p]['table'] for p in previous_cal]
     interp    = [caltables[p]['interp'] for p in previous_cal]
     spwmap    = [caltables[p]['spwmap'] for p in previous_cal]
-    gainfield = [caltables[p]['gainfield'] if len(np.atleast_1d(caltables[p]['gainfield'].split(',')))<2 else '' for p in previous_cal]
+    gainfield = [caltables[p]['gainfield'] if len(np.atleast_1d(caltables[p]['gainfield'].split(',')))<2 else 'nearest' for p in previous_cal]
     logger.info('Previous calibration applied: {0}'.format(str(previous_cal)))
     logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
     logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
@@ -1443,7 +1445,7 @@ def smooth_caltable(msfile, tablein, plotdir, caltable='', field='', smoothtype=
     return
 
 
-def run_applycal(eMCP, caltables, step, dotarget=False):
+def run_applycal(eMCP, caltables, step, dotarget=False, insources=''):
     logger.info(line0)
     logger.info('Start applycal')
     logger.info('Applying calibration up to step: {}'.format(step))
@@ -1453,7 +1455,11 @@ def run_applycal(eMCP, caltables, step, dotarget=False):
     sources = eMCP['msinfo']['sources']
     # 1 correct non-target sources:
     logger.info('Applying calibration to calibrator sources')
-    logger.info('Fields: {0}'.format(sources['calsources']))
+    if insources == '':
+        fields = sources['calsources']
+    else:
+        fields = insources
+    logger.info('Fields: {0}'.format(fields))
     # Check if tables exist:
     for table_i in previous_cal:
         check_table_exists(caltables, table_i)
@@ -1461,14 +1467,14 @@ def run_applycal(eMCP, caltables, step, dotarget=False):
     gaintable = [caltables[p]['table'] for p in previous_cal]
     interp    = [caltables[p]['interp'] for p in previous_cal]
     spwmap    = [caltables[p]['spwmap'] for p in previous_cal]
-    gainfield = [caltables[p]['gainfield'] if len(np.atleast_1d(caltables[p]['gainfield'].split(',')))<2 else '' for p in previous_cal]
+    gainfield = [caltables[p]['gainfield'] if len(np.atleast_1d(caltables[p]['gainfield'].split(',')))<2 else 'nearest' for p in previous_cal]
 
     logger.info('Previous calibration applied: {0}'.format(str(previous_cal)))
     logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
     logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
     logger.info('Previous calibration interp: {0}'.format(str(interp)))
     applycal(vis=msfile,
-             field = sources['calsources'],
+             field = fields,
              gaintable = gaintable,
              gainfield = gainfield,
              interp    = interp,
@@ -1522,10 +1528,11 @@ def initial_bp_cal(eMCP, caltables):
     eMCP, caltables = run_bpcal(eMCP, caltables, doplots=False)
 
     # Apply solutions
-    run_applycal(eMCP, caltables, step = 'bandpass')
+    run_applycal(eMCP, caltables, step = 'bp_apply_mid', insources=eMCP['msinfo']['sources']['bpcal'])
 
     # Flagging
-    eMCP = flagdata_tfcrop(eMCP, defaults='bandpass')
+    if eMCP['defaults']['bandpass']['run_flag']:
+        eMCP = flagdata_tfcrop(eMCP, defaults='bandpass')
 
     # Pass 2
     logger.info('Starting pass 2 of initial_bpcal')
@@ -1697,7 +1704,7 @@ def initial_gaincal(eMCP, caltables):
         logger.info('Full fringe fit selected.')
         eMCP, caltables = delay_fringefit(eMCP, caltables)
 
-    # Initial gain calibration #
+    # Initial gain pass 1
     eMCP, caltables = gain_p_ap(eMCP, caltables, doplots=False)
     run_applycal(eMCP, caltables, step = 'initial_gaincal')
 
@@ -1711,7 +1718,6 @@ def initial_gaincal(eMCP, caltables):
         flagmode += 'rflag'
     else:
         logger.info('No flagging selected')
-
     ### Pass2
     logger.info('Starting pass 2 of initial_gaincal')
     # Delay calibration #
@@ -1721,7 +1727,7 @@ def initial_gaincal(eMCP, caltables):
         logger.info('Full fringe fit selected.')
         eMCP, caltables = delay_fringefit(eMCP, caltables)
 
-    # Initial gain calibration #
+    # Initial gain pass 2
     eMCP, caltables = gain_p_ap(eMCP, caltables)
 
     # Apply calibration if requested:
@@ -1801,7 +1807,7 @@ def run_fringefit(msfile, caltables, caltable_name, minblperant=3, minsnr=2, smo
     gaintable = [caltables[p]['table'] for p in previous_cal]
     interp    = [caltables[p]['interp'] for p in previous_cal]
     spwmap    = [caltables[p]['spwmap'] for p in previous_cal]
-    gainfield = [caltables[p]['gainfield'] if len(np.atleast_1d(caltables[p]['gainfield'].split(',')))<2 else '' for p in previous_cal]
+    gainfield = [caltables[p]['gainfield'] if len(np.atleast_1d(caltables[p]['gainfield'].split(',')))<2 else 'nearest' for p in previous_cal]
     logger.info('Previous calibration applied: {0}'.format(str(previous_cal)))
     logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
     logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))

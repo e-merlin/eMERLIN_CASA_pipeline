@@ -269,17 +269,6 @@ def plots_uvplt(msinfo, wlog):
             wlog.write('<td><a href = ".{0}"><img style="max-width:960px" src=".{0}"></a></td>\n'.format(p_model))
         wlog.write('</tr></table><br><br>\n<hr>\n')
 
-#def plots_flagstats(msinfo, wlog):
-#    wlog.write('<h3>Flag statistics</h3>\n')
-#    all_plots = np.sort(glob.glob('./weblog/plots/plots_flagstats/*png'))
-#    #wlog.write('<h4>{0}</h4>\n'.format(msinfo['msfilename']))
-#    plots_obs_dir = './weblog/plots/plots_flagstats/'
-#    plot_file1 = plots_obs_dir+'{0}_flagstats_all.png'.format(msinfo['msfilename'])
-#    plot_file2 = plots_obs_dir+'{0}_flagstats_scans.png'.format(msinfo['msfilename'])
-#    wlog.write('<a href = ".{0}"><img style="max-width:960px" src=".{0}"></a><br>\n'.format(plot_file1))
-#    wlog.write('High definition per scan:<br>\n')
-#    wlog.write('<a href = ".{0}"><img style="max-width:960px" src=".{0}"></a><br>\n'.format(plot_file2))
-
 def write_caltable(caltable, wlog):
     wlog.write('<table bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:40%">\n')
     #wlog.write('<tr><td>{} </td>   <td>{}</td>\n'.format('Parameter', 'Value'))
