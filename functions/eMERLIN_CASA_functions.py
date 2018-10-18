@@ -23,6 +23,7 @@ from tasks import *
 from recipes.setOrder import setToCasaOrder
 from casac import casac
 msmd = casac.msmetadata()
+import casadef
 
 # Logging
 logger = logging.getLogger('logger')
@@ -2652,8 +2653,13 @@ def run_first_images(eMCP):
     logger.info('Start run_first_images')
     t0 = datetime.datetime.utcnow()
     if eMCP['defaults']['first_images']['run_statwt']:
+        casa_version = casadef.casa_version.split('.')
+        if casa_version[0] == '5' and int(casa_version[1])>=4:
+            timebin = eMCP['defaults']['first_images']['statwt_timebin']
+        else:
+            timebin = ''
         logger.info('Running statwt with default parameters')
-        statwt(vis=msinfo['msfile'])
+        statwt(vis=msinfo['msfile'], timebin=timebin)
     num = 0
     eMCP['img_stats'] = collections.OrderedDict()
     for s in msinfo['sources']['targets_phscals'].split(','):
