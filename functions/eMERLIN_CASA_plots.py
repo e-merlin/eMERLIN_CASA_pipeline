@@ -5,7 +5,7 @@ import pickle
 import matplotlib
 import matplotlib.pyplot as plt
 #import multiprocessing
-from matplotlib.ticker import MultipleLocator
+from matplotlib.ticker import MultipleLocator, MaxNLocator
 import datetime
 import shutil
 import glob
@@ -557,3 +557,73 @@ def plot_Lo_drops(phscal_scans, scans, amp_mean, lo_dropout_scans, phscal, eMCP)
                                                        phscal)
     fig.savefig(plot_file_Lo, bbox_inches='tight')
 
+def read_calfluxes(calfluxes, k, eMfactor):
+    freq = calfluxes['freq']
+    spws = calfluxes['spwID']
+    fieldName = calfluxes[k]['fieldName']
+    spindex = calfluxes[k]['spidx'][1]
+    espindex = calfluxes[k]['spidxerr'][1]
+    S0 = calfluxes[k]['fitFluxd']*eMfactor
+    eS0 = calfluxes[k]['fitFluxdErr']*eMfactor
+    freq0 = calfluxes[k]['fitRefFreq']
+    flux = np.ones(len(spws))*np.nan
+    eflux = np.ones(len(spws))*np.nan
+    for i, spw in enumerate(spws):
+        try:
+            flux[i] = calfluxes[k][str(spw)]['fluxd'][0]
+            eflux[i] = calfluxes[k][str(spw)]['fluxdErr'][0]
+        except:
+            pass
+    flux *= eMfactor
+    eflux *= eMfactor
+    return freq,spws,fieldName,spindex,espindex,S0,eS0,freq0,flux,eflux
+
+def fluxscale_models(calfluxes, eMfactor, msinfo):
+    factor_unit= 1e-9
+    units = 'Jy'
+    fig = plt.figure(figsize=(10,8))
+    ax1 = fig.add_subplot(111)
+
+    for k in calfluxes.keys():
+        if type(calfluxes[k]) is dict:
+            freq,spws,fieldName,spindex,espindex,S0,eS0,freq0,flux,eflux = read_calfluxes(calfluxes,k, eMfactor)
+            freqspan = np.max(freq) - np.min(freq)
+            freqlim = np.array([np.min(freq) - 0.025*freqspan, np.max(freq) + 0.1*freqspan])
+            fluxfit = S0*(freqlim/freq0)**spindex
+            ff_min  = (S0-eS0)*(freqlim/freq0)**(spindex-espindex)
+            ff_max  = (S0+eS0)*(freqlim/freq0)**(spindex+espindex)
+            ff_min2 = (S0-eS0)*(freqlim/freq0)**(spindex+espindex)
+            ff_max2 = (S0+eS0)*(freqlim/freq0)**(spindex-espindex)
+            label = '{0:>9s}: Flux density = {1:6.3f} +/-{2:6.3f}, '\
+                    'spidx ={3:5.2f}+/-{4:5.2f}'.format(fieldName,
+                        calfluxes[k]['fitFluxd']*eMfactor, calfluxes[k]['fitFluxdErr']*eMfactor,
+                        calfluxes[k]['spidx'][1], calfluxes[k]['spidxerr'][1])
+            p, = ax1.plot(freqlim*factor_unit, fluxfit, '-', linewidth = 2,  zorder = -5,
+                     label=label)
+            color1 = str(p.get_color())
+            #ax1.errorbar(freq*factor_unit, flux, eflux, fmt = 'o', color =color1, mec = color1, zorder = 10)
+            ax1.plot(freq*factor_unit, flux,  marker = 'o', ls='', color ='k',mec= 'k', zorder = 10)
+            ax1.fill_between(freqlim*factor_unit, ff_min, ff_max,
+                             facecolor=color1,color=color1, alpha = 1.0,linewidth = 0, zorder = -32)
+            ax1.fill_between(freqlim*factor_unit, ff_max2,ff_min2,
+                             facecolor=color1,color=color1, alpha = 1.0,linewidth = 0, zorder = -32)
+
+    freq = calfluxes['freq']
+    freqspan = np.max(freq) - np.min(freq)
+    freqlim = np.array([np.min(freq) - 0.025*freqspan, np.max(freq) + 0.1*freqspan])
+    ax1.set_xlabel("Frequency [GHz]")
+    ax1.set_ylabel("Flux density [Jy]")
+    ax1.set_xlim(freqlim[0]*factor_unit, freqlim[1]*factor_unit)
+    ax1.set_ylim(0.0, ax1.get_ylim()[1])
+    ax1.xaxis.set_major_locator(MaxNLocator(5))
+    ax1.xaxis.set_minor_locator(MaxNLocator(20))
+    ax1.yaxis.set_major_locator(MaxNLocator(6))
+    ax1.yaxis.set_minor_locator(MaxNLocator(6*5))
+    leg = ax1.legend(loc=0, borderaxespad=1)
+    ax1.grid(ls='-', alpha=0.3, zorder=-50)
+    #ax1.set_xscale('log')
+    #ax1.set_yscale('log')
+
+    plots_obs_dir = './weblog/info/'
+    plot_file = plots_obs_dir+'{0}_fluxscale.png'.format(msinfo['msfilename'])
+    fig.savefig(plot_file, bbox_inches='tight')

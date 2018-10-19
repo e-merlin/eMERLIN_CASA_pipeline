@@ -367,8 +367,13 @@ def weblog_pipelineinfo(eMCP):
     wlog.close()
 
 def write_fluxscale(wlog):
+    p = glob.glob('./weblog/info/*fluxscale.png')[0]
+    wlog.write('<td><a href = ".{0}"><img style="max-width:700px" src=".{0}"></a></td>\n'.format(p))
+
     with open(info_dir + 'allcal_ap.G1_fluxes.txt') as f:
         lines = f.readlines()
+    wlog.write('\n<br>\n')
+    wlog.write('CASA fluxscale output (not corrected by eMfactor):')
     wlog.write('\n<pre>')
     for line in lines:
         wlog.write(line)

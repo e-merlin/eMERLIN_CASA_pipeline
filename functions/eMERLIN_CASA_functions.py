@@ -2091,7 +2091,7 @@ def eM_fluxscale(eMCP, caltables):
     # Get fitted flux density and spectral index, correctly scaled for e-MERLIN
     eMcalfluxes = collections.OrderedDict()
     for k in calfluxes.keys():
-        if len(calfluxes[k]) > 4:
+        if type(calfluxes[k]) is dict:
             try:
                 a=[]
                 a.append(calfluxes[k]['fitFluxd']*eMfactor)
@@ -2103,6 +2103,8 @@ def eM_fluxscale(eMCP, caltables):
                     calfluxes[k]['spidx'][1], calfluxes[k]['spidxerr'][1]))
             except:
                 pass
+    logger.info('Plotting fluxscale models')
+    emplt.fluxscale_models(calfluxes, eMfactor, msinfo)
     # Scale and fill model column:
     for field in eMcalfluxes.keys():
         # Check if there are image models (tt0, tt1) for each field:
