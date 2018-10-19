@@ -1111,7 +1111,7 @@ def define_refant(eMCP, msfile):
             # Finding best antennas for refant
             logger.info('Estimating best reference antenna.')
             logger.info('To avoid this, set a reference antenna in the inputs file.')
-            refant, refant_pref = find_refant(msfile, field=eMCP['inputs']['bpcal'])
+            refant, refant_pref = find_refant(msfile, field=eMCP['inputs']['fluxcal'])
         else:
             refant = ','.join(refant_user)
     logger.info('Refant in eMCP: {}'.format(refant))
@@ -1124,8 +1124,8 @@ def find_refant(msfile, field, spw='3'):
     for anten in antennas:
         try:
             v[anten] = visstat(msfile, field=field, antenna='{}&*'.format(anten), axis='amplitude', spw=str(spw), correlation='RR,LL')
-            snr[anten] = v[anten]['DATA_DESC_ID=3']['median']#/v[anten]['DATA_DESC_ID=3']['stddev']
-            # I have removed the std because empty antenna (=pure noise) have
+            snr[anten] = v[anten]['DATA_DESC_ID=3']['median']/v[anten]['DATA_DESC_ID=3']['stddev']
+            # Sometimes std of an empty antenna (=pure noise) have
             # very low stddev
         except:
             v[anten] = None

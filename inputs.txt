@@ -4,12 +4,12 @@
 
 fits_path       = /path/to/fits/files/
 inbase          = 'project_name'
-targets         = ''
-phscals         = ''
-fluxcal         = '1331+305'
-bpcal           = '1407+284'
-ptcal           = '0319+415'
-refant          = 'Mk2'
+targets         = 'target_name'
+phscals         = 'phscal_name'
+fluxcal         = 'fluxcal_name'
+bpcal           = 'bpcal_name'
+ptcal           = 'ptcal_name'
+refant          = ''
 
 # 2. Process inputs
 
