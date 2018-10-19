@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 #import multiprocessing
 from matplotlib.ticker import MultipleLocator
 import datetime
+import shutil
+import glob
 
 plt.ioff()
 
@@ -110,6 +112,12 @@ def count_active_baselines(msfile):
                 active_baselines += 1
     return active_baselines
 
+def simple_plot_name(plot_file, i):
+    actual_name = glob.glob('{0}{1}*.png'.format(plot_file, i))[0]
+    try:
+        shutil.move(actual_name, '{0}{1}.png'.format(plot_file, i))
+    except:
+        pass
 
 def single_4plot(msinfo, field, datacolumn, plots_data_dir):
     logger.info('Visibility plots for field: {0}, datacolumn: {1}'.format(field, datacolumn))
@@ -134,6 +142,7 @@ def single_4plot(msinfo, field, datacolumn, plots_data_dir):
     xselfscale = True, xsharedaxis = True, coloraxis = 'spw', plotrange=[-1,-1,0,-1],
     plotfile = plot_file+'0.png', expformat = 'png', customsymbol = True, symbolshape = 'circle',
     width=w, height=h, symbolsize=4,clearplots=False, overwrite=True, showgui=showgui)
+    simple_plot_name(plot_file, 0)
 
     plotms(vis=msfile, xaxis='time', yaxis='phase', title='Phase vs Time {0} (color=spw)'.format(field),
     gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=0, plotindex=0,
@@ -143,6 +152,7 @@ def single_4plot(msinfo, field, datacolumn, plots_data_dir):
     xselfscale = True, xsharedaxis = True, coloraxis   = 'spw', plotrange=[-1,-1,-180,180],
     plotfile = plot_file+'1.png', expformat = 'png', customsymbol = True, symbolshape = 'circle',
     width=w, height=h, symbolsize=4,clearplots=False, overwrite=True, showgui=showgui)
+    simple_plot_name(plot_file, 1)
 
     plotms(vis=msfile, xaxis='freq', yaxis='amp', title='Amp vs Frequency {0} (color=corr)'.format(field),
     gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=0, plotindex=0,
@@ -152,6 +162,7 @@ def single_4plot(msinfo, field, datacolumn, plots_data_dir):
     xselfscale = True, xsharedaxis = True, coloraxis   = 'corr', plotrange=[-1,-1,0,-1],
     plotfile = plot_file+'2.png', expformat = 'png', customsymbol = True, symbolshape = 'circle',
     width=w, height=h, symbolsize=4,clearplots=False, overwrite=True, showgui=showgui)
+    simple_plot_name(plot_file, 2)
 
     plotms(vis=msfile, xaxis='freq', yaxis='phase', title='Phase vs Frequency {0} (color=corr)'.format(field),
     gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=0, plotindex=0,
@@ -162,6 +173,7 @@ def single_4plot(msinfo, field, datacolumn, plots_data_dir):
     plotfile = plot_file+'3.png', expformat = 'png', customsymbol = True, symbolshape = 'circle',
     width=w, height=h, symbolsize=4,clearplots=False, overwrite=True, showgui=showgui)
     logger.info('Finished {0}: {1}{{0-4}}.png'.format(field, plot_file))
+    simple_plot_name(plot_file, 3)
 
 
 def make_4plots(eMCP, datacolumn='data'):
