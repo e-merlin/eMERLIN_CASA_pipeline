@@ -1241,10 +1241,18 @@ def run_average(eMCP):
     logger.info(line0)
     logger.info('Start average')
     t0 = datetime.datetime.utcnow()
-    width = eMCP['defaults']['average']['width']
+    chanbin = eMCP['defaults']['average']['chanbin']
     msfile = eMCP['msinfo']['msfile']
     sources = eMCP['msinfo']['sources']
     timebin = '{}s'.format(eMCP['inputs']['average'])
+    if timebin == '1s':
+        timeaverage = False
+    else:
+        timeaverage = True
+    if chanbin == 1:
+        chanaverage = False
+    else:
+        chanaverage = True
     datacolumn = eMCP['defaults']['average']['datacolumn']
     scan = eMCP['defaults']['average']['scan']
     antenna = eMCP['defaults']['average']['antenna']
@@ -1259,17 +1267,17 @@ def run_average(eMCP):
     rmdir(outputmsfile+'.flagversions')
     logger.info('Input MS: {0}'.format(msfile))
     logger.info('Output MS: {0}'.format(outputmsfile))
-    logger.info('width={0}, timebin={1}'.format(width, timebin))
+    logger.info('chanbin={0}, timebin={1}'.format(chanbin, timebin))
     logger.info('Fields: {0}'.format(fields))
     logger.info('Data column: {0}'.format(datacolumn))
     mstransform(vis=msfile, outputvis=outputmsfile, field=fields,
-                timeaverage=True, chanaverage=True,
+                timeaverage=timeaverage, chanaverage=chanaverage,
                 timerange=timerange, scan=scan, antenna=antenna,
-                timebin=timebin,  chanbin=width,
+                timebin=timebin,  chanbin=chanbin,
                 datacolumn=datacolumn, keepflags=True)
     run_listobs(outputmsfile)
     logger.info('End average')
-    msg = 'width={0}, timebin={1}, datacolumn={2}'.format(width, timebin,
+    msg = 'chanbin={0}, timebin={1}, datacolumn={2}'.format(chanbin, timebin,
                                                           datacolumn)
     eMCP = add_step_time('average', eMCP, msg, t0)
 

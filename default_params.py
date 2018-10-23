@@ -33,7 +33,7 @@ defaults['flag_apriori']['Lo_min_scans']              = 4
 
 defaults['average'] = collections.OrderedDict()
 defaults['average']['field']                          = ''
-defaults['average']['width']                          = 4
+defaults['average']['chanbin']                        = 4
 defaults['average']['datacolumn']                     = 'data'
 defaults['average']['timerange']                      = ''
 defaults['average']['scan']                           = ''

@@ -372,7 +372,7 @@ def write_fluxscale(wlog):
 
     with open(info_dir + 'allcal_ap.G1_fluxes.txt') as f:
         lines = f.readlines()
-    wlog.write('\n<br>\n')
+    wlog.write('\n<br><br>\n')
     wlog.write('CASA fluxscale output (not corrected by eMfactor):')
     wlog.write('\n<pre>')
     for line in lines:
