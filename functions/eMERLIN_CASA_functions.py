@@ -1153,14 +1153,31 @@ def find_refant(msfile, field, spw='3'):
     logger.info('Preference antennas refant = {0}'.format(refant))
     return refant, refant_pref
 
+def count_active_antennas(msfile):
+    msmd.open(msfile)
+    a = np.array(msmd.antennanames())
+    b = np.array(msmd.baselines())
+    msmd.done()
+    active_antennas = []
+    for i, ant1 in enumerate(a):
+        for ant2 in a[i+1:]:
+            j = np.argwhere(ant2==a)[0][0]
+            if b[i,j]:
+                active_antennas.append(ant1)
+                active_antennas.append(ant2)
+    nice_order = ['Lo', 'Mk2', 'Pi', 'Da', 'Kn', 'De', 'Cm']
+    active_antennas = [a for a in nice_order if a in active_antennas]
+    return active_antennas
 
 def plot_caltable(msinfo, caltable, plot_file, xaxis='', yaxis='', title='',
                   ymin=-1, ymax=-1, coloraxis='spw', symbolsize=8):
-    num_anten = len(msinfo['antennas'])
     gridcols = 1
     showgui=False
-    for i, anten in enumerate(msinfo['antennas']):
-        if i == len(msinfo['antennas'])-1:
+    active_antennas = count_active_antennas(msinfo['msfile'])
+    num_anten = len(active_antennas)
+    for i, anten in enumerate(active_antennas):
+        print i, anten
+        if i == len(active_antennas)-1:
             plotfile = plot_file
         else:
             plotfile = ''
