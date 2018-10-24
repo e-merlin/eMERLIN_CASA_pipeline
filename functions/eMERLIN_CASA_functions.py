@@ -2545,7 +2545,7 @@ def dfluxpy(freq,baseline):
     return vlaflux, merlinflux, resolved_percent, caution_res_pc, thisbl
 
 
-def plot_image(eMCP, imagename, ext='.tt0', dozoom=False):
+def plot_image(eMCP, imagename, center, ext='.tt0', dozoom=False):
     imstat_residual = imstat(imagename+'.residual'+ext)
     imstat_image = imstat(imagename+'.image'+ext)
     noise = imstat_residual['rms'][0]
@@ -2555,7 +2555,6 @@ def plot_image(eMCP, imagename, ext='.tt0', dozoom=False):
     imgpar = eMCP['defaults']['first_images']
     level0 = imgpar['level0']
     levels = level0*np.sqrt(3**np.arange(20))
-    center = 512
     zoom_range = 150
     for extension in ['image'+ext]:
         filename = '{0}.{1}'.format(imagename, extension)
@@ -2584,9 +2583,8 @@ def plot_image(eMCP, imagename, ext='.tt0', dozoom=False):
                    out = filename+'_zoom.png')
     return peak, noise
 
-def plot_image_add(imagename, ext='.tt0', dozoom=False):
+def plot_image_add(imagename, center, ext='.tt0', dozoom=False):
     filename = imagename
-    center = 512
     zoom_range = 150
     imview(raster={'file':filename+'.residual'+ext,
                    'colorwedge':True},
@@ -2651,8 +2649,8 @@ def single_tclean(eMCP, s, num):
         ext = '.tt0'
     else:
         ext = ''
-    peak, noise = plot_image(eMCP, imagename, ext=ext, dozoom=True)
-    plot_image_add(imagename, ext=ext, dozoom=True)
+    peak, noise = plot_image(eMCP, imagename, center=int(imsize/2.0), ext=ext, dozoom=True)
+    plot_image_add(imagename, center=int(imsize/2.0), ext=ext, dozoom=True)
     eMCP['img_stats'][s] = [peak, noise]
     return eMCP
 
