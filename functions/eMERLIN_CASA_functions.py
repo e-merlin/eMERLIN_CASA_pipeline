@@ -951,6 +951,7 @@ def flagdata1_apriori(eMCP):
                 flagdata(vis=msfile, antenna='Lo', scan=eMCP['msinfo']['Lo_dropout_scans'])
         else:
             eMCP['msinfo']['Lo_dropout_scans'] = Lo_dropout_scans
+            flagdata(vis=msfile, antenna='Lo', scan=eMCP['msinfo']['Lo_dropout_scans'])
     else:
         eMCP['msinfo']['Lo_dropout_scans'] = ''
 
