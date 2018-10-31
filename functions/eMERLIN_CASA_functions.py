@@ -909,16 +909,16 @@ def flagdata1_apriori(eMCP):
     do_quack = eMCP['defaults']['flag_apriori']['do_quack']
     if do_quack:
         ## Target and phase reference, 20 sec
-        logger.info('Flagging first 20 sec of all sources.')
-        flagdata(vis=msfile, mode='quack', quackinterval=20)
-        # Main calibrators, 5 min
-        bright_cal = join_lists([si for si in ['1331+305','1407+284','0319+415'] if si in
-                      msinfo['sources']['mssources']])
-        if bright_cal != '':
-            logger.info('Flagging 5 min from bright calibrators')
-            flagdata(vis=msfile, field=bright_cal, mode='quack', quackinterval=300)
-        else:
-            logger.warning('No main calibrators (1331+305, 1407+284, 0319+415) found in data set')
+#        logger.info('Flagging first 20 sec of all sources.')
+#        flagdata(vis=msfile, mode='quack', quackinterval=20)
+#        # Main calibrators, 5 min
+#        bright_cal = join_lists([si for si in ['1331+305','1407+284','0319+415'] if si in
+#                      msinfo['sources']['mssources']])
+#        if bright_cal != '':
+#            logger.info('Flagging 5 min from bright calibrators')
+#            flagdata(vis=msfile, field=bright_cal, mode='quack', quackinterval=300)
+#        else:
+#            logger.warning('No main calibrators (1331+305, 1407+284, 0319+415) found in data set')
         for s1, s2 in zip(msinfo['sources']['targets'].split(','),
                           msinfo['sources']['phscals'].split(',')):
             sources_in_ms = msinfo['sources']['mssources'].split(',')
