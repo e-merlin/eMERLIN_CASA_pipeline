@@ -24,6 +24,7 @@ defaults['aoflagger']['separate_bands']               = False
 
 defaults['flag_apriori'] = collections.OrderedDict()
 defaults['flag_apriori']['do_quack']                  = True
+defaults['flag_apriori']['std_cal_quack']             = 300.
 defaults['flag_apriori']['Lo_dropout']                = ''
 defaults['flag_apriori']['Lo_datacolumn']             = 'data'
 defaults['flag_apriori']['Lo_useflags']               = True
