@@ -1326,7 +1326,7 @@ def run_initialize_models(eMCP):
     init_models = eMCP['defaults']['init_models']
     models_path = eMCP['pipeline_path']+init_models['calibrator_models']
     fluxcal = eMCP['msinfo']['sources']['fluxcal']
-    logger.info('Resseting corrected column with clearcal')
+    logger.info('Resetting corrected column with clearcal')
     clearcal(vis=msfile)
     logger.info('Deleting model of all sources')
     delmod(vis=msfile, otf=True, scr=True) #scr to delete MODEL column
@@ -2611,11 +2611,10 @@ def plot_image(eMCP, imagename, center, ext='.tt0', dozoom=False):
                               'unit':float(noise)*2.},
                    zoom = {'blc':[center-zoom_range,center-zoom_range],'trc':[center+zoom_range, center+zoom_range]},
                    out = filename+'_zoom.png')
-    return peak, noise
+    return peak, noise, scaling
 
-def plot_image_add(imagename, center, ext='.tt0', dozoom=False):
+def plot_image_add(imagename, center, zoom_range, ext='.tt0', dozoom=False):
     filename = imagename
-    zoom_range = 150
     imview(raster={'file':filename+'.residual'+ext,
                    'colorwedge':True},
            contour = {'file':filename+'.mask',
@@ -2646,6 +2645,7 @@ def single_tclean(eMCP, s, num):
     gain = imgpar['gain']
     deconvolver = imgpar['deconvolver']
     nterms = imgpar['nterms']
+    scales = imgpar['scales']
     weighting = imgpar['weighting']
     robust = imgpar['robust']
     usemask = 'auto-multithresh'
@@ -2666,6 +2666,7 @@ def single_tclean(eMCP, s, num):
            imsize=imsize, cell=cell, deconvolver=deconvolver,
            gain=gain,
            nterms=nterms,
+           scales=scales,
            weighting=weighting,
            robust=robust, niter=niter, usemask=usemask,
            nsigma=nsigma,
@@ -2679,9 +2680,10 @@ def single_tclean(eMCP, s, num):
         ext = '.tt0'
     else:
         ext = ''
-    peak, noise = plot_image(eMCP, imagename, center=int(imsize/2.0), ext=ext, dozoom=True)
-    plot_image_add(imagename, center=int(imsize/2.0), ext=ext, dozoom=True)
-    eMCP['img_stats'][s] = [peak, noise]
+    peak, noise, scaling = plot_image(eMCP, imagename, center=int(imsize/2.0), ext=ext, dozoom=True)
+    zoom_range = eMCP['defaults']['first_images']['zoom_range_pix']
+    plot_image_add(imagename, center=int(imsize/2.0), zoom_range=zoom_range, ext=ext, dozoom=True)
+    eMCP['img_stats'][s] = [peak, noise, scaling]
     return eMCP
 
 
@@ -2731,17 +2733,25 @@ def shift_field_position(eMCP, msfile, shift):
     st.done()
     tb.close()
     # Average individual field
-    width = eMCP['defaults']['average']['width']
+    chanbin = eMCP['defaults']['average']['chanbin']
     timebin = '{}s'.format(eMCP['inputs']['average'])
+    if timebin == '1s':
+        timeaverage = False
+    else:
+        timeaverage = True
+    if chanbin == 1:
+        chanaverage = False
+    else:
+        chanaverage = True
     datacolumn = eMCP['defaults']['average']['datacolumn']
     scan = eMCP['defaults']['average']['scan']
     antenna = eMCP['defaults']['average']['antenna']
     timerange = eMCP['defaults']['average']['timerange']
     rmdir(msfile_split+'_avg')
     mstransform(vis=msfile_split, outputvis=msfile_split+'_avg',
-                timeaverage=True, chanaverage=True,
+                timeaverage=timeaverage, chanaverage=chanaverage,
                 timerange=timerange, scan=scan, antenna=antenna,
-                timebin=timebin,  chanbin=width,
+                timebin=timebin,  chanbin=chanbin,
                 datacolumn=datacolumn, keepflags=True)
     if os.path.isdir(msfile_split+'_avg') == True:
         rmdir(msfile_split)

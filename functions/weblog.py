@@ -507,28 +507,34 @@ def show_image(eMCP, wlog, i):
     target = msinfo['sources']['targets'].split(',')[i]
     phscal = msinfo['sources']['phscals'].split(',')[i]
     try:
-        peak_target, noise_target = eMCP['img_stats'][target]
-        peak_phscal, noise_phscal = eMCP['img_stats'][phscal]
+        peak_target, noise_target, scaling_target = eMCP['img_stats'][target]
+        peak_phscal, noise_phscal, scaling_phscal = eMCP['img_stats'][phscal]
     except:
-        peak_target, noise_target = 0.0, 0.0
-        peak_phscal, noise_phscal = 0.0, 0.0
+        peak_target, noise_target, scaling_target = 0.0, 0.0, 0.0
+        peak_phscal, noise_phscal, scaling_phscal = 0.0, 0.0, 0.0
     img_target = weblog_dir+'images/{0}/{1}_{0}_img{2:02d}'.format(target, msinfo['msfilename'], num)
     img_phscal = weblog_dir+'images/{0}/{1}_{0}_img{2:02d}'.format(phscal, msinfo['msfilename'], num)
     wlog.write('<hr>\n')
     wlog.write('<h3>{}</h3>\n'.format(target))
     wlog.write('<table bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:30%">\n')
-    wlog.write('<tr><td><b>{0}</b> (Target image) Peak: {1:3.3f} mJy</td>' \
-               '<td>(Target residual) rms: {2:5.3f} mJy</td>\n'.format(target,
+    wlog.write('<tr><td><b>{0}</b> (Target image) ' \
+               'Peak: {1:3.3f} mJy ' \
+               '(scaling: {2:4.1f})</td>' \
+               '<td>(Target residual) rms: {3:5.3f} mJy</td>\n'.format(target,
                                                                peak_target*1000.,
+                                                               scaling_target,
                                                                noise_target*1000.))
     wlog.write('<tr><td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(img_target+'.image'+ext+'.png'))
     wlog.write('<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>\n'.format(img_target+'.residual'+ext+'.png'))
     wlog.write('<tr><td>{0} image</td><td>{0} residual</td>\n'.format('zoom'))
     wlog.write('<tr><td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(img_target+'.image'+ext+'_zoom.png'))
     wlog.write('<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>\n'.format(img_target+'.residual'+ext+'_zoom.png'))
-    wlog.write('<tr><td><b>{0}</b> (Phasecal image) Peak: {1:3.1f} mJy</td>' \
-               '<td>(Phasecal residual) rms: {2:5.3f} mJy</td>\n'.format(phscal,
+    wlog.write('<tr><td><b>{0}</b> (Phasecal image) ' \
+               'Peak: {1:3.3f} mJy ' \
+               '(scaling: {2:4.1f})</td>' \
+               '<td>(Phasecal residual) rms: {3:5.3f} mJy</td>\n'.format(phscal,
                                                                peak_phscal*1000.,
+                                                               scaling_phscal,
                                                                noise_phscal*1000.))
     wlog.write('<tr><td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(img_phscal+'.image'+ext+'.png'))
     wlog.write('<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>\n'.format(img_phscal+'.residual'+ext+'.png'))
