@@ -946,10 +946,13 @@ def flagdata1_apriori(eMCP):
                 phscals = msinfo['sources']['phscals'].split(',')
                 Lo_drop_list = find_Lo_drops(msfile,
                                              phscals, eMCP)
-                eMCP['msinfo']['Lo_dropout_scans'] = ','.join(Lo_drop_list.astype('str'))
-                logger.info('Flagging Lo dropout scans: '
+                if Lo_drop_list == []:
+                    eMCP['msinfo']['Lo_dropout_scans'] = ''
+                else:
+                    eMCP['msinfo']['Lo_dropout_scans'] = ','.join(Lo_drop_list.astype('str'))
+                    logger.info('Flagging Lo dropout scans: '
                             '{0}'.format(eMCP['msinfo']['Lo_dropout_scans']))
-                flagdata(vis=msfile, antenna='Lo', scan=eMCP['msinfo']['Lo_dropout_scans'])
+                    flagdata(vis=msfile, antenna='Lo', scan=eMCP['msinfo']['Lo_dropout_scans'])
         else:
             eMCP['msinfo']['Lo_dropout_scans'] = Lo_dropout_scans
             flagdata(vis=msfile, antenna='Lo', scan=eMCP['msinfo']['Lo_dropout_scans'])
