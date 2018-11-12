@@ -1269,6 +1269,13 @@ def check_table_exists(caltables, tablename):
 
 
 ### Run CASA calibration functions
+def list_sources_out(eMCP):
+    mssources = find_mssources(eMCP['msfile']).split(',')
+    allsources = eMCP['msinfo']['sources']['allsources'].split(',')
+    ignored_sources = [s for s in mssources if s not in allsources]
+    if ignored_sources != []:
+        logger.info('Sources ignored for not being in inputs file: {0}'.format(
+               ','.join(ignored_sources)))
 
 def run_average(eMCP):
     logger.info(line0)
@@ -1276,7 +1283,6 @@ def run_average(eMCP):
     t0 = datetime.datetime.utcnow()
     chanbin = eMCP['defaults']['average']['chanbin']
     msfile = eMCP['msinfo']['msfile']
-    sources = eMCP['msinfo']['sources']
     timebin = '{}s'.format(eMCP['inputs']['average'])
     if timebin == '1s':
         timeaverage = False
@@ -1290,9 +1296,7 @@ def run_average(eMCP):
     scan = eMCP['defaults']['average']['scan']
     antenna = eMCP['defaults']['average']['antenna']
     timerange = eMCP['defaults']['average']['timerange']
-    # Check if all sources are in the MS: 
-    #check_sources_in_ms(eMCP)
-    fields = eMCP['defaults']['average']['field']
+    fields = eMCP['msinfo']['sources']['allsources']
     name = '.'.join(msfile.split('.')[:-1])
     exte = ''.join(msfile.split('.')[-1])
     outputmsfile = name+'_avg.'+exte
@@ -1302,6 +1306,7 @@ def run_average(eMCP):
     logger.info('Output MS: {0}'.format(outputmsfile))
     logger.info('chanbin={0}, timebin={1}'.format(chanbin, timebin))
     logger.info('Fields: {0}'.format(fields))
+    list_sources_out(eMCP)
     logger.info('Data column: {0}'.format(datacolumn))
     mstransform(vis=msfile, outputvis=outputmsfile, field=fields,
                 timeaverage=timeaverage, chanaverage=chanaverage,
