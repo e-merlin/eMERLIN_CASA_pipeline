@@ -6,6 +6,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 #import multiprocessing
 from matplotlib.ticker import MultipleLocator, MaxNLocator
+from matplotlib.ticker import ScalarFormatter
 import datetime
 import shutil
 import glob
@@ -572,6 +573,10 @@ def read_calfluxes(calfluxes, k, eMfactor):
         try:
             flux[i] = calfluxes[k][str(spw)]['fluxd'][0]
             eflux[i] = calfluxes[k][str(spw)]['fluxdErr'][0]
+            if eflux[i] <= 0.0:
+                flux[i] = np.nan
+                eflux[i] = np.nan
+                freq[i] = np.nan
         except:
             pass
     flux *= eMfactor
@@ -587,8 +592,8 @@ def fluxscale_models(calfluxes, eMfactor, msinfo):
     for k in calfluxes.keys():
         if type(calfluxes[k]) is dict:
             freq,spws,fieldName,spindex,espindex,S0,eS0,freq0,flux,eflux = read_calfluxes(calfluxes,k, eMfactor)
-            freqspan = np.max(freq) - np.min(freq)
-            freqlim = np.array([np.min(freq) - 0.025*freqspan, np.max(freq) + 0.1*freqspan])
+            freqspan = np.nanmax(freq) - np.nanmin(freq)
+            freqlim = np.array([np.nanmin(freq) - 0.025*freqspan, np.nanmax(freq) + 0.1*freqspan])
             fluxfit = S0*(freqlim/freq0)**spindex
             ff_min  = (S0-eS0)*(freqlim/freq0)**(spindex-espindex)
             ff_max  = (S0+eS0)*(freqlim/freq0)**(spindex+espindex)
@@ -609,20 +614,21 @@ def fluxscale_models(calfluxes, eMfactor, msinfo):
                              facecolor=color1,color=color1, alpha = 1.0,linewidth = 0, zorder = -32)
 
     freq = calfluxes['freq']
-    freqspan = np.max(freq) - np.min(freq)
-    freqlim = np.array([np.min(freq) - 0.025*freqspan, np.max(freq) + 0.1*freqspan])
+    freqspan = np.nanmax(freq) - np.nanmin(freq)
+    freqlim = np.array([np.nanmin(freq) - 0.025*freqspan, np.nanmax(freq) + 0.1*freqspan])
     ax1.set_xlabel("Frequency [GHz]")
     ax1.set_ylabel("Flux density [Jy]")
     ax1.set_xlim(freqlim[0]*factor_unit, freqlim[1]*factor_unit)
-    ax1.set_ylim(0.0, ax1.get_ylim()[1])
+    #ax1.set_ylim(0.0, ax1.get_ylim()[1])
     ax1.xaxis.set_major_locator(MaxNLocator(5))
     ax1.xaxis.set_minor_locator(MaxNLocator(20))
-    ax1.yaxis.set_major_locator(MaxNLocator(6))
-    ax1.yaxis.set_minor_locator(MaxNLocator(6*5))
+    #ax1.yaxis.set_major_locator(MaxNLocator(6))
+    #ax1.yaxis.set_minor_locator(MaxNLocator(6*5))
     leg = ax1.legend(loc=0, borderaxespad=1)
     ax1.grid(ls='-', alpha=0.3, zorder=-50)
     #ax1.set_xscale('log')
-    #ax1.set_yscale('log')
+    ax1.set_yscale('log')
+    ax1.yaxis.set_major_formatter(ScalarFormatter())
 
     plots_obs_dir = './weblog/info/'
     plot_file = plots_obs_dir+'{0}_fluxscale.png'.format(msinfo['msfilename'])
