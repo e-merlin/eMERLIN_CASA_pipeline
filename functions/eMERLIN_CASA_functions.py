@@ -902,11 +902,14 @@ def flagdata1_apriori(eMCP):
     msmd.open(msfile)
     nchan = len(msmd.chanwidths(0))
     msmd.done()
+    # Remove pure zeros
+    logger.info('Flagging zeros')
+    flagdata(vis=msfile, mode='clip', clipzeros=True, flagbackup=False)
     # Subband edges
     channels_to_flag = '*:0~{0};{1}~{2}'.format(nchan/128-1, nchan-nchan/128, nchan-1)
     logger.info('MS has {} channels/spw'.format(nchan))
     logger.info('Flagging edge channels {0}'.format(channels_to_flag))
-    flagdata(vis=msfile, mode='manual', spw=channels_to_flag)
+    flagdata(vis=msfile, mode='manual', spw=channels_to_flag, flagbackup=False)
     # Slewing (typical):
     do_quack = eMCP['defaults']['flag_apriori']['do_quack']
     if do_quack:
@@ -917,7 +920,8 @@ def flagdata1_apriori(eMCP):
         if bright_cal != '':
             std_cal_quack = eMCP['defaults']['flag_apriori']['std_cal_quack']
             logger.info('Flagging {0}s from bright calibrators'.format(std_cal_quack))
-            flagdata(vis=msfile, field=bright_cal, mode='quack', quackinterval=std_cal_quack)
+            flagdata(vis=msfile, field=bright_cal, mode='quack',
+                     quackinterval=std_cal_quack, flagbackup=False)
         else:
             logger.warning('No main calibrators (1331+305, 1407+284, 0319+415) found in data set')
         for s1, s2 in zip(msinfo['sources']['targets'].split(','),
@@ -928,7 +932,8 @@ def flagdata1_apriori(eMCP):
                 quacktime = find_quacktime(msinfo, s1, s2)
                 if s1 != '':
                     logger.info('Flagging first {0} sec of target {1} and phasecal {2}'.format(quacktime, s1, s2))
-                    flagdata(vis=msfile, field=','.join([s1,s2]), mode='quack', quackinterval=quacktime)
+                    flagdata(vis=msfile, field=','.join([s1,s2]), mode='quack',
+                             quackinterval=quacktime, flagbackup=False)
             else:
                 logger.warning('Warning, source(s) {} not present in MS, will not flag this pair'.format(','.join(missing_sources)))
     else:
@@ -952,17 +957,21 @@ def flagdata1_apriori(eMCP):
                     eMCP['msinfo']['Lo_dropout_scans'] = ','.join(Lo_drop_list.astype('str'))
                     logger.info('Flagging Lo dropout scans: '
                             '{0}'.format(eMCP['msinfo']['Lo_dropout_scans']))
-                    flagdata(vis=msfile, antenna='Lo', scan=eMCP['msinfo']['Lo_dropout_scans'])
+                    flagdata(vis=msfile, antenna='Lo',
+                             scan=eMCP['msinfo']['Lo_dropout_scans'],
+                             flagbackup=False)
         else:
             eMCP['msinfo']['Lo_dropout_scans'] = Lo_dropout_scans
-            flagdata(vis=msfile, antenna='Lo', scan=eMCP['msinfo']['Lo_dropout_scans'])
+            flagdata(vis=msfile, antenna='Lo',
+                     scan=eMCP['msinfo']['Lo_dropout_scans'], flagbackup=False)
     else:
         eMCP['msinfo']['Lo_dropout_scans'] = ''
 
     # Flag Lo-Mk2
     if 'Lo' in antennas and 'Mk2' in antennas:
         logger.info('Flagging Lo-Mk2 baseline')
-        flagdata(vis=msfile, mode='manual', antenna='Lo*&Mk2*')
+        flagdata(vis=msfile, mode='manual', antenna='Lo*&Mk2*',
+                 flagbackup=False)
     flag_statistics(eMCP, step='apriori')
     msg = ''
     logger.info('End flagdata1_apriori')
@@ -986,7 +995,7 @@ def flagdata_manual(eMCP, run_name='flag_manual'):
         logger.warning('Stopping pipeline at this step')
         exit_pipeline()
     logger.info('Applying manual flags from file: {0}'.format(inpfile))
-    flagdata(vis=msfile, mode='list', inpfile=inpfile)
+    flagdata(vis=msfile, mode='list', inpfile=inpfile, flagbackup=False)
     flag_statistics(eMCP, step=run_name)
     logger.info('End {}'.format(run_name))
     msg = 'file={0}'.format(inpfile)
@@ -1084,9 +1093,9 @@ def flagdata_rflag(eMCP, defaults):
 def run_flag_target(eMCP):
     mode = eMCP['defaults']['flag_target']['mode_to_run']
     if mode == 'rflag':
-        eMCP = em.flagdata_rflag(eMCP, 'flag_target')
+        eMCP = flagdata_rflag(eMCP, 'flag_target')
     elif mode == 'tfcrop':
-        eMCP = em.flagdata_tfcrop(eMCP, 'flag_target')
+        eMCP = flagdata_tfcrop(eMCP, 'flag_target')
 
 
 def define_refant(eMCP, msfile):
@@ -1525,7 +1534,8 @@ def run_applycal(eMCP, caltables, step, dotarget=False, insources=''):
              gaintable = gaintable,
              gainfield = gainfield,
              interp    = interp,
-             spwmap    = spwmap)
+             spwmap    = spwmap,
+             flagbackup= False)
 
     # 2 correct targets
     if previous_cal_targets != []:
@@ -1555,7 +1565,8 @@ def run_applycal(eMCP, caltables, step, dotarget=False, insources=''):
                          gaintable = gaintable,
                          gainfield = gainfield,
                          interp    = interp,
-                         spwmap    = spwmap)
+                         spwmap    = spwmap,
+                         flagbackup= False)
             else:
                 logger.warning('Source {} is not phase-referenced'.format(s))
     else:
@@ -1669,7 +1680,8 @@ def run_bpcal(eMCP, caltables, doplots=True):
     logger.info('Apply phase calibration flags to bandpass, applymode=flagonly')
     applycal(vis=msfile, gaintable=caltables[caltable_name]['table'],
              field=msinfo['sources']['bpcal'],
-             applymode='flagonly')
+             applymode='flagonly',
+             flagbackup=False)
 
     # 2 Amplitude calibration
     caltable_name = bp['ap_tablename']
@@ -1993,7 +2005,8 @@ def gain_p_ap(eMCP, caltables, doplots=True):
     logger.info('Apply phase calibration flags to calibrators, applymode=flagonly')
     applycal(vis=msfile, gaintable=caltables[caltable_name]['table'],
              field=msinfo['sources']['calsources'],
-             applymode='flagonly')
+             applymode='flagonly',
+             flagbackup=False)
 
     # 2 Amplitude calibration
     caltable_name = gain_p_ap['ap_tablename']
@@ -2963,16 +2976,32 @@ def find_Lo_drops(msfile, phscals, eMCP):
             lo_dropout_scans = []
     return lo_dropout_scans
 
+def remove_flagversion(msfile, versionname):
+    flag_list = flagmanager(vis=msfile, mode='list')
+    for key in flag_list.keys():
+        if type(key) == int:
+            if flag_list[key]['name'] == versionname:
+                logger.info('Removing previous versionname="{0}"'.format(versionname))
+                flagmanager(vis=msfile, mode='delete', versionname=versionname)
 
 def flag_statistics(eMCP, step):
     msinfo = eMCP['msinfo']
+    msfile = msinfo['msfile']
     logger.info(line0)
     logger.info('Start flagstatistics')
     plots_obs_dir = './weblog/plots/plots_flagstats/'
     makedir(plots_obs_dir)
     logger.info('Running flagdata on {0}'.format(step))
     logger.info('mode="summary", action="calculate", antenna="*&*"'.format(msinfo['msfile']))
-    flag_stats = flagdata(vis=msinfo['msfile'], mode='summary', action='calculate', display='none', antenna='*&*')
+    flag_stats = flagdata(vis=msinfo['msfile'], mode='summary',
+                          action='calculate', display='none', antenna='*&*',
+                          flagbackup=False)
+    versionname = 'eMCP_{}'.format(step)
+    remove_flagversion(msfile, versionname)
+    logger.info('Saving flagtable in versionname="{0}"'.format(versionname))
+    current_time = datetime.datetime.utcnow()
+    flagmanager(vis=msfile, mode='save', versionname=versionname,
+                comment=str(current_time))
     outfile = weblog_dir + 'plots/plots_flagstats/flagstats_{}.pkl'.format(step)
     save_obj(flag_stats, outfile)
     logger.info('flagstats file saved to: {}'.format(outfile))

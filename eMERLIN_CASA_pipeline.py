@@ -13,7 +13,7 @@ from tasks import *
 import casadef
 
 
-current_version = 'v0.9.26'
+current_version = 'v0.9.27'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -216,10 +216,7 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     ### RFLAG automatic flagging ###
     if inputs['flag_target'] > 0:
-        if eMCP['defaults']['flag_target']['mode_to_run'] == 'rflag':
-            eMCP = em.flagdata_rflag(eMCP, 'flag_target')
-        elif eMCP['defaults']['flag_target']['mode_to_run'] == 'tfcrop':
-            eMCP = em.flagdata_tfcrop(eMCP, 'flag_target')
+        em.run_flag_target(eMCP)
 
     ### Produce some visibility plots ###
     if inputs['plot_corrected'] > 0:
