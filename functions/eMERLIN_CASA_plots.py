@@ -173,7 +173,8 @@ def single_4plot(msinfo, field, datacolumn, plots_data_dir):
     xselfscale = True, xsharedaxis = True, coloraxis   = 'corr', plotrange=[-1,-1,-180,180],
     plotfile = plot_file+'3.png', expformat = 'png', customsymbol = True, symbolshape = 'circle',
     width=w, height=h, symbolsize=4,clearplots=False, overwrite=True, showgui=showgui)
-    logger.info('Finished {0}: {1}{{0-4}}.png'.format(field, plot_file))
+#    logger.info('Finished {0}:'.format(field))
+    logger.info('{0}{{0-4}}.png'.format(plot_file))
     simple_plot_name(plot_file, 3)
 
 
@@ -190,10 +191,14 @@ def make_4plots(eMCP, datacolumn='data'):
     else:
         plots_data_dir = './weblog/plots/'
     makedir(plots_data_dir)
-    fields = msinfo['sources']['allsources'].split(',')
-    logger.info('Producing visibility plots for: {}'.format(msinfo['sources']['allsources']))
-    for field in fields:
-        single_4plot(msinfo, field, datacolumn, plots_data_dir)
+    allsources = msinfo['sources']['allsources'].split(',')
+    mssources = msinfo['sources']['mssources'].split(',')
+    logger.info('Producing plots for: {}'.format(','.join(allsources)))
+    for field in allsources:
+        if field in mssources:
+            single_4plot(msinfo, field, datacolumn, plots_data_dir)
+        else:
+            logger.warning('Cannot plot {0}. Source not in ms.'.format(field))
 ##    num_proc = eMCP['defaults']['plot_data']['num_proc']
 ##    pool = multiprocessing.Pool(num_proc)
 ##    input_args = [(msinfo, field, datacolumn, plots_data_dir) for field in fields]
@@ -270,11 +275,15 @@ def make_uvplt(eMCP):
     num_proc = eMCP['defaults']['plot_data']['num_proc']
     plots_data_dir = './weblog/plots/plots_uvplt/'
     makedir(plots_data_dir)
-    fields = msinfo['sources']['allsources'].split(',')
-    logger.info('Producing uvplot for: {}'.format(msinfo['sources']['allsources']))
+    allsources = msinfo['sources']['allsources'].split(',')
+    mssources = msinfo['sources']['mssources'].split(',')
+    logger.info('Producing uvplot for: {}'.format(','.join(allsources)))
     # UVplot all sources
-    for field in fields:
-        single_uvplt(msinfo, field, plots_data_dir)
+    for field in allsources:
+        if field in mssources:
+            single_uvplt(msinfo, field, plots_data_dir)
+        else:
+            logger.warning('Cannot plot {0}. Source not in ms.'.format(field))
 ##    pool = multiprocessing.Pool(num_proc)
 ##    input_args = [(msinfo, field, plots_data_dir) for field in fields]
 ##    pool.map(single_uvplt, input_args)
@@ -283,7 +292,10 @@ def make_uvplt(eMCP):
     # UVplot model, calibrators
     calsources = msinfo['sources']['calsources'].split(',')
     for field in calsources:
-        single_uvplt_model(msinfo, field, plots_data_dir)
+        if field in mssources:
+            single_uvplt_model(msinfo, field, plots_data_dir)
+        else:
+            logger.warning('Cannot plot {0}. Source not in ms.'.format(field))
 ##    pool = multiprocessing.Pool(num_proc)
 ##    input_args = [(msinfo, field, plots_data_dir) for field in calsources]
 ##    pool.map(single_uvplt_model, input_args)
@@ -336,10 +348,11 @@ def make_uvcov(msfile, msinfo):
     plots_obs_dir = './weblog/plots/plots_observation/'
     makedir(plots_obs_dir)
     freqs = get_freqs(msfile, allfreqs=True)
-    fields_ms = msinfo['sources']['allsources'].split(',')
+    allsources = msinfo['sources']['allsources'].split(',')
+    mssources = msinfo['sources']['mssources'].split(',')
     logger.info('Plotting uvcov for:')
-    for f in fields_ms:
-        if f in fields_ms:
+    for f in allsources:
+        if f in mssources:
             plot_file = plots_obs_dir+'{0}_uvcov_{1}.png'.format(msinfo['msfilename'],f)
             logger.info('{0}'.format(f))
             u, v = read_uvw(msfile, f)
