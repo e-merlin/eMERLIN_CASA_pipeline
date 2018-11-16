@@ -571,7 +571,9 @@ def plot_elev_uvcov(eMCP):
 
 def import_eMERLIN_fitsIDI(eMCP):
     rmdir(eMCP['inputs']['inbase'] + '.ms')
+    rmdir(eMCP['inputs']['inbase'] + '.ms.flagversions')
     rmdir(eMCP['inputs']['inbase'] + '.mms')
+    rmdir(eMCP['inputs']['inbase'] + '.mms.flagversions')
     rmdir(eMCP['inputs']['inbase'] + '_sp.ms')
     rmdir(eMCP['inputs']['inbase'] + '_sp.mms')
     import_eM = eMCP['defaults']['import_eM']
@@ -1279,7 +1281,7 @@ def check_table_exists(caltables, tablename):
 
 ### Run CASA calibration functions
 def list_sources_out(eMCP):
-    mssources = find_mssources(eMCP['msfile']).split(',')
+    mssources = find_mssources(eMCP['msinfo']['msfile']).split(',')
     allsources = eMCP['msinfo']['sources']['allsources'].split(',')
     ignored_sources = [s for s in mssources if s not in allsources]
     if ignored_sources != []:
@@ -2964,15 +2966,18 @@ def find_Lo_drops(msfile, phscals, eMCP):
                                         spws)
         threshold = eMCP['defaults']['flag_apriori']['Lo_threshold']
         lo_dropout_scans_i = calc_Lo_drops(amp_mean, phscal_scans, threshold)
-        emplt.plot_Lo_drops(phscal_scans, scans, amp_mean,
-                            lo_dropout_scans_i, phscal, eMCP)
-        logger.info('Potential dropout scans: '
-                    '{0}'.format(','.join(lo_dropout_scans_i.astype('str'))))
-        if len(lo_dropout_scans_i) >= min_scans:
-            lo_dropout_scans = np.hstack([lo_dropout_scans, lo_dropout_scans_i])
+        if len(lo_dropout_scans_i) > 0:
+            emplt.plot_Lo_drops(phscal_scans, scans, amp_mean,
+                                lo_dropout_scans_i, phscal, eMCP)
+            logger.info('Potential dropout scans: '
+                        '{0}'.format(','.join(lo_dropout_scans_i.astype('str'))))
+            if len(lo_dropout_scans_i) >= min_scans:
+                lo_dropout_scans = np.hstack([lo_dropout_scans, lo_dropout_scans_i])
+            else:
+                logger.info('Less than {} dropout scans, not considered '
+                            'persistent drops'.format(min_scans))
+                lo_dropout_scans = []
         else:
-            logger.info('Less than {} dropout scans, not considered '
-                        'persistent drops'.format(min_scans))
             lo_dropout_scans = []
     return lo_dropout_scans
 
