@@ -1293,8 +1293,8 @@ def run_average(eMCP):
     logger.info('Start average')
     t0 = datetime.datetime.utcnow()
     chanbin = eMCP['defaults']['average']['chanbin']
+    timebin = eMCP['defaults']['average']['timebin']
     msfile = eMCP['msinfo']['msfile']
-    timebin = '{}s'.format(eMCP['inputs']['average'])
     if timebin == '1s':
         timeaverage = False
     else:

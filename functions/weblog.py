@@ -59,12 +59,14 @@ def weblog_button(weblog_link, name, link):
     return line
 
 def weblog_header(wlog, section, project):
-    wlog.write('<html>\n')
+    wlog.write('<!DOCTYPE html>\n')
+    wlog.write('<html lang="eng">\n')
+    wlog.write('<link rel="stylesheet" type="text/css" href="{0}eMCP.css"/>\n'.format(weblog_link))
     wlog.write('<head>\n')
     wlog.write('<title>{} - eMCP</title>\n'.format(project))
     wlog.write('</head>\n')
     wlog.write('<body>\n')
-    wlog.write('<h4>e-MERLIN Pipeline Web Log<br>{}</h4>\n'.format(project))
+    wlog.write('<h4 id="top">e-MERLIN Pipeline Web Log<br>{}</h4>\n'.format(project))
     wlog.write('<form>\n')
     wlog.write(weblog_button(weblog_link, 'Home', 'index'))
     wlog.write(weblog_button(weblog_link, 'Observation summary',
@@ -77,12 +79,14 @@ def weblog_header(wlog, section, project):
     wlog.write(weblog_button(weblog_link, 'Download data', 'download'))
     wlog.write('</form>\n')
     #wlog.write('<br>\n')
-    wlog.write('<h2>{0}</h2>\n'.format(section))
+    wlog.write('<h2 id="{0}">{0}</h2>\n'.format(section))
     wlog.write('<hr>\n')
 
 
 def weblog_foot(wlog):
-    wlog.write('<hr><br>\n')
+    wlog.write('<br><br>\n<hr>\n')
+    wlog.write('<a href="http://www.e-merlin.ac.uk/" target="_blank"><img ' \
+               'src="{0}emerlin-2.gif"></a><br>\n'.format(weblog_link))
     wlog.write('<small>')
     links = collections.OrderedDict()
     links['e-MERLIN Pipeline Github'] = 'https://github.com/e-merlin/eMERLIN_CASA_pipeline'
@@ -90,8 +94,9 @@ def weblog_foot(wlog):
     links['User support and data reduction for e-MERLIN'] = 'http://www.e-merlin.ac.uk/data_red/'
     links['CASA'] = 'https://casa.nrao.edu/'
     for n, l in links.items():
-        wlog.write('<a href="{0}">{1}</a><br>\n'.format(l, n))
-    wlog.write('<hr>\n')
+        wlog.write('- <a href="{0}" target="_blank">{1}</a><br>\n'.format(l, n))
+    #wlog.write('<hr>\n')
+    wlog.write('</small>\n')
     wlog.write('</body>\n')
     wlog.write('</html>\n')
 
@@ -102,7 +107,7 @@ def weblog_index(msinfo):
     wlog = open("./weblog/index.html","w")
     weblog_header(wlog, 'Home', msinfo['run'])
     #------------------------------------------
-    wlog.write('<table bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:40%">\n')
+    wlog.write('<table class="table1" bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:40%">\n')
     wlog.write('<tr><td>Project </td>   <td> {}</td>\n'.format(msinfo['project']))
     wlog.write('<tr><td>Run </td>   <td> {}</td>\n'.format(msinfo['run']))
     wlog.write('<tr><td>MS file </td>   <td> {}</td>\n'.format(msinfo['msfile']))
@@ -147,10 +152,8 @@ def weblog_obssum(msinfo):
     write_link_txt(wlog, listobs_file, 'Summary of the observation (listobs)')
     wlog.write('<h3>Sources:</h3>\n')
     sepfile = info_link + 'source_separations.txt'
-    wlog.write(('Source pairs and separations: '
-               '<a href="{0}" target="_blank">txt</a><br>\n').format(sepfile))
     if msinfo['sources']['targets'] != '':
-        wlog.write('<table bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:30%">\n')
+        wlog.write('<table class="table1" bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:30%">\n')
         wlog.write('<tr><td><b>Target</b> </td><td><b>Phase cal</b></td><td><b>Separation [deg]</b></td>\n')
         separations = msinfo['separations']
         for s1, s2 in zip(msinfo['sources']['targets'].split(','),
@@ -170,8 +173,10 @@ def weblog_obssum(msinfo):
                     except:
                         separation = '0.0'
             wlog.write('<tr><td>{0} </td><td> {1}</td><td>{2}</td>\n'.format(s1, s2, separation))
-        wlog.write('</table><br>\n')
-    wlog.write('<table bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:30%">\n')
+        wlog.write('</table>\n')
+    wlog.write(('Source pairs and separations: '
+               '<a href="{0}" target="_blank">txt</a><br><br>\n').format(sepfile))
+    wlog.write('<table  class="table1" bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:30%">\n')
     wlog.write('Sources in MS:')
     wlog.write('<tr><td><b>Source</b> </td><td> <b>Intent</b></td>\n')
     for source in msinfo['sources']['mssources'].split(','):
@@ -261,8 +266,8 @@ def plots_uvplt(msinfo, wlog):
     all_plots = np.sort(glob.glob('./weblog/plots/plots_uvplt/*_uvplt_*png'))
     for p in all_plots:
         source_name = os.path.splitext(p)[0].split('_')[-1]
+        wlog.write('<h4>{0}</h4>\n'.format(source_name))
         wlog.write('<table cellspacing = "0" cellpadding = "4px" style="width:40%">\n')
-        wlog.write('<tr><td><h4>{0}</h4></td></tr>\n'.format(source_name))
         wlog.write('<tr><td  valign="top"><a href = ".{0}"><img style="max-width:960px" src=".{0}"></a></td>\n'.format(p))
         if source_name in msinfo['sources']['calsources'].split(','):
             p_model = './weblog/plots/plots_uvplt/{0}_uvpltmodel_{1}.png'.format(msinfo['msfilename'],source_name)
@@ -270,7 +275,7 @@ def plots_uvplt(msinfo, wlog):
         wlog.write('</tr></table><br><br>\n<hr>\n')
 
 def write_caltable(caltable, wlog):
-    wlog.write('<table bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:40%">\n')
+    wlog.write('<table class="table1" bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:40%">\n')
     #wlog.write('<tr><td>{} </td>   <td>{}</td>\n'.format('Parameter', 'Value'))
     for name, value in caltable.items():
         if type(value) == str:
@@ -312,7 +317,7 @@ def elapsed_time(delta_min):
 
 def table_steps(eMCP):
     table_txt = '<br><h4>Execution summary</h4>\n'
-    table_txt += ('<table bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:80%">\n')
+    table_txt += ('<table class="table1" bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:80%">\n')
     table_txt += ("<tr><th style='width: 15%;'>Step</th>" \
                   "<th style='width: 4%;'>Code</th>" \
                   "<th style='width: 25%;'>Execution ended</th>" \
@@ -416,6 +421,7 @@ def weblog_calibration(msinfo):
                     wlog.write('</table><br><br>\n<hr>\n')
             except:
                 pass
+        wlog.write('<a href="#top"> <small>(up)</small></a>')
     #------------------------------------------
     weblog_foot(wlog)
     wlog.close()
@@ -479,15 +485,33 @@ def weblog_plots(msinfo):
     weblog_foot(wlog)
     wlog.close()
 
+def check_any_image(eMCP):
+    msinfo = eMCP['msinfo']
+    images = False
+    for i in range(len(msinfo['sources']['targets'].split(','))):
+        img_dir = weblog_dir + 'images/{0}/'.format(msinfo['sources']['targets'].split(',')[i])
+        if (os.path.isdir(img_dir)) and (os.listdir(img_dir)):
+            images = True
+    return images
+
 def weblog_images(eMCP):
     msinfo = eMCP['msinfo']
     ###### Images page
     wlog = open(weblog_dir + "images.html","w")
     weblog_header(wlog, 'Crude images', msinfo['run'])
-    wlog.write('These are crude images of targets and phase calibrators. The images are produced automatically with tclean in CASA ')
-    wlog.write('using auto-thresh mode, which generates cleaning boxes without human intervention. ')
-    wlog.write('These images should not be used for production.')
     #------------------------------------------
+    if check_any_image(eMCP):
+        wlog.write('Jump to target:<br>')
+        for target in msinfo['sources']['targets'].split(','):
+            wlog.write('<a href="#{0}">{0}</a><br>\n'.format(target))
+        note_text = 'Note: These are crude images of targets and phase '\
+        'calibrators. The images are produced automatically with tclean '\
+        'in CASA using auto-thresh mode, which generates cleaning boxes '\
+        'without human intervention. These images should not be used for production.'
+        wlog.write('<br><div style="max-width:800px; word-wrap:break-word;">{0}</div>'.format(note_text))
+    else:
+        wlog.write('No images found')
+
     for i in range(len(msinfo['sources']['targets'].split(','))):
         img_dir = weblog_dir + 'images/{0}/'.format(msinfo['sources']['targets'].split(',')[i])
         if (os.path.isdir(img_dir)) and (os.listdir(img_dir)):
@@ -515,8 +539,9 @@ def show_image(eMCP, wlog, i):
     img_target = weblog_dir+'images/{0}/{1}_{0}_img{2:02d}'.format(target, msinfo['msfilename'], num)
     img_phscal = weblog_dir+'images/{0}/{1}_{0}_img{2:02d}'.format(phscal, msinfo['msfilename'], num)
     wlog.write('<hr>\n')
-    wlog.write('<h3>{}</h3>\n'.format(target))
-    wlog.write('<table bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:30%">\n')
+    wlog.write('<h3 id="{0}">{0} <a href="#top"> <small>(up)</small></a></h3>\n'.format(target))
+#    wlog.write('<a href="#images"> (up)</a><br>\n')
+    wlog.write('<table class="table1" bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:70%">\n')
     wlog.write('<tr><td><b>{0}</b> (Target image) ' \
                'Peak: {1:3.3f} mJy ' \
                '(scaling: {2:4.1f})</td>' \
@@ -530,7 +555,7 @@ def show_image(eMCP, wlog, i):
     wlog.write('<tr><td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(img_target+'.image'+ext+'_zoom.png'))
     wlog.write('<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>\n'.format(img_target+'.residual'+ext+'_zoom.png'))
     wlog.write('<tr><td><b>{0}</b> (Phasecal image) ' \
-               'Peak: {1:3.3f} mJy ' \
+               'Peak: {1:5.1f} mJy ' \
                '(scaling: {2:4.1f})</td>' \
                '<td>(Phasecal residual) rms: {3:5.3f} mJy</td>\n'.format(phscal,
                                                                peak_phscal*1000.,

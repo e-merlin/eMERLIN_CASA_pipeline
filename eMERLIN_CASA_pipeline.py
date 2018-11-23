@@ -13,7 +13,7 @@ from tasks import *
 import casadef
 
 
-current_version = 'v0.9.29'
+current_version = 'v0.9.30'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -67,7 +67,8 @@ def run_pipeline(inputs=None, inputs_path=''):
     em.makedir(images_dir)
     em.makedir(logs_dir)
     em.makedir(plots_dir+'caltables')
-
+    os.system('cp -p {0}/emerlin-2.gif {1}'.format(pipeline_path, weblog_dir))
+    os.system('cp -p {0}/eMCP.css {1}'.format(pipeline_path, weblog_dir))
     pipeline_version = current_version
 
     # Continue with previous pipeline configuration if possible:
@@ -100,7 +101,8 @@ def run_pipeline(inputs=None, inputs_path=''):
     except:
         branch, short_commit = 'unknown', 'unknown'
     logger.info('Starting pipeline')
-    logger.info('Running pipeline from: {}'.format(pipeline_path))
+    logger.info('Running pipeline from:')
+    logger.info('{}'.format(pipeline_path))
     logger.info('CASA version: {}'.format(casadef.casa_version))
     logger.info('Pipeline version: {}'.format(pipeline_version))
     logger.info('Using github branch: {}'.format(branch))
