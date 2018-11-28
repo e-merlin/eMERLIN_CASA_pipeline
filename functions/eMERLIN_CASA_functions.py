@@ -457,7 +457,10 @@ def get_msinfo(eMCP, msfile, doprint=False):
     msinfo['nchan'] = nchan
     msinfo['innerchan'] = '{0:.0f}~{1:.0f}'.format(0.1*(nchan-nchan/512.), 0.9*(nchan-nchan/512.))
     msinfo['polarizations'] = get_polarization(msfile)
-    msinfo['refant'] = define_refant(eMCP, msfile)
+    try:
+        msinfo['refant'] = eMCP['msinfo']['refant']
+    except:
+        msinfo['refant'] = ''
     msinfo['directions'] = get_directions(msfile)
     msinfo['separations'] = get_distances(msfile, directions=msinfo['directions'])
     # If eMCP['Lo_dropout_scans'] already there, it may have been recomputed in
@@ -1100,20 +1103,26 @@ def run_flag_target(eMCP):
         eMCP = flagdata_tfcrop(eMCP, 'flag_target')
 
 
-def define_refant(eMCP, msfile):
+def define_refant(eMCP):
+    msfile = eMCP['msinfo']['msfile']
     if eMCP['inputs']['refant'] == 'compute':
         recompute = True
         logger.info('Forcing recompute of refant')
     elif eMCP['inputs']['refant'] == '':
         try:
             refant = eMCP['msinfo']['refant']
-            logger.info('Refant already in eMCP["msinfo"], will not recompute')
-            recompute = False
+            if refant == '':
+                logger.info('No refant specified. Will compute optimal')
+                recompute = True
+            else:
+                logger.info('Refant already in eMCP["msinfo"], will not recompute')
+                recompute = False
         except:
             logger.info('No refant specified. Will compute optimal')
             recompute = True
     else:
         recompute = False
+        logger.info('Refant from inputs file')
         refant = eMCP['inputs']['refant']
     if recompute:
         logger.info('Recomputing best reference antenna')
@@ -1375,6 +1384,7 @@ def run_initialize_models(eMCP):
 def initialize_cal_dict(inputs, eMCP):
     # All the calibration steps will be saved in the dictionary caltables.pkl
     # located in the calib directory. If it does not exist a new one is created.
+    # Reference antenna(s)
     try:
         msinfo = eMCP['msinfo']
     except:
@@ -1391,9 +1401,12 @@ def initialize_cal_dict(inputs, eMCP):
             caltables['plots_dir'] = plots_dir
             caltables['calib_dir'] = calib_dir
             caltables['num_spw'] = msinfo['num_spw']
-        logger.info('New caltables dictionary created. Saved to: {0}'.format(calib_dir+'caltables.pkl'))
+            logger.info('New caltables dictionary created. Saved to: {0}'.format(calib_dir+'caltables.pkl'))
+        # Refant
+        eMCP['msinfo']['refant'] = define_refant(eMCP)
+        save_obj(eMCP, info_dir + 'eMCP_info.pkl')
+        caltables['refant'] = eMCP['msinfo']['refant']
         caltables['Lo_dropout_scans'] = eMCP['msinfo']['Lo_dropout_scans']
-        caltables['refant'] = msinfo['refant']
         caltables['refantmode'] = eMCP['defaults']['global']['refantmode']
         save_obj(caltables, calib_dir+'caltables.pkl')
         return caltables
