@@ -25,12 +25,6 @@ defaults['aoflagger']['separate_bands']               = False
 defaults['flag_apriori'] = collections.OrderedDict()
 defaults['flag_apriori']['do_quack']                  = True
 defaults['flag_apriori']['std_cal_quack']             = 300.
-defaults['flag_apriori']['Lo_dropout']                = ''
-defaults['flag_apriori']['Lo_datacolumn']             = 'data'
-defaults['flag_apriori']['Lo_useflags']               = True
-defaults['flag_apriori']['Lo_spws']                   = ['3']
-defaults['flag_apriori']['Lo_threshold']              = 0.5
-defaults['flag_apriori']['Lo_min_scans']              = 4
 
 defaults['average'] = collections.OrderedDict()
 defaults['average']['field']                          = ''
@@ -44,6 +38,14 @@ defaults['average']['shift_phasecenter']              = False
 
 defaults['plot_data'] = collections.OrderedDict()
 defaults['plot_data']['num_proc']                     = 1
+
+defaults['flag_manual_avg'] = collections.OrderedDict()
+defaults['flag_manual_avg']['Lo_dropout']             = ''
+defaults['flag_manual_avg']['Lo_datacolumn']          = 'data'
+defaults['flag_manual_avg']['Lo_useflags']            = True
+defaults['flag_manual_avg']['Lo_spws']                = ['3']
+defaults['flag_manual_avg']['Lo_threshold']           = 0.5
+defaults['flag_manual_avg']['Lo_min_scans']           = ''
 
 defaults['init_models'] = collections.OrderedDict()
 defaults['init_models']['calibrator_models']          = 'calibrator_models/'

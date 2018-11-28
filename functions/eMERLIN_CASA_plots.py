@@ -551,14 +551,13 @@ def plot_Lo_drops(phscal_scans, scans, amp_mean, lo_dropout_scans, phscal, eMCP)
 
     ax1.bar(scans-0.5, np.ones_like(scans)*np.max(amp_mean)*1.2, alpha=0.2,
             color='0.5', width=1),
-
     ax1.bar(phscal_scans-0.5, amp_mean, alpha=1.0,
             color='0.5', width=1,
             label='{0}'.format(phscal))
-    ax1.bar(phscal_scans[drops]-0.5, amp_mean[drops], alpha=1.0,
-            color='r', width=1,
-            label='{0} Lo dropouts'.format(phscal))
-
+    if lo_dropout_scans != []:
+        ax1.bar(phscal_scans[drops]-0.5, amp_mean[drops], alpha=1.0,
+                color='r', width=1,
+                label='{0} Lo dropouts'.format(phscal))
     ax1.legend(loc=0)
     ax1.xaxis.set_major_locator(MultipleLocator(5))
     ax1.set_xlim(np.min(phscal_scans)-0.5, np.max(phscal_scans)+0.5)

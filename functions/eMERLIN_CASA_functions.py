@@ -463,12 +463,12 @@ def get_msinfo(eMCP, msfile, doprint=False):
         msinfo['refant'] = ''
     msinfo['directions'] = get_directions(msfile)
     msinfo['separations'] = get_distances(msfile, directions=msinfo['directions'])
-    # If eMCP['Lo_dropout_scans'] already there, it may have been recomputed in
-    # flag_apriori step.
+    # If eMCP['Lo_dropout_scans'] already there, it may have been recomputed
+    # before
     try:
         msinfo['Lo_dropout_scans'] = eMCP['msinfo']['Lo_dropout_scans']
     except:
-        msinfo['Lo_dropout_scans'] = eMCP['defaults']['flag_apriori']['Lo_dropout']
+        msinfo['Lo_dropout_scans'] = eMCP['defaults']['flag_manual_avg']['Lo_dropout']
     logger.info('> Sources ({0}): {1}'.format(len(msinfo['sources']['mssources'].split(',')),
                                                  msinfo['sources']['mssources']))
     logger.info('> Number of spw: {0}'.format(msinfo['num_spw']))
@@ -943,34 +943,6 @@ def flagdata1_apriori(eMCP):
                 logger.warning('Warning, source(s) {} not present in MS, will not flag this pair'.format(','.join(missing_sources)))
     else:
         logger.info('No quacking selected')
-    # Search for Lo dropouts
-    Lo_dropout_scans = eMCP['defaults']['flag_apriori']['Lo_dropout']
-    if 'Lo' in antennas:
-        if Lo_dropout_scans == 'none':
-            eMCP['msinfo']['Lo_dropout_scans'] = ''
-        elif Lo_dropout_scans == '':
-            if msinfo['sources']['phscals'] != '':
-                logger.info('Searching for Lo dropout scans')
-                logger.info("To avoid this, set deafult Lo_dropout_scans = 'none' "
-                            "when rerun flag_apriori")
-                phscals = msinfo['sources']['phscals'].split(',')
-                Lo_drop_list = find_Lo_drops(msfile,
-                                             phscals, eMCP)
-                if Lo_drop_list == []:
-                    eMCP['msinfo']['Lo_dropout_scans'] = ''
-                else:
-                    eMCP['msinfo']['Lo_dropout_scans'] = ','.join(Lo_drop_list.astype('str'))
-                    logger.info('Flagging Lo dropout scans: '
-                            '{0}'.format(eMCP['msinfo']['Lo_dropout_scans']))
-                    flagdata(vis=msfile, antenna='Lo',
-                             scan=eMCP['msinfo']['Lo_dropout_scans'],
-                             flagbackup=False)
-        else:
-            eMCP['msinfo']['Lo_dropout_scans'] = Lo_dropout_scans
-            flagdata(vis=msfile, antenna='Lo',
-                     scan=eMCP['msinfo']['Lo_dropout_scans'], flagbackup=False)
-    else:
-        eMCP['msinfo']['Lo_dropout_scans'] = ''
 
     # Flag Lo-Mk2
     if 'Lo' in antennas and 'Mk2' in antennas:
@@ -985,6 +957,7 @@ def flagdata1_apriori(eMCP):
 
 
 def flagdata_manual(eMCP, run_name='flag_manual'):
+    logger.info(line0)
     msfile = eMCP['msinfo']['msfile']
     if run_name == 'flag_manual':
         inpfile = './inputfg.flags'
@@ -995,15 +968,19 @@ def flagdata_manual(eMCP, run_name='flag_manual'):
         inpfile = ''
     logger.info('Start {}'.format(run_name))
     t0 = datetime.datetime.utcnow()
-    if not os.path.isfile(inpfile) == True:
-        logger.critical('Manual flagging step requested but cannot access file: {0}'.format(inpfile))
-        logger.warning('Stopping pipeline at this step')
-        exit_pipeline()
-    logger.info('Applying manual flags from file: {0}'.format(inpfile))
-    flagdata(vis=msfile, mode='list', inpfile=inpfile, flagbackup=False)
+    if os.path.isfile(inpfile) == True:
+        logger.info('Applying manual flags from file: {0}'.format(inpfile))
+        flagdata(vis=msfile, mode='list', inpfile=inpfile, flagbackup=False)
+        msg = 'file={0}'.format(inpfile)
+    else:
+        logger.info('No manual flag file selected: {0}'.format(inpfile))
+        msg = 'No flagging file'
+    # Compute Lo_dropouts if needed and flag data
+    if run_name == 'flag_manual_avg':
+        eMCP, msg_i = flag_Lo_dropouts(eMCP)
+        msg += msg_i
     flag_statistics(eMCP, step=run_name)
     logger.info('End {}'.format(run_name))
-    msg = 'file={0}'.format(inpfile)
     eM = add_step_time(run_name, eMCP, msg, t0)
     return eMCP
 
@@ -1653,7 +1630,7 @@ def run_bpcal(eMCP, caltables, doplots=True):
     caltable = caltables[caltable_name]['table']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name)
-    if caltables['Lo_dropout_scans'] != '':
+    if caltables['Lo_dropout_scans'] != '' and caltables['Lo_dropout_scans'] != 'none':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
 #    logger.info('Delay calibration {0}: {1}'.format(caltable_name, caltable))
     # Plots
@@ -1683,7 +1660,7 @@ def run_bpcal(eMCP, caltables, doplots=True):
     caltable = caltables[caltable_name]['table']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name)
-    if caltables['Lo_dropout_scans'] != '':
+    if caltables['Lo_dropout_scans'] != '' and caltables['Lo_dropout_scans'] != 'none':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
 #    logger.info('Bandpass0 phase calibration {0}: {1}'.format(caltable_name,caltable))
     # Plots
@@ -1718,7 +1695,7 @@ def run_bpcal(eMCP, caltables, doplots=True):
     caltable = caltables[caltable_name]['table']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name)
-    if caltables['Lo_dropout_scans'] != '':
+    if caltables['Lo_dropout_scans'] != '' and caltables['Lo_dropout_scans'] != 'none':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
 #    logger.info('Bandpass0 amplitude calibration {0}: {1}'.format(caltable_name,caltable))
 #    smooth_caltable(msfile=msfile, plotdir=plotdir, tablein=caltable2, caltable='', field='', smoothtype='median', smoothtime=60*20.)
@@ -1848,7 +1825,7 @@ def solve_delays(eMCP, caltables, doplots=True):
     caltable = caltables[caltable_name]['table']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name)
-    if caltables['Lo_dropout_scans'] != '':
+    if caltables['Lo_dropout_scans'] != '' and caltables['Lo_dropout_scans'] != 'none':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
 #    logger.info('Delay calibration {0}: {1}'.format(caltable_name, caltable))
     # Plots
@@ -1932,7 +1909,7 @@ def delay_fringefit(eMCP, caltables):
 
     # Calibration
     run_fringefit(msfile, caltables, caltable_name)
-    if caltables['Lo_dropout_scans'] != '':
+    if caltables['Lo_dropout_scans'] != '' and caltables['Lo_dropout_scans'] != 'none':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
 #    logger.info('Fringe calibration {0}: {1}'.format(caltable_name, caltable))
     # Plots
@@ -2008,7 +1985,7 @@ def gain_p_ap(eMCP, caltables, doplots=True):
     caltable = caltables[caltable_name]['table']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name)
-    if caltables['Lo_dropout_scans'] != '':
+    if caltables['Lo_dropout_scans'] != '' and caltables['Lo_dropout_scans'] != 'none':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
 #    logger.info('G0 phase {0}: {1}'.format(caltable_name,caltable))
     # Plots
@@ -2043,7 +2020,7 @@ def gain_p_ap(eMCP, caltables, doplots=True):
     caltable = caltables[caltable_name]['table']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name)
-    if caltables['Lo_dropout_scans'] != '':
+    if caltables['Lo_dropout_scans'] != '' and caltables['Lo_dropout_scans'] != 'none':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
 #    logger.info('Gain amplitude calibration {0}: {1}'.format(caltable_name,caltable))
 #    smooth_caltable(msfile=msfile, plotdir=plotdir, tablein=caltable2, caltable='', field='', smoothtype='median', smoothtime=60*20.)
@@ -2294,7 +2271,7 @@ def gain_amp_sp(eMCP, caltables):
     caltable = caltables[caltable_name]['table']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name)
-    if caltables['Lo_dropout_scans'] != '':
+    if caltables['Lo_dropout_scans'] != '' and caltables['Lo_dropout_scans'] != 'none':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
 #    logger.info('Gain amplitude calibration {0}: {1}'.format(caltable_name,caltable))
 #    smooth_caltable(msfile=msfile, plotdir=plotdir, tablein=caltable2, caltable='', field='', smoothtype='median', smoothtime=60*20.)
@@ -2328,7 +2305,7 @@ def gain_amp_sp(eMCP, caltables):
     caltable = caltables[caltable_name]['table']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name)
-    if caltables['Lo_dropout_scans'] != '':
+    if caltables['Lo_dropout_scans'] != '' and caltables['Lo_dropout_scans'] != 'none':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
 #    logger.info('{0}: {1}'.format(caltable_name,caltable))
 #    smooth_caltable(msfile=msfile, plotdir=plotdir, tablein=caltable2, caltable='', field='', smoothtype='median', smoothtime=60*20.)
@@ -2357,7 +2334,7 @@ def gain_amp_sp(eMCP, caltables):
     caltable = caltables[caltable_name]['table']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name)
-    if caltables['Lo_dropout_scans'] != '':
+    if caltables['Lo_dropout_scans'] != '' and caltables['Lo_dropout_scans'] != 'none':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
 #    logger.info('{0}: {1}'.format(caltable_name,caltable))
 #    smooth_caltable(msfile=msfile, plotdir=plotdir, tablein=caltable2, caltable='', field='', smoothtype='median', smoothtime=60*20.)
@@ -2880,10 +2857,49 @@ def find_fields_scans(msfile):
     field_for_scan = np.array([dict_scans[str(scan)][0] for scan in scans])
     return scans, field_for_scan
 
+def flag_Lo_dropouts(eMCP):
+    # Search for Lo dropouts
+    msinfo = eMCP['msinfo']
+    msfile = msinfo['msfile']
+    antennas = get_antennas(msfile)
+    Lo_dropout_scans = eMCP['msinfo']['Lo_dropout_scans']
+    msg_out = ''
+    if 'Lo' in antennas:
+        if Lo_dropout_scans == 'none':
+            eMCP['msinfo']['Lo_dropout_scans'] = 'none'
+        elif Lo_dropout_scans == '':
+            if msinfo['sources']['phscals'] != '':
+                logger.info('Searching for Lo dropout scans')
+                logger.info("To avoid this, set deafult Lo_dropout_scans = 'none' "
+                            "when rerun flag_manual_avg")
+                phscals = msinfo['sources']['phscals'].split(',')
+                Lo_drop_list = find_Lo_drops(msfile,
+                                             phscals, eMCP)
+                if Lo_drop_list == []:
+                    eMCP['msinfo']['Lo_dropout_scans'] = 'none'
+                else:
+                    eMCP['msinfo']['Lo_dropout_scans'] = ','.join(Lo_drop_list.astype('str'))
+                    logger.info('Flagging Lo dropout scans: '
+                            '{0}'.format(eMCP['msinfo']['Lo_dropout_scans']))
+                    flagdata(vis=msfile, antenna='Lo',
+                             scan=eMCP['msinfo']['Lo_dropout_scans'],
+                             flagbackup=False)
+                msg_out = ' Searched Lo dropouts'
+        else:
+            logger.info('User set Lo_dropout_scans: {0}'.format(Lo_dropout_scans))
+            eMCP['msinfo']['Lo_dropout_scans'] = Lo_dropout_scans
+            logger.info('Now flagging')
+            flagdata(vis=msfile, antenna='Lo',
+                     scan=eMCP['msinfo']['Lo_dropout_scans'], flagbackup=False)
+    else:
+        eMCP['msinfo']['Lo_dropout_scans'] = 'none'
+    return eMCP, msg_out
+
+
 def find_Lo_amp_spw(msfile, phscal, phscal_scans, spw, eMCP):
     amp_mean = np.ones_like(phscal_scans) * np.nan
     amp_std = np.ones_like(phscal_scans) * np.nan
-    Lo_defaults = eMCP['defaults']['flag_apriori']
+    Lo_defaults = eMCP['defaults']['flag_manual_avg']
     results_tmp = visstat(msfile, scan='',
                           field = phscal,
                           antenna='Lo&*',
@@ -2967,8 +2983,7 @@ def calc_Lo_drops(amp_mean, phscal_scans, threshold=0.5):
     return lo_dropout_scans
 
 def find_Lo_drops(msfile, phscals, eMCP):
-    spws = eMCP['defaults']['flag_apriori']['Lo_spws']
-    min_scans = eMCP['defaults']['flag_apriori']['Lo_min_scans']
+    spws = eMCP['defaults']['flag_manual_avg']['Lo_spws']
     logger.info('Searching for possible Lo dropout scans on phscal scans')
     lo_dropout_scans = np.array([], dtype='int')
     scans, field_for_scan = find_fields_scans(msfile)
@@ -2977,18 +2992,22 @@ def find_Lo_drops(msfile, phscals, eMCP):
         phscal_scans = scans[field_for_scan == phscal]
         amp_mean, amp_std = find_Lo_amp(msfile, phscal, phscal_scans, eMCP,
                                         spws)
-        threshold = eMCP['defaults']['flag_apriori']['Lo_threshold']
+        threshold = eMCP['defaults']['flag_manual_avg']['Lo_threshold']
         lo_dropout_scans_i = calc_Lo_drops(amp_mean, phscal_scans, threshold)
+        emplt.plot_Lo_drops(phscal_scans, scans, amp_mean,
+                            lo_dropout_scans_i, phscal, eMCP)
         if len(lo_dropout_scans_i) > 0:
-            emplt.plot_Lo_drops(phscal_scans, scans, amp_mean,
-                                lo_dropout_scans_i, phscal, eMCP)
             logger.info('Potential dropout scans: '
                         '{0}'.format(','.join(lo_dropout_scans_i.astype('str'))))
+            min_scans = eMCP['defaults']['flag_manual_avg']['Lo_min_scans']
+            if min_scans == '':
+                min_scans = int(len(phscal_scans)*0.4)
             if len(lo_dropout_scans_i) >= min_scans:
                 lo_dropout_scans = np.hstack([lo_dropout_scans, lo_dropout_scans_i])
             else:
-                logger.info('Less than {} dropout scans, not considered '
-                            'persistent drops'.format(min_scans))
+                logger.info('Less than {0}/{1} dropout scans, not considered '
+                            'persistent drops'.format(min_scans,
+                                                      len(phscal_scans)))
                 lo_dropout_scans = []
         else:
             lo_dropout_scans = []

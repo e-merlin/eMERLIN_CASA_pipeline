@@ -17,14 +17,14 @@ refant          = ''
 run_importfits  = 1
 flag_aoflagger  = 1
 flag_apriori    = 1
-flag_manual     = 0   # Commands in ./inputfg.flags
+flag_manual     = 1   # Commands in ./inputfg.flags
 average         = 1
 plot_data       = 1
 save_flags      = 1
 
 ## Calibration (0=don't run, 1=run):
-restore_flags   = 0
-flag_manual_avg = 0   # Commands in ./inputfg_avg.flags
+restore_flags   = 1
+flag_manual_avg = 1   # Commands in ./inputfg_avg.flags
 init_models     = 1
 bandpass        = 1
 initial_gaincal = 1
