@@ -264,6 +264,34 @@ def check_mixed_mode(vis,mode):
             return_variable = False
     return return_variable
 
+def update_mixed_mode(eMCP):
+    # Default can be 'auto', 'none', 'force'
+    default_mixed_mode = eMCP['defaults']['global']['is_mixed_mode']
+    logger.debug('default_mixed_mode = {0}'.format(default_mixed_mode))
+
+    msfile_sp = get_msfile_sp(eMCP)
+    if default_mixed_mode == 'auto':
+        if os.path.isdir(msfile_sp) == True:
+            logger.info('Found mixed mode file {0}'.format(msfile_sp))
+            is_mixed_mode = True
+        else:
+            logger.info('No mixed mode file found')
+            is_mixed_mode = False
+    elif default_mixed_mode == 'none':
+        is_mixed_mode = False
+        logger.info('Forced no mixed mode')
+    elif default_mixed_mode == 'force':
+        logger.info('Forced mixed mode')
+        if os.path.isdir(msfile_sp) == True:
+            is_mixed_mode = True
+            logger.info('Found narrow band data {0}'.format(msfile_sp))
+        else:
+            logger.critical('Cannot narrow band data {}'.format(msfile_sp))
+            is_mixed_mode = False
+            exit_pipeline(eMCP)
+    eMCP['is_mixed_mode'] = is_mixed_mode
+    return eMCP
+
 def check_band(msfile):
     # Take first frequency in the MS
     msmd.open(msfile)
@@ -432,10 +460,7 @@ def get_integration_time(msfile, usemsmd=True):
 def get_msfile_sp(eMCP):
     ext_ms = {False:'.ms',True:'.mms'}
     do_ms2mms = eMCP['defaults']['import_eM']['ms2mms']
-    if eMCP['is_mixed_mode']:
-        msfile_sp = './'+ eMCP['inputs']['inbase'] + '_sp' + ext_ms[do_ms2mms]
-    else:
-        msfile_sp = ''
+    msfile_sp = './'+ eMCP['inputs']['inbase'] + '_sp' + ext_ms[do_ms2mms]
     return msfile_sp
 
 def find_wide_narrow(spw_sp, cent_chan_sp, msfile):
@@ -467,14 +492,29 @@ def find_wide_narrow(spw_sp, cent_chan_sp, msfile):
         pass
     return main_spw
 
+def get_cent_freq(msfile):
+    msmd.open(msfile)
+    spws = msmd.spwfordatadesc()
+    cent_freq = np.array([np.mean(msmd.chanfreqs(spw))
+                                      for spw in spws])
+    msmd.done()
+    return cent_freq
+
+def get_chan_width(msfile):
+    msmd.open(msfile)
+    spws = msmd.spwfordatadesc()
+    chan_width = np.array([np.unique(msmd.chanwidths(spw))[0]
+                                      for spw in spws])
+    msmd.done()
+    return chan_width
+
 def get_spwmap_sp(msfile, msfile_sp):
     msmd.open(msfile_sp)
     spws_sp = msmd.spwfordatadesc()
-    cent_chans_sp = np.array([np.mean(msmd.chanfreqs(spw_sp))
-                                      for spw_sp in spws_sp])
     msmd.done()
+    cent_freq_sp = get_cent_freq(msfile_sp)
     spwmap_sp = []
-    for (spw_sp, cent_chan_sp) in zip(spws_sp, cent_chans_sp):
+    for (spw_sp, cent_chan_sp) in zip(spws_sp, cent_freq_sp):
         main_spw = find_wide_narrow(spw_sp, cent_chan_sp, msfile)
         spwmap_sp.append(main_spw[0])
     return spwmap_sp
@@ -486,6 +526,22 @@ def find_spwmap_sp(eMCP, msfile, msfile_sp):
         spwmap_sp = eMCP['defaults']['global']['spwmap_sp']
     logger.info('spwmap_sp = {0}'.format(spwmap_sp))
     return spwmap_sp
+def info_mixed_mode(eMCP, msinfo):
+    eMCP = update_mixed_mode(eMCP)
+    # Deal with mixed mode info
+    if eMCP['is_mixed_mode']:
+        logger.debug(eMCP['is_mixed_mode'])
+        logger.debug('msfile: {0}'.format(msinfo['msfile']))
+        logger.debug('msfile narrow: {0}'.format(msinfo['msfile_sp']))
+        msinfo['spwmap_sp'] = find_spwmap_sp(eMCP, msinfo['msfile'],
+                                                   msinfo['msfile_sp'])
+        msinfo['spwmap_sp_freq'] = get_cent_freq(msinfo['msfile_sp'])
+        msinfo['spwmap_sp_width'] = get_chan_width(msinfo['msfile_sp'])
+    else:
+        msinfo['spwmap_sp'] = []
+        msinfo['spwmap_sp_freq'] = []
+        msinfo['spwmap_sp_width'] = []
+    return eMCP, msinfo
 
 def get_msinfo(eMCP, msfile, doprint=False):
     inputs = eMCP['inputs']
@@ -514,11 +570,6 @@ def get_msinfo(eMCP, msfile, doprint=False):
     msinfo['chan_res'] = chan_res
     msinfo['nchan'] = nchan
     msinfo['innerchan'] = '{0:.0f}~{1:.0f}'.format(0.1*(nchan-nchan/512.), 0.9*(nchan-nchan/512.))
-    if eMCP['is_mixed_mode']:
-        msinfo['spwmap_sp'] = find_spwmap_sp(eMCP, msinfo['msfile'],
-                                                          msinfo['msfile_sp'])
-    else:
-        msinfo['spwmap_sp'] = []
     msinfo['polarizations'] = get_polarization(msfile)
     try:
         msinfo['refant'] = eMCP['msinfo']['refant']
@@ -526,12 +577,14 @@ def get_msinfo(eMCP, msfile, doprint=False):
         msinfo['refant'] = ''
     msinfo['directions'] = get_directions(msfile)
     msinfo['separations'] = get_distances(msfile, directions=msinfo['directions'])
-    # If eMCP['Lo_dropout_scans'] already there, it may have been recomputed
-    # before
+    # If eMCP['Lo_dropout_scans'] already there, it may have been recomputed before
     try:
         msinfo['Lo_dropout_scans'] = eMCP['msinfo']['Lo_dropout_scans']
     except:
         msinfo['Lo_dropout_scans'] = eMCP['defaults']['flag_manual_avg']['Lo_dropout']
+    # Info related to mixed mode:
+    eMCP, msinfo = info_mixed_mode(eMCP, msinfo)
+    # Show summary
     logger.info('> Sources ({0}): {1}'.format(len(msinfo['sources']['mssources'].split(',')),
                                                  msinfo['sources']['mssources']))
     logger.info('> Number of spw: {0}'.format(msinfo['num_spw']))
@@ -720,7 +773,7 @@ def import_eMERLIN_fitsIDI(eMCP):
     logger.info('Transformed: {0} into {1}'.format(msfile0, msfile1))
     if do_hanning:
         ms.writehistory(message='Hanning smoothing applied',msname=msfile1)
-    if is_mixed_mode: # No hanning and no channel average
+    if eMCP['is_mixed_mode']: # No hanning and no channel average
         logger.info('Mixed mode data detected')
         msfile1_sp = msfile_name+'_transformed_sp' + ext_ms[do_ms2mms]
         logger.info('Running mstransform on spectral line data')
@@ -770,7 +823,7 @@ def import_eMERLIN_fitsIDI(eMCP):
         logger.critical('Problem generating {}. Stopping ' \
                         'pipeline'.format(msfile))
         exit_pipeline(eMCP)
-    if is_mixed_mode:
+    if eMCP['is_mixed_mode']:
         msfile_sp = get_msfile_sp(eMCP)
         logger.info('Running FIXVIS on spectral line data')
         fixvis(vis = msfile1_sp,
@@ -1446,7 +1499,8 @@ def initialize_cal_dict(inputs, eMCP):
     except:
         logger.warning('No msinfo found')
         sys.exit()
-    any_calsteps = ['bandpass', 'initial_gaincal','fluxscale','bandpass_sp','gain_amp_sp','applycal_all']
+    any_calsteps = ['bandpass','initial_gaincal','fluxscale',
+                    'bandpass_final','gaincal_final','applycal_all']
     if np.array([inputs[cal]>0 for cal in any_calsteps]).any():
         try:
             caltables = load_obj(calib_dir+'caltables.pkl')
@@ -1511,6 +1565,62 @@ def run_gaincal(msfile, caltables, caltable_name):
     logger.info('caltable {0} in {1}'.format(caltables[caltable_name]['name'],
                                               caltables[caltable_name]['table']))
 
+def convert_spwmap(spwmap, spwmap_sp):
+    if spwmap == []:
+        spwmap_out = spwmap_sp
+    else:
+        spwmap_out = [spwmap[s] for s in spwmap_sp]
+    logger.debug('Wide spwmap {}'.format(spwmap))
+    logger.debug('Narrow spwmap {}'.format(spwmap_sp))
+    logger.debug('To use spwmap {}'.format(spwmap_out))
+    return spwmap_out
+
+def run_gaincal_narrow(msfile_sp, caltables, caltable_name, spwmap_sp):
+    logger.info(line0)
+    rmdir(caltables[caltable_name]['table'])
+    logger.info('Running gaincal to generate: {0}'.format(caltables[caltable_name]['name']))
+    logger.info('Field(s) = {0}, gaintype = {1}, calmode = {2}'.format(
+                caltables[caltable_name]['field'],
+                caltables[caltable_name]['gaintype'],
+                caltables[caltable_name]['calmode']))
+    logger.info('solint = {0}, spw = {1},  combine = {2}'.format(
+                caltables[caltable_name]['solint'],
+                caltables[caltable_name]['spw'],
+                caltables[caltable_name]['combine']))
+    # Previous calibration
+    previous_cal = caltables[caltable_name]['previous_cal']
+    gaintable = [caltables[p]['table'] for p in previous_cal]
+    interp    = [caltables[p]['interp'] for p in previous_cal]
+    gainfield = [caltables[p]['gainfield'] if len(np.atleast_1d(caltables[p]['gainfield'].split(',')))<2 else 'nearest' for p in previous_cal]
+    spwmap = []
+    for p in previous_cal:
+        logger.debug('Previous cal: {}'.format(p))
+        spwmap.append(convert_spwmap(caltables[p]['spwmap'], spwmap_sp))
+    logger.info('Previous calibration applied: {0}'.format(str(previous_cal)))
+    logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
+    logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
+    logger.info('Previous calibration interp: {0}'.format(str(interp)))
+    logger.info('Generating cal table: {0}'.format(caltables[caltable_name]['table']))
+    # Run CASA task gaincal
+    gaincal(vis=msfile_sp,
+            caltable  = caltables[caltable_name]['table'],
+            field     = caltables[caltable_name]['field'],
+            gaintype  = caltables[caltable_name]['gaintype'],
+            calmode   = caltables[caltable_name]['calmode'],
+            solint    = caltables[caltable_name]['solint'],
+            combine   = caltables[caltable_name]['combine'],
+            spw       = caltables[caltable_name]['spw'],
+            refant    = caltables['refant'],
+            refantmode= caltables['refantmode'],
+            gaintable = gaintable,
+            gainfield = gainfield,
+            interp    = interp,
+            spwmap    = spwmap,
+            minblperant= caltables[caltable_name]['minblperant'],
+            minsnr    = caltables[caltable_name]['minsnr'])
+    logger.info('caltable {0} in {1}'.format(caltables[caltable_name]['name'],
+                                              caltables[caltable_name]['table']))
+
 def run_bandpass(msfile, caltables, caltable_name, minblperant=3, minsnr=2):
     logger.info(line0)
     rmdir(caltables[caltable_name]['table'])
@@ -1535,6 +1645,54 @@ def run_bandpass(msfile, caltables, caltable_name, minblperant=3, minsnr=2):
     logger.info('Generating cal table: {0}'.format(caltables[caltable_name]['table']))
     # Run CASA task bandpass
     bandpass(vis=msfile,
+             caltable  = caltables[caltable_name]['table'],
+             field     = caltables[caltable_name]['field'],
+             solint    = caltables[caltable_name]['solint'],
+             combine   = caltables[caltable_name]['combine'],
+             spw       = caltables[caltable_name]['spw'],
+             solnorm   = caltables[caltable_name]['solnorm'],
+             uvrange   = caltables[caltable_name]['uvrange'],
+             fillgaps  = caltables[caltable_name]['fillgaps'],
+             refant    = caltables['refant'],
+             gaintable = gaintable,
+             gainfield = gainfield,
+             interp    = interp,
+             spwmap    = spwmap,
+             minblperant=minblperant,
+             minsnr=minsnr)
+    logger.info('caltable {0} in {1}'.format(caltables[caltable_name]['name'],
+                                             caltables[caltable_name]['table']))
+
+def run_bandpass_narrow(msfile_sp, caltables, caltable_name, spwmap_sp, minblperant=3, minsnr=2):
+    logger.info(line0)
+    rmdir(caltables[caltable_name]['table'])
+    logger.info('Running bandpass to generate: {0}'.format(caltables[caltable_name]['name']))
+    logger.info('Field(s) {0}, solint = {1}, spw = {2}, combine = {3}, solnorm = {4}'.format(
+                 caltables[caltable_name]['field'],
+                 caltables[caltable_name]['solint'],
+                 caltables[caltable_name]['spw'],
+                 caltables[caltable_name]['combine'],
+                 caltables[caltable_name]['solnorm']))
+    #logger.info('uvrange = {0}'.format(caltables[caltable_name]['uvrange']))
+    # Previous calibration
+    previous_cal = caltables[caltable_name]['previous_cal']
+    gaintable = [caltables[p]['table'] for p in previous_cal]
+    interp    = [caltables[p]['interp'] for p in previous_cal]
+    gainfield = [caltables[p]['gainfield'] if len(np.atleast_1d(caltables[p]['gainfield'].split(',')))<2 else 'nearest' for p in previous_cal]
+    spwmap = []
+    for p in previous_cal:
+        if p == 'narrow_p_offset.G3':
+            spwmap.append([])
+        else:
+            logger.debug('Previous cal: {}'.format(p))
+            spwmap.append(convert_spwmap(caltables[p]['spwmap'], spwmap_sp))
+    logger.info('Previous calibration applied: {0}'.format(str(previous_cal)))
+    logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
+    logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
+    logger.info('Previous calibration interp: {0}'.format(str(interp)))
+    logger.info('Generating cal table: {0}'.format(caltables[caltable_name]['table']))
+    # Run CASA task bandpass
+    bandpass(vis=msfile_sp,
              caltable  = caltables[caltable_name]['table'],
              field     = caltables[caltable_name]['field'],
              solint    = caltables[caltable_name]['solint'],
@@ -1993,10 +2151,11 @@ def delay_fringefit(eMCP, caltables):
 #    logger.info('Fringe calibration {0}: {1}'.format(caltable_name, caltable))
     # Plots
     # 1 Phases
-    caltableplot =  caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
-    plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Phase',
-                  xaxis='time', yaxis='phase', ymin=-180, ymax=-180, coloraxis='field')
-    logger.info('Fringe calibration (phases) plot in: {0}'.format(caltableplot))
+    if doplots:
+        caltableplot =  caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
+        plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Phase',
+                      xaxis='time', yaxis='phase', ymin=-180, ymax=-180, coloraxis='field')
+        logger.info('Fringe calibration (phases) plot in: {0}'.format(caltableplot))
     # 2 Delays
     caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_dela.png'
     plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Phase',
@@ -2287,68 +2446,68 @@ def eM_fluxscale(eMCP, caltables):
 
 
 
-def bandpass_sp(eMCP, caltables):
-    logger.info('Start bandpass_sp')
+def bandpass_final(eMCP, caltables):
+    logger.info('Start bandpass_final')
     t0 = datetime.datetime.utcnow()
     # Check if all sources are in the MS: 
     check_sources_in_ms(eMCP)
-    bp_sp = eMCP['defaults']['bandpass_sp']
+    bp_final = eMCP['defaults']['bandpass_final']
     msfile = eMCP['msinfo']['msfile']
     msinfo = eMCP['msinfo']
     # Bandpass calibration
-    caltable_name = bp_sp['bp_tablename']
+    caltable_name = bp_final['bp_tablename']
     caltables[caltable_name] = collections.OrderedDict()
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
-    caltables[caltable_name]['previous_cal'] = bp_sp['bp_prev_cal']
+    caltables[caltable_name]['previous_cal'] = bp_final['bp_prev_cal']
     caltables[caltable_name]['field'] = msinfo['sources']['bpcal']
-    caltables[caltable_name]['solint'] = bp_sp['bp_solint']
-    caltables[caltable_name]['spw'] = make_spw(msinfo, bp_sp['bp_spw'])
-    caltables[caltable_name]['combine'] = bp_sp['bp_combine']
-    caltables[caltable_name]['uvrange'] = bp_sp['bp_uvrange']
-    caltables[caltable_name]['fillgaps'] = bp_sp['bp_fillgaps']
-    caltables[caltable_name]['solnorm'] = bp_sp['bp_solnorm']
-    caltables[caltable_name]['spwmap'] = make_spwmap(caltables,bp_sp['bp_combine'])
-    caltables[caltable_name]['interp'] = bp_sp['bp_interp']
+    caltables[caltable_name]['solint'] = bp_final['bp_solint']
+    caltables[caltable_name]['spw'] = make_spw(msinfo, bp_final['bp_spw'])
+    caltables[caltable_name]['combine'] = bp_final['bp_combine']
+    caltables[caltable_name]['uvrange'] = bp_final['bp_uvrange']
+    caltables[caltable_name]['fillgaps'] = bp_final['bp_fillgaps']
+    caltables[caltable_name]['solnorm'] = bp_final['bp_solnorm']
+    caltables[caltable_name]['spwmap'] = make_spwmap(caltables,bp_final['bp_combine'])
+    caltables[caltable_name]['interp'] = bp_final['bp_interp']
     bptable = caltables[caltable_name]['table']
     # Calibration
     run_bandpass(msfile, caltables, caltable_name)
     caltables[caltable_name]['gainfield'] = get_unique_field(caltables[caltable_name]['table'])
-    logger.info('Bandpass_sp BP {0}: {1}'.format(caltable_name,bptable))
+    logger.info('Bandpass_final BP {0}: {1}'.format(caltable_name,bptable))
     # Plots
     bptableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
     bptableplot_amp = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_amp.png'
     plot_caltable(msinfo, caltables[caltable_name], bptableplot_phs, title='Bandpass phase',
                   xaxis='freq', yaxis='phase', ymin=-180, ymax=180, coloraxis='corr', symbolsize=5)
-    logger.info('Bandpass_sp BP phase plot: {0}'.format(bptableplot_phs))
+    logger.info('Bandpass_final BP phase plot: {0}'.format(bptableplot_phs))
     plot_caltable(msinfo, caltables[caltable_name], bptableplot_amp, title='Bandpass amp',
                   xaxis='freq', yaxis='amp', ymin=-1, ymax=-1, coloraxis='corr', symbolsize=5)
-    logger.info('Bandpass_sp BP amplitude plot: {0}'.format(bptableplot_amp))
-    logger.info('End bandpass_sp')
+    logger.info('Bandpass_final BP amplitude plot: {0}'.format(bptableplot_amp))
+    logger.info('End bandpass_final')
     # Apply calibration if requested:
-    if eMCP['inputs']['bandpass_sp'] == 2:
-        run_applycal(eMCP, caltables, step = 'bandpass_sp')
+    if eMCP['inputs']['bandpass_final'] == 2:
+        run_applycal(eMCP, caltables, step = 'bandpass_final')
 
 ###    if eMCP['is_mixed_mode']:
 ###        logger.info('Mixed mode found. Processing narrow BP')
 ###        msfile_sp = eMCP['msinfo']['msfile_sp']
-###        bp_sp = eMCP['defaults']['bandpass_sp']
+###        bp_final = eMCP['defaults']['bandpass_final']
 ###        msinfo = eMCP['msinfo']
 ###        # Bandpass calibration
-###        caltable_name = bp_sp['narrow_bp_tablename']
+###        caltable_name = bp_final['narrow_bp_tablename']
 ###        caltables[caltable_name] = collections.OrderedDict()
 ###        caltables[caltable_name]['name'] = caltable_name
 ###        caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
-###        caltables[caltable_name]['previous_cal'] = bp_sp['narrow_bp_prev_cal']
+###        caltables[caltable_name]['previous_cal'] = bp_final['narrow_bp_prev_cal']
 ###        caltables[caltable_name]['field'] = msinfo['sources']['bpcal']
-###        caltables[caltable_name]['solint'] = bp_sp['narrow_bp_solint']
-###        caltables[caltable_name]['spw'] = make_spw(msinfo, bp_sp['narrow_bp_spw'])
-###        caltables[caltable_name]['combine'] = bp_sp['narrow_bp_combine']
-###        caltables[caltable_name]['uvrange'] = bp_sp['narrow_bp_uvrange']
-###        caltables[caltable_name]['fillgaps'] = bp_sp['narrow_bp_fillgaps']
-###        caltables[caltable_name]['solnorm'] = bp_sp['narrow_bp_solnorm']
-###        caltables[caltable_name]['spwmap'] =  make_spwmap(caltables,bp_sp['narrow_bp_combine'])
-###        caltables[caltable_name]['interp'] = bp_sp['narrow_bp_interp']
+###        caltables[caltable_name]['solint'] = bp_final['narrow_bp_solint']
+###        caltables[caltable_name]['spw'] = make_spw(msinfo, bp_final['narrow_bp_spw'])
+###        caltables[caltable_name]['combine'] = bp_final['narrow_bp_combine']
+###        caltables[caltable_name]['uvrange'] = bp_final['narrow_bp_uvrange']
+###        caltables[caltable_name]['fillgaps'] = bp_final['narrow_bp_fillgaps']
+###        caltables[caltable_name]['solnorm'] = bp_final['narrow_bp_solnorm']
+###        caltables[caltable_name]['spwmap'] =  make_spwmap(caltables,bp_final['narrow_bp_combine'])
+###        caltables[caltable_name]['interp'] = bp_final['narrow_bp_interp']
 ###        bptable = caltables[caltable_name]['table']
 ###        # Calibration
 ###        run_bandpass(msfile_sp, caltables, caltable_name)
@@ -2363,43 +2522,176 @@ def bandpass_sp(eMCP, caltables):
 ###        plot_caltable(msinfo, caltables[caltable_name], bptableplot_amp, title='Bandpass amp',
 ###                      xaxis='freq', yaxis='amp', ymin=-1, ymax=-1, coloraxis='corr', symbolsize=5)
 ###        logger.info('Bandpass_sp BP amplitude plot: {0}'.format(bptableplot_amp))
-###        logger.info('End bandpass_sp')
 
 
     save_obj(caltables, caltables['calib_dir']+'caltables.pkl')
     msg = 'field={0}, combine={1}, solint={2}'.format(
                     msinfo['sources']['bpcal'],
-                    bp_sp['bp_combine'],
-                    bp_sp['bp_solint'])
-    eMCP = add_step_time('bandpass_sp', eMCP, msg, t0)
+                    bp_final['bp_combine'],
+                    bp_final['bp_solint'])
+    eMCP = add_step_time('bandpass_final', eMCP, msg, t0)
     return eMCP, caltables
 
 
-def gain_amp_sp(eMCP, caltables):
-    logger.info('Start gain_amp_sp')
+def gaincal_final(eMCP, caltables):
+    logger.info('Start gaincal_final')
     t0 = datetime.datetime.utcnow()
     # Check if all sources are in the MS: 
     check_sources_in_ms(eMCP)
-    amp_sp = eMCP['defaults']['gain_amp_sp']
-    msfile = eMCP['msinfo']['msfile']
+    gain_final = eMCP['defaults']['gaincal_final']
+
+##    # Compute p, ap for calibrators
+##    eMCP, caltables = gaincal_final_cals(eMCP, caltables)
+##
+##    # Compute p, ap for targets (per scan)
+##    eMCP, caltables = gaincal_final_scan(eMCP, caltables)
+
+    if eMCP['is_mixed_mode']:
+        #eMCP, caltables = gaincal_narrow(eMCP, caltables, doplots=False)
+        #run_applycal(eMCP, caltables, step = 'initial_gaincal')
+        eMCP, caltables = gaincal_narrow(eMCP, caltables)
+    #    # Flagging
+    #    if eMCP['defaults']['bandpass']['run_flag']:
+    #        eMCP = flagdata_tfcrop(eMCP, defaults='bandpass')
+
+    logger.info('End gaincal_final')
+    # Apply calibration if requested:
+    if eMCP['inputs']['gaincal_final'] == 2:
+        run_applycal(eMCP, caltables, step = 'gaincal_final')
+    save_obj(caltables, caltables['calib_dir']+'caltables.pkl')
+    msg = 'p_solint={0}, ap_solint={1}'.format(gain_final['p_solint'],
+                                               gain_final['ap_solint'])
+    eMCP = add_step_time('gaincal_final', eMCP, msg, t0)
+    return eMCP, caltables
+
+
+def gaincal_narrow(eMCP, caltables, doplots=True):
+    gain_final = eMCP['defaults']['gaincal_final']
     msinfo = eMCP['msinfo']
-    # 1 Amplitude calibration
-    caltable_name = amp_sp['ap_tablename']
+    msfile = eMCP['msinfo']['msfile']
+    msfile_sp = eMCP['msinfo']['msfile_sp']
+    spwmap_sp = eMCP['msinfo']['spwmap_sp']
+
+    # 1 Phase offset wide-narrow
+    caltable_name = gain_final['p_offset_tablename']
     caltables[caltable_name] = collections.OrderedDict()
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
-    caltables[caltable_name]['previous_cal'] = amp_sp['ap_prev_cal']
+    caltables[caltable_name]['previous_cal'] = gain_final['p_offset_prev_cal']
+    caltables[caltable_name]['gaintype'] = 'G'
+    caltables[caltable_name]['calmode'] = 'p'
+    caltables[caltable_name]['field'] = msinfo['sources']['ptcal']
+    caltables[caltable_name]['solint'] = gain_final['p_offset_solint']
+    caltables[caltable_name]['combine'] = gain_final['p_offset_combine']
+    caltables[caltable_name]['spw'] = make_spw(msinfo, gain_final['p_offset_spw'])
+    caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
+    caltables[caltable_name]['spwmap'] = make_spwmap(caltables,gain_final['p_offset_combine'])
+    caltables[caltable_name]['interp'] = gain_final['p_offset_interp']
+    caltables[caltable_name]['minblperant'] = gain_final['p_offset_minblperant']
+    caltables[caltable_name]['minsnr'] = gain_final['p_offset_minsnr']
+    caltable = caltables[caltable_name]['table']
+    # Calibration
+    run_gaincal_narrow(msfile_sp, caltables, caltable_name, spwmap_sp)
+    if caltables['Lo_dropout_scans'] != '' and caltables['Lo_dropout_scans'] != 'none':
+        remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
+    # Plots
+    if doplots:
+        caltableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
+        plot_caltable(msinfo, caltables[caltable_name], caltableplot_phs, title='Phase',
+                      xaxis='spw', yaxis='phase', ymin=0, ymax=0,
+                      coloraxis='corr', symbolsize=10)
+        logger.info('{0} phase plot: {1}'.format(caltable_name,caltableplot_phs))
+
+    # 2 Narrow bandpass final calibration
+    msfile = eMCP['msinfo']['msfile']
+    msinfo = eMCP['msinfo']
+    # Bandpass calibration
+    caltable_name = gain_final['narrow_bp_tablename']
+    caltables[caltable_name] = collections.OrderedDict()
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['previous_cal'] = gain_final['narrow_bp_prev_cal']
+    caltables[caltable_name]['field'] = msinfo['sources']['bpcal']
+    caltables[caltable_name]['solint'] = gain_final['narrow_bp_solint']
+    caltables[caltable_name]['spw'] = make_spw(msinfo, gain_final['narrow_bp_spw'])
+    caltables[caltable_name]['combine'] = gain_final['narrow_bp_combine']
+    caltables[caltable_name]['uvrange'] = gain_final['narrow_bp_uvrange']
+    caltables[caltable_name]['fillgaps'] = gain_final['narrow_bp_fillgaps']
+    caltables[caltable_name]['solnorm'] = gain_final['narrow_bp_solnorm']
+    caltables[caltable_name]['spwmap'] = make_spwmap(caltables,gain_final['narrow_bp_combine'])
+    caltables[caltable_name]['interp'] = gain_final['narrow_bp_interp']
+    bptable = caltables[caltable_name]['table']
+    # Calibration
+    run_bandpass_narrow(msfile_sp, caltables, caltable_name, spwmap_sp)
+    caltables[caltable_name]['gainfield'] = get_unique_field(caltables[caltable_name]['table'])
+    logger.info('Bandpass_final BP {0}: {1}'.format(caltable_name,bptable))
+    # Plots
+    bptableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
+    bptableplot_amp = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_amp.png'
+    plot_caltable(msinfo, caltables[caltable_name], bptableplot_phs, title='Bandpass phase',
+                  xaxis='freq', yaxis='phase', ymin=-180, ymax=180, coloraxis='corr', symbolsize=5)
+    logger.info('Bandpass_final BP phase plot: {0}'.format(bptableplot_phs))
+    plot_caltable(msinfo, caltables[caltable_name], bptableplot_amp, title='Bandpass amp',
+                  xaxis='freq', yaxis='amp', ymin=-1, ymax=-1, coloraxis='corr', symbolsize=5)
+    logger.info('Bandpass_final BP amplitude plot: {0}'.format(bptableplot_amp))
+    logger.info('End bandpass_final')
+    # Apply calibration if requested:
+    if eMCP['inputs']['bandpass_final'] == 2:
+        run_applycal(eMCP, caltables, step = 'bandpass_final')
+
+    return eMCP, caltables
+
+
+
+def gaincal_final_cals(eMCP, caltables):
+    gain_final = eMCP['defaults']['gaincal_final']
+    msfile = eMCP['msinfo']['msfile']
+    msinfo = eMCP['msinfo']
+    # 1 Phase calibration
+    caltable_name = gain_final['p_tablename']
+    caltables[caltable_name] = collections.OrderedDict()
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['previous_cal'] = gain_final['p_prev_cal']
+    caltables[caltable_name]['gaintype'] = 'G'
+    caltables[caltable_name]['calmode'] = 'p'
+    caltables[caltable_name]['field'] = msinfo['sources']['calsources']
+    caltables[caltable_name]['solint'] = gain_final['p_solint']
+    caltables[caltable_name]['combine'] = gain_final['p_combine']
+    caltables[caltable_name]['spw'] = make_spw(msinfo, gain_final['p_spw'])
+    caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
+    caltables[caltable_name]['spwmap'] = make_spwmap(caltables,gain_final['p_combine'])
+    caltables[caltable_name]['interp'] = gain_final['p_interp']
+    caltables[caltable_name]['minblperant'] = gain_final['p_minblperant']
+    caltables[caltable_name]['minsnr'] = gain_final['p_minsnr']
+    caltable = caltables[caltable_name]['table']
+    # Calibration
+    run_gaincal(msfile, caltables, caltable_name)
+    if caltables['Lo_dropout_scans'] != '' and caltables['Lo_dropout_scans'] != 'none':
+        remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
+    # Plots
+    caltableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
+    plot_caltable(msinfo, caltables[caltable_name], caltableplot_phs, title='Phase',
+                  xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=3)
+    logger.info('{0} phase plot: {1}'.format(caltable_name,caltableplot_phs))
+
+    # 1 Amplitude calibration
+    caltable_name = gain_final['ap_tablename']
+    caltables[caltable_name] = collections.OrderedDict()
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['previous_cal'] = gain_final['ap_prev_cal']
     caltables[caltable_name]['gaintype'] = 'G'
     caltables[caltable_name]['calmode'] = 'ap'
     caltables[caltable_name]['field'] = msinfo['sources']['calsources']
-    caltables[caltable_name]['solint'] = amp_sp['ap_solint']
-    caltables[caltable_name]['combine'] = amp_sp['ap_combine']
-    caltables[caltable_name]['spw'] = make_spw(msinfo, amp_sp['ap_spw'])
+    caltables[caltable_name]['solint'] = gain_final['ap_solint']
+    caltables[caltable_name]['combine'] = gain_final['ap_combine']
+    caltables[caltable_name]['spw'] = make_spw(msinfo, gain_final['ap_spw'])
     caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
-    caltables[caltable_name]['spwmap'] = make_spwmap(caltables,amp_sp['ap_combine'])
-    caltables[caltable_name]['interp'] = amp_sp['ap_interp']
-    caltables[caltable_name]['minblperant'] = amp_sp['ap_minblperant']
-    caltables[caltable_name]['minsnr'] = amp_sp['ap_minsnr']
+    caltables[caltable_name]['spwmap'] = make_spwmap(caltables,gain_final['ap_combine'])
+    caltables[caltable_name]['interp'] = gain_final['ap_interp']
+    caltables[caltable_name]['minblperant'] = gain_final['ap_minblperant']
+    caltables[caltable_name]['minsnr'] = gain_final['ap_minsnr']
     caltable = caltables[caltable_name]['table']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name)
@@ -2416,24 +2708,30 @@ def gain_amp_sp(eMCP, caltables):
     plot_caltable(msinfo, caltables[caltable_name], caltableplot_amp, title='Amp',
                   xaxis='time', yaxis='amp', ymin=-1, ymax=-1, coloraxis='spw', symbolsize=5)
     logger.info('{0} amp plot: {1}'.format(caltable_name,caltableplot_amp))
+    return eMCP, caltables
 
-    # 2 Scan-averaged phase calibration
-    caltable_name = amp_sp['p_scan_tablename']
+def gaincal_final_scan(eMCP, caltables):
+    gain_final = eMCP['defaults']['gaincal_final']
+    msfile = eMCP['msinfo']['msfile']
+    msinfo = eMCP['msinfo']
+
+    # 1 Phase calibration on phasecal: Scan-averaged phase calibration
+    caltable_name = gain_final['p_scan_tablename']
     caltables[caltable_name] = collections.OrderedDict()
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
-    caltables[caltable_name]['previous_cal'] = amp_sp['p_scan_prev_cal']
+    caltables[caltable_name]['previous_cal'] = gain_final['p_scan_prev_cal']
     caltables[caltable_name]['gaintype'] = 'G'
     caltables[caltable_name]['calmode'] = 'p'
     caltables[caltable_name]['field'] = msinfo['sources']['phscals']
-    caltables[caltable_name]['solint'] = amp_sp['p_scan_solint']
-    caltables[caltable_name]['combine'] = amp_sp['p_scan_combine']
-    caltables[caltable_name]['spw'] = make_spw(msinfo, amp_sp['p_scan_spw'])
+    caltables[caltable_name]['solint'] = gain_final['p_scan_solint']
+    caltables[caltable_name]['combine'] = gain_final['p_scan_combine']
+    caltables[caltable_name]['spw'] = make_spw(msinfo, gain_final['p_scan_spw'])
     caltables[caltable_name]['gainfield'] = msinfo['sources']['phscals']
-    caltables[caltable_name]['spwmap'] = make_spwmap(caltables,amp_sp['p_scan_combine'])
-    caltables[caltable_name]['interp'] = amp_sp['p_scan_interp']
-    caltables[caltable_name]['minblperant'] = amp_sp['p_scan_minblperant']
-    caltables[caltable_name]['minsnr'] = amp_sp['p_scan_minsnr']
+    caltables[caltable_name]['spwmap'] = make_spwmap(caltables,gain_final['p_scan_combine'])
+    caltables[caltable_name]['interp'] = gain_final['p_scan_interp']
+    caltables[caltable_name]['minblperant'] = gain_final['p_scan_minblperant']
+    caltables[caltable_name]['minsnr'] = gain_final['p_scan_minsnr']
     caltable = caltables[caltable_name]['table']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name)
@@ -2446,23 +2744,23 @@ def gain_amp_sp(eMCP, caltables):
     plot_caltable(msinfo, caltables[caltable_name], caltableplot_phs, title='Phase',
                   xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=5)
 
-    # 3 Amplitude calibration on phasecal: scan-averaged amplitude solutions
-    caltable_name = amp_sp['ap_scan_tablename']
+    # 2 Amplitude calibration on phasecal: scan-averaged amplitude solutions
+    caltable_name = gain_final['ap_scan_tablename']
     caltables[caltable_name] = collections.OrderedDict()
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
-    caltables[caltable_name]['previous_cal'] = amp_sp['ap_scan_prev_cal']
+    caltables[caltable_name]['previous_cal'] = gain_final['ap_scan_prev_cal']
     caltables[caltable_name]['gaintype'] = 'G'
     caltables[caltable_name]['calmode'] = 'ap'
     caltables[caltable_name]['field'] = msinfo['sources']['phscals']
-    caltables[caltable_name]['solint'] = amp_sp['ap_scan_solint']
-    caltables[caltable_name]['combine'] = amp_sp['ap_scan_combine']
-    caltables[caltable_name]['spw'] = make_spw(msinfo, amp_sp['ap_scan_spw'])
+    caltables[caltable_name]['solint'] = gain_final['ap_scan_solint']
+    caltables[caltable_name]['combine'] = gain_final['ap_scan_combine']
+    caltables[caltable_name]['spw'] = make_spw(msinfo, gain_final['ap_scan_spw'])
     caltables[caltable_name]['gainfield'] = msinfo['sources']['phscals']
-    caltables[caltable_name]['spwmap'] = make_spwmap(caltables,amp_sp['ap_scan_combine'])
-    caltables[caltable_name]['interp'] = amp_sp['ap_scan_interp']
-    caltables[caltable_name]['minblperant'] = amp_sp['ap_scan_minblperant']
-    caltables[caltable_name]['minsnr'] = amp_sp['ap_scan_minsnr']
+    caltables[caltable_name]['spwmap'] = make_spwmap(caltables,gain_final['ap_scan_combine'])
+    caltables[caltable_name]['interp'] = gain_final['ap_scan_interp']
+    caltables[caltable_name]['minblperant'] = gain_final['ap_scan_minblperant']
+    caltables[caltable_name]['minsnr'] = gain_final['ap_scan_minsnr']
     caltable = caltables[caltable_name]['table']
     # Calibration
     run_gaincal(msfile, caltables, caltable_name)
@@ -2479,13 +2777,6 @@ def gain_amp_sp(eMCP, caltables):
     plot_caltable(msinfo, caltables[caltable_name], caltableplot_amp, title='Amp',
                   xaxis='time', yaxis='amp', ymin=-1, ymax=-1, coloraxis='spw', symbolsize=5)
     logger.info('{0} amp plot: {1}'.format(caltable_name,caltableplot_amp))
-    logger.info('End gain_amp_sp')
-    # Apply calibration if requested:
-    if eMCP['inputs']['gain_amp_sp'] == 2:
-        run_applycal(eMCP, caltables, step = 'gain_amp_sp')
-    save_obj(caltables, caltables['calib_dir']+'caltables.pkl')
-    msg = 'ap_solint={0}'.format(amp_sp['ap_solint'])
-    eMCP = add_step_time('gain_amp_sp', eMCP, msg, t0)
     return eMCP, caltables
 
 def applycal_all(eMCP, caltables):
@@ -2970,8 +3261,8 @@ def eMCP_info_start_steps():
     steps['bandpass'] = default_value
     steps['initial_gaincal'] = default_value
     steps['fluxscale'] = default_value
-    steps['bandpass_sp'] = default_value
-    steps['gain_amp_sp'] = default_value
+    steps['bandpass_final'] = default_value
+    steps['gaincal_final'] = default_value
     steps['applycal_all'] = default_value
     steps['flag_target'] = default_value
     steps['plot_corrected'] = default_value

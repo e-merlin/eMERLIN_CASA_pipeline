@@ -385,27 +385,26 @@ def write_fluxscale(wlog):
     wlog.write('\n</pre>\n<br>')
 
 
-def weblog_calibration(msinfo):
+def weblog_calibration(eMCP):
+    msinfo = eMCP['msinfo']
     ###### Calibration page
     wlog = open(weblog_dir + "calibration.html","w")
     weblog_header(wlog, 'Calibration', msinfo['run'])
     #------------------------------------------
-    all_calsteps = [
-           'bpcal_d.K0',
-           'bpcal_p.G0',
-           'bpcal_ap.G1',
-           'bpcal.B0',
-           'delay.K1',
-           'allcal_p.G0',
-           'allcal_ap.G1',
-           'fluxscale',
-           'bpcal_sp.B1',
-           'allcal_ap.G3',
-           'phscal_p_scan.G3',
-           'phscal_ap_scan.G3']
+    all_calsteps = ['bpcal_d.K0','bpcal_p.G0','bpcal_ap.G0','bpcal.BP0',
+                    'delay.K1','allcal_p.G1','allcal_ap.G1',
+                    'fluxscale',
+                    'bpcal.BP2',
+                    'allcal_p.G3','allcal_ap.G3',
+                    'phscal_p_scan.G3','phscal_ap_scan.G3'
+                    ]
+    if eMCP['is_mixed_mode']:
+        all_calsteps.append('narrow_p_offset.G3')
+        all_calsteps.append('narrow_bpcal.BP2')
     if os.path.isfile('./weblog/calib/caltables.pkl'):
         caltables = load_obj('./weblog/calib/caltables.pkl')
         for calstep in all_calsteps:
+            logger.debug('calstep {}'.format(calstep))
             try:
                 if calstep == 'fluxscale' and os.path.isfile(info_dir + 'allcal_ap.G1_fluxes.txt'):
                     wlog.write('<h4>{}</h4>\n'.format('fluxscale'))
@@ -597,7 +596,7 @@ def start_weblog(eMCP, silent=False):
     weblog_index(msinfo)
     weblog_obssum(msinfo)
     weblog_pipelineinfo(eMCP)
-    weblog_calibration(msinfo)
+    weblog_calibration(eMCP)
     weblog_plots(msinfo)
     weblog_flagstats(msinfo)
     weblog_images(eMCP)

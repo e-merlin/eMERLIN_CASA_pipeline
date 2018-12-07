@@ -13,7 +13,7 @@ from tasks import *
 import casadef
 
 
-current_version = 'v0.10.01'
+current_version = 'v0.10.02'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -50,6 +50,7 @@ def get_pipeline_version(pipeline_path):
     short_commit = commit[:7]
     return branch, short_commit
 
+
 def run_pipeline(inputs=None, inputs_path=''):
     # Paths to use
     weblog_dir = './weblog/'
@@ -77,7 +78,6 @@ def run_pipeline(inputs=None, inputs_path=''):
     except:
         eMCP = collections.OrderedDict()
         eMCP['steps'] = em.eMCP_info_start_steps()
-        eMCP['is_mixed_mode'] = 'unknown'
         eMCP['img_stats'] = collections.OrderedDict()
 
     eMCP['inputs'] = inputs
@@ -86,8 +86,8 @@ def run_pipeline(inputs=None, inputs_path=''):
     # Setup logger
     logger = logging.getLogger('logger')
     logging.Formatter.converter = time.gmtime
-    logger.setLevel(logging.INFO)
-    #logger.setLevel(logging.DEBUG)
+    #logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
     handler = logging.FileHandler('eMCP.log', mode = 'a') # create a file handler
     formatter = logging.Formatter(fmt='%(asctime)s | %(levelname)s | %(message)s',datefmt='%Y-%m-%d %H:%M:%S')
     handler.setFormatter(formatter)
@@ -205,12 +205,12 @@ def run_pipeline(inputs=None, inputs_path=''):
         eMCP, caltables = em.eM_fluxscale(eMCP, caltables)
 
     ### BandPass calibration with spectral index information ###
-    if inputs['bandpass_sp'] > 0:
-        eMCP, caltables = em.bandpass_sp(eMCP, caltables)
+    if inputs['bandpass_final'] > 0:
+        eMCP, caltables = em.bandpass_final(eMCP, caltables)
 
     ### Amplitude calibration including spectral information ###
-    if inputs['gain_amp_sp'] > 0:
-        eMCP, caltables = em.gain_amp_sp(eMCP, caltables)
+    if inputs['gaincal_final'] > 0:
+        eMCP, caltables = em.gaincal_final(eMCP, caltables)
 
     ### Apply calibration  ###
     if inputs['applycal_all'] > 0:
