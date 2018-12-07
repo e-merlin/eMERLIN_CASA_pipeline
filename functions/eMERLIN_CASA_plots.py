@@ -114,7 +114,7 @@ def count_active_baselines(msfile):
     return active_baselines
 
 def simple_plot_name(plot_file, i):
-    actual_name = glob.glob('{0}{1}*.png'.format(plot_file, i))[0]
+    actual_name = glob.glob('{0}{1}_*.png'.format(plot_file, i))[0]
     try:
         shutil.move(actual_name, '{0}{1}.png'.format(plot_file, i))
     except:

@@ -4,6 +4,7 @@ defaults = collections.OrderedDict()
 
 defaults['global'] = collections.OrderedDict()
 defaults['global']['refantmode']                      = 'flex'
+defaults['global']['spwmap_sp']                       = []
 
 defaults['import_eM'] = collections.OrderedDict()
 defaults['import_eM']['constobsid']                   = True
@@ -197,6 +198,18 @@ defaults['bandpass_sp']['bp_fillgaps']                = 8
 defaults['bandpass_sp']['bp_solnorm']                 = False
 defaults['bandpass_sp']['apply_calibrators']          = ['delay.K1','allcal_p.G0','allcal_ap.G1_fluxscaled','bpcal_sp.B1']
 defaults['bandpass_sp']['apply_targets']              = []
+
+#defaults['bandpass_sp']['narrow_bp_tablename']        = 'narrow_bpcal_sp.B1'
+#defaults['bandpass_sp']['narrow_bp_prev_cal']         = ['delay.K1','allcal_p.G0','allcal_ap.G1_fluxscaled']
+#defaults['bandpass_sp']['narrow_bp_solint']           = 'inf'
+#defaults['bandpass_sp']['narrow_bp_spw']              = ['0,1','']
+#defaults['bandpass_sp']['narrow_bp_combine']          = 'field,scan'
+#defaults['bandpass_sp']['narrow_bp_interp']           = 'nearest,cubicflag'
+#defaults['bandpass_sp']['narrow_bp_uvrange']          = ''
+#defaults['bandpass_sp']['narrow_bp_fillgaps']         = 8
+#defaults['bandpass_sp']['narrow_bp_solnorm']          = False
+#defaults['bandpass_sp']['narrow_apply_calibrators']   = ['delay.K1','allcal_p.G0','allcal_ap.G1_fluxscaled','bpcal_sp_narrow.B1']
+#defaults['bandpass_sp']['narrow_apply_targets']       = []
 
 defaults['gain_amp_sp'] = collections.OrderedDict()
 defaults['gain_amp_sp']['ap_tablename']               = 'allcal_ap.G3'

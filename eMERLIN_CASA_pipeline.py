@@ -13,7 +13,7 @@ from tasks import *
 import casadef
 
 
-current_version = 'v0.9.32'
+current_version = 'v0.10.01'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -87,8 +87,8 @@ def run_pipeline(inputs=None, inputs_path=''):
     logger = logging.getLogger('logger')
     logging.Formatter.converter = time.gmtime
     logger.setLevel(logging.INFO)
+    #logger.setLevel(logging.DEBUG)
     handler = logging.FileHandler('eMCP.log', mode = 'a') # create a file handler
-    handler.setLevel(logging.INFO)
     formatter = logging.Formatter(fmt='%(asctime)s | %(levelname)s | %(message)s',datefmt='%Y-%m-%d %H:%M:%S')
     handler.setFormatter(formatter)
     logger.addHandler(handler) # add the handlers to the logger

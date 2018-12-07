@@ -429,6 +429,63 @@ def get_integration_time(msfile, usemsmd=True):
         int_time = stats.mode(np.diff(t_mjd))[0][0]
     return int_time
 
+def get_msfile_sp(eMCP):
+    ext_ms = {False:'.ms',True:'.mms'}
+    do_ms2mms = eMCP['defaults']['import_eM']['ms2mms']
+    if eMCP['is_mixed_mode']:
+        msfile_sp = './'+ eMCP['inputs']['inbase'] + '_sp' + ext_ms[do_ms2mms]
+    else:
+        msfile_sp = ''
+    return msfile_sp
+
+def find_wide_narrow(spw_sp, cent_chan_sp, msfile):
+    msmd.open(msfile)
+    spws = msmd.spwfordatadesc()
+    main_spw = []
+    logger.debug('')
+    logger.debug('Narrow sp {0}, central freq. {1:5.3f}'.format(spw_sp,
+                                                                cent_chan_sp/1e9))
+    for spw in spws:
+        chan = msmd.chanfreqs(spw)
+        freq_ini = chan[0]
+        freq_end = chan[-1]
+        logger.debug('Wide sp {0}: {1:5.3f} {2:5.3f}'.format(spw,
+                                                   freq_ini/1e9,
+                                                   freq_end/1e9))
+        if cent_chan_sp > freq_ini and cent_chan_sp <= freq_end:
+            main_spw.append(spw)
+    logger.debug('Corresponding wide spw {0}'.format(main_spw))
+    msmd.done()
+    # print results
+    if len(main_spw) == 0:
+        logger.warning('Could not find wideband spw containing narrow band ' \
+              'centred at {0}. Choose spwmap manually!'.format(cen_chan_sp*1e9))
+    elif len(main_spw) > 1:
+        logger.warning('Narrow spw {0} can be linked ' \
+              'to different wide spw {1}. Choose spwmap manually!'.format(spw_sp, main_spw))
+    else:
+        pass
+    return main_spw
+
+def get_spwmap_sp(msfile, msfile_sp):
+    msmd.open(msfile_sp)
+    spws_sp = msmd.spwfordatadesc()
+    cent_chans_sp = np.array([np.mean(msmd.chanfreqs(spw_sp))
+                                      for spw_sp in spws_sp])
+    msmd.done()
+    spwmap_sp = []
+    for (spw_sp, cent_chan_sp) in zip(spws_sp, cent_chans_sp):
+        main_spw = find_wide_narrow(spw_sp, cent_chan_sp, msfile)
+        spwmap_sp.append(main_spw[0])
+    return spwmap_sp
+
+def find_spwmap_sp(eMCP, msfile, msfile_sp):
+    if eMCP['defaults']['global']['spwmap_sp'] == []:
+        spwmap_sp = get_spwmap_sp(msfile, msfile_sp)
+    else:
+        spwmap_sp = eMCP['defaults']['global']['spwmap_sp']
+    logger.info('spwmap_sp = {0}'.format(spwmap_sp))
+    return spwmap_sp
 
 def get_msinfo(eMCP, msfile, doprint=False):
     inputs = eMCP['inputs']
@@ -436,6 +493,7 @@ def get_msinfo(eMCP, msfile, doprint=False):
     logger.info('Reading ms file information for MS: {0}'.format(msfile))
     msinfo = collections.OrderedDict()
     msinfo['msfile'] = msfile
+    msinfo['msfile_sp'] = get_msfile_sp(eMCP)
     msinfo['msfilename'] = os.path.splitext(msfile)[0].split('/')[-1]
     msinfo['project'] = get_project(msfile)
     msinfo['run'] = inputs['inbase']
@@ -456,6 +514,11 @@ def get_msinfo(eMCP, msfile, doprint=False):
     msinfo['chan_res'] = chan_res
     msinfo['nchan'] = nchan
     msinfo['innerchan'] = '{0:.0f}~{1:.0f}'.format(0.1*(nchan-nchan/512.), 0.9*(nchan-nchan/512.))
+    if eMCP['is_mixed_mode']:
+        msinfo['spwmap_sp'] = find_spwmap_sp(eMCP, msinfo['msfile'],
+                                                          msinfo['msfile_sp'])
+    else:
+        msinfo['spwmap_sp'] = []
     msinfo['polarizations'] = get_polarization(msfile)
     try:
         msinfo['refant'] = eMCP['msinfo']['refant']
@@ -474,7 +537,6 @@ def get_msinfo(eMCP, msfile, doprint=False):
     logger.info('> Number of spw: {0}'.format(msinfo['num_spw']))
     logger.info('> Channels per spw: {0}'.format(msinfo['nchan']))
     logger.info('> Itegration time {0:3.1f}s'.format(msinfo['int_time']))
-    #save_obj(msinfo, info_dir + msinfo['msfilename']+'.msinfo.pkl')
     if doprint:
         prt_dict(msinfo)
     eMCP['msinfo'] = msinfo
@@ -709,7 +771,7 @@ def import_eMERLIN_fitsIDI(eMCP):
                         'pipeline'.format(msfile))
         exit_pipeline(eMCP)
     if is_mixed_mode:
-        msfile_sp = eMCP['inputs']['inbase'] + '_sp' + ext_ms[do_ms2mms]
+        msfile_sp = get_msfile_sp(eMCP)
         logger.info('Running FIXVIS on spectral line data')
         fixvis(vis = msfile1_sp,
            outputvis = msfile_sp,
@@ -725,7 +787,6 @@ def import_eMERLIN_fitsIDI(eMCP):
     msg = ''
     eMCP, msinfo, msfile = get_msinfo(eMCP, msfile)
     eMCP = add_step_time('fixvis', eMCP, msg, t0, doweblog=True)
-    eMCP['msfile'] = msfile
     flag_statistics(eMCP, step='import')
     return eMCP
 
@@ -910,6 +971,10 @@ def flagdata1_apriori(eMCP):
     # Remove pure zeros
     logger.info('Flagging zeros')
     flagdata(vis=msfile, mode='clip', clipzeros=True, flagbackup=False)
+    if eMCP['is_mixed_mode']:
+        msfile_sp = eMCP['msinfo']['msfile_sp']
+        logger.info('Flagging zeros from narrow: {0}'.format(msfile_sp))
+        flagdata(vis=msfile_sp, mode='clip', clipzeros=True, flagbackup=False)
     # Subband edges
     channels_to_flag = '*:0~{0};{1}~{2}'.format(nchan/128-1, nchan-nchan/128, nchan-1)
     logger.info('MS has {} channels/spw'.format(nchan))
@@ -1333,8 +1398,16 @@ def run_initialize_models(eMCP):
     fluxcal = eMCP['msinfo']['sources']['fluxcal']
     logger.info('Resetting corrected column with clearcal')
     clearcal(vis=msfile)
+    if eMCP['is_mixed_mode']:
+        msfile_sp = eMCP['msinfo']['msfile_sp']
+        logger.info('Resetting from {0}'.format(msfile_sp))
+        clearcal(vis=msfile_sp)
     logger.info('Deleting model of all sources')
     delmod(vis=msfile, otf=True, scr=True) #scr to delete MODEL column
+    if eMCP['is_mixed_mode']:
+        msfile_sp = eMCP['msinfo']['msfile_sp']
+        logger.info('Deleting model from {0}'.format(msfile_sp))
+        delmod(vis=msfile_sp, otf=True, scr=True)
     # Check dataset frequency:
     band = check_band(msfile)
     if band == 'C':
@@ -1352,6 +1425,12 @@ def run_initialize_models(eMCP):
         logger.warning('Using a model for 3C286 (1331+305) but your flux calibrator source is: {0}. Model may be wrong for that source'.format(fluxcal))
     setjy(vis=msfile, field=fluxcal,
           model=model_3C286, scalebychan=True, usescratch=True)
+    if eMCP['is_mixed_mode']:
+        msfile_sp = eMCP['msinfo']['msfile_sp']
+        logger.info('Initializing model for 3C286 for {0}'.format(msfile_sp))
+        setjy(vis=msfile_sp, field=fluxcal,
+              model=model_3C286, scalebychan=True, usescratch=True)
+
     logger.info('End init_models')
     msg = ''
     eMCP = add_step_time('init_models', eMCP, msg, t0)
@@ -2167,6 +2246,10 @@ def eM_fluxscale(eMCP, caltables):
             logger.info('New model for this observation: {0}, {1}'.format(scaled_model[0], scaled_model[1]))
             ft(vis=msfile, field=field, model=scaled_model, nterms=2, usescratch=True)
             logger.info('Model for {0} included in MODEL column in {1}'.format(field, msfile))
+            if eMCP['is_mixed_mode']:
+                msfile_sp = eMCP['msinfo']['msfile_sp']
+                logger.info('Filling sp: {0}'.format(msfile_sp))
+                ft(vis=msfile_sp, field=field, model=scaled_model, nterms=2, usescratch=True)
         else:
             # If there is no model, just assume point source:
             logger.info('Filling model column for point-like source: {0}'.format(field))
@@ -2181,6 +2264,17 @@ def eM_fluxscale(eMCP, caltables):
                   spix = eMcalfluxes[field][1],
                   reffreq = str(eMcalfluxes[field][2])+'Hz',
                   usescratch = True)
+            if eMCP['is_mixed_mode']:
+                msfile_sp = eMCP['msinfo']['msfile_sp']
+                logger.info('Filling model for sp: {0}'.format(msfile_sp))
+                setjy(vis = msfile_sp,
+                      field = field,
+                      standard = 'manual',
+                      fluxdensity = eMcalfluxes[field][0],
+                      spix = eMcalfluxes[field][1],
+                      reffreq = str(eMcalfluxes[field][2])+'Hz',
+                      usescratch = True)
+
     logger.info('End eM_fluxscale')
     # Apply calibration if requested:
     if eMCP['inputs']['fluxscale'] == 2:
@@ -2234,6 +2328,44 @@ def bandpass_sp(eMCP, caltables):
     # Apply calibration if requested:
     if eMCP['inputs']['bandpass_sp'] == 2:
         run_applycal(eMCP, caltables, step = 'bandpass_sp')
+
+###    if eMCP['is_mixed_mode']:
+###        logger.info('Mixed mode found. Processing narrow BP')
+###        msfile_sp = eMCP['msinfo']['msfile_sp']
+###        bp_sp = eMCP['defaults']['bandpass_sp']
+###        msinfo = eMCP['msinfo']
+###        # Bandpass calibration
+###        caltable_name = bp_sp['narrow_bp_tablename']
+###        caltables[caltable_name] = collections.OrderedDict()
+###        caltables[caltable_name]['name'] = caltable_name
+###        caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+###        caltables[caltable_name]['previous_cal'] = bp_sp['narrow_bp_prev_cal']
+###        caltables[caltable_name]['field'] = msinfo['sources']['bpcal']
+###        caltables[caltable_name]['solint'] = bp_sp['narrow_bp_solint']
+###        caltables[caltable_name]['spw'] = make_spw(msinfo, bp_sp['narrow_bp_spw'])
+###        caltables[caltable_name]['combine'] = bp_sp['narrow_bp_combine']
+###        caltables[caltable_name]['uvrange'] = bp_sp['narrow_bp_uvrange']
+###        caltables[caltable_name]['fillgaps'] = bp_sp['narrow_bp_fillgaps']
+###        caltables[caltable_name]['solnorm'] = bp_sp['narrow_bp_solnorm']
+###        caltables[caltable_name]['spwmap'] =  make_spwmap(caltables,bp_sp['narrow_bp_combine'])
+###        caltables[caltable_name]['interp'] = bp_sp['narrow_bp_interp']
+###        bptable = caltables[caltable_name]['table']
+###        # Calibration
+###        run_bandpass(msfile_sp, caltables, caltable_name)
+###        caltables[caltable_name]['gainfield'] = get_unique_field(caltables[caltable_name]['table'])
+###        logger.info('Bandpass_sp_narrow BP {0}: {1}'.format(caltable_name,bptable))
+###        # Plots
+###        bptableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
+###        bptableplot_amp = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_amp.png'
+###        plot_caltable(msinfo, caltables[caltable_name], bptableplot_phs, title='Bandpass phase',
+###                      xaxis='freq', yaxis='phase', ymin=-180, ymax=180, coloraxis='corr', symbolsize=5)
+###        logger.info('Bandpass_sp BP phase plot: {0}'.format(bptableplot_phs))
+###        plot_caltable(msinfo, caltables[caltable_name], bptableplot_amp, title='Bandpass amp',
+###                      xaxis='freq', yaxis='amp', ymin=-1, ymax=-1, coloraxis='corr', symbolsize=5)
+###        logger.info('Bandpass_sp BP amplitude plot: {0}'.format(bptableplot_amp))
+###        logger.info('End bandpass_sp')
+
+
     save_obj(caltables, caltables['calib_dir']+'caltables.pkl')
     msg = 'field={0}, combine={1}, solint={2}'.format(
                     msinfo['sources']['bpcal'],
