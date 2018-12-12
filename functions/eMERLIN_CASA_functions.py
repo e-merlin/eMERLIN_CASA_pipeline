@@ -742,7 +742,6 @@ def import_eMERLIN_fitsIDI(eMCP):
     do_hanning = decide_hanning(import_eM, msfile0)
     do_ms2mms = import_eM['ms2mms']
     is_mixed_mode, spw_separation = mixed_mode(msfile0)
-    eMCP['is_mixed_mode'] = is_mixed_mode
     ext_ms = {False:'.ms',True:'.mms'}
     msfile1 = msfile_name+'_transformed' + ext_ms[do_ms2mms]
     if timeaverage:
@@ -773,7 +772,7 @@ def import_eMERLIN_fitsIDI(eMCP):
     logger.info('Transformed: {0} into {1}'.format(msfile0, msfile1))
     if do_hanning:
         ms.writehistory(message='Hanning smoothing applied',msname=msfile1)
-    if eMCP['is_mixed_mode']: # No hanning and no channel average
+    if is_mixed_mode: # No hanning and no channel average
         logger.info('Mixed mode data detected')
         msfile1_sp = msfile_name+'_transformed_sp' + ext_ms[do_ms2mms]
         logger.info('Running mstransform on spectral line data')
@@ -823,7 +822,7 @@ def import_eMERLIN_fitsIDI(eMCP):
         logger.critical('Problem generating {}. Stopping ' \
                         'pipeline'.format(msfile))
         exit_pipeline(eMCP)
-    if eMCP['is_mixed_mode']:
+    if is_mixed_mode:
         msfile_sp = get_msfile_sp(eMCP)
         logger.info('Running FIXVIS on spectral line data')
         fixvis(vis = msfile1_sp,
@@ -1329,6 +1328,10 @@ def saveflagstatus(eMCP):
     flagmanager(msinfo['msfile'], mode='save', versionname='initialize_flags',
              comment='Restore this version to restart calibration without the flags produced by the calibration',
              merge='replace')
+    if eMCP['is_mixed_mode']:
+        flagmanager(msinfo['msfile_sp'], mode='save', versionname='initialize_flags',
+                    comment='Restore this version to restart calibration without the flags produced by the calibration',
+                     merge='replace')
     msg = 'versionname=initialize_flags'
     eMCP = add_step_time('save_flags', eMCP, msg, t0)
     return eMCP
@@ -1341,6 +1344,10 @@ def restoreflagstatus(eMCP):
     logger.info('Restoring flagging status in versionname=\'initialize_flags\'')
     flagmanager(msinfo['msfile'], mode='restore', versionname='initialize_flags',
              merge='replace')
+    if eMCP['is_mixed_mode']:
+        flagmanager(msinfo['msfile_sp'], mode='restore', versionname='initialize_flags',
+                 merge='replace')
+
     flag_statistics(eMCP, step='restore_flags')
     msg = 'versionname=initialize_flags'
     eMCP = add_step_time('restore_flags', eMCP, msg, t0)
@@ -1369,10 +1376,13 @@ def check_sources_in_ms(eMCP):
         exit_pipeline()
 
 def check_table_exists(caltables, tablename):
+    logger.debug('Try existence: {0}'.format(caltables[tablename]['table']))
     try:
         if os.path.isdir(caltables[tablename]['table']):
+            logger.debug('OK')
             it_exists = True
         else:
+            logger.debug('Not OK')
             it_exists = False
     except:
             it_exists = False
@@ -1768,7 +1778,6 @@ def run_applycal(eMCP, caltables, step, dotarget=False, insources=''):
 
     # 2 correct targets
     if previous_cal_targets != []:
-        previous_cal_targets= eMCP['defaults'][step]['apply_targets']
         logger.info('Applying calibration to target sources')
         logger.info('Target fields: {0}'.format(sources['targets']))
         if previous_cal_targets == '':
@@ -1784,12 +1793,98 @@ def run_applycal(eMCP, caltables, step, dotarget=False, insources=''):
                 interp    = [caltables[p]['interp'] for p in previous_cal_targets]
                 spwmap    = [caltables[p]['spwmap'] for p in previous_cal_targets]
                 gainfield = [caltables[p]['gainfield'] if len(np.atleast_1d(caltables[p]['gainfield'].split(',')))<2 else phscal for p in previous_cal_targets]
-                logger.info('Field: {0}. Phase calibrator: {1}'.format(s, phscal))
+                logger.info('Target: {0}. Phase calibrator: {1}'.format(s, phscal))
                 logger.info('Previous calibration applied: {0}'.format(str(previous_cal_targets)))
                 logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
                 logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
                 logger.info('Previous calibration interp: {0}'.format(str(interp)))
                 applycal(vis=msfile,
+                         field = s,
+                         gaintable = gaintable,
+                         gainfield = gainfield,
+                         interp    = interp,
+                         spwmap    = spwmap,
+                         flagbackup= False)
+            else:
+                logger.warning('Source {} is not phase-referenced'.format(s))
+    else:
+        logger.info('Not applying calibration to target sources at this stage')
+
+    logger.info('End applycal')
+
+
+def run_applycal_narrow(eMCP, caltables, step, spwmap_sp, dotarget=False, insources=''):
+    logger.info(line0)
+    logger.info('Start applycal')
+    logger.info('Applying calibration up to step: {}'.format(step))
+    previous_cal = eMCP['defaults'][step]['apply_narrow_calibrators']
+    previous_cal_targets= eMCP['defaults'][step]['apply_narrow_targets']
+    msfile = eMCP['msinfo']['msfile']
+    msfile_sp = eMCP['msinfo']['msfile_sp']
+    sources = eMCP['msinfo']['sources']
+    # 1 correct non-target sources:
+    logger.info('Applying calibration to calibrator sources')
+    if insources == '':
+        fields = sources['calsources']
+    else:
+        fields = insources
+    logger.info('Fields: {0}'.format(fields))
+    # Check if tables exist:
+    for table_i in previous_cal:
+        check_table_exists(caltables, table_i)
+    # Previous calibration
+    gaintable = [caltables[p]['table'] for p in previous_cal]
+    interp    = [caltables[p]['interp'] for p in previous_cal]
+    gainfield = [caltables[p]['gainfield'] if len(np.atleast_1d(caltables[p]['gainfield'].split(',')))<2 else 'nearest' for p in previous_cal]
+    spwmap = []
+    for p in previous_cal:
+        if p == 'narrow_p_offset.G3' or p == 'narrow_bpcal.BP2':
+            spwmap.append([])
+        else:
+            logger.debug('Previous cal: {}'.format(p))
+            spwmap.append(convert_spwmap(caltables[p]['spwmap'], spwmap_sp))
+
+    logger.info('Previous calibration applied: {0}'.format(str(previous_cal)))
+    logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
+    logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
+    logger.info('Previous calibration interp: {0}'.format(str(interp)))
+    applycal(vis=msfile_sp,
+             field = fields,
+             gaintable = gaintable,
+             gainfield = gainfield,
+             interp    = interp,
+             spwmap    = spwmap,
+             flagbackup= False)
+
+    # 2 correct targets
+    if previous_cal_targets != []:
+        logger.info('Applying calibration to target sources')
+        logger.info('Target fields: {0}'.format(sources['targets']))
+        if previous_cal_targets == '':
+            previous_cal_targets = previous_cal
+        for i, s in enumerate(sources['targets'].split(',')):
+            phscal = sources['phscals'].split(',')[i]
+            if s != '' and s != phscal:
+                # Check if tables exist:
+                for table_i in previous_cal_targets:
+                    check_table_exists(caltables, table_i)
+                # Previous calibration
+                gaintable = [caltables[p]['table'] for p in previous_cal_targets]
+                interp    = [caltables[p]['interp'] for p in previous_cal_targets]
+                gainfield = [caltables[p]['gainfield'] if len(np.atleast_1d(caltables[p]['gainfield'].split(',')))<2 else phscal for p in previous_cal_targets]
+                spwmap = []
+                for p in previous_cal_targets:
+                    if p == 'narrow_p_offset.G3' or p == 'narrow_bpcal.BP2':
+                        spwmap.append([])
+                    else:
+                        logger.debug('Previous cal: {}'.format(p))
+                        spwmap.append(convert_spwmap(caltables[p]['spwmap'], spwmap_sp))
+                logger.info('Target: {0}. Phase calibrator: {1}'.format(s, phscal))
+                logger.info('Previous calibration applied: {0}'.format(str(previous_cal_targets)))
+                logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
+                logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
+                logger.info('Previous calibration interp: {0}'.format(str(interp)))
+                applycal(vis=msfile_sp,
                          field = s,
                          gaintable = gaintable,
                          gainfield = gainfield,
@@ -2488,42 +2583,6 @@ def bandpass_final(eMCP, caltables):
     if eMCP['inputs']['bandpass_final'] == 2:
         run_applycal(eMCP, caltables, step = 'bandpass_final')
 
-###    if eMCP['is_mixed_mode']:
-###        logger.info('Mixed mode found. Processing narrow BP')
-###        msfile_sp = eMCP['msinfo']['msfile_sp']
-###        bp_final = eMCP['defaults']['bandpass_final']
-###        msinfo = eMCP['msinfo']
-###        # Bandpass calibration
-###        caltable_name = bp_final['narrow_bp_tablename']
-###        caltables[caltable_name] = collections.OrderedDict()
-###        caltables[caltable_name]['name'] = caltable_name
-###        caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
-###        caltables[caltable_name]['previous_cal'] = bp_final['narrow_bp_prev_cal']
-###        caltables[caltable_name]['field'] = msinfo['sources']['bpcal']
-###        caltables[caltable_name]['solint'] = bp_final['narrow_bp_solint']
-###        caltables[caltable_name]['spw'] = make_spw(msinfo, bp_final['narrow_bp_spw'])
-###        caltables[caltable_name]['combine'] = bp_final['narrow_bp_combine']
-###        caltables[caltable_name]['uvrange'] = bp_final['narrow_bp_uvrange']
-###        caltables[caltable_name]['fillgaps'] = bp_final['narrow_bp_fillgaps']
-###        caltables[caltable_name]['solnorm'] = bp_final['narrow_bp_solnorm']
-###        caltables[caltable_name]['spwmap'] =  make_spwmap(caltables,bp_final['narrow_bp_combine'])
-###        caltables[caltable_name]['interp'] = bp_final['narrow_bp_interp']
-###        bptable = caltables[caltable_name]['table']
-###        # Calibration
-###        run_bandpass(msfile_sp, caltables, caltable_name)
-###        caltables[caltable_name]['gainfield'] = get_unique_field(caltables[caltable_name]['table'])
-###        logger.info('Bandpass_sp_narrow BP {0}: {1}'.format(caltable_name,bptable))
-###        # Plots
-###        bptableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
-###        bptableplot_amp = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_amp.png'
-###        plot_caltable(msinfo, caltables[caltable_name], bptableplot_phs, title='Bandpass phase',
-###                      xaxis='freq', yaxis='phase', ymin=-180, ymax=180, coloraxis='corr', symbolsize=5)
-###        logger.info('Bandpass_sp BP phase plot: {0}'.format(bptableplot_phs))
-###        plot_caltable(msinfo, caltables[caltable_name], bptableplot_amp, title='Bandpass amp',
-###                      xaxis='freq', yaxis='amp', ymin=-1, ymax=-1, coloraxis='corr', symbolsize=5)
-###        logger.info('Bandpass_sp BP amplitude plot: {0}'.format(bptableplot_amp))
-
-
     save_obj(caltables, caltables['calib_dir']+'caltables.pkl')
     msg = 'field={0}, combine={1}, solint={2}'.format(
                     msinfo['sources']['bpcal'],
@@ -2540,11 +2599,11 @@ def gaincal_final(eMCP, caltables):
     check_sources_in_ms(eMCP)
     gain_final = eMCP['defaults']['gaincal_final']
 
-##    # Compute p, ap for calibrators
-##    eMCP, caltables = gaincal_final_cals(eMCP, caltables)
-##
-##    # Compute p, ap for targets (per scan)
-##    eMCP, caltables = gaincal_final_scan(eMCP, caltables)
+    # Compute p, ap for calibrators
+    eMCP, caltables = gaincal_final_cals(eMCP, caltables)
+
+    # Compute p, ap for targets (per scan)
+    eMCP, caltables = gaincal_final_scan(eMCP, caltables)
 
     if eMCP['is_mixed_mode']:
         #eMCP, caltables = gaincal_narrow(eMCP, caltables, doplots=False)
@@ -2584,7 +2643,6 @@ def gaincal_narrow(eMCP, caltables, doplots=True):
     caltables[caltable_name]['solint'] = gain_final['p_offset_solint']
     caltables[caltable_name]['combine'] = gain_final['p_offset_combine']
     caltables[caltable_name]['spw'] = make_spw(msinfo, gain_final['p_offset_spw'])
-    caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
     caltables[caltable_name]['spwmap'] = make_spwmap(caltables,gain_final['p_offset_combine'])
     caltables[caltable_name]['interp'] = gain_final['p_offset_interp']
     caltables[caltable_name]['minblperant'] = gain_final['p_offset_minblperant']
@@ -2592,6 +2650,7 @@ def gaincal_narrow(eMCP, caltables, doplots=True):
     caltable = caltables[caltable_name]['table']
     # Calibration
     run_gaincal_narrow(msfile_sp, caltables, caltable_name, spwmap_sp)
+    caltables[caltable_name]['gainfield'] = get_unique_field(caltables[caltable_name]['table'])
     if caltables['Lo_dropout_scans'] != '' and caltables['Lo_dropout_scans'] != 'none':
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
     # Plots
@@ -2611,7 +2670,7 @@ def gaincal_narrow(eMCP, caltables, doplots=True):
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
     caltables[caltable_name]['previous_cal'] = gain_final['narrow_bp_prev_cal']
-    caltables[caltable_name]['field'] = msinfo['sources']['bpcal']
+    caltables[caltable_name]['field'] = msinfo['sources']['ptcal']
     caltables[caltable_name]['solint'] = gain_final['narrow_bp_solint']
     caltables[caltable_name]['spw'] = make_spw(msinfo, gain_final['narrow_bp_spw'])
     caltables[caltable_name]['combine'] = gain_final['narrow_bp_combine']
@@ -2783,6 +2842,8 @@ def applycal_all(eMCP, caltables):
     #logger.info('Start applycal_all')
     t0 = datetime.datetime.utcnow()
     run_applycal(eMCP, caltables, step='applycal_all', dotarget=True)
+    spwmap_sp = eMCP['msinfo']['spwmap_sp']
+    run_applycal_narrow(eMCP, caltables, step='applycal_all', spwmap_sp=spwmap_sp, dotarget=True)
     #logger.info('End applycal_all')
     flag_statistics(eMCP, step='applycal_all')
     msg = ''
