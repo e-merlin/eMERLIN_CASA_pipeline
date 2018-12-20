@@ -3231,7 +3231,7 @@ def shift_field_position(eMCP, msfile, shift):
     tb.close()
     # Average individual field
     chanbin = eMCP['defaults']['average']['chanbin']
-    timebin = '{}s'.format(eMCP['inputs']['average'])
+    timebin = eMCP['defaults']['average']['timebin']
     if timebin == '1s':
         timeaverage = False
     else:

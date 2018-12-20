@@ -526,7 +526,10 @@ def plot_flagstatistics(flag_stats, msinfo, step):
                 color=plt.cm.Set1(1.0*i/len(i_field)), width=1,
                 label='{0} ({1})'.format(fi, i), zorder=10)
 
-    ax1.legend(loc=0)
+    try:
+        ax1.legend(loc=0)
+    except:
+        pass
     ax1.grid(axis='y', zorder = -1000, ls='-', color='0.6')
 
     ax1.xaxis.set_major_locator(MultipleLocator(5))
