@@ -392,7 +392,7 @@ def get_obsfreq(msfile):
 def find_mssources(msfile):
     #mssources = ','.join(vishead(msfile,mode='list',listitems='field')['field'][0])
     msmd.open(msfile)
-    mssources = ','.join(msmd.fieldnames())
+    mssources = ','.join(np.sort(msmd.fieldnames()))
     msmd.done()
     #logger.info('Sources in MS {0}: {1}'.format(msfile, mssources))
     return mssources
@@ -526,6 +526,7 @@ def find_spwmap_sp(eMCP, msfile, msfile_sp):
         spwmap_sp = eMCP['defaults']['global']['spwmap_sp']
     logger.info('spwmap_sp = {0}'.format(spwmap_sp))
     return spwmap_sp
+
 def info_mixed_mode(eMCP, msinfo):
     eMCP = update_mixed_mode(eMCP)
     # Deal with mixed mode info
@@ -2843,7 +2844,8 @@ def applycal_all(eMCP, caltables):
     t0 = datetime.datetime.utcnow()
     run_applycal(eMCP, caltables, step='applycal_all', dotarget=True)
     spwmap_sp = eMCP['msinfo']['spwmap_sp']
-    run_applycal_narrow(eMCP, caltables, step='applycal_all', spwmap_sp=spwmap_sp, dotarget=True)
+    if eMCP['is_mixed_mode']:
+        run_applycal_narrow(eMCP, caltables, step='applycal_all', spwmap_sp=spwmap_sp, dotarget=True)
     #logger.info('End applycal_all')
     flag_statistics(eMCP, step='applycal_all')
     msg = ''
@@ -3370,7 +3372,7 @@ def flag_Lo_dropouts(eMCP):
                              flagbackup=False)
                 msg_out = ' Searched Lo dropouts'
         else:
-            logger.info('User set Lo_dropout_scans: {0}'.format(Lo_dropout_scans))
+            logger.info('Lo_dropout_scans previously set: {0}'.format(Lo_dropout_scans))
             eMCP['msinfo']['Lo_dropout_scans'] = Lo_dropout_scans
             logger.info('Now flagging')
             flagdata(vis=msfile, antenna='Lo',
