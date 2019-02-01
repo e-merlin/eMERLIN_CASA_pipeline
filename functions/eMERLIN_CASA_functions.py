@@ -758,18 +758,24 @@ def import_eMERLIN_fitsIDI(eMCP):
     logger.info('Start mstransform')
     t0 = datetime.datetime.utcnow()
     rmdir(msfile1)
-    mstransform(vis = msfile0,
-                outputvis = msfile1,
-                keepflags = True,
-                datacolumn = datacolumn,
-                antenna = antenna,
-                spw = spw_separation[0],
-                timeaverage = timeaverage, timebin=timebin,
-                chanaverage = chanaverage, chanbin=chanbin,
-                usewtspectrum = usewtspectrum,
-                hanning = do_hanning,
-                createmms = do_ms2mms
-                )
+    if import_eM['fix_repeated_sources'] == True:
+        fix_repeated_sources(msfile0, msfile1, datacolumn, antenna,
+                             spw_separation[0], timeaverage, timebin,
+                             chanaverage, chanbin, usewtspectrum, do_hanning,
+                             do_ms2mms)
+    else:
+        mstransform(vis = msfile0,
+                    outputvis = msfile1,
+                    keepflags = True,
+                    datacolumn = datacolumn,
+                    antenna = antenna,
+                    spw = spw_separation[0],
+                    timeaverage = timeaverage, timebin=timebin,
+                    chanaverage = chanaverage, chanbin=chanbin,
+                    usewtspectrum = usewtspectrum,
+                    hanning = do_hanning,
+                    createmms = do_ms2mms
+                    )
     logger.info('Transformed: {0} into {1}'.format(msfile0, msfile1))
     if do_hanning:
         ms.writehistory(message='Hanning smoothing applied',msname=msfile1)
@@ -778,6 +784,11 @@ def import_eMERLIN_fitsIDI(eMCP):
         msfile1_sp = msfile_name+'_transformed_sp' + ext_ms[do_ms2mms]
         logger.info('Running mstransform on spectral line data')
         rmdir(msfile1_sp)
+        if import_eM['fix_repeated_sources'] == True:
+            fix_repeated_sources(msfile0, msfile1_sp, datacolumn, antenna,
+                                 spw_separation[1], timeaverage, timebin,
+                                 chanaverage, chanbin, usewtspectrum, do_hanning,
+                                 do_ms2mms)
         mstransform(vis = msfile0,
                 outputvis = msfile1_sp,
                 keepflags = True,
@@ -842,6 +853,43 @@ def import_eMERLIN_fitsIDI(eMCP):
     eMCP = add_step_time('fixvis', eMCP, msg, t0, doweblog=True)
     flag_statistics(eMCP, step='import')
     return eMCP
+
+def fix_repeated_sources(msfile0, msfile1, datacolumn, antenna,
+                         spw_separation, timeaverage, timebin,
+                         chanaverage, chanbin, usewtspectrum, do_hanning,
+                         do_ms2mms):
+    """ In case a source with the same name and phase centre is loaded
+    with different field ID, despite being the same, we can split each
+    field ID individually, and then concatenate. The concatenation will
+    check names and positions and merge them if they are the same"""
+    mssources = find_mssources(msfile0)
+    num_sources = len(mssources.split(','))
+    tmp_files = []
+    for f in range(num_sources):
+        outputmsfile_tmp = 'field_{0:02.0f}'.format(f)
+        rmdir(outputmsfile_tmp)
+        logger.info('Creating ... {0}'.format(outputmsfile_tmp))
+        mstransform(vis = msfile0,
+            outputvis = outputmsfile_tmp,
+            field = str(f),
+            keepflags = True,
+            datacolumn = datacolumn,
+            antenna = antenna,
+            spw = spw_separation,
+            timeaverage = timeaverage, timebin=timebin,
+            chanaverage = chanaverage, chanbin=chanbin,
+            usewtspectrum = usewtspectrum,
+            hanning = do_hanning,
+            createmms = do_ms2mms
+            )
+        tmp_files.append(outputmsfile_tmp)
+    logger.info('Concat individual fields')
+    concat(vis=tmp_files, concatvis=msfile1, timesort=True)
+    for f in range(num_sources):
+        outputmsfile_tmp = 'field_{0:02.0f}'.format(f)
+        logger.info('Removing... {0}'.format(outputmsfile_tmp))
+        rmdir(outputmsfile_tmp)
+    return
 
 
 def run_aoflagger_fields(eMCP):

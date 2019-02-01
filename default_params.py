@@ -18,6 +18,7 @@ defaults['import_eM']['chanbin']                      = 1
 defaults['import_eM']['usewtspectrum']                = False
 defaults['import_eM']['run_hanning']                  = 'auto'
 defaults['import_eM']['ms2mms']                       = False
+defaults['import_eM']['fix_repeated_sources']         = False
 
 defaults['aoflagger'] = collections.OrderedDict()
 defaults['aoflagger']['run']                          = 'auto'
