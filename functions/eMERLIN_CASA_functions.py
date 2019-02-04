@@ -163,10 +163,10 @@ def mvdir(pathdir, outpudir):
             pass
 
 
-def exit_pipeline(msinfo=''):
-    if msinfo != '':
+def exit_pipeline(eMCP=''):
+    if eMCP != '':
         logger.info('Something went wrong. Producing weblog and quiting')
-        emwlog.start_weblog()
+        emwlog.start_weblog(eMCP)
     sys.exit()
 
 
@@ -919,19 +919,19 @@ def run_aoflagger_fields(eMCP):
         logger.info('Bands will be processed all together.')
     else:
         logger.warning('separate_bands can only be True or False')
-        exit_pipeline()
+        exit_pipeline(eMCP)
     # Check if aoflagger is available:
     aoflagger_available = check_command('aoflagger')
     if not aoflagger_available:
         logger.critical('aoflagger requested but not available.')
         logger.warning('Exiting pipeline.')
-        exit_pipeline()
+        exit_pipeline(eMCP)
     # Check that version is at least 2.9+
     old_aoflagger = check_aoflagger_version()
     if old_aoflagger:
         logger.critical('aoflagger version <2.9 does not work correctly.')
         logger.warning('Exiting pipeline.')
-        exit_pipeline()
+        exit_pipeline(eMCP)
     vis_fields = vishead(msfile,mode='list',listitems='field')['field'][0]
     fields_num = {f:i for i,f in enumerate(vis_fields)}
     if fields == 'all':
@@ -1412,7 +1412,7 @@ def check_sources_in_ms(eMCP):
     if targets == '' or phscals == '':
         logger.critical('Targets or phase calibrators not specified')
         logger.warning('Stopping pipeline at this step')
-        exit_pipeline()
+        exit_pipeline(eMCP)
     # Check that all sources are in the MS:
     sources_not_in_msfile = [s for s in
                              sources['allsources'].split(',')
@@ -1422,7 +1422,7 @@ def check_sources_in_ms(eMCP):
         logger.critical('Fields {} not present in MS but listed in ' \
                        'inputs file.'.format(','.join(sources_not_in_msfile)))
         logger.warning('Stopping pipeline at this step')
-        exit_pipeline()
+        exit_pipeline(eMCP)
 
 def check_table_exists(caltables, tablename):
     logger.debug('Try existence: {0}'.format(caltables[tablename]['table']))
@@ -2513,7 +2513,7 @@ def eM_fluxscale(eMCP, caltables):
         logger.warning('This probably means that necessary data are missing:')
         logger.warning('Required sources: {0}'.format(cals_to_scale))
         logger.warning('Required antennas: {0}'.format(','.join(anten_for_flux)))
-        exit_pipeline(msinfo)
+        exit_pipeline(eMCP)
     # Compute correction to scale the flux density of 3C286 according to
     # resolution provided by the shortest available baseline of e-MERLIN
     eMfactor = calc_eMfactor(msfile, field=fluxcal)
@@ -3265,7 +3265,7 @@ def shift_field_position(eMCP, msfile, shift):
     mssources = vishead(msfile,mode='list',listitems='field')['field'][0]
     if field not in mssources:
         logger.critical('Requested field to shift: {} not in MS! Closing '.format(field))
-        exit_pipeline(msinfo)
+        exit_pipeline(eMCP)
     rmdir(msfile_split)
     # Split
     logger.info('Splitting field: {}'.format(field))
@@ -3339,7 +3339,7 @@ def shift_all_positions(eMCP):
         logger.info('Reading shifts from {0}'.format(shifts_file))
     except:
         logger.critical('Unable to open {0} with new position information'.format(shifts_file))
-        exit_pipeline(msinfo)
+        exit_pipeline(eMCP)
     listobs_file = info_dir + msfile
     mvdir(listobs_file + '.listobs.txt', listobs_file+'preshift_listobs.txt')
     logger.info('Found {0} shifts to apply. {0} new fields will be added'.format(len(shifts_list)))
