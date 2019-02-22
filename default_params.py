@@ -266,6 +266,8 @@ defaults['applycal_all']['apply_calibrators']         = ['delay.K1','bpcal.BP2',
 defaults['applycal_all']['apply_targets']             = ['delay.K1','bpcal.BP2','phscal_p_scan.G3','phscal_ap_scan.G3']
 defaults['applycal_all']['apply_narrow_calibrators']  = ['delay.K1','narrow_bpcal.BP2','allcal_p.G3','allcal_ap.G3','narrow_p_offset.G3']
 defaults['applycal_all']['apply_narrow_targets']      = ['delay.K1','narrow_bpcal.BP2','phscal_p_scan.G3','phscal_ap_scan.G3','narrow_p_offset.G3']
+defaults['applycal_all']['run_statwt']                = True
+defaults['applycal_all']['statwt_timebin']            = '0.001s'
 
 defaults['flag_target'] = collections.OrderedDict()
 defaults['flag_target']['mode_to_run']                = 'tfcrop'
@@ -306,10 +308,7 @@ defaults['flag_target']['tfcrop']['action']           = 'apply'
 defaults['flag_target']['tfcrop']['display']          = ''
 defaults['flag_target']['tfcrop']['flagbackup']       = False
 
-
 defaults['first_images'] = collections.OrderedDict()
-defaults['first_images']['run_statwt']                = True
-defaults['first_images']['statwt_timebin']            = '32s'
 defaults['first_images']['imsize']                    = 1024
 defaults['first_images']['niter']                     = 80
 defaults['first_images']['deconvolver']               = 'hogbom'

@@ -2981,11 +2981,26 @@ def applycal_all(eMCP, caltables):
     #logger.info('Start applycal_all')
     t0 = datetime.datetime.utcnow()
     run_applycal(eMCP, caltables, step='applycal_all', dotarget=True)
-    spwmap_sp = eMCP['msinfo']['spwmap_sp']
     if eMCP['is_mixed_mode']:
+        spwmap_sp = eMCP['msinfo']['spwmap_sp']
         run_applycal_narrow(eMCP, caltables, step='applycal_all', spwmap_sp=spwmap_sp, dotarget=True)
     #logger.info('End applycal_all')
     flag_statistics(eMCP, step='applycal_all')
+    # Run statwt if requested
+    if eMCP['defaults']['applycal_all']['run_statwt']:
+        casa_version = casadef.casa_version.split('.')
+        if int(casa_version[0]) >= 5 and int(casa_version[1]) >= 4:
+            timebin = eMCP['defaults']['applycal_all']['statwt_timebin']
+        else:
+            timebin = ''
+        msfile = eMCP['msinfo']['msfile']
+        logger.info('Running statwt on {}'.format(msfile))
+        logger.info('timebin: {}'.format(timebin))
+        statwt(vis=msfile, timebin=timebin)
+        if eMCP['is_mixed_mode']:
+            msfile_sp = eMCP['msinfo']['msfile_sp']
+            logger.info('Running statwt on narrow data {}'.format(msfile_sp))
+            statwt(vis=msfile_sp, timebin=timebin)
     msg = ''
     eMCP = add_step_time('applycal_all', eMCP, msg, t0)
     return eMCP
@@ -3329,14 +3344,6 @@ def run_first_images(eMCP):
     logger.info(line0)
     logger.info('Start run_first_images')
     t0 = datetime.datetime.utcnow()
-    if eMCP['defaults']['first_images']['run_statwt']:
-        casa_version = casadef.casa_version.split('.')
-        if casa_version[0] == '5' and int(casa_version[1])>=4:
-            timebin = eMCP['defaults']['first_images']['statwt_timebin']
-        else:
-            timebin = ''
-        logger.info('Running statwt with default parameters')
-        statwt(vis=msinfo['msfile'], timebin=timebin)
     num = 0
     eMCP['img_stats'] = collections.OrderedDict()
     for s in msinfo['sources']['targets_phscals'].split(','):
