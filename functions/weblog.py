@@ -384,6 +384,27 @@ def write_fluxscale(wlog):
         wlog.write(line)
     wlog.write('\n</pre>\n<br>')
 
+def write_applycal_table(wlog, eMCP, ap_dict='applycal_dict'):
+    applycal_dict = eMCP[ap_dict]
+    wlog.write('<table class="table1" bgcolor="#eeeeee" border="3px"'\
+               'cellspacing = "0" cellpadding = "4px" style="width:60%">\n')
+    wlog.write("<tr><th>Source</th>" \
+          "<th>Table</th>" \
+          "<th>Gainfield</th>" \
+          "<th>spwmap</th>" \
+          "<th>Interpolation</th></tr>\n")
+    for source, tables in applycal_dict.items():
+        for i, table in enumerate(tables.keys()):
+            if i != 0:
+                source = ''
+            wlog.write('<tr>'\
+                       '<td>{0}</td>'\
+                       '<td>{1}</td>'\
+                       '<td>{2}</td>'\
+                       '<td>{3}</td>'\
+                       '<td>{4}</td>\n'.format(source, table,
+                                               *tables[table]))
+    wlog.write('</table><br><br>\n')
 
 def weblog_calibration(eMCP):
     msinfo = eMCP['msinfo']
@@ -391,6 +412,7 @@ def weblog_calibration(eMCP):
     wlog = open(weblog_dir + "calibration.html","w")
     weblog_header(wlog, 'Calibration', msinfo['run'])
     #------------------------------------------
+    wlog.write('<a href="#applycal">{0}</a><br>\n'.format('Applycal summary'))
     all_calsteps = ['bpcal_d.K0','bpcal_p.G0','bpcal_ap.G0','bpcal.BP0',
                     'delay.K1','allcal_p.G1','allcal_ap.G1',
                     'fluxscale',
@@ -420,7 +442,17 @@ def weblog_calibration(eMCP):
                     wlog.write('</table><br><br>\n<hr>\n')
             except:
                 pass
-        wlog.write('<a href="#top"> <small>(up)</small></a>')
+    try:
+        wlog.write('<h2 id="applycal">{}</h2>\n'.format('Applycal'))
+        wlog.write('List of tables and apply parameters used to correct each source:')
+        write_applycal_table(wlog, eMCP, ap_dict='applycal_dict')
+
+        if eMCP['is_mixed_mode']:
+            wlog.write('Tables applied to narrow band data:')
+            write_applycal_table(wlog, eMCP, ap_dict='applycal_dict_sp')
+    except:
+        pass
+    wlog.write('<a href="#top"> <small>(up)</small></a><br>\n')
     #------------------------------------------
     weblog_foot(wlog)
     wlog.close()

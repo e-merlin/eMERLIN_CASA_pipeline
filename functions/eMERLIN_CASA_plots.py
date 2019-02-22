@@ -120,6 +120,59 @@ def simple_plot_name(plot_file, i):
     except:
         pass
 
+def count_active_antennas(msfile):
+    msmd.open(msfile)
+    a = np.array(msmd.antennanames())
+    b = np.array(msmd.baselines())
+    msmd.done()
+    active_antennas = []
+    for i, ant1 in enumerate(a):
+        for ant2 in a[i+1:]:
+            j = np.argwhere(ant2==a)[0][0]
+            if b[i,j]:
+                active_antennas.append(ant1)
+                active_antennas.append(ant2)
+    nice_order = ['Lo', 'Mk2', 'Pi', 'Da', 'Kn', 'De', 'Cm']
+    active_antennas = [a for a in nice_order if a in active_antennas]
+    return active_antennas
+
+def plot_caltable(msinfo, caltable, plot_file, xaxis='', yaxis='', title='',
+                  ymin=-1, ymax=-1, coloraxis='spw', symbolsize=8):
+    gridcols = 1
+    showgui=False
+    tab = caltable['table']
+    if xaxis == 'time':
+        tb.open(tab)
+        time_mjd = tb.getcol('TIME')
+        tb.close()
+        x_min, x_max = np.min(time_mjd), np.max(time_mjd)
+    elif xaxis == 'freq':
+        tb.open(tab+'/SPECTRAL_WINDOW')
+        f = tb.getcol('CHAN_FREQ').flatten()/1e9
+        tb.close()
+        x_min, x_max = np.min(f)*0.99, np.max(f)*1.01
+    else:
+        x_min, x_max = -1, -1
+
+    active_antennas = count_active_antennas(msinfo['msfile'])
+    num_anten = len(active_antennas)
+    for i, anten in enumerate(active_antennas):
+        if i == len(active_antennas)-1:
+            plotfile = plot_file
+        else:
+            plotfile = ''
+        plotms(vis=caltable['table'], xaxis=xaxis, yaxis=yaxis, title='{0} {1}'.format(title, anten),
+               gridrows=num_anten, gridcols=gridcols, rowindex=i, colindex=0, plotindex=i,
+               #timerange='{}~{}'.format(msinfo['t_ini'].time(), msinfo['t_end'].time()),
+               antenna = str(anten),
+               xselfscale = True, xsharedaxis = True, coloraxis = coloraxis,
+               plotrange=[x_min, x_max, ymin, ymax],
+               plotfile = plotfile, expformat = 'png', customsymbol = True,
+               symbolshape = 'circle', symbolsize=symbolsize,
+               width=1000, height=240*num_anten, clearplots=False, overwrite=True,
+               showgui=showgui)
+
+
 def single_4plot(msinfo, field, datacolumn, plots_data_dir):
     logger.info('Visibility plots for field: {0}, datacolumn: {1}'.format(field, datacolumn))
     msfile = msinfo['msfile']

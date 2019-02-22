@@ -31,7 +31,7 @@ defaults['flag_apriori']['std_cal_quack']             = 300.
 
 defaults['average'] = collections.OrderedDict()
 defaults['average']['field']                          = ''
-defaults['average']['timebin']                        = '16s'
+defaults['average']['timebin']                        = '4s'
 defaults['average']['chanbin']                        = 4
 defaults['average']['datacolumn']                     = 'data'
 defaults['average']['timerange']                      = ''
