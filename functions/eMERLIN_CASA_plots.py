@@ -390,10 +390,11 @@ def read_uvw(msfile, field):
     ms.open(msfile)
     staql={'field':field, 'spw':'0'}
     ms.msselect(staql)
-    uv = ms.getdata(['u', 'v'])
+    uv = ms.getdata(['u', 'v', 'flag'])
     ms.close()
-    u = uv['u']
-    v = uv['v']
+    flags = np.mean(uv['flag'], axis=(0,1)) < 0.9
+    u = uv['u'][flags]
+    v = uv['v'][flags]
     return u, v
 
 def make_uvcov(msfile, msinfo):
@@ -423,7 +424,7 @@ def make_elevation(msfile, msinfo):
     avgtime = '32'
     showgui = False
     plotms(vis=msfile, xaxis='time', yaxis='elevation', correlation = 'RR',
-    spw='0', coloraxis = 'field', width=900, symbolsize=5, plotrange=[-1,-1,0,90],
+    spw='', coloraxis = 'field', width=900, symbolsize=5, plotrange=[-1,-1,0,90],
     plotfile = plot_file, expformat = 'png', customsymbol = True, symbolshape = 'circle',
     overwrite=True,showlegend=True, showgui=showgui)
 
