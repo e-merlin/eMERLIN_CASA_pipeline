@@ -1086,6 +1086,8 @@ def flagdata1_apriori(eMCP):
     if do_quack:
         ## Target and phase reference, 20 sec
         # Main calibrators quack
+        standard_cal_list = ['1331+305','1407+284','0319+415',
+                             '1331+3030','1407+2728','0319+4130']
         bright_cal = join_lists([si for si in ['1331+305','1407+284','0319+415'] if si in
                       msinfo['sources']['mssources']])
         if bright_cal != '':
@@ -1094,7 +1096,7 @@ def flagdata1_apriori(eMCP):
             flagdata(vis=msfile, field=bright_cal, mode='quack',
                      quackinterval=std_cal_quack, flagbackup=False)
         else:
-            logger.warning('No main calibrators (1331+305, 1407+284, 0319+415) found in data set')
+            logger.warning('No main calibrators (3C84, 3C286, OQ208) found in data set')
         for s1, s2 in zip(msinfo['sources']['targets'].split(','),
                           msinfo['sources']['phscals'].split(',')):
             sources_in_ms = msinfo['sources']['mssources'].split(',')
@@ -1450,16 +1452,41 @@ def run_average(eMCP):
         shift_all_positions(eMCP)
     return eMCP
 
+def load_3C286_model(eMCP):
+    fluxcal = eMCP['msinfo']['sources']['fluxcal']
+    msfile = eMCP['msinfo']['msfile']
+    init_models = eMCP['defaults']['init_models']
+    models_path = eMCP['pipeline_path']+init_models['calibrator_models']
+    # Check dataset frequency:
+    band = check_band(msfile)
+    if band == 'C':
+        model_3C286 = models_path+'3C286_C.clean.model.tt0'
+        logger.info('Dataset is band C. Using C band model of 3C286')
+    elif band == 'L':
+        model_3C286 = models_path+'1331+305.clean.model.tt0'
+        logger.info('Dataset is band L. Using L band model of 3C286')
+    else:
+        logger.warning('No 3C286 model available!')
+        model_3C286 = ''
+    logger.info('Initializing model for 3C286')
+    logger.info('Model {0}'.format('./'+'/'.join(model_3C286.split('/')[-2:])))
+    setjy(vis=msfile, field=fluxcal,
+          model=model_3C286, scalebychan=True, usescratch=True)
+    if eMCP['is_mixed_mode']:
+        msfile_sp = eMCP['msinfo']['msfile_sp']
+        logger.info('Initializing model for 3C286 for {0}'.format(msfile_sp))
+        setjy(vis=msfile_sp, field=fluxcal,
+              model=model_3C286, scalebychan=True, usescratch=True)
+    return
 
 def run_initialize_models(eMCP):
     logger.info(line0)
     logger.info('Start init_models')
     t0 = datetime.datetime.utcnow()
+    init_models = eMCP['defaults']['init_models']
     # Check if all sources are in the MS: 
     check_sources_in_ms(eMCP)
     msfile = eMCP['msinfo']['msfile']
-    init_models = eMCP['defaults']['init_models']
-    models_path = eMCP['pipeline_path']+init_models['calibrator_models']
     fluxcal = eMCP['msinfo']['sources']['fluxcal']
     logger.info('Resetting corrected column with clearcal')
     clearcal(vis=msfile)
@@ -1473,29 +1500,33 @@ def run_initialize_models(eMCP):
         msfile_sp = eMCP['msinfo']['msfile_sp']
         logger.info('Deleting model from {0}'.format(msfile_sp))
         delmod(vis=msfile_sp, otf=True, scr=True)
-    # Check dataset frequency:
-    band = check_band(msfile)
-    if band == 'C':
-        model_3C286 = models_path+'3C286_C.clean.model.tt0'
-        logger.info('Dataset is band C. Using C band model of 3C286')
-    elif band == 'L':
-        model_3C286 = models_path+'1331+305.clean.model.tt0'
-        logger.info('Dataset is band L. Using L band model of 3C286')
+    # Set flux density of flux calibrator:
+    if fluxcal in ['1331+305', '1331+3030']:
+        load_3C286_model(eMCP)
+    elif fluxcal == '':
+        logger.warning('No flux calibrator selected')
+        pass
     else:
-        logger.warning('No model available!')
-        model_3C286 = ''
-    logger.info('Initializing model for 3C286')
-    logger.info('Model {0}'.format('./'+'/'.join(model_3C286.split('/')[-2:])))
-    if fluxcal != '1331+305':
-        logger.warning('Using a model for 3C286 (1331+305) but your flux calibrator source is: {0}. Model may be wrong for that source'.format(fluxcal))
-    setjy(vis=msfile, field=fluxcal,
-          model=model_3C286, scalebychan=True, usescratch=True)
-    if eMCP['is_mixed_mode']:
-        msfile_sp = eMCP['msinfo']['msfile_sp']
-        logger.info('Initializing model for 3C286 for {0}'.format(msfile_sp))
-        setjy(vis=msfile_sp, field=fluxcal,
-              model=model_3C286, scalebychan=True, usescratch=True)
-
+        logger.warning('Using a non-standard flux calibrator.')
+        if init_models['manual_fluxcal']:
+            logger.info('Manual flux density for: {0}'.format(fluxcal))
+            logger.info('Flux {0}, spix {1}, reffreq {2}'.format(
+                                    init_models['fluxcal_flux'],
+                                    init_models['fluxcal_spix'],
+                                    init_models['fluxcal_reffreq']))
+            setjy(vis = msfile,
+                  field = fluxcal,
+                  standard = 'manual',
+                  fluxdensity = init_models['fluxcal_flux'],
+                  spix = init_models['fluxcal_spix'],
+                  reffreq = init_models['fluxcal_reffreq'],
+                  usescratch = True)
+        else:
+            logger.warning('Cannot initialize non-standard flux calibrator'\
+                           ' {}'.format(fluxcal))
+            logger.warning('Please provide manual flux density, spectral '\
+                           'index and reffreq in defaults file')
+            exit_pipeline(eMCP)
     logger.info('End init_models')
     msg = ''
     eMCP = add_step_time('init_models', eMCP, msg, t0)

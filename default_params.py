@@ -52,6 +52,10 @@ defaults['flag_manual_avg']['Lo_min_scans']           = ''
 
 defaults['init_models'] = collections.OrderedDict()
 defaults['init_models']['calibrator_models']          = 'calibrator_models/'
+defaults['init_models']['manual_fluxcal']             = False
+defaults['init_models']['fluxcal_flux']               = [-1]
+defaults['init_models']['fluxcal_spix']               = 0.0
+defaults['init_models']['fluxcal_reffreq']            = '0GHz'
 
 defaults['bandpass'] = collections.OrderedDict()
 defaults['bandpass']['delay_tablename']               = 'bpcal_d.K0'
