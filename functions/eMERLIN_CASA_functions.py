@@ -9,6 +9,7 @@ import sys, shutil
 import copy
 import getopt
 import datetime
+import dateutil
 import collections
 from eMERLIN_CASA_GUI import GUI_pipeline
 from scipy import stats
@@ -371,10 +372,16 @@ def get_antennas(msfile):
 
 def get_obstime(msfile):
     # returns datetime object of first and last times in obs_id 0
-    msmd.open(msfile)
-    t_ini = mjdtodate(msmd.timerangeforobs(0)['begin']['m0']['value'])
-    t_end = mjdtodate(msmd.timerangeforobs(0)['end']['m0']['value'])
-    msmd.done()
+    ms.open(msfile)
+    t = ms.getdata('TIME')['time']
+    t_ini = mjdtodate(np.min(t)/60./60./24.)
+    t_end = mjdtodate(np.max(t)/60./60./24.)
+    ms.close()
+    # This method fails when working with pseudo wideband data
+    #msmd.open(msfile)
+    #t_ini = mjdtodate(msmd.timerangeforobs(0)['begin']['m0']['value'])
+    #t_end = mjdtodate(msmd.timerangeforobs(0)['end']['m0']['value'])
+    #msmd.done()
     return t_ini, t_end
 
 def get_obsfreq(msfile):
@@ -449,12 +456,18 @@ def get_integration_time(msfile, usemsmd=True):
         first_scan_number = msmd.scannumbers()[0]
         int_time = msmd.exposuretime(first_scan_number)['value']
         msmd.done()
-    else: # For CASA versions <5
+    if not usemsmd or int_time <= 0:
+        logger.info('Finding integration time manually')
         ms.open(msfile)
         axis_info = ms.getdata(['axis_info'],ifraxis=True)
         t_mjd   = axis_info['axis_info']['time_axis']['MJDseconds']
         ms.close()
-        int_time = stats.mode(np.diff(t_mjd))[0][0]
+        a = np.diff(t_mjd)
+        # Get the mode of time intervals
+        (_, idx, counts) = np.unique(a, return_index=True, return_counts=True)
+        index = idx[np.argmax(counts)]
+        mode = a[index]
+        int_time = mode
     return int_time
 
 def get_msfile_sp(eMCP):
@@ -999,32 +1012,6 @@ def check_aoflagger_version():
         old_aoflagger = False
     return old_aoflagger
 
-#def ms2mms(eMCP):
-#    mode = eMCP['defaults']['ms2mms']['mode']
-#    msfile = eMCP['msfile']
-#    logger.info('Start ms2mms')
-#    if mode == 'parallel':
-#        partition(vis=msfile,outputvis=msfile[:-3]+'.mms',createmms=True,separationaxis="auto",numsubms="auto",flagbackup=True,datacolumn=
-#"all",field="",spw="",scan="",antenna="",correlation="",timerange="",intent="",array="",uvrange="",observation="",feed="",disableparallel=None,ddistart=None
-#,taql=None)
-#        if os.path.isdir(msfile[:-3]+'.mms') == True:
-#            rmdir(msfile)
-#            rmdir(msfile+'.flagversions')
-#        ms.writehistory(message='eMER_CASA_Pipeline: Converted MS to MMS for parallelisation',msname=msfile[:-3]+'.mms')
-#
-#    ## Need to use single if you need to aoflag the data later
-#    if mode == 'single':
-#        partition(vis=msfile,outputvis=msfile[:-3]+'.ms',createmms=False,separationaxis="auto",numsubms="auto",flagbackup=True,datacolumn=
-#"all",field="",spw="",scan="",antenna="",correlation="",timerange="",intent="",array="",uvrange="",observation="",feed="",disableparallel=None,ddistart=None
-#,taql=None)
-#        if os.path.isdir(msfile[:-3]+'.ms') == True:
-#           rmdir(msfile)
-#           rmdir(msfile+'.flagversions')
-#    run_listobs(msfile[:-3]+'.mms')
-#    logger.info('End ms2mms')
-#    msg = ''
-#    eMCP = add_step_time('ms2mms', eMCP, msg)
-#    return eMCP
 
 def find_quacktime(msinfo, s1, s2):
     separations = msinfo['separations']
@@ -1056,6 +1043,122 @@ def find_quacktime(msinfo, s1, s2):
         quacktime = 0
     return quacktime
 
+def quack_estimating(eMCP):
+    msinfo = eMCP['msinfo']
+    msfile = msinfo['msfile']
+    # Main calibrators quack
+    standard_cal_list = ['1331+305','1407+284','0319+415',
+                         '1331+3030','1407+2728','0319+4130']
+    bright_cal = join_lists([si for si in ['1331+305','1407+284','0319+415'] if si in
+                  msinfo['sources']['mssources']])
+    if bright_cal != '':
+        std_cal_quack = eMCP['defaults']['flag_apriori']['std_cal_quack']
+        logger.info('Flagging {0}s from bright calibrators'.format(std_cal_quack))
+        flagdata(vis=msfile, field=bright_cal, mode='quack',
+                 quackinterval=std_cal_quack, flagbackup=False)
+    else:
+        logger.warning('No main calibrators (3C84, 3C286, OQ208) found in data set')
+    for s1, s2 in zip(msinfo['sources']['targets'].split(','),
+                      msinfo['sources']['phscals'].split(',')):
+        sources_in_ms = msinfo['sources']['mssources'].split(',')
+        missing_sources = [si for si in [s1,s2] if si not in sources_in_ms]
+        if missing_sources == []:
+            quacktime = find_quacktime(msinfo, s1, s2)
+            if s1 != '':
+                logger.info('Flagging first {0} sec of target {1} and phasecal {2}'.format(quacktime, s1, s2))
+                flagdata(vis=msfile, field=','.join([s1,s2]), mode='quack',
+                         quackinterval=quacktime, flagbackup=False)
+        else:
+            logger.warning('Warning, source(s) {} not present in MS, will not flag this pair'.format(','.join(missing_sources)))
+
+
+def read_flag_database(logfile, t0, t1):
+    """ Returns a numpy array with four columns and N entries going 
+    from the starting time to the end time requested"""
+    column_names = ['timestamp','antenna','status']
+    data_all = np.genfromtxt(logfile, delimiter=',', dtype=None,
+                         names=column_names)
+    # Filter by desired time range
+    timestamps = np.array([dateutil.parser.parse(d) for d in data_all['timestamp']])
+    on_timerange = (timestamps > t0) & (timestamps < t1)
+    data = data_all[on_timerange]
+    return data
+
+def write_flags_antenna(data, antenna, t0, t1):
+    data_ant = data[data['antenna'] == antenna]
+    if len(data_ant) == 0:
+        print ('No times found for antenna {} in this time interval'.format(antenna))
+        return ''
+    flag_commands = []
+    # First a flag from t0 to the first entry
+    if data_ant[0]['status'] == 'ONSOURCE':
+        time_ini = t_casaformat(t0)
+        time_end = t_casaformat(data_ant[0]['timestamp'])
+        flag_commands.append(casa_flagcommand(antenna, time_ini, time_end))
+    for i, d in enumerate(data_ant):
+         try:
+             data_ant[i+1]
+             if data_ant[i]['status'] == 'OFFSOURCE': # and \
+    #            data_ant[i+1]['status'] == 'ONSOURCE':
+                 time_ini = t_casaformat(data_ant[i]['timestamp'])
+                 time_end = t_casaformat(data_ant[i+1]['timestamp'])
+                 flag_command = casa_flagcommand(antenna, time_ini, time_end)
+                 flag_commands.append(flag_command)
+         except IndexError: # Last flag until t1
+             if data_ant[i]['status'] == 'OFFSOURCE':
+                 time_ini = t_casaformat(data_ant[i]['timestamp'])
+                 time_end = t_casaformat(t1)
+                 flag_command = casa_flagcommand(antenna, time_ini, time_end)
+                 flag_commands.append(flag_command)
+
+    all_commands_ant = ''.join(flag_commands)
+    return all_commands_ant
+
+def t_casaformat(t):
+    try:
+        timestamp = dateutil.parser.parse(t).strftime(format='%Y/%m/%d/%H:%M:%S.%f')
+    except:
+        timestamp = t.strftime(format='%Y/%m/%d/%H:%M:%S.%f')
+    return timestamp
+
+
+def casa_flagcommand(antenna, time_ini, time_end):
+    command = "mode='manual' antenna='{0}' timerange='{1}~{2}'\n".format(
+                                                                antenna,
+                                                                time_ini,
+                                                                time_end)
+    return command
+
+
+
+def search_observatory_flags(eMCP):
+    msinfo = eMCP['msinfo']
+    msfile = msinfo['msfile']
+    antennas = msinfo['antennas']
+    t0, t1 = get_obstime(msfile)
+    logger.info('Initial obs time {0}'.format(t0))
+    logger.info('Final   obs time {0}'.format(t1))
+    if t0 > datetime.datetime(2019,1,25,17,15,0):
+        # Retrieve database (Only locally at pipeline machine JBO)
+        # Only available from 2019-01-25 at 17:15:00
+        logger.info('Trying to retrieve observatory flags (locally)')
+        s1 = 'emproc1'
+        s2 = 'ast.man.ac.uk'
+        loc = '/home/emerlin/jmoldon/otcx/monitor_20190205_02s.log'
+        os.system('scp -pr {0}.{1}:{2} /pipeline1/emerlin/files/'.format(s1,s2,loc))
+        logfile = '/pipeline1/emerlin/files/monitor_20190205_02s.log'
+        data = read_flag_database(logfile, t0, t1)
+        flag_commands = ''
+        flagfile = 'inputfg.flags'
+        logger.info('Generating flags for this dataset')
+        with open(flagfile, 'wb') as f_file:
+            for ant in antennas:
+                all_commands_ant = write_flags_antenna(data, ant, t0, t1)
+                f_file.write(all_commands_ant)
+    else:
+        logger.info('Database only after 25 January 2019')
+        pass
+
 def flagdata1_apriori(eMCP):
     msinfo = eMCP['msinfo']
     msfile = msinfo['msfile']
@@ -1081,34 +1184,19 @@ def flagdata1_apriori(eMCP):
     logger.info('MS has {} channels/spw'.format(nchan))
     logger.info('Flagging edge channels {0}'.format(channels_to_flag))
     flagdata(vis=msfile, mode='manual', spw=channels_to_flag, flagbackup=False)
+    # Remove 4 sec from everywhere:
+    all_quack = eMCP['defaults']['flag_apriori']['all_quack']
+    logger.info('Flagging first {} seconds from all scans'.format(all_quack))
+    flagdata(vis=msfile, field='', mode='quack',
+             quackinterval=all_quack, flagbackup=False)
     # Slewing (typical):
     do_quack = eMCP['defaults']['flag_apriori']['do_quack']
     if do_quack:
-        ## Target and phase reference, 20 sec
-        # Main calibrators quack
-        standard_cal_list = ['1331+305','1407+284','0319+415',
-                             '1331+3030','1407+2728','0319+4130']
-        bright_cal = join_lists([si for si in ['1331+305','1407+284','0319+415'] if si in
-                      msinfo['sources']['mssources']])
-        if bright_cal != '':
-            std_cal_quack = eMCP['defaults']['flag_apriori']['std_cal_quack']
-            logger.info('Flagging {0}s from bright calibrators'.format(std_cal_quack))
-            flagdata(vis=msfile, field=bright_cal, mode='quack',
-                     quackinterval=std_cal_quack, flagbackup=False)
-        else:
-            logger.warning('No main calibrators (3C84, 3C286, OQ208) found in data set')
-        for s1, s2 in zip(msinfo['sources']['targets'].split(','),
-                          msinfo['sources']['phscals'].split(',')):
-            sources_in_ms = msinfo['sources']['mssources'].split(',')
-            missing_sources = [si for si in [s1,s2] if si not in sources_in_ms]
-            if missing_sources == []:
-                quacktime = find_quacktime(msinfo, s1, s2)
-                if s1 != '':
-                    logger.info('Flagging first {0} sec of target {1} and phasecal {2}'.format(quacktime, s1, s2))
-                    flagdata(vis=msfile, field=','.join([s1,s2]), mode='quack',
-                             quackinterval=quacktime, flagbackup=False)
-            else:
-                logger.warning('Warning, source(s) {} not present in MS, will not flag this pair'.format(','.join(missing_sources)))
+        try:
+            search_observatory_flags(eMCP)
+        except:
+            logger.info('Observatory flags failed. Starting ad hoc procedure')
+            quack_estimating(eMCP)
     else:
         logger.info('No quacking selected')
 
@@ -2992,7 +3080,7 @@ def compile_delays(tablename, outname):
 
 def calc_eMfactor(msfile, field='1331+305'):
     logger.info('Computing eMfactor')
-    if field != '1331+305':
+    if field not in ['1331+305', '1331+3030']:
         logger.warning('Scaling flux assuming 3C286 is the flux calibrator. Your flux calibrator is: {}. Scaling is probably wrong.'.format(field))
     tb.open(msfile+'/FIELD')
     names = tb.getcol('NAME')
