@@ -1,6 +1,7 @@
 #!/usr/local/python
 import os, subprocess
 import numpy as np
+import socket
 import pickle
 import glob
 from Tkinter import *
@@ -596,6 +597,8 @@ def get_msinfo(eMCP, msfile, doprint=False):
         msinfo['Lo_dropout_scans'] = eMCP['msinfo']['Lo_dropout_scans']
     except:
         msinfo['Lo_dropout_scans'] = eMCP['defaults']['flag_manual_avg']['Lo_dropout']
+    if eMCP['defaults']['flag_manual_avg']['Lo_dropout'] == 'none':
+        msinfo['Lo_dropout_scans'] = ''
     # Info related to mixed mode:
     eMCP, msinfo = info_mixed_mode(eMCP, msinfo)
     # Show summary
@@ -1138,14 +1141,18 @@ def search_observatory_flags(eMCP):
     t0, t1 = get_obstime(msfile)
     logger.info('Initial obs time {0}'.format(t0))
     logger.info('Final   obs time {0}'.format(t1))
-    if t0 > datetime.datetime(2019,1,25,17,15,0):
+    s = socket.gethostname()
+    if t0 > datetime.datetime(2019,1,25,17,15,0) and s == 'pipeline':
         # Retrieve database (Only locally at pipeline machine JBO)
         # Only available from 2019-01-25 at 17:15:00
         logger.info('Trying to retrieve observatory flags (locally)')
         s1 = 'emproc1'
         s2 = 'ast.man.ac.uk'
         loc = '/home/emerlin/jmoldon/otcx/monitor_20190205_02s.log'
-        os.system('scp -pr {0}.{1}:{2} /pipeline1/emerlin/files/'.format(s1,s2,loc))
+        try:
+            os.system('scp -pr {0}.{1}:{2} /pipeline1/emerlin/files/'.format(s1,s2,loc))
+        except:
+            pass
         logfile = '/pipeline1/emerlin/files/monitor_20190205_02s.log'
         data = read_flag_database(logfile, t0, t1)
         flag_commands = ''
@@ -1155,9 +1162,11 @@ def search_observatory_flags(eMCP):
             for ant in antennas:
                 all_commands_ant = write_flags_antenna(data, ant, t0, t1)
                 f_file.write(all_commands_ant)
+        finished_autoflag = True
     else:
         logger.info('Database only after 25 January 2019')
-        pass
+        finished_autoflag = False
+    return finished_autoflag
 
 def flagdata1_apriori(eMCP):
     msinfo = eMCP['msinfo']
@@ -1192,9 +1201,8 @@ def flagdata1_apriori(eMCP):
     # Slewing (typical):
     do_quack = eMCP['defaults']['flag_apriori']['do_quack']
     if do_quack:
-        try:
-            search_observatory_flags(eMCP)
-        except:
+        finished_autoflag = search_observatory_flags(eMCP)
+        if not finished_autoflag:
             logger.info('Observatory flags failed. Starting ad hoc procedure')
             quack_estimating(eMCP)
     else:

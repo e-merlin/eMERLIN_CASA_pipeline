@@ -358,6 +358,7 @@ def weblog_pipelineinfo(eMCP):
     # eMCP_info dictionary as text
     prt_dict_tofile(eMCP, tofilename=info_dir + 'eMCP_info.txt', pre='  ')
     eMCP_txtfile = info_link + 'eMCP_info.txt'
+    wlog.write('<br><h4>Relevant parameter files:</h4>\n')
     write_link_txt(wlog, eMCP_txtfile, 'Detailed eMCP_info dictionary')
     # caltables dictionary as text
     try:
