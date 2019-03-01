@@ -658,9 +658,12 @@ def fluxscale_models(calfluxes, eMfactor, msinfo):
     fig = plt.figure(figsize=(10,8))
     ax1 = fig.add_subplot(111)
 
+    freq_min, freq_max = 1e20,0.
     for k in calfluxes.keys():
         if type(calfluxes[k]) is dict:
             freq,spws,fieldName,spindex,espindex,S0,eS0,freq0,flux,eflux = read_calfluxes(calfluxes,k, eMfactor)
+            freq_min = np.nanmin([freq_min, np.nanmin(freq)])
+            freq_max = np.nanmax([freq_max, np.nanmax(freq)])
             freqspan = np.nanmax(freq) - np.nanmin(freq)
             freqlim = np.array([np.nanmin(freq) - 0.025*freqspan, np.nanmax(freq) + 0.1*freqspan])
             fluxfit = S0*(freqlim/freq0)**spindex
@@ -683,8 +686,8 @@ def fluxscale_models(calfluxes, eMfactor, msinfo):
                              facecolor=color1,color=color1, alpha = 1.0,linewidth = 0, zorder = -32)
 
     freq = calfluxes['freq']
-    freqspan = np.nanmax(freq) - np.nanmin(freq)
-    freqlim = np.array([np.nanmin(freq) - 0.025*freqspan, np.nanmax(freq) + 0.1*freqspan])
+    freqspan = freq_max - freq_min
+    freqlim = np.array([freq_min - 0.025*freqspan, freq_max + 0.1*freqspan])
     ax1.set_xlabel("Frequency [GHz]")
     ax1.set_ylabel("Flux density [Jy]")
     ax1.set_xlim(freqlim[0]*factor_unit, freqlim[1]*factor_unit)
