@@ -498,7 +498,7 @@ def find_wide_narrow(spw_sp, cent_chan_sp, msfile):
     # print results
     if len(main_spw) == 0:
         logger.warning('Could not find wideband spw containing narrow band ' \
-              'centred at {0}. Choose spwmap manually!'.format(cen_chan_sp*1e9))
+              'centred at {0}. Choose spwmap manually!'.format(cent_chan_sp*1e9))
     elif len(main_spw) > 1:
         logger.warning('Narrow spw {0} can be linked ' \
               'to different wide spw {1}. Choose spwmap manually!'.format(spw_sp, main_spw))
@@ -2804,7 +2804,7 @@ def gaincal_narrow(eMCP, caltables, doplots=True):
     if doplots:
         caltableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
         emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot_phs, title='Phase',
-                      xaxis='spw', yaxis='phase', ymin=0, ymax=0,
+                      xaxis='spw', yaxis='phase', ymin=-180, ymax=180,
                       coloraxis='corr', symbolsize=10)
         logger.info('{0} phase plot: {1}'.format(caltable_name,caltableplot_phs))
 

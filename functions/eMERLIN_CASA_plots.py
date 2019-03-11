@@ -150,7 +150,10 @@ def plot_caltable(msinfo, caltable, plot_file, xaxis='', yaxis='', title='',
         tb.open(tab+'/SPECTRAL_WINDOW')
         f = tb.getcol('CHAN_FREQ').flatten()/1e9
         tb.close()
-        x_min, x_max = np.min(f)*0.99, np.max(f)*1.01
+        x_min0, x_max0 = np.min(f), np.max(f)
+        x_span = x_max0 - x_min0
+        x_min = x_min0 - x_span*0.1
+        x_max = x_max0 + x_span*0.1
     else:
         x_min, x_max = -1, -1
 
