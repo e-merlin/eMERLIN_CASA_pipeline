@@ -359,51 +359,57 @@ def make_uvplt(eMCP):
 ##    pool.join()
     logger.info('uvplts finished')
 
-def single_uvcov(field, u, v, freqs, plot_file):
-    c = 299792458.
-    # Color scale:
-    norm = matplotlib.colors.Normalize(vmin=np.min(freqs/1e9),
-                                       vmax=np.max(freqs/1e9))
-    cmap = matplotlib.cm.get_cmap('Spectral')
-    fig = plt.figure()
-    ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
-    ax1 = fig.add_axes([0.8, 0.1, 0.02, 0.8])
-    for i, freqi in enumerate(freqs):
-        col= cmap(norm(freqi/1e9)) #color
-        fc = freqi/c/1e6
-        ax.plot(+u*fc, +v*fc, marker='.', ms=0.01, ls='',
-                 color=col, mec=col, label='{0:4.1f}GHz'.format(freqi/1e9))
-        ax.plot(-u*fc, -v*fc, marker='.', ms=0.01, ls='',
-                 color=col, mec=col)
-    #lgnd = ax.legend(numpoints=1, markerscale=6, frameon=False, ncol=2, prop={'size':8})
-    cb1 = matplotlib.colorbar.ColorbarBase(ax1, cmap=cmap,
-                                norm=norm, orientation='vertical')
-    ax1.yaxis.set_label_position("right")
-    ax1.set_ylabel('Frequency [GHz]')
-    ax.set_xlabel('U [Mlambda]')
-    ax.set_ylabel('V [Mlambda]')
-    ax.set_aspect('equal')
-    ax.set_title(field)
-    main_lim = np.max(np.abs(ax.get_ylim() + ax.get_xlim()))
-    ax.set_xlim(-main_lim, +main_lim)
-    ax.set_ylim(-main_lim, +main_lim)
-    fig.savefig(plot_file, dpi=120, bbox_inches='tight')
-
-def read_uvw(msfile, field):
-    ms.open(msfile)
-    staql={'field':field, 'spw':'0'}
-    ms.msselect(staql)
-    uv = ms.getdata(['u', 'v', 'flag'])
-    ms.close()
-    flags = np.mean(uv['flag'], axis=(0,1)) < 0.9
-    u = uv['u'][flags]
-    v = uv['v'][flags]
-    return u, v
+#def single_uvcov(field, u, v, freqs, plot_file):
+#    c = 299792458.
+#    # Color scale:
+#    norm = matplotlib.colors.Normalize(vmin=np.min(freqs/1e9),
+#                                       vmax=np.max(freqs/1e9))
+#    cmap = matplotlib.cm.get_cmap('Spectral')
+#    fig = plt.figure()
+#    ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
+#    ax1 = fig.add_axes([0.8, 0.1, 0.02, 0.8])
+#    for i, freqi in enumerate(freqs):
+#        col= cmap(norm(freqi/1e9)) #color
+#        fc = freqi/c/1e6
+#        ax.plot(+u*fc, +v*fc, marker='.', ms=0.01, ls='',
+#                 color=col, mec=col, label='{0:4.1f}GHz'.format(freqi/1e9))
+#        ax.plot(-u*fc, -v*fc, marker='.', ms=0.01, ls='',
+#                 color=col, mec=col)
+#    #lgnd = ax.legend(numpoints=1, markerscale=6, frameon=False, ncol=2, prop={'size':8})
+#    cb1 = matplotlib.colorbar.ColorbarBase(ax1, cmap=cmap,
+#                                norm=norm, orientation='vertical')
+#    ax1.yaxis.set_label_position("right")
+#    ax1.set_ylabel('Frequency [GHz]')
+#    ax.set_xlabel('U [Mlambda]')
+#    ax.set_ylabel('V [Mlambda]')
+#    ax.set_aspect('equal')
+#    ax.set_title(field)
+#    main_lim = np.max(np.abs(ax.get_ylim() + ax.get_xlim()))
+#    ax.set_xlim(-main_lim, +main_lim)
+#    ax.set_ylim(-main_lim, +main_lim)
+#    fig.savefig(plot_file, dpi=120, bbox_inches='tight')
+#
+#def read_uvw(msfile, field):
+#    ms.open(msfile)
+#    staql={'field':field, 'spw':'0'}
+#    ms.msselect(staql)
+#    uv = ms.getdata(['u', 'v', 'flag'])
+#    ms.close()
+#    flags = np.mean(uv['flag'], axis=(0,1)) < 0.9
+#    u = uv['u'][flags]
+#    v = uv['v'][flags]
+#    return u, v
 
 def make_uvcov(msfile, msinfo):
-    logger.info('Plotting uv-coverage for all sources'.format())
     plots_obs_dir = './weblog/plots/plots_observation/'
     makedir(plots_obs_dir)
+    msmd.open(msfile)
+    # CASA 5.4 has a bug, it selects the uv limits of the first spw
+    # I create this manual limit as a compromise
+    c = 299792458.
+    max_freq = np.max(np.array([msmd.chanfreqs(spw) for spw in
+                                msmd.datadescids()]))
+    max_uvdist = 217000.0/c*max_freq/1.5  # For 217 km baseline
     freqs = get_freqs(msfile, allfreqs=True)
     allsources = msinfo['sources']['allsources'].split(',')
     mssources = msinfo['sources']['mssources'].split(',')
@@ -412,8 +418,17 @@ def make_uvcov(msfile, msinfo):
         if f in mssources:
             plot_file = plots_obs_dir+'{0}_uvcov_{1}.png'.format(msinfo['msfilename'],f)
             logger.info('{0}'.format(f))
-            u, v = read_uvw(msfile, f)
-            single_uvcov(f, u, v, freqs, plot_file)
+            avgtime = '32'
+            nchan = msinfo['nchan']
+            plotms(vis=msfile, xaxis='Uwave', yaxis='Vwave', field=f, title=f,
+            correlation = 'RR', spw='', coloraxis = 'spw',
+            width=900, height=900, symbolsize=1,
+            plotrange=[-max_uvdist,+max_uvdist,-max_uvdist,+max_uvdist],
+            averagedata = True, avgtime=avgtime, avgchannel = str(int(nchan/8)),
+            plotfile = plot_file, expformat = 'png', customsymbol = True, symbolshape = 'circle',
+            overwrite=True, showlegend=False, showgui=False)
+#            u, v = read_uvw(msfile, f)
+#            single_uvcov(f, u, v, freqs, plot_file)
         else:
             logger.info('Cannot plot uvcov for {0}. Source not in ms.'.format(f))
 

@@ -415,7 +415,7 @@ def weblog_calibration(eMCP):
     #------------------------------------------
     wlog.write('<a href="#applycal">{0}</a><br>\n'.format('Applycal summary'))
     all_calsteps = ['bpcal_d.K0','bpcal_p.G0','bpcal_ap.G0','bpcal.BP0',
-                    'delay.K1','allcal_p.G1','allcal_ap.G1',
+                    'allcal_d.K1','allcal_p.G1','allcal_ap.G1',
                     'fluxscale',
                     'bpcal.BP2',
                     'allcal_p.G3','allcal_ap.G3',

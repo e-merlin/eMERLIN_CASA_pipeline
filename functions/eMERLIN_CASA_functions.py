@@ -3315,6 +3315,7 @@ def single_tclean(eMCP, s, num):
     lownoisethreshold = imgpar['lownoisethreshold']
     minbeamfrac = imgpar['minbeamfrac']
     growiterations = imgpar['growiterations']
+    parallel = imgpar['parallel']
     logger.info('imsize = {0}, cell = {1}, niter = {2}'.format(
                 imsize, cell, niter))
     logger.info('weighting = {0}, robust = {1}'.format(
@@ -3335,7 +3336,7 @@ def single_tclean(eMCP, s, num):
            lownoisethreshold=lownoisethreshold,
            minbeamfrac=minbeamfrac,
            growiterations=growiterations,
-           savemodel='none', parallel=False)
+           savemodel='none', parallel=parallel)
     if nterms > 1:
         ext = '.tt0'
     else:
