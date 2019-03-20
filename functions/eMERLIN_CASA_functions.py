@@ -1375,49 +1375,100 @@ def define_refant(eMCP):
             if refant0 != '' and eMCP['inputs']['refant'] != 'compute':
                 logger.warning('Selected reference antenna(s) {0} not in MS! User selection will be ignored'.format(refant0))
             # Finding best antennas for refant
-            logger.info('Estimating best reference antenna.')
             logger.info('To avoid this, set a reference antenna in the inputs file.')
-            refant, refant_pref = find_refant(msfile, field=eMCP['inputs']['fluxcal'])
+            refant = find_refant(msfile,
+                                 field=eMCP['msinfo']['sources']['calsources'])
         else:
             refant = ','.join(refant_user)
     logger.info('Refant in eMCP: {}'.format(refant))
     return refant
 
-def find_refant(msfile, field, spw='3'):
-    antennas = get_antennas(msfile)
-    v = {}
-    snr = {}
-    for anten in antennas:
-        try:
-            v[anten] = visstat(msfile, field=field, antenna='{}&*'.format(anten), axis='amplitude', spw=str(spw), correlation='RR,LL')
-            snr[anten] = v[anten]['DATA_DESC_ID=3']['median']/v[anten]['DATA_DESC_ID=3']['stddev']
-            # Sometimes std of an empty antenna (=pure noise) have
-            # very low stddev
-        except:
-            v[anten] = None
-            snr[anten] = 0.0
-            logger.warning('No data found for bpcal for antenna: '
-                           '{}'.format(anten))
-    for i in np.argsort(snr.values())[::-1]:
-        logger.info('{0:3}: {1:3.1g}'.format(snr.keys()[i], snr.values()[i]))
-    pref_ant = [snr.keys()[i] for i in np.argsort(snr.values())][::-1]
-    snr_sorted = [snr.values()[i] for i in np.argsort(snr.values())][::-1]
-    if 'Lo' in antennas:
-        priorities = ['Pi','Da','Kn']
-        secondary = ['Pi','Da','Kn', 'Cm', 'De']
+def find_refant(msfile, field):
+    # Find phase solutions per scan:
+    tablename = calib_dir + 'find_refant.phase'
+    logger.info('Phase calibration per scan to count number of good solutions')
+    gaincal(vis=msfile,
+            caltable=tablename,
+            field=field,
+            refantmode='flex',
+            solint = 'inf',
+            minblperant = 2,
+            gaintype = 'G',
+            calmode = 'p')
+    # Read solutions (phases):
+    tb.open(tablename+'/ANTENNA')
+    antenna_names = tb.getcol('NAME')
+    tb.close()
+    tb.open(tablename)
+    antenna_ids = tb.getcol('ANTENNA1')
+    #times  = tb.getcol('TIME')
+    flags = tb.getcol('FLAG')
+    phases = np.angle(tb.getcol('CPARAM'))
+    snrs = tb.getcol('SNR')
+    tb.close()
+    # Analyse number of good solutions:
+    good_frac = []
+    good_snrs = []
+    for i, ant_id in enumerate(np.unique(antenna_ids)):
+        cond = antenna_ids == ant_id
+        #t = times[cond]
+        f = flags[0,0,:][cond]
+        p = phases[0,0,:][cond]
+        snr = snrs[0,0,:][cond]
+        frac =  1.0*np.count_nonzero(~f)/len(f)*100.
+        snr_mean = np.nanmean(snr[~f])
+        good_frac.append(frac)
+        good_snrs.append(snr_mean)
+    sort_idx = np.argsort(good_frac)[::-1]
+    logger.info('Antennas sorted by % of good solutions:')
+    for i in sort_idx:
+        logger.info('{0:3}: {1:4.1f}, <SNR> = {2:4.1f}'.format(antenna_names[i],
+                                                               good_frac[i],
+                                                               good_snrs[i]))
+    pref_ant = antenna_names[sort_idx]
+    if 'Lo' in antenna_names:
+        priorities = ['Pi','Da','Kn','De','Cm']
     else:
-        priorities = ['Mk2','Pi','Da']
-        secondary = ['Mk2','Pi','Da','Kn', 'Cm', 'De']
-    u, ind = np.unique([a for a in pref_ant[:3] if a in priorities] +\
-                       [a for a  in pref_ant if a in secondary],
-                       return_index=True)
-    refant = ','.join(u[np.argsort(ind)])
-    refant_pref = collections.OrderedDict()
-    refant_pref['snr'] = snr_sorted
-    refant_pref['sorted_antennas'] = pref_ant
-    refant_pref['refant'] = refant
-    logger.info('Preference antennas refant = {0}'.format(refant))
-    return refant, refant_pref
+        priorities = ['Mk2','Pi','Da','Kn', 'Cm', 'De']
+    refant = ','.join([a for a in pref_ant if a in priorities])
+    return refant
+
+
+#def find_refant(msfile, field, spw='3'):
+#    antennas = get_antennas(msfile)
+#    v = {}
+#    snr = {}
+#    for anten in antennas:
+#        try:
+#            v[anten] = visstat(msfile, field=field, antenna='{}&*'.format(anten), axis='amplitude', spw=str(spw), correlation='RR,LL')
+#            snr[anten] = v[anten]['DATA_DESC_ID=3']['median']/v[anten]['DATA_DESC_ID=3']['stddev']
+#            # Sometimes std of an empty antenna (=pure noise) have
+#            # very low stddev
+#        except:
+#            v[anten] = None
+#            snr[anten] = 0.0
+#            logger.warning('No data found for bpcal for antenna: '
+#                           '{}'.format(anten))
+#    for i in np.argsort(snr.values())[::-1]:
+#        logger.info('{0:3}: {1:3.1g}'.format(snr.keys()[i], snr.values()[i]))
+#    pref_ant = [snr.keys()[i] for i in np.argsort(snr.values())][::-1]
+#    snr_sorted = [snr.values()[i] for i in np.argsort(snr.values())][::-1]
+#    if 'Lo' in antennas:
+#        priorities = ['Pi','Da','Kn']
+#        secondary = ['Pi','Da','Kn', 'Cm', 'De']
+#    else:
+#        priorities = ['Mk2','Pi','Da']
+#        secondary = ['Mk2','Pi','Da','Kn', 'Cm', 'De']
+#    u, ind = np.unique([a for a in pref_ant[:3] if a in priorities] +\
+#                       [a for a  in pref_ant if a in secondary],
+#                       return_index=True)
+#    refant = ','.join(u[np.argsort(ind)])
+#    refant_pref = collections.OrderedDict()
+#    refant_pref['snr'] = snr_sorted
+#    refant_pref['sorted_antennas'] = pref_ant
+#    refant_pref['refant'] = refant
+#    logger.info('Preference antennas refant = {0}'.format(refant))
+#    return refant, refant_pref
 
 
 def saveflagstatus(eMCP):

@@ -3,7 +3,7 @@ import collections
 defaults = collections.OrderedDict()
 
 defaults['global'] = collections.OrderedDict()
-defaults['global']['refantmode']                      = 'flex'
+defaults['global']['refantmode']                      = 'strict'
 defaults['global']['is_mixed_mode']                   = 'auto' # 'auto','force','none'
 defaults['global']['spwmap_sp']                       = []
 

@@ -409,7 +409,7 @@ def make_uvcov(msfile, msinfo):
     c = 299792458.
     max_freq = np.max(np.array([msmd.chanfreqs(spw) for spw in
                                 msmd.datadescids()]))
-    max_uvdist = 217000.0/c*max_freq/1.5  # For 217 km baseline
+    max_uvdist = 217000.0/c*max_freq  # For 217 km baseline
     freqs = get_freqs(msfile, allfreqs=True)
     allsources = msinfo['sources']['allsources'].split(',')
     mssources = msinfo['sources']['mssources'].split(',')
@@ -439,10 +439,11 @@ def make_elevation(msfile, msinfo):
     plot_file = plots_obs_dir+'{0}_elevation.png'.format(msinfo['msfilename'])
     logger.info('Plotting elevation to:')
     logger.info('{}'.format(plot_file))
-    avgtime = '32'
+    avgtime = '16'
     showgui = False
     plotms(vis=msfile, xaxis='time', yaxis='elevation', correlation = 'RR',
     spw='', coloraxis = 'field', width=900, symbolsize=5, plotrange=[-1,-1,0,90],
+    averagedata = True, avgtime=avgtime,
     plotfile = plot_file, expformat = 'png', customsymbol = True, symbolshape = 'circle',
     overwrite=True,showlegend=True, showgui=showgui)
 
