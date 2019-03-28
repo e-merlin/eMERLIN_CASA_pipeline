@@ -1052,7 +1052,7 @@ def quack_estimating(eMCP):
     # Main calibrators quack
     standard_cal_list = ['1331+305','1407+284','0319+415',
                          '1331+3030','1407+2728','0319+4130']
-    bright_cal = join_lists([si for si in ['1331+305','1407+284','0319+415'] if si in
+    bright_cal = join_lists([si for si in standard_cal_list if si in
                   msinfo['sources']['mssources']])
     if bright_cal != '':
         std_cal_quack = eMCP['defaults']['flag_apriori']['std_cal_quack']
@@ -1425,6 +1425,10 @@ def find_refant(msfile, field):
         logger.info('{0:3}: {1:4.1f}, <SNR> = {2:4.1f}'.format(antenna_names[i],
                                                                good_frac[i],
                                                                good_snrs[i]))
+    if good_frac[sort_idx[0]] < 90:
+        logger.warning('Small fraction of good solutions with selected refant!')
+        logger.warning('Please inspect antennas to select optimal refant')
+        logger.warning('You may want to use refantmode= flex" in default_params')
     pref_ant = antenna_names[sort_idx]
     if 'Lo' in antenna_names:
         priorities = ['Pi','Da','Kn','De','Cm']
