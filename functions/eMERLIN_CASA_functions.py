@@ -304,7 +304,7 @@ def check_band(msfile):
         band = 'L'
     elif (freq > 4) and (freq < 8):
         band = 'C'
-    elif (freq > 22) and (freq < 24):
+    elif (freq > 18) and (freq < 25):
         band = 'K'
     else:
         logger.critical('Cannot determine band from frequency {}'.format(freq))
@@ -665,7 +665,7 @@ def decide_hanning(import_eM, msfile):
         else:
             logger.info('Dataset is not L band. Hanning smoothing not needed.')
             apply_hanning = False
-    elif run_hanning > 1:
+    elif run_hanning == 1:
         apply_hanning = True
     elif run_hanning == 0:
         apply_hanning = False
@@ -3352,7 +3352,10 @@ def single_tclean(eMCP, s, num):
     prev_images = glob.glob(imagename+'*')
     for prev_image in prev_images:
         rmdir(prev_image)
-    cellsize = {'C':'0.008arcsec', 'L':'0.02arcsec'}
+    cellsize = {'C':'0.008arcsec',
+                'L':'0.02arcsec',
+                'K':'0.002arcsec'
+               }
     imgpar = eMCP['defaults']['first_images']
     imsize = imgpar['imsize']
     cell = cellsize[msinfo['band']]

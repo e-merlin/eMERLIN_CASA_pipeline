@@ -13,7 +13,7 @@ from tasks import *
 import casadef
 
 
-current_version = 'v0.10.17'
+current_version = 'v0.10.18'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -150,6 +150,8 @@ def run_pipeline(inputs=None, inputs_path=''):
     ### Load manual flagging file
     if inputs['flag_manual'] > 0:
         eMCP = em.flagdata_manual(eMCP, run_name='flag_manual')
+        caltables['Lo_dropout_scans'] = eMCP['msinfo']['Lo_dropout_scans']
+        save_obj(caltables, calib_dir+'caltables.pkl')
 
     ### Average data ###
     if inputs['average'] > 0:
