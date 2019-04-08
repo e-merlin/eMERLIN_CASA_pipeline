@@ -1051,7 +1051,9 @@ def quack_estimating(eMCP):
     msfile = msinfo['msfile']
     # Main calibrators quack
     standard_cal_list = ['1331+305','1407+284','0319+415',
-                         '1331+3030','1407+2728','0319+4130']
+                         'J1331+305','J1407+284','J0319+415',
+                         '1331+3030','1407+2728','0319+4130',
+                         'J1331+3030','J1407+2728','J0319+4130']
     bright_cal = join_lists([si for si in standard_cal_list if si in
                   msinfo['sources']['mssources']])
     if bright_cal != '':
@@ -1652,7 +1654,7 @@ def run_initialize_models(eMCP):
         logger.info('Deleting model from {0}'.format(msfile_sp))
         delmod(vis=msfile_sp, otf=True, scr=True)
     # Set flux density of flux calibrator:
-    if fluxcal in ['1331+305', '1331+3030']:
+    if fluxcal in ['1331+305', '1331+3030','J1331+305', 'J1331+3030']:
         load_3C286_model(eMCP)
     elif fluxcal == '':
         logger.warning('No flux calibrator selected')
@@ -3158,8 +3160,11 @@ def compile_delays(tablename, outname):
 
 def calc_eMfactor(msfile, field='1331+305'):
     logger.info('Computing eMfactor')
-    if field not in ['1331+305', '1331+3030']:
-        logger.warning('Scaling flux assuming 3C286 is the flux calibrator. Your flux calibrator is: {}. Scaling is probably wrong.'.format(field))
+    if field not in ['1331+305', '1331+3030', 'J1331+305', 'J1331+3030']:
+        logger.warning('Scaling flux assuming 3C286 is the flux calibrator. Your flux calibrator is: {}. Scaling could wrong.'.format(field))
+        logger.info('Assuming eMfactor = 1')
+        eMfactor = 1.0
+        return eMfactor
     tb.open(msfile+'/FIELD')
     names = tb.getcol('NAME')
     field_id = np.argwhere(names == field)[0][0]
