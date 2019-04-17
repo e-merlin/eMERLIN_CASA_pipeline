@@ -304,7 +304,7 @@ def check_band(msfile):
         band = 'L'
     elif (freq > 4) and (freq < 8):
         band = 'C'
-    elif (freq > 18) and (freq < 25):
+    elif (freq > 17) and (freq < 26):
         band = 'K'
     else:
         logger.critical('Cannot determine band from frequency {}'.format(freq))
@@ -1169,6 +1169,21 @@ def search_observatory_flags(eMCP):
         logger.info('Database only after 25 January 2019')
         finished_autoflag = False
     return finished_autoflag
+
+def select_first_last_chan(msfile, spw_frac):
+    msmd.open(msfile)
+    first_spw = min(msmd.datadescids())
+    last_spw  = max(msmd.datadescids())
+    msmd.close()
+    chan_fact = (nchan-nchan/512.)
+    first_chan = '{0}:{1:.0f}~{2:.0f}'.format(first_spw,
+                                              0.*chan_fact,
+                                              spw_frac*chan_fact)
+    last_chan  = '{0}:{1:.0f}~{2:.0f}'.format(last_spw,
+                                              (1.-spw_frac)*chan_fact,
+                                              1.0*chan_fact)
+    return first_chan, last_chan
+
 
 def flagdata1_apriori(eMCP):
     msinfo = eMCP['msinfo']
@@ -2333,6 +2348,32 @@ def initial_gaincal(eMCP, caltables):
     logger.info('End initial_gaincal')
     return eMCP, caltables
 
+def select_calibrator(param, eMCP, add_main=True):
+    # Default is using all the calsources. User can specify sources in params
+    msinfo = eMCP['msinfo']
+    if param == 'default':
+        calsources = eMCP['msinfo']['sources']['calsources']
+        field = ','.join(np.unique(calsources.split(',')))
+    elif param != '':
+        field = param
+    else:
+        logger.critical('No valid delay calibrator. Exiting pipeline.')
+        exit_pipeline(eMCP)
+    # Check if all selected sources are in mssources
+    close_pipeline = False
+    for f in field.split(','):
+        if f not in msinfo['sources']['mssources'].split(','):
+            logger.critical('Selected calibrator {} not in MS!'.format(f))
+            close_pipeline = True
+    if close_pipeline:
+        exit_pipeline(eMCP)
+    # Include maincals because needed in ap_G1 fluxscale
+    if add_main:
+        field = ','.join(np.unique(
+                         np.concatenate([field.split(','),
+                                         msinfo['sources']['maincal'].split(',')])))
+    return field
+
 
 def solve_delays(eMCP, caltables, doplots=True):
     logger.info('Starting solve_delays')
@@ -2347,13 +2388,13 @@ def solve_delays(eMCP, caltables, doplots=True):
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
     caltables[caltable_name]['previous_cal'] = delay['prev_cal']
-    caltables[caltable_name]['field'] = msinfo['sources']['calsources']
+    caltables[caltable_name]['field'] = select_calibrator(delay['delay_cal'], eMCP)
     caltables[caltable_name]['gaintype'] = 'K'
     caltables[caltable_name]['calmode'] = 'p'
     caltables[caltable_name]['solint'] = delay['solint']
     caltables[caltable_name]['spw'] = make_spw(msinfo, delay['spw'])
     caltables[caltable_name]['combine'] = delay['combine']
-    caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
+    caltables[caltable_name]['gainfield'] = caltables[caltable_name]['field']
     caltables[caltable_name]['spwmap'] = make_spwmap(caltables,delay['combine'])
     caltables[caltable_name]['interp'] = delay['interp']
     caltables[caltable_name]['minblperant'] = delay['minblperant']
@@ -2424,6 +2465,7 @@ def delay_fringefit(eMCP, caltables):
     # Check if all sources are in the MS: 
     check_sources_in_ms(eMCP)
     delay = eMCP['defaults']['initial_gaincal']['delay']
+    calsources = eMCP['msinfo']['sources']['calsources']
     msfile = eMCP['msinfo']['msfile']
     msinfo = eMCP['msinfo']
     caltable_name = delay['tablename']
@@ -2431,11 +2473,11 @@ def delay_fringefit(eMCP, caltables):
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
     caltables[caltable_name]['previous_cal'] = delay['prev_cal']
-    caltables[caltable_name]['field'] = msinfo['sources']['calsources']
+    caltables[caltable_name]['field'] = ','.join(np.unique(calsources.split(',')))
     caltables[caltable_name]['solint'] = delay['solint']
     caltables[caltable_name]['spw'] = make_spw(msinfo, delay['spw'])
     caltables[caltable_name]['combine'] = delay['combine']
-    caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
+    caltables[caltable_name]['gainfield'] = caltables[caltable_name]['field']
     caltables[caltable_name]['spwmap'] = make_spwmap(caltables,delay['combine'])
     caltables[caltable_name]['interp'] = delay['interp']
     caltables[caltable_name]['zerorates'] = delay['zerorates']
@@ -2499,6 +2541,7 @@ def gain_p_ap(eMCP, caltables, doplots=True):
     # Check if all sources are in the MS: 
     check_sources_in_ms(eMCP)
     gain_p_ap = eMCP['defaults']['initial_gaincal']
+    calsources = eMCP['msinfo']['sources']['calsources']
     msfile = eMCP['msinfo']['msfile']
     msinfo = eMCP['msinfo']
 
@@ -2510,11 +2553,11 @@ def gain_p_ap(eMCP, caltables, doplots=True):
     caltables[caltable_name]['previous_cal'] = gain_p_ap['p_prev_cal']
     caltables[caltable_name]['gaintype'] = 'G'
     caltables[caltable_name]['calmode'] = 'p'
-    caltables[caltable_name]['field'] = msinfo['sources']['calsources']
+    caltables[caltable_name]['field'] = ','.join(np.unique(calsources.split(',')))
     caltables[caltable_name]['solint'] = gain_p_ap['p_solint']
     caltables[caltable_name]['combine'] = gain_p_ap['p_combine']
     caltables[caltable_name]['spw'] = make_spw(msinfo, gain_p_ap['p_spw'])
-    caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
+    caltables[caltable_name]['gainfield'] = caltables[caltable_name]['field']
     caltables[caltable_name]['spwmap'] = make_spwmap(caltables,gain_p_ap['p_combine'])
     caltables[caltable_name]['interp'] = gain_p_ap['p_interp']
     caltables[caltable_name]['minblperant'] = gain_p_ap['p_minblperant']
@@ -2533,7 +2576,7 @@ def gain_p_ap(eMCP, caltables, doplots=True):
         logger.info('G0 phase plot: {0}'.format(caltableplot))
     logger.info('Apply phase calibration flags to calibrators, applymode=flagonly')
     applycal(vis=msfile, gaintable=caltables[caltable_name]['table'],
-             field=msinfo['sources']['calsources'],
+             field=calsources,
              applymode='flagonly',
              flagbackup=False)
 
@@ -2545,11 +2588,11 @@ def gain_p_ap(eMCP, caltables, doplots=True):
     caltables[caltable_name]['previous_cal'] = gain_p_ap['ap_prev_cal']
     caltables[caltable_name]['gaintype'] = 'G'
     caltables[caltable_name]['calmode'] = 'ap'
-    caltables[caltable_name]['field'] = msinfo['sources']['calsources']
+    caltables[caltable_name]['field'] = select_calibrator(gain_p_ap['ap_calibrator'], eMCP)
     caltables[caltable_name]['solint'] = gain_p_ap['ap_solint']
     caltables[caltable_name]['combine'] = gain_p_ap['ap_combine']
     caltables[caltable_name]['spw'] = make_spw(msinfo, gain_p_ap['ap_spw'])
-    caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
+    caltables[caltable_name]['gainfield'] = caltables[caltable_name]['field']
     caltables[caltable_name]['spwmap'] = make_spwmap(caltables,gain_p_ap['ap_combine'])
     caltables[caltable_name]['interp'] = gain_p_ap['ap_interp']
     caltables[caltable_name]['minblperant'] = gain_p_ap['ap_minblperant']
@@ -2642,7 +2685,8 @@ def eM_fluxscale(eMCP, caltables):
     antennas = eMCP['msinfo']['antennas']
     ampcal_table = flux['ampcal_table']
     anten_for_flux = find_anten_fluxscale(antennas)
-    cals_to_scale = sources['cals_no_fluxcal']
+    #cals_to_scale = sources['cals_no_fluxcal']
+    cals_to_scale = select_calibrator(eMCP['defaults']['initial_gaincal']['ap_calibrator'], eMCP)
     fluxcal = sources['fluxcal']
     caltable_name = flux['tablename']
     # Check if table allcal_ap.G1 exists:
@@ -2908,6 +2952,7 @@ def gaincal_narrow(eMCP, caltables, doplots=True):
 
 def gaincal_final_cals(eMCP, caltables):
     gain_final = eMCP['defaults']['gaincal_final']
+    calsources = eMCP['msinfo']['sources']['calsources']
     msfile = eMCP['msinfo']['msfile']
     msinfo = eMCP['msinfo']
     # 1 Phase calibration
@@ -2918,11 +2963,11 @@ def gaincal_final_cals(eMCP, caltables):
     caltables[caltable_name]['previous_cal'] = gain_final['p_prev_cal']
     caltables[caltable_name]['gaintype'] = 'G'
     caltables[caltable_name]['calmode'] = 'p'
-    caltables[caltable_name]['field'] = msinfo['sources']['calsources']
+    caltables[caltable_name]['field'] = ','.join(np.unique(calsources.split(',')))
     caltables[caltable_name]['solint'] = gain_final['p_solint']
     caltables[caltable_name]['combine'] = gain_final['p_combine']
     caltables[caltable_name]['spw'] = make_spw(msinfo, gain_final['p_spw'])
-    caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
+    caltables[caltable_name]['gainfield'] = caltables[caltable_name]['field']
     caltables[caltable_name]['spwmap'] = make_spwmap(caltables,gain_final['p_combine'])
     caltables[caltable_name]['interp'] = gain_final['p_interp']
     caltables[caltable_name]['minblperant'] = gain_final['p_minblperant']
@@ -2946,11 +2991,11 @@ def gaincal_final_cals(eMCP, caltables):
     caltables[caltable_name]['previous_cal'] = gain_final['ap_prev_cal']
     caltables[caltable_name]['gaintype'] = 'G'
     caltables[caltable_name]['calmode'] = 'ap'
-    caltables[caltable_name]['field'] = msinfo['sources']['calsources']
+    caltables[caltable_name]['field'] = select_calibrator(gain_final['ap_calibrator'], eMCP)
     caltables[caltable_name]['solint'] = gain_final['ap_solint']
     caltables[caltable_name]['combine'] = gain_final['ap_combine']
     caltables[caltable_name]['spw'] = make_spw(msinfo, gain_final['ap_spw'])
-    caltables[caltable_name]['gainfield'] = msinfo['sources']['calsources']
+    caltables[caltable_name]['gainfield'] = caltables[caltable_name]['field']
     caltables[caltable_name]['spwmap'] = make_spwmap(caltables,gain_final['ap_combine'])
     caltables[caltable_name]['interp'] = gain_final['ap_interp']
     caltables[caltable_name]['minblperant'] = gain_final['ap_minblperant']
@@ -2975,6 +3020,7 @@ def gaincal_final_cals(eMCP, caltables):
 
 def gaincal_final_scan(eMCP, caltables):
     gain_final = eMCP['defaults']['gaincal_final']
+    phscals = eMCP['msinfo']['sources']['phscals']
     msfile = eMCP['msinfo']['msfile']
     msinfo = eMCP['msinfo']
 
@@ -2986,11 +3032,11 @@ def gaincal_final_scan(eMCP, caltables):
     caltables[caltable_name]['previous_cal'] = gain_final['p_scan_prev_cal']
     caltables[caltable_name]['gaintype'] = 'G'
     caltables[caltable_name]['calmode'] = 'p'
-    caltables[caltable_name]['field'] = msinfo['sources']['phscals']
+    caltables[caltable_name]['field'] = ','.join(np.unique(phscals.split(',')))
     caltables[caltable_name]['solint'] = gain_final['p_scan_solint']
     caltables[caltable_name]['combine'] = gain_final['p_scan_combine']
     caltables[caltable_name]['spw'] = make_spw(msinfo, gain_final['p_scan_spw'])
-    caltables[caltable_name]['gainfield'] = msinfo['sources']['phscals']
+    caltables[caltable_name]['gainfield'] = caltables[caltable_name]['field']
     caltables[caltable_name]['spwmap'] = make_spwmap(caltables,gain_final['p_scan_combine'])
     caltables[caltable_name]['interp'] = gain_final['p_scan_interp']
     caltables[caltable_name]['minblperant'] = gain_final['p_scan_minblperant']
@@ -3015,7 +3061,7 @@ def gaincal_final_scan(eMCP, caltables):
     caltables[caltable_name]['previous_cal'] = gain_final['ap_scan_prev_cal']
     caltables[caltable_name]['gaintype'] = 'G'
     caltables[caltable_name]['calmode'] = 'ap'
-    caltables[caltable_name]['field'] = msinfo['sources']['phscals']
+    caltables[caltable_name]['field'] = select_calibrator(gain_final['ap_calibrator'], eMCP, add_main=False)
     caltables[caltable_name]['solint'] = gain_final['ap_scan_solint']
     caltables[caltable_name]['combine'] = gain_final['ap_scan_combine']
     caltables[caltable_name]['spw'] = make_spw(msinfo, gain_final['ap_scan_spw'])
@@ -3168,10 +3214,6 @@ def calc_eMfactor(msfile, field='1331+305'):
     tb.open(msfile+'/FIELD')
     names = tb.getcol('NAME')
     field_id = np.argwhere(names == field)[0][0]
-    tb.close()
-
-    tb.open(msfile+'/ANTENNA')
-    anten = tb.getcol('NAME')
     tb.close()
 
     tb.open(msfile+'/ANTENNA')
