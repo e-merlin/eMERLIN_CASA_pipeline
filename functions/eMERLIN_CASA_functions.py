@@ -1170,7 +1170,7 @@ def search_observatory_flags(eMCP):
         finished_autoflag = False
     return finished_autoflag
 
-def select_first_last_chan(msfile, spw_frac):
+def select_first_last_chan(msfile, spw_frac, nchan):
     msmd.open(msfile)
     first_spw = min(msmd.datadescids())
     last_spw  = max(msmd.datadescids())
@@ -1210,6 +1210,13 @@ def flagdata1_apriori(eMCP):
     logger.info('MS has {} channels/spw'.format(nchan))
     logger.info('Flagging edge channels {0}'.format(channels_to_flag))
     flagdata(vis=msfile, mode='manual', spw=channels_to_flag, flagbackup=False)
+    # 5% of first and last channels of MS
+    spw_frac = eMCP['defaults']['flag_apriori']['border_chan_perc']/100.
+    first_chan, last_chan = select_first_last_chan(msfile, spw_frac, nchan)
+    logger.info('Flagging initial/end channels: {0} and {1}'.format(first_chan,
+                                                                    last_chan))
+    flagdata(vis=msfile, mode='manual', spw=first_chan, flagbackup=False)
+    flagdata(vis=msfile, mode='manual', spw=last_chan,  flagbackup=False)
     # Remove 4 sec from everywhere:
     all_quack = eMCP['defaults']['flag_apriori']['all_quack']
     logger.info('Flagging first {} seconds from all scans'.format(all_quack))

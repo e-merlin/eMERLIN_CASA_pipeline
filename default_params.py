@@ -26,6 +26,7 @@ defaults['aoflagger']['fields']                       = 'all'
 defaults['aoflagger']['separate_bands']               = False
 
 defaults['flag_apriori'] = collections.OrderedDict()
+defaults['flag_apriori']['border_chan_perc']          = 5.
 defaults['flag_apriori']['do_quack']                  = True
 defaults['flag_apriori']['all_quack']                 = 4.
 defaults['flag_apriori']['std_cal_quack']             = 300.

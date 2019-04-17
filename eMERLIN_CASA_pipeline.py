@@ -13,7 +13,7 @@ from tasks import *
 import casadef
 
 
-current_version = 'v0.10.20'
+current_version = 'v0.10.21'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -150,8 +150,6 @@ def run_pipeline(inputs=None, inputs_path=''):
     ### Load manual flagging file
     if inputs['flag_manual'] > 0:
         eMCP = em.flagdata_manual(eMCP, run_name='flag_manual')
-        caltables['Lo_dropout_scans'] = eMCP['msinfo']['Lo_dropout_scans']
-        save_obj(caltables, calib_dir+'caltables.pkl')
 
     ### Average data ###
     if inputs['average'] > 0:
@@ -189,6 +187,8 @@ def run_pipeline(inputs=None, inputs_path=''):
     ### Load manual flagging file
     if inputs['flag_manual_avg'] == 1:
         eMCP = em.flagdata_manual(eMCP, run_name='flag_manual_avg')
+        caltables['Lo_dropout_scans'] = eMCP['msinfo']['Lo_dropout_scans']
+        save_obj(caltables, calib_dir+'caltables.pkl')
 
     ### Initialize models ###
     if inputs['init_models'] > 0:  # Need to add parameter to GUI
@@ -237,15 +237,6 @@ def run_pipeline(inputs=None, inputs_path=''):
     os.system('cp casa_eMCP.log {}casa_eMCP.log.txt'.format(info_dir))
 
     emwlog.start_weblog(eMCP)
-
-#    ### Run monitoring for bright sources:
-#    try:
-#        if inputs['monitoring'] > 0:
-#            caltables = em.monitoring(msfile=msfile, msinfo=msinfo,
-#                                             caltables=caltables,
-#                                             previous_cal=[''])
-#    except:
-#        pass
 
     try:
         os.system('mv casa-*.log *.last ./logs')
