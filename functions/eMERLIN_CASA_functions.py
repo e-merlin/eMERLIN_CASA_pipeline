@@ -1954,6 +1954,7 @@ def run_applycal(eMCP, caltables, step, dotarget=False, insources=''):
     logger.info('Applying calibration up to step: {}'.format(step))
     previous_cal = eMCP['defaults'][step]['apply_calibrators']
     previous_cal_targets= eMCP['defaults'][step]['apply_targets']
+    applymode = eMCP['defaults']['global']['applymode']
     msfile = eMCP['msinfo']['msfile']
     sources = eMCP['msinfo']['sources']
     # 1 correct non-target sources:
@@ -1982,6 +1983,7 @@ def run_applycal(eMCP, caltables, step, dotarget=False, insources=''):
              gainfield = gainfield,
              interp    = interp,
              spwmap    = spwmap,
+             applymode  = applymode,
              flagbackup= False)
     applycal_dict = collections.OrderedDict()
     for source in fields.split(','):
@@ -2017,6 +2019,7 @@ def run_applycal(eMCP, caltables, step, dotarget=False, insources=''):
                          gainfield = gainfield,
                          interp    = interp,
                          spwmap    = spwmap,
+                         applymode  = applymode,
                          flagbackup= False)
                 applycal_dict[s] = collections.OrderedDict()
                 for j, p in enumerate(previous_cal_targets):

@@ -2,7 +2,8 @@
   "global": {
     "refantmode"             : "strict",
     "is_mixed_mode"          : "auto",
-    "spwmap_sp"              : []
+    "spwmap_sp"              : [],
+    "applymode"              : "calflagstrict"
   },
   "import_eM": {
     "constobsid"             : true,
