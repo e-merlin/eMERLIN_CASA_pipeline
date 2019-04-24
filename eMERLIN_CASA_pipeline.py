@@ -6,6 +6,7 @@ from Tkinter import *
 import getopt
 import logging
 import collections
+import json
 
 # CASA imports
 from taskinit import *
@@ -13,7 +14,7 @@ from tasks import *
 import casadef
 
 
-current_version = 'v0.10.21'
+current_version = 'v0.10.22'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -29,7 +30,7 @@ sys.path.append(pipeline_path)
 import functions.eMERLIN_CASA_functions as em
 import functions.weblog as emwlog
 import functions.eMERLIN_CASA_plots as emplt
-from default_params import defaults
+#from default_params import defaults
 
 casalog.setlogfile('casa_eMCP.log')
 
@@ -42,6 +43,19 @@ def save_obj(obj, name):
 def load_obj(name):
     with open(name, 'rb') as f:
         return pickle.load(f)
+
+def deunicodify_hook(pairs):
+    # Solves the problem of using unicode in python 2 when strings are needed
+    # and uses ordered dict
+    new_pairs = []
+    for key, value in pairs:
+        if isinstance(value, unicode):
+            value = value.encode('utf-8')
+        if isinstance(key, unicode):
+            key = key.encode('utf-8')
+        new_pairs.append((key, value))
+    return collections.OrderedDict(new_pairs)
+
 
 def get_pipeline_version(pipeline_path):
     headfile = pipeline_path + '.git/HEAD'
@@ -81,7 +95,6 @@ def run_pipeline(inputs=None, inputs_path=''):
         eMCP['img_stats'] = collections.OrderedDict()
 
     eMCP['inputs'] = inputs
-    eMCP['defaults'] = defaults
 
     # Setup logger
     logger = logging.getLogger('logger')
@@ -118,6 +131,15 @@ def run_pipeline(inputs=None, inputs_path=''):
         inputs = em.check_in(pipeline_path)
     else: # Running pipeline from within CASA
         inputs = em.headless(inputs_path)
+
+    # Load default parameters
+    if os.path.isfile('./default_params.json'):
+        defaults_file = './default_params.json'
+    else:
+        defaults_file = pipeline_path+'/default_params.json'
+    logger.info('Loading default parameters from {0}:'.format(defaults_file))
+    eMCP['defaults'] = json.loads(open(defaults_file).read(),
+                                  object_pairs_hook=deunicodify_hook)
 
 
     #################################
