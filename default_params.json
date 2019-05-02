@@ -240,7 +240,7 @@
     "p_scan_minsnr"          : 2,
     "ap_scan_tablename"      : "phscal_ap_scan.G3",
     "ap_scan_prev_cal"       : ["bpcal.BP2", "allcal_d.K1", "allcal_p.G3"],
-    "ap_scan_calibrator"     : "default",
+    "ap_scan_calibrator"     : "phscals",
     "ap_scan_solint"         : "inf",
     "ap_scan_spw"            : ["*", "innerchan"],
     "ap_scan_combine"        : "",

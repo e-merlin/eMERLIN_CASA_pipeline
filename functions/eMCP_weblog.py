@@ -100,8 +100,8 @@ def weblog_foot(wlog):
     wlog.write('</body>\n')
     wlog.write('</html>\n')
 
-def write_link_txt(wlog, infile, intext):
-    wlog.write('{0}: <a href="{1}" target="_blank">txt</a><br>\n'.format(intext, infile))
+def write_link_txt(wlog, infile, intext, text='txt'):
+    wlog.write('{0}: <a href="{1}" target="_blank">{2}</a><br>\n'.format(intext, infile, text))
 
 def weblog_index(msinfo):
     wlog = open("./weblog/index.html","w")
@@ -353,30 +353,31 @@ def weblog_pipelineinfo(eMCP):
     wlog.write('Green = executed<br>')
     wlog.write('Red = executed but outdated by a previous step<br>')
     wlog.write('<br><h4>Relevant log files:</h4>\n')
-    write_link_txt(wlog, info_link + 'eMCP.log.txt', 'eMCP.log')
-    write_link_txt(wlog, info_link + 'casa_eMCP.log.txt', 'casa_eMCP.log')
+    write_link_txt(wlog, info_link + 'eMCP.log.txt', 'Pipeline log', text='eMCP.log')
+    write_link_txt(wlog, info_link + 'eMCP_errors.log.txt', 'Pipeline log errors only', text='eMCP_errors.log')
+    write_link_txt(wlog, info_link + 'casa_eMCP.log.txt', 'CASA log', text='casa_eMCP.log')
     # eMCP_info dictionary as text
     prt_dict_tofile(eMCP, tofilename=info_dir + 'eMCP_info.txt', pre='  ')
     eMCP_txtfile = info_link + 'eMCP_info.txt'
     wlog.write('<br><h4>Relevant parameter files:</h4>\n')
-    write_link_txt(wlog, eMCP_txtfile, 'Detailed eMCP_info dictionary')
+    write_link_txt(wlog, eMCP_txtfile, 'Pipeline info (dict)', text='eMCP_info.txt')
     # caltables dictionary as text
     try:
         caltables = load_obj(calib_dir+'caltables.pkl')
         prt_dict_tofile(caltables, tofilename=info_dir + 'caltables.txt', pre='  ')
         caltables_txtfile = info_link + 'caltables.txt'
-        write_link_txt(wlog, caltables_txtfile, 'Calibration tables txt')
+        write_link_txt(wlog, caltables_txtfile, 'Calibration info (dict)', text='caltables.txt')
     except:
         pass
     #------------------------------------------                                                                       
     weblog_foot(wlog)
     wlog.close()
 
-def write_fluxscale(wlog):
-    p = glob.glob('./weblog/info/*fluxscale.png')[0]
+def write_fluxscale(wlog, msinfo):
+    p = glob.glob(calib_dir + '{0}_fluxscale.png'.format(msinfo['msfilename']))[0]
     wlog.write('<td><a href = ".{0}"><img style="max-width:700px" src=".{0}"></a></td>\n'.format(p))
 
-    with open(info_dir + 'allcal_ap.G1_fluxes.txt') as f:
+    with open(calib_dir + 'allcal_ap.G1_fluxes.txt') as f:
         lines = f.readlines()
     wlog.write('\n<br><br>\n')
     wlog.write('CASA fluxscale output (not corrected by eMfactor):')
@@ -429,9 +430,9 @@ def weblog_calibration(eMCP):
         for calstep in all_calsteps:
             logger.debug('calstep {}'.format(calstep))
             try:
-                if calstep == 'fluxscale' and os.path.isfile(info_dir + 'allcal_ap.G1_fluxes.txt'):
+                if calstep == 'fluxscale' and os.path.isfile(calib_dir + 'allcal_ap.G1_fluxes.txt'):
                     wlog.write('<h4>{}</h4>\n'.format('fluxscale'))
-                    write_fluxscale(wlog)
+                    write_fluxscale(wlog, msinfo)
                     wlog.write('\n<hr>\n')
                 else:
                     wlog.write('<h4>{}</h4>\n'.format(caltables[calstep]['name']))
@@ -577,26 +578,28 @@ def show_image(eMCP, wlog, i):
     wlog.write('<tr><td><b>{0}</b> (Target image) ' \
                'Peak: {1:3.3f} mJy ' \
                '(scaling: {2:4.1f})</td>' \
-               '<td>(Target residual) rms: {3:5.3f} mJy</td>\n'.format(target,
-                                                               peak_target*1000.,
-                                                               scaling_target,
-                                                               noise_target*1000.))
-    wlog.write('<tr><td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(img_target+'.image'+ext+'.png'))
+               '<td>(Target residual) rms: {3:5.3f} mJy</td>' \
+               '<td>zoom image</td><td>zoom residual</td></tr>\n'.format(target,
+                                                                 peak_target*1000.,
+                                                                 scaling_target,
+                                                                 noise_target*1000.))
+    wlog.write('<tr>')
+    wlog.write('<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(img_target+'.image'+ext+'.png'))
     wlog.write('<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>\n'.format(img_target+'.residual'+ext+'.png'))
-    wlog.write('<tr><td>{0} image</td><td>{0} residual</td>\n'.format('zoom'))
-    wlog.write('<tr><td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(img_target+'.image'+ext+'_zoom.png'))
+    wlog.write('<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(img_target+'.image'+ext+'_zoom.png'))
     wlog.write('<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>\n'.format(img_target+'.residual'+ext+'_zoom.png'))
+    wlog.write('</tr>')
     wlog.write('<tr><td><b>{0}</b> (Phasecal image) ' \
                'Peak: {1:5.1f} mJy ' \
                '(scaling: {2:4.1f})</td>' \
-               '<td>(Phasecal residual) rms: {3:5.3f} mJy</td>\n'.format(phscal,
+               '<td>(Phasecal residual) rms: {3:5.3f} mJy</td>' \
+               '<td>zoom image</td><td>zoom residual</td></tr>\n'.format(phscal,
                                                                peak_phscal*1000.,
                                                                scaling_phscal,
                                                                noise_phscal*1000.))
-    wlog.write('<tr><td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(img_phscal+'.image'+ext+'.png'))
+    wlog.write('<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(img_phscal+'.image'+ext+'.png'))
     wlog.write('<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>\n'.format(img_phscal+'.residual'+ext+'.png'))
-    wlog.write('<tr><td>{0} image</td><td>{0} residual</td>\n'.format('zoom'))
-    wlog.write('<tr><td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(img_phscal+'.image'+ext+'_zoom.png'))
+    wlog.write('<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(img_phscal+'.image'+ext+'_zoom.png'))
     wlog.write('<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>\n'.format(img_phscal+'.residual'+ext+'_zoom.png'))
     wlog.write('</table><br>\n')
 

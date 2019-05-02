@@ -2,7 +2,6 @@
 import os,sys,math
 import numpy as np
 import pickle
-from Tkinter import *
 import getopt
 import logging
 import collections
@@ -14,7 +13,7 @@ from tasks import *
 import casadef
 
 
-current_version = 'v0.10.24'
+current_version = 'v0.10.25'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -27,10 +26,9 @@ if pipeline_path[-1] != '/':
     pipeline_path = pipeline_path + '/'
 sys.path.append(pipeline_path)
 
-import functions.eMERLIN_CASA_functions as em
-import functions.weblog as emwlog
-import functions.eMERLIN_CASA_plots as emplt
-#from default_params import defaults
+import functions.eMCP_functions as em
+import functions.eMCP_weblog as emwlog
+import functions.eMCP_plots as emplt
 
 casalog.setlogfile('casa_eMCP.log')
 
@@ -65,7 +63,7 @@ def get_pipeline_version(pipeline_path):
     return branch, short_commit
 
 
-def run_pipeline(inputs=None, inputs_path=''):
+def create_dir_structure(pipeline_path):
     # Paths to use
     weblog_dir = './weblog/'
     info_dir   = './weblog/info/'
@@ -82,37 +80,67 @@ def run_pipeline(inputs=None, inputs_path=''):
     em.makedir(images_dir)
     em.makedir(logs_dir)
     em.makedir(plots_dir+'caltables')
-    os.system('cp -p {0}/emerlin-2.gif {1}'.format(pipeline_path, weblog_dir))
-    os.system('cp -p {0}/eMCP.css {1}'.format(pipeline_path, weblog_dir))
-    pipeline_version = current_version
+    os.system('cp -p {0}/utils/emerlin-2.gif {1}'.format(pipeline_path, weblog_dir))
+    os.system('cp -p {0}/utils/eMCP.css {1}'.format(pipeline_path, weblog_dir))
+    return calib_dir, info_dir
 
-    # Continue with previous pipeline configuration if possible:
+def start_eMCP_dict(info_dir):
     try:
         eMCP = load_obj(info_dir + 'eMCP_info.pkl')
     except:
         eMCP = collections.OrderedDict()
         eMCP['steps'] = em.eMCP_info_start_steps()
         eMCP['img_stats'] = collections.OrderedDict()
+    return eMCP
 
-    eMCP['inputs'] = inputs
+def get_logger(    
+        LOG_FORMAT     = '%(asctime)s | %(levelname)s | %(message)s',
+        DATE_FORMAT    = '%Y-%m-%d %H:%M:%S',
+        LOG_NAME       = 'logger',
+        LOG_FILE_INFO  = 'eMCP.log',
+        LOG_FILE_ERROR = 'eMCP_errors.log'):
+
+    log           = logging.getLogger(LOG_NAME)
+    log_formatter = logging.Formatter(fmt=LOG_FORMAT, datefmt=DATE_FORMAT)
+    logging.Formatter.converter = time.gmtime
+
+    # comment this to suppress console output    
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(log_formatter)
+    log.addHandler(stream_handler) 
+
+    # Normal eMCP log with all information
+    file_handler_info = logging.FileHandler(LOG_FILE_INFO, mode='a')
+    file_handler_info.setFormatter(log_formatter)
+    file_handler_info.setLevel(logging.INFO)
+    log.addHandler(file_handler_info)
+    
+    # eMCP_error log containing only warnings or worse
+    file_handler_error = logging.FileHandler(LOG_FILE_ERROR, mode='a')
+    file_handler_error.setFormatter(log_formatter)
+    file_handler_error.setLevel(logging.WARNING)
+    log.addHandler(file_handler_error)
+
+    log.setLevel(logging.INFO)
+    return log
+    
+
+def run_pipeline(inputs=None, inputs_path=''):
+    #Create directory structure
+    calib_dir, info_dir = create_dir_structure(pipeline_path)
 
     # Setup logger
-    logger = logging.getLogger('logger')
-    logging.Formatter.converter = time.gmtime
-    logger.setLevel(logging.INFO)
-    #logger.setLevel(logging.DEBUG)
-    handler = logging.FileHandler('eMCP.log', mode = 'a') # create a file handler
-    formatter = logging.Formatter(fmt='%(asctime)s | %(levelname)s | %(message)s',datefmt='%Y-%m-%d %H:%M:%S')
-    handler.setFormatter(formatter)
-    logger.addHandler(handler) # add the handlers to the logger
-    consoleHandler = logging.StreamHandler() # Stream errors to terminal also
-    consoleHandler.setFormatter(formatter)
-    logger.addHandler(consoleHandler)
+    logger = get_logger()
+
+    # Initialize eMCP dictionary, or continue with previous pipeline configuration if possible:
+    eMCP = start_eMCP_dict(info_dir)
+    eMCP['inputs'] = inputs
 
     try:
         branch, short_commit = get_pipeline_version(pipeline_path)
     except:
         branch, short_commit = 'unknown', 'unknown'
+    pipeline_version = current_version
     logger.info('Starting pipeline')
     logger.info('Running pipeline from:')
     logger.info('{}'.format(pipeline_path))

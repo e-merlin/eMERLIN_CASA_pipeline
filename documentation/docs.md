@@ -1,10 +1,5 @@
-<!---
-I use grip to convert to html using: grip docs.md --export --title "e-MERLIN CASA pipeline"
-It can also be converted to pdf using: http://www.markdowntopdf.com/
--->
-
 # e-MERLIN CASA pipeline
-### Documentation for v1.0.0
+### Documentation for v1.0
 
 ---
 # Table of contents
@@ -52,17 +47,16 @@ You are ready to execute the pipeline. If `casa` points to casa 5.4 version:
 - Create the working path where you will work, and copy the `inputs.txt` to your working path.
 - Edit the inputs.txt file: fill the `fits_path` (where the fits files are located) and the `inbase` (any name you want to give to your project).
 - Fill in the inputs.txt file the names of your fields: `targets`, `phscals`, `fluxcal`,`bpcal`,`ptcal`.
-- Leave all other parameters as default.
-- A MS `<inbase>.ms` will be produced
-- Data will be converted to MS and prepared. Open in a web browser the file `./weblog/index.html`.
-- The weblog and the plots will be updated every time a step is finished.
+- Leave all other parameters as default so all steps will be executed.
+- Data will be converted to MS and prepared. Once data is loaded you can open in a web browser the file `./weblog/index.html`.
+- The weblog and the plots will be continuosly updated every time a step is finished.
 - If you have a list of manual flags to apply, write them in `inputfg.flags` to flag data before it is averaged in the next step.
 - If `average = 1` a new MS will be produced with name `<inbase>_avg.ms`.
 
 ### Data calibration
 - You may want to include additional manual flags in `./inputfg_avg.flags`
 - Run all the calibration steps by setting them to 1. You may prefer to run each of them one by one and check the output plots.
-- It is a good practice to redo the calibration once you are happy with your flags and you are sure of all the steps.
+- It is a good practice to redo the calibration once you are happy with your flags and parameters.
 - The whole calibration process can be repeat from scratch by setting all the steps in the Calibration section to 1, including `restore_flags` which will restore the flag status when the data was averaged.
 
 
@@ -128,6 +122,11 @@ This inputs just select which of the processing steps will be executed:
 
 Additionally, steps that produce calibration tables can be set to also apply the calibration up to that point, so also modifying the corrected column. A value of 2 means run the step and apply the calibration up to that step. The standard procedure is to apply everything at the end of the calibration with the step `applycal_all = 1`, so setting 2 to any previous step is useful just to check the calibration up to each step.
 
+### Default parameters
+
+All the parameters used by the pipeline are controlled by the file `default_param.json` that will be loaded as a python dictionary. That file can be either at your working directory, or the one in the directory `eMERLIN_CASA_pipeline` will be used.
+
+The parameters are divided in sections according to which pipeline steps they are controlling. Some parameters control or select what needs to be run, but in most cases a parameter translates directly to the CASA parameter that will be used. For example the parameter `defaults['gaincal_final']['ap_solint']`` will set the solution interval for the `ap` calibration in the step `gaincal_final`.
 
 ---
 

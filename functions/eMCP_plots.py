@@ -11,9 +11,7 @@ import datetime
 import shutil
 import glob
 
-plt.ioff()
-
-import functions.weblog as emwlog
+import functions.eMCP_weblog as emwlog
 
 # CASA imports
 from taskinit import *
@@ -21,8 +19,11 @@ from tasks import *
 from casac import casac
 msmd = casac.msmetadata()
 
+plt.ioff()
+
 import logging
 logger = logging.getLogger('logger')
+
 
 weblog_dir = './weblog/'
 info_dir   = './weblog/info/'
@@ -721,6 +722,6 @@ def fluxscale_models(calfluxes, eMfactor, msinfo):
     ax1.set_yscale('log')
     ax1.yaxis.set_major_formatter(ScalarFormatter())
 
-    plots_obs_dir = './weblog/info/'
+    plots_obs_dir = calib_dir
     plot_file = plots_obs_dir+'{0}_fluxscale.png'.format(msinfo['msfilename'])
     fig.savefig(plot_file, bbox_inches='tight')

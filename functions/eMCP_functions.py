@@ -4,7 +4,7 @@ import numpy as np
 import socket
 import pickle
 import glob
-from Tkinter import *
+import re
 import tkMessageBox
 import sys, shutil
 import copy
@@ -12,12 +12,11 @@ import getopt
 import datetime
 import dateutil
 import collections
-from eMERLIN_CASA_GUI import GUI_pipeline
 from scipy import stats
 import logging
 
-import functions.weblog as emwlog
-import functions.eMERLIN_CASA_plots as emplt
+import functions.eMCP_weblog as emwlog
+import functions.eMCP_plots as emplt
 
 # CASA imports
 from taskinit import *
@@ -57,17 +56,14 @@ def check_in(pipeline_path):
         if o in ('-i','--input'):
             logger.info('Inputs from file: {}'.format(a))
             inputs = headless(a) ## read input file
-#            inputs['quit'] = 0 ##needed to add to be compatible with GUI
-        elif o in ('-g','--gui'):
-            inputs = GUI_pipeline(pipeline_path).confirm_parameters() ## read input file
-            logger.info('inputs from GUI: {}'.format(inputs))
         elif o in ('-h','--help'):
-            logger.debug('help will be written soon')
-            sys.exit('Closing pipeline eMCP')
+            print('Usage:')
+            print('casa -c /path/to/pipeline/eMERLIN_CASA_pipeline.py -i <input file>')
+            sys.exit()
         elif o == '-c':
             logger.debug('Executing!')
         else:
-            assert False, "rerun with either headless -i or gui" #if none are specifed run GUI
+            assert False, "inputs.txt file required"
     return inputs
 
 def backslash_check(directory):
@@ -75,7 +71,6 @@ def backslash_check(directory):
         return directory+'/'
     else:
         return directory
-
 
 def headless(inputfile):
     ''' Parse the list of inputs given in the specified file. (Modified from evn_funcs.py)'''
@@ -109,25 +104,6 @@ def headless(inputfile):
             control[param] = valueout
             logger.info('{0:16s}: {1}'.format(param, valueout))
     return control
-
-def Tkinter_select():
-    root = Tkinter.Tk()
-    root.withdraw()
-    file = tkFileDialog.askdirectory(parent=root,mode='rb',title='Choose a file')
-    if file != None:
-            print file
-    return file
-
-def check_history(vis):
-    tb.open(vis+'/HISTORY')
-    x = tb.getcol('MESSAGE')
-    y = [i for i, item in enumerate(x) if 'eMER_CASA_Pipeline:' in item]
-    if len(y) == 0:
-        print 'Measurement set has not been processed \n'
-    else:
-        print 'WARNING: Some pipeline processes have already been run'
-        for i in range(len(y)):
-            print x[y[i]]
 
 def makedir(pathdir):
     try:
@@ -166,6 +142,9 @@ def mvdir(pathdir, outpudir):
 
 
 def exit_pipeline(eMCP=''):
+    os.system('cp eMCP.log {}eMCP.log.txt'.format(info_dir))
+    os.system('cp eMCP_errors.log {}eMCP_errors.log.txt'.format(info_dir))
+    os.system('cp casa_eMCP.log {}casa_eMCP.log.txt'.format(info_dir))
     if eMCP != '':
         logger.info('Something went wrong. Producing weblog and quiting')
         emwlog.start_weblog(eMCP)
@@ -216,6 +195,7 @@ def add_step_time(step, eMCP, msg, t0, doweblog=True):
     eMCP['steps'][step] = [timestamp, delta_t_min, msg]
     save_obj(eMCP, info_dir + 'eMCP_info.pkl')
     os.system('cp eMCP.log {}eMCP.log.txt'.format(info_dir))
+    os.system('cp eMCP_errors.log {}eMCP_errors.log.txt'.format(info_dir))
     os.system('cp casa_eMCP.log {}casa_eMCP.log.txt'.format(info_dir))
     if doweblog:
         emwlog.start_weblog(eMCP)
@@ -2362,7 +2342,10 @@ def select_calibrator(param, eMCP, add_main=True):
     # Default is using all the calsources. User can specify sources in params
     msinfo = eMCP['msinfo']
     if param == 'default':
-        calsources = eMCP['msinfo']['sources']['calsources']
+        calsources = msinfo['sources']['calsources']
+        field = ','.join(np.unique(calsources.split(',')))
+    elif param == 'phscals':
+        calsources = msinfo['sources']['phscals']
         field = ','.join(np.unique(calsources.split(',')))
     elif param != '':
         field = param
@@ -2699,11 +2682,14 @@ def eM_fluxscale(eMCP, caltables):
     cals_to_scale = select_calibrator(eMCP['defaults']['initial_gaincal']['ap_calibrator'], eMCP)
     fluxcal = sources['fluxcal']
     caltable_name = flux['tablename']
+    # Remove previous results:
+    rmfile(calib_dir + 'allcal_ap.G1_fluxes.txt')
+    rmfile(calib_dir+ '{0}_fluxscale.png'.format(msinfo['msfilename']))
     # Check if table allcal_ap.G1 exists:
     check_table_exists(caltables, ampcal_table)
     caltables[caltable_name] = copy.copy(caltables[ampcal_table])
     caltables[caltable_name]['table']=caltables[ampcal_table]['table']+'_fluxscaled'
-    fluxes_txt = info_dir+ caltables[caltable_name]['name']+'_fluxes.txt'
+    fluxes_txt = calib_dir+ caltables[caltable_name]['name']+'_fluxes.txt'
     logger.info('Flux density scale from: {0}'.format(fluxcal))
     logger.info('Transfered to: {0}'.format(cals_to_scale))
     logger.info('Input caltable: {0}'.format(caltables[ampcal_table]['table']))
@@ -2716,13 +2702,13 @@ def eM_fluxscale(eMCP, caltables):
                           listfile  = fluxes_txt)
     logger.info('Modified caltable: {0}'.format(caltables[caltable_name]['table']))
     logger.info('Spectrum information: {0}'.format(caltables[caltable_name]['table']+'_fluxes.txt'))
-    save_obj(calfluxes, info_dir + 'calfluxes.pkl')
     if calfluxes == None:
         logger.critical('Something went wrong with fluxscale')
         logger.warning('This probably means that necessary data are missing:')
         logger.warning('Required sources: {0}'.format(cals_to_scale))
         logger.warning('Required antennas: {0}'.format(','.join(anten_for_flux)))
         exit_pipeline(eMCP)
+    save_obj(calfluxes, calib_dir + 'calfluxes.pkl')
     # Compute correction to scale the flux density of 3C286 according to
     # resolution provided by the shortest available baseline of e-MERLIN
     eMfactor = calc_eMfactor(msfile, field=fluxcal)
@@ -3071,7 +3057,7 @@ def gaincal_final_scan(eMCP, caltables):
     caltables[caltable_name]['previous_cal'] = gain_final['ap_scan_prev_cal']
     caltables[caltable_name]['gaintype'] = 'G'
     caltables[caltable_name]['calmode'] = 'ap'
-    caltables[caltable_name]['field'] = select_calibrator(gain_final['ap_calibrator'], eMCP, add_main=False)
+    caltables[caltable_name]['field'] = select_calibrator(gain_final['ap_scan_calibrator'], eMCP, add_main=False)
     caltables[caltable_name]['solint'] = gain_final['ap_scan_solint']
     caltables[caltable_name]['combine'] = gain_final['ap_scan_combine']
     caltables[caltable_name]['spw'] = make_spw(msinfo, gain_final['ap_scan_spw'])
@@ -3122,6 +3108,8 @@ def applycal_all(eMCP, caltables):
             msfile_sp = eMCP['msinfo']['msfile_sp']
             logger.info('Running statwt on narrow data {}'.format(msfile_sp))
             statwt(vis=msfile_sp, timebin=timebin)
+    else:
+        logger.info('statwt not selected')
     msg = ''
     eMCP = add_step_time('applycal_all', eMCP, msg, t0)
     return eMCP
