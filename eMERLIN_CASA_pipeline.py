@@ -1,16 +1,19 @@
-##Dependencies##
+# Dependencies
 import os,sys,math
 import numpy as np
 import pickle
-from Tkinter import *
 import getopt
 import logging
+import collections
+import json
 
 # CASA imports
 from taskinit import *
 from tasks import *
+import casadef
 
-pipeline_version = 'v0.7.10'
+
+current_version = 'v1.0.0'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -23,22 +26,34 @@ if pipeline_path[-1] != '/':
     pipeline_path = pipeline_path + '/'
 sys.path.append(pipeline_path)
 
-import functions.eMERLIN_CASA_functions as em
-import functions.weblog as emwlog
-import functions.eMERLIN_CASA_plots as emplt
-#import functions.eMERLIN_CASA_GUI as emGUI
+import functions.eMCP_functions as em
+import functions.eMCP_weblog as emwlog
+import functions.eMCP_plots as emplt
 
 casalog.setlogfile('casa_eMCP.log')
 
 # Functions
 # Save and load dictionaries
 def save_obj(obj, name):
-    with open(name + '.pkl', 'wb') as f:
+    with open(name, 'wb') as f:
         pickle.dump(obj, f)
 
 def load_obj(name):
-    with open(name + '.pkl', 'rb') as f:
+    with open(name, 'rb') as f:
         return pickle.load(f)
+
+def deunicodify_hook(pairs):
+    # Solves the problem of using unicode in python 2 when strings are needed
+    # and uses ordered dict
+    new_pairs = []
+    for key, value in pairs:
+        if isinstance(value, unicode):
+            value = value.encode('utf-8')
+        if isinstance(key, unicode):
+            key = key.encode('utf-8')
+        new_pairs.append((key, value))
+    return collections.OrderedDict(new_pairs)
+
 
 def get_pipeline_version(pipeline_path):
     headfile = pipeline_path + '.git/HEAD'
@@ -47,66 +62,113 @@ def get_pipeline_version(pipeline_path):
     short_commit = commit[:7]
     return branch, short_commit
 
-def run_pipeline(inputs=None, inputs_path=''):
-    # Setup logger
-    logger = logging.getLogger('logger')
+
+def create_dir_structure(pipeline_path):
+    # Paths to use
+    weblog_dir = './weblog/'
+    info_dir   = './weblog/info/'
+    calib_dir  = './weblog/calib/'
+    plots_dir  = './weblog/plots/'
+    logs_dir   = './logs/'
+    images_dir = './weblog/images/'
+
+    ## Create directory structure ##
+    em.makedir(weblog_dir)
+    em.makedir(info_dir)
+    em.makedir(plots_dir)
+    em.makedir(calib_dir)
+    em.makedir(images_dir)
+    em.makedir(logs_dir)
+    em.makedir(plots_dir+'caltables')
+    os.system('cp -p {0}/utils/emerlin-2.gif {1}'.format(pipeline_path, weblog_dir))
+    os.system('cp -p {0}/utils/eMCP.css {1}'.format(pipeline_path, weblog_dir))
+    return calib_dir, info_dir
+
+def start_eMCP_dict(info_dir):
+    try:
+        eMCP = load_obj(info_dir + 'eMCP_info.pkl')
+    except:
+        eMCP = collections.OrderedDict()
+        eMCP['steps'] = em.eMCP_info_start_steps()
+        eMCP['img_stats'] = collections.OrderedDict()
+    return eMCP
+
+def get_logger(    
+        LOG_FORMAT     = '%(asctime)s | %(levelname)s | %(message)s',
+        DATE_FORMAT    = '%Y-%m-%d %H:%M:%S',
+        LOG_NAME       = 'logger',
+        LOG_FILE_INFO  = 'eMCP.log',
+        LOG_FILE_ERROR = 'eMCP_errors.log'):
+
+    log           = logging.getLogger(LOG_NAME)
+    log_formatter = logging.Formatter(fmt=LOG_FORMAT, datefmt=DATE_FORMAT)
     logging.Formatter.converter = time.gmtime
-    logger.setLevel(logging.INFO)
-    handler = logging.FileHandler('eMCP.log', mode = 'a') # create a file handler
-    handler.setLevel(logging.INFO)
-    formatter = logging.Formatter(fmt='%(asctime)s | %(levelname)s | %(message)s',datefmt='%Y-%m-%d %H:%M:%S')
-    handler.setFormatter(formatter)
-    logger.addHandler(handler) # add the handlers to the logger
-    consoleHandler = logging.StreamHandler() # Stream errors to terminal also
-    consoleHandler.setFormatter(formatter)
-    logger.addHandler(consoleHandler)
+
+    # comment this to suppress console output    
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(log_formatter)
+    log.addHandler(stream_handler) 
+
+    # Normal eMCP log with all information
+    file_handler_info = logging.FileHandler(LOG_FILE_INFO, mode='a')
+    file_handler_info.setFormatter(log_formatter)
+    file_handler_info.setLevel(logging.INFO)
+    log.addHandler(file_handler_info)
+    
+    # eMCP_error log containing only warnings or worse
+    file_handler_error = logging.FileHandler(LOG_FILE_ERROR, mode='a')
+    file_handler_error.setFormatter(log_formatter)
+    file_handler_error.setLevel(logging.WARNING)
+    log.addHandler(file_handler_error)
+
+    log.setLevel(logging.INFO)
+    return log
+    
+
+def run_pipeline(inputs=None, inputs_path=''):
+    #Create directory structure
+    calib_dir, info_dir = create_dir_structure(pipeline_path)
+
+    # Setup logger
+    logger = get_logger()
+
+    # Initialize eMCP dictionary, or continue with previous pipeline configuration if possible:
+    eMCP = start_eMCP_dict(info_dir)
+    eMCP['inputs'] = inputs
 
     try:
         branch, short_commit = get_pipeline_version(pipeline_path)
     except:
         branch, short_commit = 'unknown', 'unknown'
+    pipeline_version = current_version
     logger.info('Starting pipeline')
-    logger.info('Running pipeline from: {}'.format(pipeline_path))
+    logger.info('Running pipeline from:')
+    logger.info('{}'.format(pipeline_path))
+    logger.info('CASA version: {}'.format(casadef.casa_version))
     logger.info('Pipeline version: {}'.format(pipeline_version))
     logger.info('Using github branch: {}'.format(branch))
     logger.info('github last commit: {}'.format(short_commit))
     logger.info('This log uses UTC times')
-
+    eMCP['pipeline_path'] = pipeline_path
+    eMCP['casa_version'] = casadef.casa_version
+    em.check_pipeline_conflict(eMCP, pipeline_version)
+    eMCP['pipeline_version'] = pipeline_version
+    save_obj(eMCP, info_dir + 'eMCP_info.pkl')
     # Inputs
     if inputs_path == '': # Running pipeline
         inputs = em.check_in(pipeline_path)
     else: # Running pipeline from within CASA
         inputs = em.headless(inputs_path)
 
-    # Paths to use
-    fits_path = em.backslash_check(inputs['fits_path'])
-    calib_dir = './calib/'
-    plots_dir = './plots/'
-    logs_dir  = './logs/'
-    images_dir = './images/'
+    # Load default parameters
+    if os.path.isfile('./default_params.json'):
+        defaults_file = './default_params.json'
+    else:
+        defaults_file = pipeline_path+'/default_params.json'
+    logger.info('Loading default parameters from {0}:'.format(defaults_file))
+    eMCP['defaults'] = json.loads(open(defaults_file).read(),
+                                  object_pairs_hook=deunicodify_hook)
 
-    # Flags applied to the data by the pipeline
-    try:
-        flags = load_obj('./flags')
-        logger.info('Loaded previous flags list from: {0}'.format('./flags.pkl'))
-    except:
-        flags = []
-        logger.info('Generating empty flags list')
-
-
-    ## Create directory structure ##
-    em.makedir(plots_dir)
-    em.makedir(calib_dir)
-    em.makedir(logs_dir)
-    em.makedir(images_dir)
-    em.makedir(plots_dir+'caltables')
-
-#    if inputs['quit'] == 1: #Check from GUI if quit is needed
-#        logger.debug('Pipeline exit')
-#        sys.exit()
-
-    msfile = inputs['inbase']+'.ms'
-    logger.info('Using MS file: {0}'.format(msfile))
 
     #################################
     ### LOAD AND PREPROCESS DATA  ###
@@ -114,307 +176,127 @@ def run_pipeline(inputs=None, inputs_path=''):
 
     ## Pipeline processes, inputs are read from the inputs dictionary
     if inputs['run_importfits'] > 0:
-        em.run_importfitsIDI(fits_path, msfile, doaverage=inputs['run_importfits'])
-        em.check_mixed_mode(msfile,mode='split')
+        eMCP = em.import_eMERLIN_fitsIDI(eMCP)
 
-    ### Write summary weblog ###
-    if inputs['summary_weblog'] > 0:
-        msinfo = em.get_msinfo(msfile, inputs)
-        save_obj(msinfo, msfile+'.msinfo')
-        logger.info('Saving information of MS {0} in: {1}'.format(msfile, msfile+'.pkl'))
-        logger.info('Starting summary weblog')
-        if not os.path.isdir(msfile):
-            logger.info('Error finding original data: {0}'.format(msfile))
-            logger.info('summary_weblog cannot be run. Exiting pipeline.')
-            sys.exit()
-        emplt.make_elevation(msfile, msinfo)
-        emplt.make_uvcov(msfile, msinfo)
-        emwlog.start_weblog(msinfo)
-
-    if inputs['hanning'] > 0:
-        run_hanning = inputs['hanning']
-        em.hanning(inputvis=msfile, run_hanning=run_hanning, deloriginal=True)
-
-    ### Convert MS to MMS ###
-    if inputs['ms2mms'] > 0:
-        em.ms2mms(vis=msfile,mode='parallel')
+    if os.path.isdir('./'+inputs['inbase']+'.ms') == True:
+        msfile = inputs['inbase']+'.ms'
+        eMCP, msinfo, msfile = em.get_msinfo(eMCP, msfile)
+        em.plot_elev_uvcov(eMCP)
 
     ### check for parallelisation
     if os.path.isdir('./'+inputs['inbase']+'.mms') == True:
         msfile = inputs['inbase']+'.mms'
-        msinfo = em.get_msinfo(msfile, inputs)
-        save_obj(msinfo, msfile+'.msinfo')
-        logger.info('Saving information of MS {0} in: {1}'.format(msfile, msfile+'.pkl'))
-        logger.info('Using MS file: {0}'.format(msfile))
+        eMCP, msinfo, msfile = em.get_msinfo(eMCP, msfile)
+        em.plot_elev_uvcov(eMCP)
 
     ### Run AOflagger
-    if inputs['flag_0_aoflagger'] > 0:
-        if inputs['flag_0_aoflagger'] == 1:
-            separate_bands = True
-        elif inputs['flag_0_aoflagger'] == 2:
-            separate_bands = False
-        else:
-            logger.warning('flag_0_aoflagger can only be 1 or 2')
-        flags = em.run_aoflagger_fields(msfile=msfile, separate_bands=separate_bands,
-                                        flags=flags, fields='all', pipeline_path = pipeline_path)
+    if inputs['flag_aoflagger'] > 0:
+        eMCP = em.run_aoflagger_fields(eMCP)
 
     ### A-priori flagdata: Lo&Mk2, edge channels, standard quack
-    if inputs['flag_1_apriori'] > 0:
-        sources = em.user_sources(inputs)
-        Lo_dropout_scans =inputs['Lo_dropout_scans']
-        try:
-            msinfo
-        except:
-            msinfo = em.get_msinfo(msfile, inputs)
-            save_obj(msinfo, msfile+'.msinfo')
-        flags = em.flagdata1_apriori(msfile=msfile, msinfo=msinfo,
-                                     Lo_dropout_scans=Lo_dropout_scans, flags=flags, do_quack=True)
+    if inputs['flag_apriori'] > 0:
+        eMCP = em.flagdata1_apriori(eMCP)
 
     ### Load manual flagging file
-    if inputs['flag_2a_manual'] > 0:
-        flags = em.flagdata2_manual(msfile=msfile, inpfile=inputs['manual_flags_a'], flags=flags)
-
-    ### Multi phase center ###
-    if inputs['shift_field_pos'] > 0:
-        em.shift_all_positions(msfile)
+    if inputs['flag_manual'] > 0:
+        eMCP = em.flagdata_manual(eMCP, run_name='flag_manual')
 
     ### Average data ###
-    if inputs['average_1'] > 0:
-        sources = em.user_sources(inputs)
-        timebin = '{}s'.format(inputs['average_1'])
-        em.run_split(msfile, sources=sources, width=4, timebin=timebin)
+    if inputs['average'] > 0:
+        eMCP = em.run_average(eMCP)
 
     # Check if averaged data already generated
     if os.path.isdir('./'+inputs['inbase']+'_avg.mms') == True:
         msfile = './'+inputs['inbase']+'_avg.mms'
-        avg_file = True
+        eMCP, msinfo, msfile = em.get_msinfo(eMCP, msfile)
+        em.plot_elev_uvcov(eMCP)
     elif os.path.isdir('./'+inputs['inbase']+'_avg.ms') == True:
         msfile = './'+inputs['inbase']+'_avg.ms'
-        avg_file = True
-    else:
-        avg_file = False
-
-    ### Load or create dictionary with ms information.
-    if avg_file == True:
-        logger.info('Using MS file: {0}'.format(msfile))
-        msinfo = em.get_msinfo(msfile, inputs)
-        save_obj(msinfo, msfile+'.msinfo')
-    else:
-        try:
-            msinfo   # Don't produce it again if summary_weblog was just executed.
-        except:
-            msinfo = em.get_msinfo(msfile, inputs)
-            save_obj(msinfo, msfile+'.msinfo')
+        eMCP, msinfo, msfile = em.get_msinfo(eMCP, msfile)
+        em.plot_elev_uvcov(eMCP)
 
     ### Produce some plots ###
     if inputs['plot_data'] == 1:
-        emplt.make_4plots(msfile, msinfo, datacolumn='data')
+        eMCP = emplt.make_4plots(eMCP, datacolumn='data')
 
     ### Save flag status up to this point
     if inputs['save_flags'] == 1:
-        em.saveflagstatus(msinfo)
-
+        eMCP = em.saveflagstatus(eMCP)
 
     ###################
     ### CALIBRATION ###
     ###################
 
-    # All the calibration steps will be saved in the dictionary caltables.pkl
-    # located in the calib directory. If it does not exist a new one is created.
-    any_calsteps = ['bandpass_0', 'delay', 'flag_3_tfcropBP','gain_0_p_ap','fluxscale','bandpass_1_sp','gain_1_amp_sp','applycal_all', 'weblog']
-    if np.array([inputs[cal]>0 for cal in any_calsteps]).any():
-        try:
-            caltables = load_obj(calib_dir+'caltables')
-            logger.info('Loaded previous calibration tables from: {0}'.format(calib_dir+'caltables.pkl'))
-        except:
-            caltables = {}
-            caltables['inbase'] = inputs['inbase']
-            caltables['plots_dir'] = plots_dir
-            caltables['calib_dir'] = calib_dir
-            caltables['num_spw'] = msinfo['num_spw']
-            all_calsteps = [
-                    'bpcal_d.K0',
-                    'bpcal_p.G0',
-                    'bpcal_ap.G1',
-                    'bpcal.B0',
-                    'delay.K1',
-                    'allcal_p.G0',
-                    'allcal_p_jitter.G0',
-                    'allcal_ap.G1',
-                    'phscal_p_scan.G2',
-                    'bpcal_sp.B1',
-                    'allcal_ap.G3',
-                    'allcal_ap_scan.G3']    # This is just used to know which tables to search in weblog
-            caltables['all_calsteps'] = all_calsteps
-            logger.info('New caltables dictionary created. Saved to: {0}'.format(calib_dir+'caltables.pkl'))
-        caltables['Lo_dropout_scans'] = inputs['Lo_dropout_scans']
-        caltables['refant'] = msinfo['refant']
-        save_obj(caltables, calib_dir+'caltables')
+    ### Initialize caltable dictionary
+    caltables = em.initialize_cal_dict(inputs, eMCP)
 
     ### Restore flag status at to this point
     if inputs['restore_flags'] == 1:
-        em.restoreflagstatus(msinfo)
+        eMCP = em.restoreflagstatus(eMCP)
 
     ### Load manual flagging file
-    if inputs['flag_2b_manual'] == 1:
-        flags = em.flagdata2_manual(msfile=msfile, inpfile=inputs['manual_flags_b'], flags=flags)
+    if inputs['flag_manual_avg'] == 1:
+        eMCP = em.flagdata_manual(eMCP, run_name='flag_manual_avg')
+        caltables['Lo_dropout_scans'] = eMCP['msinfo']['Lo_dropout_scans']
+        save_obj(caltables, calib_dir+'caltables.pkl')
 
     ### Initialize models ###
     if inputs['init_models'] > 0:  # Need to add parameter to GUI
-        models_path = pipeline_path+'calibrator_models/'
-        em.run_initialize_models(msfile=msfile, fluxcal=msinfo['sources']['fluxcal'],
-                                 models_path=models_path)
-
+        eMCP = em.run_initialize_models(eMCP)
 
     ### Initial BandPass calibration ###
-    if inputs['bandpass_0'] > 0:
-        caltables = em.initial_bp_cal(msfile=msfile, msinfo=msinfo, caltables=caltables,
-                                      previous_cal=[])
-        save_obj(caltables, calib_dir+'caltables')
-        save_obj(caltables, calib_dir+'caltables_bandpass0')
-        if inputs['bandpass_0'] == 2:
-            em.run_applycal(msfile=msfile, caltables=caltables,
-                            sources=msinfo['sources'], previous_cal=['bpcal.B0'],
-                            previous_cal_targets=['bpcal.B0'])
+    if inputs['bandpass'] > 0:
+        eMCP, caltables = em.initial_bp_cal(eMCP, caltables)
 
-    ### Flagdata using TFCROP and bandpass shape B0
-    if inputs['flag_3_tfcropBP'] > 0:
-        # If B0 has not been applied before, do it now
-        if inputs['bandpass_0'] != 2:
-            em.run_applycal(msfile=msfile, caltables=caltables, sources=msinfo['sources'],
-               previous_cal=['bpcal.B0'], previous_cal_targets=['bpcal.B0'])
-        flags = em.flagdata3_tfcropBP(msfile=msfile, msinfo=msinfo, flags=flags)
-
-
-    ### Delay calibration ###
-    use_fringefit = False
-    if inputs['delay'] > 0:
-        if not use_fringefit:
-            caltables = em.solve_delays(msfile=msfile, msinfo=msinfo, caltables=caltables,
-                                        previous_cal=['bpcal.B0'])
-        else:
-            logger.info('Full fringe fit selected.')
-            caltables = em.delay_fringefit(msfile=msfile, msinfo=msinfo, caltables=caltables,
-                                           previous_cal=['bpcal.B0'])
-        # Should the previous_cal be bpcal.B0? Probably better delay fit, but later
-        # delay.K1 is applied without bpcal.B0, when bpcal_sp.B1 is computed
-        save_obj(caltables, calib_dir+'caltables')
-        save_obj(caltables, calib_dir+'caltables_delay')
-        if inputs['delay'] == 2:
-            em.run_applycal(msfile=msfile, caltables=caltables, sources=msinfo['sources'],
-               previous_cal=['bpcal.B0','delay.K1'],
-               previous_cal_targets=['bpcal.B0','delay.K1'])
-
-
-    ### Initial gain calibration ###
-    if inputs['gain_0_p_ap'] > 0:
-        caltables = em.initial_gaincal(msfile=msfile, msinfo=msinfo, caltables=caltables,
-                                       previous_cal=['delay.K1', 'bpcal.B0'])
-        save_obj(caltables, calib_dir+'caltables')
-        save_obj(caltables, calib_dir+'caltables_gaincal')
-        if inputs['gain_0_p_ap'] == 2:
-            em.run_applycal(msfile=msfile, caltables=caltables, sources=msinfo['sources'],
-               previous_cal=['delay.K1','allcal_p.G0', 'allcal_p_jitter.G0', 'allcal_ap.G1','bpcal.B0'],
-               previous_cal_targets=['delay.K1','phscal_p_scan.G2','allcal_ap.G1','bpcal.B0'])
+    ### Initial gaincal = delay, p, ap ###
+    if inputs['initial_gaincal'] > 0:
+        eMCP, caltables = em.initial_gaincal(eMCP, caltables)
 
     ### Flux scale ###
     if inputs['fluxscale'] > 0:
-        caltables = em.eM_fluxscale(msfile=msfile, msinfo=msinfo,
-                                    caltables=caltables,
-                                    sources=msinfo['sources'],
-                                    ampcal_table='allcal_ap.G1',
-                                    antennas=msinfo['antennas'])
-        save_obj(caltables, calib_dir+'caltables')
-        save_obj(caltables, calib_dir+'caltables_fluxscale')
-        if inputs['fluxscale'] == 2:
-            em.run_applycal(msfile=msfile, caltables=caltables,
-                            sources=msinfo['sources'],
-                            previous_cal=['delay.K1','allcal_p.G0','allcal_p_jitter.G0','allcal_ap.G1_fluxscaled','bpcal.B0'],
-                            previous_cal_targets=['delay.K1','phscal_p_scan.G2','allcal_ap.G1_fluxscaled','bpcal.B0'])
+        eMCP, caltables = em.eM_fluxscale(eMCP, caltables)
 
     ### BandPass calibration with spectral index information ###
-    if inputs['bandpass_1_sp'] > 0:
-        caltables = em.bandpass_sp(msfile=msfile, msinfo=msinfo, caltables=caltables,
-                                   previous_cal=['delay.K1','allcal_p.G0','allcal_p_jitter.G0','allcal_ap.G1_fluxscaled'])
-        save_obj(caltables, calib_dir+'caltables')
-        save_obj(caltables, calib_dir+'caltables_bandpass_sp')
-        if inputs['bandpass_1_sp'] == 2:
-            em.run_applycal(msfile=msfile, caltables=caltables, sources=msinfo['sources'],
-               previous_cal=['delay.K1','allcal_p.G0','allcal_p_jitter.G0','allcal_ap.G1_fluxscaled','bpcal_sp.B1'],
-               previous_cal_targets=['delay.K1','phscal_p_scan.G2','allcal_ap.G1_fluxscaled','bpcal_sp.B1'])
+    if inputs['bandpass_final'] > 0:
+        eMCP, caltables = em.bandpass_final(eMCP, caltables)
 
     ### Amplitude calibration including spectral information ###
-    if inputs['gain_1_amp_sp'] > 0:
-        caltables = em.sp_amp_gaincal(msfile=msfile, msinfo=msinfo, caltables=caltables,
-                                      previous_cal=['delay.K1','allcal_p.G0','allcal_p_jitter.G0','bpcal_sp.B1'])
-        save_obj(caltables, calib_dir+'caltables')
-        save_obj(caltables, calib_dir+'caltables_gaincal')
-        if inputs['gain_1_amp_sp'] == 2:
-            em.run_applycal(msfile=msfile, caltables=caltables,
-                            sources=msinfo['sources'],
-                            previous_cal=['delay.K1','bpcal_sp.B1','allcal_p.G0','allcal_p_jitter.G0','allcal_ap.G3'],
-                            previous_cal_targets=['delay.K1','bpcal_sp.B1','phscal_p_scan.G2','allcal_ap_scan.G3'])
-
+    if inputs['gaincal_final'] > 0:
+        eMCP, caltables = em.gaincal_final(eMCP, caltables)
 
     ### Apply calibration  ###
     if inputs['applycal_all'] > 0:
-        em.run_applycal(msfile=msfile, caltables=caltables, sources=msinfo['sources'],
-           previous_cal=['delay.K1','bpcal_sp.B1','allcal_p.G0','allcal_p_jitter.G0','allcal_ap.G3'],
-           previous_cal_targets=['delay.K1','bpcal_sp.B1','phscal_p_scan.G2','allcal_ap_scan.G3'])
-        msinfo['applycal_all'] = True
-        save_obj(msinfo, msfile+'.msinfo')
-
+        eMCP = em.applycal_all(eMCP, caltables)
 
     ### RFLAG automatic flagging ###
-    if inputs['flag_4_rflag'] > 0:
-        try:
-            msinfo['applycal_all'] == True
-            flags = em.flagdata4_rflag(msfile=msfile, msinfo=msinfo, flags=flags)
-        except:
-            logger.warning('flag_4_rflag selected but applycal_all has not been run. RFLAG only works on calibrated data!')
-            logger.warning('flag_4_rflag will not be executed.')
+    if inputs['flag_target'] > 0:
+        em.run_flag_target(eMCP)
 
     ### Produce some visibility plots ###
     if inputs['plot_corrected'] > 0:
-        emplt.make_4plots(msfile, msinfo, datacolumn='corrected')
-        emplt.make_uvplt(msinfo)
+        eMCP = emplt.make_4plots(eMCP, datacolumn='corrected')
 
     ### First images ###
     if inputs['first_images'] > 0:
-        em.run_first_images(msinfo)
+        eMCP = em.run_first_images(eMCP)
 
-    ### Plot flagstatistics ###
-    if inputs['flag_statistics'] > 0:
-        emplt.flag_statistics(msinfo)
 
-    ### Write weblog ###
-    if inputs['weblog'] > 0:
-        elevplot = './plots/plots_observation/{0}_elevation.png'.format(msinfo['msfilename'])
-        if os.path.isfile(elevplot):
-            logger.info('Elevation plot found.')
-            logger.info('To regenerate elev and uvcov plots remove {}.'.format(elevplot))
-        else:
-            emplt.make_elevation(msfile, msinfo)
-            emplt.make_uvcov(msfile, msinfo)
-        emwlog.start_weblog(msinfo)
+    # Keep important files
+    save_obj(eMCP, info_dir + 'eMCP_info.pkl')
+    os.system('cp eMCP.log {}eMCP.log.txt'.format(info_dir))
+    os.system('cp casa_eMCP.log {}casa_eMCP.log.txt'.format(info_dir))
 
-    ### Run monitoring for bright sources:
-    try:
-        if inputs['monitoring'] > 0:
-            flags, caltables = em.monitoring(msfile=msfile, msinfo=msinfo,
-                                             flags=flags, caltables=caltables,
-                                             previous_cal=[''])
-    except:
-        pass
+    emwlog.start_weblog(eMCP)
 
     try:
         os.system('mv casa-*.log *.last ./logs')
+        logger.info('Moved casa-*.log *.last to ./logs')
     except:
         pass
     logger.info('Pipeline finished')
     logger.info('#################')
 
-    return inputs, msinfo
+    return
 
 
 
@@ -423,7 +305,7 @@ try:
     if run_in_casa == True:
         # Running the pipeline from inside CASA
         print('Pipeline initialized. To run the pipeline within CASA use:')
-        print('inputs, caltables, msinfo = run_pipeline(inputs_path=<input file>)')
+        print('run_pipeline(inputs_path=<input file>)')
 except:
     inputs = em.check_in(pipeline_path)
     run_pipeline(inputs=inputs)

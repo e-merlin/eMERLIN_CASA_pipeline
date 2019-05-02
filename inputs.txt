@@ -4,47 +4,34 @@
 
 fits_path       = /path/to/fits/files/
 inbase          = 'project_name'
-targets         = ''
-phscals         = ''
-fluxcal         = '1331+305'
-bpcal           = '1407+284'
-ptcal           = '0319+415'
-refant          = 'Mk2'
-Lo_dropout_scans= ''
-manual_flags_a  = ./inputfg_a.flags      # Used in flag_2a_manual
-manual_flags_b  = ./inputfg_b_avg.flags  # Used in flag_2b_manual
-
+targets         = 'target_name'
+phscals         = 'phscal_name'
+fluxcal         = 'fluxcal_name'
+bpcal           = 'bpcal_name'
+ptcal           = 'ptcal_name'
+refant          = ''
 
 # 2. Process inputs
 
 ## Pre-processing (0=don't run, 1=run):
 run_importfits  = 1
-summary_weblog  = 1
-hanning         = 0
-ms2mms          = 0
-flag_0_aoflagger= 0
-flag_1_apriori  = 0
-flag_2a_manual  = 0
-shift_field_pos = 0
-average_1       = 0
-plot_data       = 0
-save_flags	= 0
+flag_aoflagger  = 1
+flag_apriori    = 1
+flag_manual     = 1   # Commands in ./inputfg.flags
+average         = 1
+plot_data       = 1
+save_flags      = 1
 
 ## Calibration (0=don't run, 1=run):
-restore_flags	= 0
-flag_2b_manual  = 0
-init_models     = 0
-bandpass_0      = 0
-flag_3_tfcropBP = 0
-delay           = 0
-gain_0_p_ap     = 0
-fluxscale       = 0
-bandpass_1_sp   = 0
-gain_1_amp_sp   = 0
-applycal_all    = 0
-flag_4_rflag    = 0
-plot_corrected  = 0
-first_images    = 0
-flag_statistics = 0
-weblog          = 0
-# To apply calibration up to an individual step, read the documentation
+restore_flags   = 1
+flag_manual_avg = 1   # Commands in ./inputfg_avg.flags
+init_models     = 1
+bandpass        = 1
+initial_gaincal = 1
+fluxscale       = 1
+bandpass_final  = 1
+gaincal_final   = 1
+applycal_all    = 1
+flag_target     = 1
+plot_corrected  = 1
+first_images    = 1
