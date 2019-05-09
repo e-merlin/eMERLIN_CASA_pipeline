@@ -3646,7 +3646,7 @@ def find_Lo_amp_spw(msfile, phscal, phscal_scans, spw, eMCP):
     results_tmp = visstat(msfile, scan='',
                           field = phscal,
                           antenna='Lo&*',
-                          spw = spw + ':'+eMCP['msinfo']['innerchan'],
+                          spw = str(spw + ':'+eMCP['msinfo']['innerchan'])
                           datacolumn = Lo_defaults['Lo_datacolumn'],
                           useflags = Lo_defaults['Lo_useflags'],
                           correlation = 'RR,LL',

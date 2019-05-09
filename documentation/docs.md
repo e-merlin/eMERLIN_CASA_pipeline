@@ -59,6 +59,10 @@ You are ready to execute the pipeline. If `casa` points to casa 5.4 version:
 - It is a good practice to redo the calibration once you are happy with your flags and parameters.
 - The whole calibration process can be repeat from scratch by setting all the steps in the Calibration section to 1, including `restore_flags` which will restore the flag status when the data was averaged.
 
+### Spectral line data
+
+Mixed mode observations contain at least two spectral configurations: the normal continuum data and high-resolution narrow-band data. For simplicity, both modes are splitted in two measurement sets: `<inbase>.ms` and `<inbase>_sp.ms`. Narrow-band data will be processed in parallel to the continuum data. Calibration tables for phase offsets and narrow-band bandpass tables will be included in the weblog, but no visibility plots or cleaned images will be produced.
+
 
 ---
 
