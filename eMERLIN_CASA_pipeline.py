@@ -13,7 +13,7 @@ from tasks import *
 import casadef
 
 
-current_version = 'v1.0.1'
+current_version = 'v1.0.2'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -93,7 +93,7 @@ def start_eMCP_dict(info_dir):
         eMCP['img_stats'] = collections.OrderedDict()
     return eMCP
 
-def get_logger(    
+def get_logger(
         LOG_FORMAT     = '%(asctime)s | %(levelname)s | %(message)s',
         DATE_FORMAT    = '%Y-%m-%d %H:%M:%S',
         LOG_NAME       = 'logger',
@@ -114,7 +114,7 @@ def get_logger(
     file_handler_info.setFormatter(log_formatter)
     file_handler_info.setLevel(logging.INFO)
     log.addHandler(file_handler_info)
-    
+
     # eMCP_error log containing only warnings or worse
     file_handler_error = logging.FileHandler(LOG_FILE_ERROR, mode='a')
     file_handler_error.setFormatter(log_formatter)
@@ -123,7 +123,7 @@ def get_logger(
 
     log.setLevel(logging.INFO)
     return log
-    
+
 
 def run_pipeline(inputs=None, inputs_path=''):
     #Create directory structure
