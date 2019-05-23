@@ -13,7 +13,7 @@ from tasks import *
 import casadef
 
 
-current_version = 'v1.0.2'
+current_version = 'v1.0.3'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
