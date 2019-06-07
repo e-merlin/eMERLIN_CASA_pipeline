@@ -1130,12 +1130,12 @@ def search_observatory_flags(eMCP):
         logger.info('Trying to retrieve observatory flags (locally)')
         s1 = 'emproc1'
         s2 = 'ast.man.ac.uk'
-        loc = '/home/emerlin/jmoldon/otcx/monitor_20190205_02s.log'
+        loc = '/home/emerlin/jmoldon/otcx/antenna_monitor.log'
         try:
             os.system('scp -pr {0}.{1}:{2} /pipeline1/emerlin/files/'.format(s1,s2,loc))
         except:
             pass
-        logfile = '/pipeline1/emerlin/files/monitor_20190205_02s.log'
+        logfile = '/pipeline1/emerlin/files/antenna_monitor.log'
         data = read_flag_database(logfile, t0, t1)
         flag_commands = ''
         flagfile = 'inputfg.flags'
