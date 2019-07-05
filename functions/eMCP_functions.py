@@ -1719,6 +1719,22 @@ def initialize_cal_dict(inputs, eMCP):
         save_obj(caltables, calib_dir+'caltables.pkl')
         return caltables
 
+def read_gaincal_solutions():
+    """ Compile solution statistics from the CASA log
+        Needs to be executed right after gaincal """
+    casalog_file = casalog.logfile()
+    with open(casalog_file, 'rb') as f:
+        last_lines = f.readlines()[-40:]
+    logger.info('CASA log: {}'.format(casalog_file))
+    logger.debug(last_lines)
+    regex = re.compile(r'[ \t] Spw [0-9]{1,2}: ')
+    selected_lines = list(filter(regex.search, last_lines))
+    logger.debug(selected_lines)
+    if len(selected_lines) == 0:
+        logger.warning('No solutions found!')
+    else:
+        for line in selected_lines:
+            logger.info(line.split('\t')[-1].strip())
 
 def run_gaincal(msfile, caltables, caltable_name):
     logger.info(line0)
@@ -1760,6 +1776,7 @@ def run_gaincal(msfile, caltables, caltable_name):
             spwmap    = spwmap,
             minblperant= caltables[caltable_name]['minblperant'],
             minsnr    = caltables[caltable_name]['minsnr'])
+    read_gaincal_solutions()
     logger.info('caltable {0} in {1}'.format(caltables[caltable_name]['name'],
                                               caltables[caltable_name]['table']))
 
@@ -1816,6 +1833,7 @@ def run_gaincal_narrow(msfile_sp, caltables, caltable_name, spwmap_sp):
             spwmap    = spwmap,
             minblperant= caltables[caltable_name]['minblperant'],
             minsnr    = caltables[caltable_name]['minsnr'])
+    read_gaincal_solutions()
     logger.info('caltable {0} in {1}'.format(caltables[caltable_name]['name'],
                                               caltables[caltable_name]['table']))
 
