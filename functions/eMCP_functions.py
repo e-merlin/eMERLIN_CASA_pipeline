@@ -1736,6 +1736,23 @@ def read_gaincal_solutions():
         for line in selected_lines:
             logger.info(line.split('\t')[-1].strip())
 
+def read_applycal_flags():
+    """ Compile flag statistics from the CASA log
+        Needs to be executed right after applycal """
+    casalog_file = casalog.logfile()
+    with open(casalog_file, 'rb') as f:
+        last_lines = f.readlines()[-40:]
+    logger.debug('CASA log: {}'.format(casalog_file))
+    logger.debug(last_lines)
+    regex = re.compile(r' Jones: In: ')
+    selected_lines = list(filter(regex.search, last_lines))
+    logger.debug(selected_lines)
+    if len(selected_lines) == 0:
+        logger.warning('No applycal flags found!')
+    else:
+        for line in selected_lines:
+            logger.info(line.split('\t')[-1].strip())
+
 def run_gaincal(msfile, caltables, caltable_name):
     logger.info(line0)
     rmdir(caltables[caltable_name]['table'])
@@ -1983,6 +2000,7 @@ def run_applycal(eMCP, caltables, step, dotarget=False, insources=''):
              spwmap    = spwmap,
              applymode  = applymode,
              flagbackup= False)
+    read_applycal_flags()
     applycal_dict = collections.OrderedDict()
     for source in fields.split(','):
         applycal_dict[source] = collections.OrderedDict()
@@ -2019,6 +2037,7 @@ def run_applycal(eMCP, caltables, step, dotarget=False, insources=''):
                          spwmap    = spwmap,
                          applymode  = applymode,
                          flagbackup= False)
+                read_applycal_flags()
                 applycal_dict[s] = collections.OrderedDict()
                 for j, p in enumerate(previous_cal_targets):
                     applycal_dict[s][p] = [gainfield[j],spwmap[j],interp[j]]
@@ -2073,6 +2092,7 @@ def run_applycal_narrow(eMCP, caltables, step, spwmap_sp, dotarget=False, insour
              interp    = interp,
              spwmap    = spwmap,
              flagbackup= False)
+    read_applycal_flags()
     applycal_dict_sp = collections.OrderedDict()
     for source in fields.split(','):
         applycal_dict_sp[source] = collections.OrderedDict()
@@ -2114,6 +2134,7 @@ def run_applycal_narrow(eMCP, caltables, step, spwmap_sp, dotarget=False, insour
                          interp    = interp,
                          spwmap    = spwmap,
                          flagbackup= False)
+                read_applycal_flags()
                 applycal_dict_sp[s] = collections.OrderedDict()
                 for j, p in enumerate(previous_cal_targets):
                     applycal_dict_sp[s][p] = [gainfield[j],spwmap[j],interp[j]]
@@ -2233,6 +2254,7 @@ def run_bpcal(eMCP, caltables, doplots=True):
              field=msinfo['sources']['bpcal'],
              applymode='flagonly',
              flagbackup=False)
+    read_applycal_flags()
 
     # 2 Amplitude calibration
     caltable_name = bp['ap_tablename']
@@ -2590,6 +2612,7 @@ def gain_p_ap(eMCP, caltables, doplots=True):
              field=calsources,
              applymode='flagonly',
              flagbackup=False)
+    read_applycal_flags()
 
     # 2 Amplitude calibration
     caltable_name = gain_p_ap['ap_tablename']
