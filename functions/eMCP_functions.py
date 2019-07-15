@@ -1238,6 +1238,19 @@ def flagdata_manual(eMCP, run_name='flag_manual'):
     t0 = datetime.datetime.utcnow()
     if os.path.isfile(inpfile) == True:
         logger.info('Applying manual flags from file: {0}'.format(inpfile))
+        with open(inpfile, 'r') as f:
+            lines = [line.strip() for line in f.readlines() if line.strip()]
+            lines = [line for line in lines if line[0] != '#']
+        logger.info('Contents of {}'.format(inpfile))
+        max_lines = 30
+        if len(lines) > max_lines:
+            logger.info('Flagfile has {0} lines. '\
+                        'Only showing the first {1}'.format(len(lines),
+                                                            max_lines))
+        for l in lines[:max_lines]:
+            logger.info(l)
+        if len(lines) > max_lines:
+            logger.info('...')
         flagdata(vis=msfile, mode='list', inpfile=inpfile, flagbackup=False)
         msg = 'file={0}'.format(inpfile)
     else:
@@ -1697,7 +1710,7 @@ def initialize_cal_dict(inputs, eMCP):
     except:
         logger.warning('No msinfo found')
         sys.exit()
-    any_calsteps = ['bandpass','initial_gaincal','fluxscale',
+    any_calsteps = ['flag_manual_avg','bandpass','initial_gaincal','fluxscale',
                     'bandpass_final','gaincal_final','applycal_all']
     if np.array([inputs[cal]>0 for cal in any_calsteps]).any():
         try:
