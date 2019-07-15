@@ -1249,7 +1249,10 @@ def flagdata_manual(eMCP, run_name='flag_manual'):
             logger.info(l)
         if len(lines) > max_lines:
             logger.info('...')
-        flagdata(vis=msfile, mode='list', inpfile=inpfile, flagbackup=False)
+        if len(lines) > 0:
+            flagdata(vis=msfile, mode='list', inpfile=inpfile, flagbackup=False)
+        else:
+            logger.warning('Flagfile is empty')
         msg = 'file={0}'.format(inpfile)
     else:
         logger.info('No manual flag file selected: {0}'.format(inpfile))

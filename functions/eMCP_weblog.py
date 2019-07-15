@@ -623,9 +623,40 @@ def weblog_download(msinfo):
     weblog_foot(wlog)
     wlog.close()
 
+def find_previous_problems():
+    # Find time of last weblog update
+    with open('eMCP.log', 'r') as f:
+        lines = f.readlines()
+    last_line = 0
+    last_line = np.argwhere(['Updating weblog' in l for l in lines])[-1][0]
+    time_str = lines[last_line].split('|')[0]
+    previous_time = datetime.datetime.strptime(time_str.strip(), "%Y-%m-%d %H:%M:%S")
+    logger.debug('Previous eMCP.log time: {}'.format(time_str))
+    filename = 'casa_eMCP.log'
+    with open(filename, 'r') as f:
+        lines = f.readlines()
+    # I will start checking from the end, as it will be faster
+    for i, line in enumerate(lines[::-1]):
+        time_line = datetime.datetime.strptime(line.split('\t')[0].strip(),
+                                               "%Y-%m-%d %H:%M:%S")
+        if time_line <= previous_time:
+            previous_casa_line = i
+            break
+    logger.debug('Previous casa line {}'.format(previous_casa_line))
+    logger.debug('Previous casa line {}'.format(lines[-1*previous_casa_line]))
+    problems = False
+    if previous_casa_line != 0:
+        for line in lines[-1*previous_casa_line:]:
+            if 'SEVERE' in line:
+                logger.critical('CASA LOG SEVERE since last weblog updated:')
+                logger.critical('{}'.format(line.strip()))
+                problems = True
+    return problems
 
 def start_weblog(eMCP, silent=False):
     msinfo = eMCP['msinfo']
+    # Finding SEVERE problems before updating weblog and quiting
+    problems = find_previous_problems()
     logger.info('Updating weblog')
     ###  Start weblog  ###
     weblog_index(msinfo)
@@ -636,6 +667,8 @@ def start_weblog(eMCP, silent=False):
     weblog_flagstats(msinfo)
     weblog_images(eMCP)
     weblog_download(msinfo)
+    if problems:
+        sys.exit()
 
 
 
