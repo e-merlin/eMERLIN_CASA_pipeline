@@ -143,7 +143,6 @@ def mvdir(pathdir, outpudir):
 
 def exit_pipeline(eMCP=''):
     os.system('cp eMCP.log {}eMCP.log.txt'.format(info_dir))
-    os.system('cp eMCP_errors.log {}eMCP_errors.log.txt'.format(info_dir))
     os.system('cp casa_eMCP.log {}casa_eMCP.log.txt'.format(info_dir))
     if eMCP != '':
         logger.info('Something went wrong. Producing weblog and quiting')
@@ -195,7 +194,6 @@ def add_step_time(step, eMCP, msg, t0, doweblog=True):
     eMCP['steps'][step] = [timestamp, delta_t_min, msg]
     save_obj(eMCP, info_dir + 'eMCP_info.pkl')
     os.system('cp eMCP.log {}eMCP.log.txt'.format(info_dir))
-    os.system('cp eMCP_errors.log {}eMCP_errors.log.txt'.format(info_dir))
     os.system('cp casa_eMCP.log {}casa_eMCP.log.txt'.format(info_dir))
     if doweblog:
         emwlog.start_weblog(eMCP)

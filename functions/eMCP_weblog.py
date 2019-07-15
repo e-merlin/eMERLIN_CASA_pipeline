@@ -354,7 +354,6 @@ def weblog_pipelineinfo(eMCP):
     wlog.write('Red = executed but outdated by a previous step<br>')
     wlog.write('<br><h4>Relevant log files:</h4>\n')
     write_link_txt(wlog, info_link + 'eMCP.log.txt', 'Pipeline log', text='eMCP.log')
-    write_link_txt(wlog, info_link + 'eMCP_errors.log.txt', 'Pipeline log errors only', text='eMCP_errors.log')
     write_link_txt(wlog, info_link + 'casa_eMCP.log.txt', 'CASA log', text='casa_eMCP.log')
     # eMCP_info dictionary as text
     prt_dict_tofile(eMCP, tofilename=info_dir + 'eMCP_info.txt', pre='  ')
