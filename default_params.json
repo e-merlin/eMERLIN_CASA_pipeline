@@ -336,5 +336,15 @@
     "parallel"               : false,
     "level0"                 : 3.0,
     "zoom_range_pix"         : 150
+  },
+  "split_fields": {
+    "fields"                 : "targets",
+    "timeaverage"            : true,
+    "timebin"                : "8s",
+    "chanaverage"            : true,
+    "chanbin"                : 2,
+    "datacolumn"             : "corrected",
+    "createmms"              : false,
+    "output_dir"             : "./splits"
   }
 }

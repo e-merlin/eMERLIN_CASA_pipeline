@@ -3520,6 +3520,78 @@ def run_first_images(eMCP):
     eMCP = add_step_time('first_images', eMCP, msg, t0)
     return eMCP
 
+def run_split_fields(eMCP):
+    msinfo = eMCP['msinfo']
+    msfile = msinfo['msfile']
+    logger.info(line0)
+    logger.info('Start run_split_fields')
+    t0 = datetime.datetime.utcnow()
+    split_fields_defaults = eMCP['defaults']['split_fields']
+    fields_to_split = split_fields_defaults['fields']
+    datacolumn = split_fields_defaults['datacolumn']
+    createmms = split_fields_defaults['createmms']
+    output_dir = split_fields_defaults['output_dir']
+    makedir(output_dir)
+    if fields_to_split in msinfo['sources'].keys():
+        fields_str = msinfo['sources'][fields_to_split]
+    elif fields_to_split == '':
+        logger.critical('No fields selected to split')
+        exit_pipeline(eMCP)
+    else:
+        fields_str = fields_to_split
+    fields = sorted(fields_str.split(','))
+    logger.info('Selected fields: {}'.format(fields))
+    for i, field in enumerate(fields):
+        logger.info('Processing field: {}'.format(field))
+        chanbin = split_fields_defaults['chanbin']
+        timebin = split_fields_defaults['timebin']
+        chanaverage = split_fields_defaults['chanaverage']
+        timeaverage = split_fields_defaults['timeaverage']
+        # If a list was provided, use corresponding value
+        if type(timebin) is list:
+            logger.info('timebin is a list: {}'.format(timebin))
+            timebin = timebin[i]
+            timeaverage = timeaverage[i]
+        if type(chanbin) is list:
+            logger.info('chanbin is a list: {}'.format(chanbin))
+            chanbin = chanbin[i]
+            chanaverage = chanaverage[i]
+        # Don't use channel average if it only 1 channel selected
+        if chanaverage == True and chanbin == 1:
+            chanaverage = False
+        # Define output name
+        msfile_name = '{0}_{1}.ms'.format(msinfo['run'], field)
+        outputmsfile = os.path.join(output_dir, msfile_name)
+        rmdir(outputmsfile)
+        rmdir(outputmsfile+'.flagversions')
+        logger.info('Input MS: {0}'.format(msfile))
+        logger.info('Output MS: {0}'.format(outputmsfile))
+        if chanaverage:
+            logger.info('chanbin={0}'.format(chanbin))
+        if timeaverage:
+            logger.info('timebin={0}'.format(timebin))
+        logger.info('Datacolumn: {0}'.format(datacolumn))
+        if createmms:
+            logger.info('Create MMS: {0}'.format(createmms))
+        mstransform(vis=msfile, outputvis=outputmsfile, field=field,
+                    timeaverage=timeaverage, chanaverage=chanaverage,
+                    timebin=str(timebin), chanbin=chanbin,
+                    datacolumn=datacolumn, keepflags=True)
+        flagtable_info = 'after_split'
+        current_time = datetime.datetime.utcnow()
+        flagmanager(vis=outputmsfile, mode='save', versionname=flagtable_info,
+                comment='After splitting the source at {0}'.format(str(current_time)))
+        if not os.path.exists(outputmsfile):
+            logger.critical('Could not split field')
+            exit_pipeline(eMCP)
+    logger.info('End run_split_fields')
+    msg = ''
+    eMCP = add_step_time('split_fields', eMCP, msg, t0)
+    return eMCP
+
+
+
+
 def shift_field_position(eMCP, msfile, shift):
     field = shift['field']
     new_pos = shift['new_position']
@@ -3642,6 +3714,7 @@ def eMCP_info_start_steps():
     steps['flag_target'] = default_value
     steps['plot_corrected'] = default_value
     steps['first_images'] = default_value
+    steps['split_fields'] = default_value
     return steps
 
 
