@@ -333,7 +333,7 @@
     "lownoisethreshold"      : 1.5,
     "minbeamfrac"            : 0.2,
     "growiterations"         : 25,
-    "parallel"               : false,
+    "parallel"               : true,
     "level0"                 : 3.0,
     "zoom_range_pix"         : 150
   },
