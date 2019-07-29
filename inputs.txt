@@ -35,3 +35,4 @@ applycal_all    = 1
 flag_target     = 1
 plot_corrected  = 1
 first_images    = 1
+split_fields    = 1

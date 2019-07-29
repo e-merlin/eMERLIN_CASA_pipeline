@@ -710,12 +710,6 @@ def plot_elev_uvcov(eMCP):
 
 
 def import_eMERLIN_fitsIDI(eMCP):
-    rmdir(eMCP['inputs']['inbase'] + '.ms')
-    rmdir(eMCP['inputs']['inbase'] + '.ms.flagversions')
-    rmdir(eMCP['inputs']['inbase'] + '.mms')
-    rmdir(eMCP['inputs']['inbase'] + '.mms.flagversions')
-    rmdir(eMCP['inputs']['inbase'] + '_sp.ms')
-    rmdir(eMCP['inputs']['inbase'] + '_sp.mms')
     import_eM = eMCP['defaults']['import_eM']
     logger.info('Starting import eMERLIN fitsIDI procedure')
     fits_path = backslash_check(eMCP['inputs']['fits_path'])
@@ -732,6 +726,17 @@ def import_eMERLIN_fitsIDI(eMCP):
         if infile.endswith('fits') or infile.endswith('FITS'):
             fitsfiles = fitsfiles + [fits_path+infile]
             logger.info('FITS file found to be imported: {0}'.format(infile))
+    if fitsfiles == []:
+        logger.critical('No fits files found in {}'.format(fits_path))
+        exit_pipeline(eMCP='')
+
+    rmdir(eMCP['inputs']['inbase'] + '.ms')
+    rmdir(eMCP['inputs']['inbase'] + '.ms.flagversions')
+    rmdir(eMCP['inputs']['inbase'] + '.mms')
+    rmdir(eMCP['inputs']['inbase'] + '.mms.flagversions')
+    rmdir(eMCP['inputs']['inbase'] + '_sp.ms')
+    rmdir(eMCP['inputs']['inbase'] + '_sp.mms')
+
     logger.info('Start importfitsIDI')
     t0 = datetime.datetime.utcnow()
     msfile0 = msfile_name+'_imported.ms'
