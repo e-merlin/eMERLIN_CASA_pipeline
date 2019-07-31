@@ -1,9 +1,30 @@
 {
   "global": {
     "refantmode"             : "strict",
+    "refant"                 : "",
     "is_mixed_mode"          : "auto",
     "spwmap_sp"              : [],
-    "applymode"              : "calflagstrict"
+    "applymode"              : "calflagstrict",
+    "run_importfits"         : 1,
+    "flag_aoflagger"         : 1,
+    "flag_apriori"           : 1,
+    "flag_manual"            : 1,
+    "average"                : 1,
+    "plot_data"              : 1,
+    "save_flags"             : 1,
+    "restore_flags"          : 1,
+    "flag_manual_avg"        : 1,
+    "init_models"            : 1,
+    "bandpass"               : 1,
+    "initial_gaincal"        : 1,
+    "fluxscale"              : 1,
+    "bandpass_final"         : 1,
+    "gaincal_final"          : 1,
+    "applycal_all"           : 1,
+    "flag_target"            : 1,
+    "plot_corrected"         : 1,
+    "first_images"           : 1,
+    "split_fields"           : 1
   },
   "import_eM": {
     "constobsid"             : true,

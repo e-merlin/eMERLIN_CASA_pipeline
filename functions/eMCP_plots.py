@@ -38,7 +38,7 @@ calib_link = './calib/'
 plots_link = './plots/'
 images_link= './images/'
 
-line0 = '-'*10
+line0 = '-'*15
 
 # Functions to save and load dictionaries
 def save_obj(obj, name):

@@ -13,7 +13,7 @@ from tasks import *
 import casadef
 
 
-current_version = 'v1.0.12'
+current_version = 'v1.1.00'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -54,6 +54,15 @@ def deunicodify_hook(pairs):
         new_pairs.append((key, value))
     return collections.OrderedDict(new_pairs)
 
+def list_steps():
+    all_steps, pre_processing_steps, calibration_steps = em.list_of_steps()
+    print('\npre_processing')
+    for s in pre_processing_steps:
+        print('    {}'.format(s))
+    print('\ncalibration')
+    for s in calibration_steps:
+        print('    {}'.format(s))
+    sys.exit()
 
 def get_pipeline_version(pipeline_path):
     headfile = pipeline_path + '.git/HEAD'
@@ -97,18 +106,20 @@ def get_logger(
         LOG_FORMAT     = '%(asctime)s | %(levelname)s | %(message)s',
         DATE_FORMAT    = '%Y-%m-%d %H:%M:%S',
         LOG_NAME       = 'logger',
-        LOG_FILE_INFO  = 'eMCP.log'):
+        LOG_FILE_INFO  = 'eMCP.log',
+        run_in_casa    = False):
 
     log           = logging.getLogger(LOG_NAME)
     log_formatter = logging.Formatter(fmt=LOG_FORMAT, datefmt=DATE_FORMAT)
     logging.Formatter.converter = time.gmtime
 
-    # comment this to suppress console output    
-    stream_handler = logging.StreamHandler()
-    stream_handler.setFormatter(log_formatter)
-    log.addHandler(stream_handler) 
+    if not run_in_casa:
+        # comment this to suppress console output    
+        stream_handler = logging.StreamHandler()
+        stream_handler.setFormatter(log_formatter)
+        log.addHandler(stream_handler)
 
-    # Normal eMCP log with all information
+    # eMCP.log with pipeline log
     file_handler_info = logging.FileHandler(LOG_FILE_INFO, mode='a')
     file_handler_info.setFormatter(log_formatter)
     file_handler_info.setLevel(logging.INFO)
@@ -118,22 +129,20 @@ def get_logger(
     return log
 
 
-def run_pipeline(inputs=None, inputs_path=''):
+def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
     #Create directory structure
     calib_dir, info_dir = create_dir_structure(pipeline_path)
 
-    # Setup logger
-    logger = get_logger()
-
     # Initialize eMCP dictionary, or continue with previous pipeline configuration if possible:
     eMCP = start_eMCP_dict(info_dir)
-    eMCP['inputs'] = inputs
 
+    # Get git info about pipeline version
     try:
         branch, short_commit = get_pipeline_version(pipeline_path)
     except:
         branch, short_commit = 'unknown', 'unknown'
     pipeline_version = current_version
+
     logger.info('Starting pipeline')
     logger.info('Running pipeline from:')
     logger.info('{}'.format(pipeline_path))
@@ -147,28 +156,33 @@ def run_pipeline(inputs=None, inputs_path=''):
     em.check_pipeline_conflict(eMCP, pipeline_version)
     eMCP['pipeline_version'] = pipeline_version
     save_obj(eMCP, info_dir + 'eMCP_info.pkl')
-    # Inputs
-    if inputs_path == '': # Running pipeline
-        inputs = em.check_in(pipeline_path)
-    else: # Running pipeline from within CASA
-        inputs = em.headless(inputs_path)
 
     # Load default parameters
     if os.path.isfile('./default_params.json'):
         defaults_file = './default_params.json'
     else:
-        defaults_file = pipeline_path+'/default_params.json'
+        defaults_file = pipeline_path+'default_params.json'
     logger.info('Loading default parameters from {0}:'.format(defaults_file))
     eMCP['defaults'] = json.loads(open(defaults_file).read(),
                                   object_pairs_hook=deunicodify_hook)
 
+    # Inputs
+    if os.path.exists(inputs_file):
+        inputs = em.read_inputs(inputs_file)
+        eMCP['inputs'] = inputs
+    else:
+        logger.critical('No inputs file found: {}'.format(inputs_file))
+        em.exit_pipeline(eMCP='')
 
-    #################################
-    ### LOAD AND PREPROCESS DATA  ###
-    #################################
+    # Steps to run:
+    eMCP['input_steps'] = em.find_run_steps(eMCP, run_steps, skip_steps)
+
+    ##################################
+    ###  LOAD AND PREPROCESS DATA  ###
+    ##################################
 
     ## Pipeline processes, inputs are read from the inputs dictionary
-    if inputs['run_importfits'] > 0:
+    if eMCP['input_steps']['run_importfits'] > 0:
         eMCP = em.import_eMERLIN_fitsIDI(eMCP)
 
     if os.path.isdir('./'+inputs['inbase']+'.ms') == True:
@@ -183,19 +197,19 @@ def run_pipeline(inputs=None, inputs_path=''):
         em.plot_elev_uvcov(eMCP)
 
     ### Run AOflagger
-    if inputs['flag_aoflagger'] > 0:
+    if eMCP['input_steps']['flag_aoflagger'] > 0:
         eMCP = em.run_aoflagger_fields(eMCP)
 
     ### A-priori flagdata: Lo&Mk2, edge channels, standard quack
-    if inputs['flag_apriori'] > 0:
+    if eMCP['input_steps']['flag_apriori'] > 0:
         eMCP = em.flagdata1_apriori(eMCP)
 
     ### Load manual flagging file
-    if inputs['flag_manual'] > 0:
+    if eMCP['input_steps']['flag_manual'] > 0:
         eMCP = em.flagdata_manual(eMCP, run_name='flag_manual')
 
     ### Average data ###
-    if inputs['average'] > 0:
+    if eMCP['input_steps']['average'] > 0:
         eMCP = em.run_average(eMCP)
 
     # Check if averaged data already generated
@@ -209,11 +223,11 @@ def run_pipeline(inputs=None, inputs_path=''):
         em.plot_elev_uvcov(eMCP)
 
     ### Produce some plots ###
-    if inputs['plot_data'] == 1:
+    if eMCP['input_steps']['plot_data'] == 1:
         eMCP = emplt.make_4plots(eMCP, datacolumn='data')
 
     ### Save flag status up to this point
-    if inputs['save_flags'] == 1:
+    if eMCP['input_steps']['save_flags'] == 1:
         eMCP = em.saveflagstatus(eMCP)
 
     ###################
@@ -221,60 +235,60 @@ def run_pipeline(inputs=None, inputs_path=''):
     ###################
 
     ### Initialize caltable dictionary
-    caltables = em.initialize_cal_dict(inputs, eMCP)
+    caltables = em.initialize_cal_dict(eMCP)
 
     ### Restore flag status at to this point
-    if inputs['restore_flags'] == 1:
+    if eMCP['input_steps']['restore_flags'] == 1:
         eMCP = em.restoreflagstatus(eMCP)
 
     ### Load manual flagging file
-    if inputs['flag_manual_avg'] == 1:
+    if eMCP['input_steps']['flag_manual_avg'] == 1:
         eMCP = em.flagdata_manual(eMCP, run_name='flag_manual_avg')
         caltables['Lo_dropout_scans'] = eMCP['msinfo']['Lo_dropout_scans']
         save_obj(caltables, calib_dir+'caltables.pkl')
 
     ### Initialize models ###
-    if inputs['init_models'] > 0:  # Need to add parameter to GUI
+    if eMCP['input_steps']['init_models'] > 0:  # Need to add parameter to GUI
         eMCP = em.run_initialize_models(eMCP)
 
     ### Initial BandPass calibration ###
-    if inputs['bandpass'] > 0:
+    if eMCP['input_steps']['bandpass'] > 0:
         eMCP, caltables = em.initial_bp_cal(eMCP, caltables)
 
     ### Initial gaincal = delay, p, ap ###
-    if inputs['initial_gaincal'] > 0:
+    if eMCP['input_steps']['initial_gaincal'] > 0:
         eMCP, caltables = em.initial_gaincal(eMCP, caltables)
 
     ### Flux scale ###
-    if inputs['fluxscale'] > 0:
+    if eMCP['input_steps']['fluxscale'] > 0:
         eMCP, caltables = em.eM_fluxscale(eMCP, caltables)
 
     ### BandPass calibration with spectral index information ###
-    if inputs['bandpass_final'] > 0:
+    if eMCP['input_steps']['bandpass_final'] > 0:
         eMCP, caltables = em.bandpass_final(eMCP, caltables)
 
     ### Amplitude calibration including spectral information ###
-    if inputs['gaincal_final'] > 0:
+    if eMCP['input_steps']['gaincal_final'] > 0:
         eMCP, caltables = em.gaincal_final(eMCP, caltables)
 
     ### Apply calibration  ###
-    if inputs['applycal_all'] > 0:
+    if eMCP['input_steps']['applycal_all'] > 0:
         eMCP = em.applycal_all(eMCP, caltables)
 
     ### RFLAG automatic flagging ###
-    if inputs['flag_target'] > 0:
+    if eMCP['input_steps']['flag_target'] > 0:
         em.run_flag_target(eMCP)
 
     ### Produce some visibility plots ###
-    if inputs['plot_corrected'] > 0:
+    if eMCP['input_steps']['plot_corrected'] > 0:
         eMCP = emplt.make_4plots(eMCP, datacolumn='corrected')
 
     ### First images ###
-    if inputs['first_images'] > 0:
+    if eMCP['input_steps']['first_images'] > 0:
         eMCP = em.run_first_images(eMCP)
 
     ### Split fields ###
-    if inputs['split_fields'] > 0:
+    if eMCP['input_steps']['split_fields'] > 0:
         eMCP = em.run_split_fields(eMCP)
 
 
@@ -293,17 +307,56 @@ def run_pipeline(inputs=None, inputs_path=''):
     logger.info('Pipeline finished')
     logger.info('#################')
 
-    return
+    return eMCP
 
+def get_args():
+    '''This function parses and returns arguments passed in'''
+    # Assign description to the help doc
+    description = 'e-MERLIN CASA pipeline. Visit: https://github.com/e-merlin/eMERLIN_CASA_pipeline'
+    usage = 'casa -c eMERLIN_CASA_pipeline/eMERLIN_CASA_pipeline.py -r [steps]'
+    epilog = 'Select "-r calibration" to run only the calibration part (recommended)'
+    parser = argparse.ArgumentParser(description=description, usage=usage,
+                                     epilog=epilog)
+    parser.add_argument('-i','--inputs', dest='inputs_file',
+                        help='Inputs file to use. Default is inputs.ini',
+                        default='./inputs.ini')
+    parser.add_argument('-r', '--run-steps', dest='run_steps',
+                        type=str, nargs='+',
+                        help='Whitespace separated list of steps to run. '\
+                        'Apart from individual steps, it also accepts "all", '\
+                        '"pre_processing" and "calibration"',
+                        default=[])
+    parser.add_argument('-s', '--skip-steps', dest='skip_steps',
+                        type=str, nargs='+',
+                        help='Whispace separated list of steps to skip',
+                        default=[])
+    parser.add_argument('-l', '--list-steps', dest='list_steps',
+                        action='store_true',
+                        help='Show list of available steps and exit')
+    parser.add_argument('-c', help='Ignore, needed for casa')
+    args = parser.parse_args()
+    return args
 
-
-# The  __name__ == "__main__" approach does not work for CASA.
-try:
+# This is needed to allow executions from within a running CASA instance
+if 'run_in_casa' in globals():
     if run_in_casa == True:
         # Running the pipeline from inside CASA
         print('Pipeline initialized. To run the pipeline within CASA use:')
-        print('run_pipeline(inputs_path=<input file>)')
-except:
-    inputs = em.check_in(pipeline_path)
-    run_pipeline(inputs=inputs)
+        print("eMCP = run_pipeline(run_steps=['calibration']")
+        # Setup logger
+        logger = get_logger(run_in_casa=run_in_casa)
+    else:
+        print('You need to set run_in_casa = True')
+else:
+    run_in_casa = False
+    # Run from terminal
+    args = get_args()
+    if args.list_steps:
+        list_steps()
+    else:
+        # Setup logger
+        logger = get_logger(run_in_casa=run_in_casa)
+        run_pipeline(inputs_file = args.inputs_file,
+                     run_steps = args.run_steps,
+                     skip_steps = args.skip_steps)
 

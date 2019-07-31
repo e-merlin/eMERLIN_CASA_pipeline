@@ -27,6 +27,8 @@ calib_link = './calib/'
 plots_link = './plots/'
 images_link= './images/'
 
+line0 = '-'*15
+
 def save_obj(obj, name):
     with open(name, 'wb') as f:
         pickle.dump(obj, f)
@@ -465,12 +467,12 @@ def weblog_flagstats(msinfo):
     weblog_header(wlog, 'Flag statistics', msinfo['run'])
     #------------------------------------------
     wlog.write('High-resolution plots in step title.<br><br>')
-    flagstats_steps = ['import','aoflagger',
-                       'apriori',
+    flagstats_steps = ['run_importfits','flag_aoflagger',
+                       'flag_apriori',
                        'flag_manual',
                        'restore_flags',
                        'flag_manual_avg',
-                       'initial_bpcal',
+                       'bandpass',
                        'initial_gaincal',
                        'applycal_all',
                        'flag_target']
@@ -625,6 +627,7 @@ def weblog_download(msinfo):
 
 def start_weblog(eMCP, silent=False):
     msinfo = eMCP['msinfo']
+    logger.info(line0)
     logger.info('Updating weblog')
     ###  Start weblog  ###
     weblog_index(msinfo)
