@@ -1027,7 +1027,7 @@ def run_aoflagger_fields(eMCP):
     flag_statistics(eMCP, step='flag_aoflagger')
     logger.info('End flag_aoflagger')
     msg = ''
-    eMCP = add_step_time('aoflagger', eMCP, msg, t0)
+    eMCP = add_step_time('flag_aoflagger', eMCP, msg, t0)
     return eMCP
 
 def check_command(command):
