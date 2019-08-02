@@ -1185,34 +1185,45 @@ def search_observatory_flags(eMCP):
     msinfo = eMCP['msinfo']
     msfile = msinfo['msfile']
     antennas = msinfo['antennas']
-    t0, t1 = get_obstime(msfile)
-    logger.info('Initial obs time {0}'.format(t0))
-    logger.info('Final   obs time {0}'.format(t1))
-    s = socket.gethostname()
-    if t0 > datetime.datetime(2019,1,25,17,15,0) and s == 'pipeline':
-        # Retrieve database (Only locally at pipeline machine JBO)
-        # Only available from 2019-01-25 at 17:15:00
-        logger.info('Trying to retrieve observatory flags (locally)')
-        s1 = 'emproc1'
-        s2 = 'ast.man.ac.uk'
-        loc = '/home/emerlin/jmoldon/otcx/antenna_monitor.log'
-        try:
-            os.system('scp -pr {0}.{1}:{2} /pipeline1/emerlin/files/'.format(s1,s2,loc))
-        except:
-            pass
-        logfile = '/pipeline1/emerlin/files/antenna_monitor.log'
-        data = read_flag_database(logfile, t0, t1)
-        flag_commands = ''
-        flagfile = 'inputfg.flags'
-        logger.info('Generating flags for this dataset')
-        with open(flagfile, 'wb') as f_file:
-            for ant in antennas:
-                all_commands_ant = write_flags_antenna(data, ant, t0, t1)
-                f_file.write(all_commands_ant)
+    flagfile = 'observatory.flags'
+    if os.path.exists(flagfile):
+        logger.info('Observatory flags already present, '\
+                    'will not overwrite file {}'.format(flagfile))
+        logger.info('Applying observatory flags in {}'.format(flagfile))
+        flagdata(vis=msfile, mode='list', inpfile=flagfile, flagbackup=False)
+        find_casa_problems()
         finished_autoflag = True
     else:
-        logger.info('Database only after 25 January 2019')
-        finished_autoflag = False
+        t0, t1 = get_obstime(msfile)
+        logger.info('Initial obs time {0}'.format(t0))
+        logger.info('Final   obs time {0}'.format(t1))
+        s = socket.gethostname()
+        if t0 > datetime.datetime(2019,1,25,17,15,0) and s == 'pipeline':
+            # Retrieve database (Only locally at pipeline machine JBO)
+            # Only available from 2019-01-25 at 17:15:00
+            logger.info('Trying to retrieve observatory flags (locally)')
+            s1 = 'emproc1'
+            s2 = 'ast.man.ac.uk'
+            loc = '/home/emerlin/jmoldon/otcx/antenna_monitor.log'
+            try:
+                os.system('scp -pr {0}.{1}:{2} /pipeline1/emerlin/files/'.format(s1,s2,loc))
+            except:
+                pass
+            logfile = '/pipeline1/emerlin/files/antenna_monitor.log'
+            data = read_flag_database(logfile, t0, t1)
+            flag_commands = ''
+            logger.info('Generating flags for this dataset')
+            with open(flagfile, 'wb') as f_file:
+                for ant in antennas:
+                    all_commands_ant = write_flags_antenna(data, ant, t0, t1)
+                    f_file.write(all_commands_ant)
+            logger.info('Applying observatory flags in {}'.format(flagfile))
+            flagdata(vis=msfile, mode='list', inpfile=flagfile, flagbackup=False)
+            find_casa_problems()
+            finished_autoflag = True
+        else:
+            logger.info('Database only after 25 January 2019')
+            finished_autoflag = False
     return finished_autoflag
 
 def select_first_last_chan(msfile, spw_frac, nchan):
@@ -1282,7 +1293,7 @@ def flagdata1_apriori(eMCP):
     if do_quack:
         finished_autoflag = search_observatory_flags(eMCP)
         if not finished_autoflag:
-            logger.info('Observatory flags failed. Starting ad hoc procedure')
+            logger.warning('Observatory flags failed. Starting ad hoc procedure')
             quack_estimating(eMCP)
             msg += 'Estimated quack. '
         else:

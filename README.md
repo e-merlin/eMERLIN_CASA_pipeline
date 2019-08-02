@@ -190,8 +190,10 @@ You can have the file in your working directory where the pipeline is executed. 
 
 The pipeline accepts two optional manual flagging files:
 
-- `inputfg.flags` will be applied to the unaveraged dataset in the step `flag_manual` (in the pre-processing block). Usually this file contains observatory flags and it is automatically created in the flag_apriori stage by the observatory staff.
+- `inputfg.flags` will be applied to the unaveraged dataset in the step `flag_manual` (in the pre-processing block).
 - `inputfg_avg.flags` will be applied to the averaged dataset in the step `flag_manual_avg` (in the calibration block).
+
+For observations after 25 January 2019 there should additional be an `observatory.flags` file based on antenna slewing. These flags are applied during the flag_apriori step. It is recommended not to modify or delete that file. Any manual flags should always be implemented using either `inputfg.flags` or `inputfg_avg.flags`. If you don't want to use the `observatory.flags`, set `do_quack` to false in the `default_params.json` file.
 
 **How do I fill the source names in inputs.txt if I don't know which fields were observed?**
 
