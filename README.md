@@ -154,17 +154,47 @@ Function `run_pipeline` parameters and defaults are: `run_pipeline(inputs_file='
 
 The weblog consist of a series of html files. From the working directory you can open the file `./weblog/index.html` with your preferred web browser.
 
-**How do I fill the source names in inputs.txt if I don't know which fields were observed?**
-
-By default you should have all the information from the observatory. But if you only have the FITS-IDI and don't know the source names, you can run the first pipeline step alone `casa -c eMERLIN_CASA_pipeline/eMERLIN_CASA_pipeline.py -r run_importfits`. When the execution is finished, open the weblog and go to the tab `Observation Summary` where you will find the fields included in the MS and the listobs file with all the scans.
-
-As a general rule, an observation will have 1331+3030 (3C286) as flux scale calibrator, 1407+2827 (OQ208) as bandpass calibrator and 0319+4130 (3C84) as bright ptcal calibrator. To distinguish between target and phasecal, you should look for alternating scans, and the target is usually the one with longer scans.
-
 **How do I know what has been executed?**
 
 You can visit the tab `Pipeline info` in the weblog, where you will find which steps were executed. You will also find a link to the Pipeline log, the CASA log and two files with all the parameters used during the data processing.
 
 **How do a fine tune the parameters used to run the tasks?**
 
-All the parameters are included in the file `default_params.json` that you can edit manually. You can have the file in your working directory where the pipeline is executed. If not there, the file inside the eMERLIN_CASA_pipeline directory will be used.
+All the parameters are included in the file `default_params.json` that you can edit manually. You can find the template inside the eMERLIN_CASA_pipeline folder. Steps to follow are:
 
+- Copy the file `default_param.json` from the eMERLIN_CASA_pipeline directory to the working directory if it does not exist already.
+
+```
+cp eMERLIN_CASA_pipeline/default_params.json .
+```
+
+- Edit the file in the working directory and modify the appropriate parameters.
+- Rerun the required steps of the pipeline. For example if you have just modified parameters for tasks in the calibration block, you can run:
+
+```
+casa -c eMERLIN_CASA_pipeline/eMERLIN_CASA_pipeline.py -r calibration
+```
+
+If you modify parameters affecting steps in the pre-processing block, you will need to rerun all the steps after the modified one.
+
+
+You can have the file in your working directory where the pipeline is executed. If not there, the file inside the eMERLIN_CASA_pipeline directory will be used.
+
+**I want to flag already processed data, how do I add manual flags?**
+- Open/create a file called `inputfg_avg.flags` in the working directory.
+- Write all your flag commands, one per line.
+- You can find an example with the correct syntax in the [pipeline documentation](https://github.com/e-merlin/eMERLIN_CASA_pipeline/blob/master/documentation/docs.md#422-flag_manual_avg)
+- Now you can execute the pipeline again selecting `-r calibration` (this will run the whole calibration part).
+- Manual flags will be applied on the step `flag_manual_avg` of the calibration block.
+- Verify that the flag commands file was correctly loaded, check the logs!
+
+The pipeline accepts two optional manual flagging files:
+
+- `inputfg.flags` will be applied to the unaveraged dataset in the step `flag_manual` (in the pre-processing block). Usually this file contains observatory flags and it is automatically created in the flag_apriori stage by the observatory staff.
+- `inputfg_avg.flags` will be applied to the averaged dataset in the step `flag_manual_avg` (in the calibration block).
+
+**How do I fill the source names in inputs.txt if I don't know which fields were observed?**
+
+By default you should have all the information from the observatory. But if you only have the FITS-IDI and don't know the source names, you can run the first pipeline step alone `casa -c eMERLIN_CASA_pipeline/eMERLIN_CASA_pipeline.py -r run_importfits`. When the execution is finished, open the weblog and go to the tab `Observation Summary` where you will find the fields included in the MS and the listobs file with all the scans.
+
+As a general rule, an observation will have 1331+3030 (3C286) as flux scale calibrator, 1407+2827 (OQ208) as bandpass calibrator and 0319+4130 (3C84) as bright ptcal calibrator. To distinguish between target and phasecal, you should look for alternating scans, and the target is usually the one with longer scans.
