@@ -3,7 +3,6 @@
     "refantmode"             : "strict",
     "refant"                 : "",
     "is_mixed_mode"          : "auto",
-    "spwmap_sp"              : [],
     "applymode"              : "calflagstrict",
     "run_importfits"         : 1,
     "flag_aoflagger"         : 1,

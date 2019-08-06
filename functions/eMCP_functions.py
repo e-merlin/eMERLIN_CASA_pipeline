@@ -529,10 +529,10 @@ def get_spwmap_sp(msfile, msfile_sp):
     return spwmap_sp
 
 def find_spwmap_sp(eMCP, msfile, msfile_sp):
-    if eMCP['defaults']['global']['spwmap_sp'] == []:
+    if eMCP['defaults']['import_eM']['spwmap_sp'] == []:
         spwmap_sp = get_spwmap_sp(msfile, msfile_sp)
     else:
-        spwmap_sp = eMCP['defaults']['global']['spwmap_sp']
+        spwmap_sp = eMCP['defaults']['import_eM']['spwmap_sp']
     return spwmap_sp
 
 def info_mixed_mode(eMCP, msinfo):
@@ -542,11 +542,8 @@ def info_mixed_mode(eMCP, msinfo):
         logger.debug(eMCP['is_mixed_mode'])
         logger.debug('msfile: {0}'.format(msinfo['msfile']))
         logger.debug('msfile narrow: {0}'.format(msinfo['msfile_sp']))
-        if eMCP['defaults']['import_eM']['spwmap_sp'] == []:
-            msinfo['spwmap_sp'] = find_spwmap_sp(eMCP, msinfo['msfile'],
-                                                       msinfo['msfile_sp'])
-        else:
-            msinfo['spwmap_sp'] = eMCP['defaults']['import_eM']['spwmap_sp']
+        msinfo['spwmap_sp'] = find_spwmap_sp(eMCP, msinfo['msfile'],
+                                                   msinfo['msfile_sp'])
         logger.info('spwmap_sp = {0}'.format(msinfo['spwmap_sp']))
         msinfo['spwmap_sp_freq'] = get_cent_freq(msinfo['msfile_sp'])
         msinfo['spwmap_sp_width'] = get_chan_width(msinfo['msfile_sp'])
