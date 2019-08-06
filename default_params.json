@@ -30,6 +30,7 @@
     "constobsid"             : true,
     "scanreindexgap_s"       : 15.0,
     "antenna"                : "",
+    "field"                  : "",
     "timeaverage"            : true,
     "timebin"                : "4s",
     "chanaverage"            : false,
@@ -37,6 +38,8 @@
     "usewtspectrum"          : false,
     "run_hanning"            : "auto",
     "ms2mms"                 : false,
+    "spw_separation"         : ["",""],
+    "spwmap_sp"              : [],
     "fix_repeated_sources"   : false
   },
   "aoflagger": {

@@ -261,39 +261,6 @@ def check_pipeline_conflict(eMCP, pipeline_version):
     except:
         pass
 
-def check_mixed_mode(vis,mode):
-    logger.info('Check for mixed mode')
-    tb.open(vis + '/SPECTRAL_WINDOW')
-    bw_spw = np.array(tb.getcol('TOTAL_BANDWIDTH'))
-    tb.close()
-    if len(np.unique(bw_spw)) != 1:
-        if mode == 'split':
-            logger.info('Splitting continuum from spectral line')
-            cont_spw = np.where(bw_spw==np.max(np.unique(bw_spw)))[0]
-            print np.array2string(cont_spw, separator=',')[1:-1]
-            split(vis=vis, outputvis=vis+'.continuum', spw=np.array2string(cont_spw, separator=',')[1:-1], datacolumn='data')
-            spec_line = np.delete(bw_spw, cont_spw)
-            logger.info('Splitting spectral line')
-            for i in range(len(np.unique(spec_line))):
-                spec_line_spw = np.where(bw_spw==np.unique(spec_line)[i])[0]
-                split(vis=vis, outputvis=vis+'.sp{0}'.format(i), spw=np.array2string(spec_line_spw, separator=',')[1:-1],datacolumn='data')
-                ms.writehistory(message='eMER_CASA_Pipeline: Spectral line split from {0}'.format(vis),msname=vis+'.sp{0}'.format(i))
-            ms.writehistory(message='eMER_CASA_Pipeline: Spectral lines split from this ms',msname=vis)
-            os.system('mv {0} {1}'.format(vis, vis+'.original'))
-            os.system('mv {0} {1}'.format(vis+'.continuum', vis))
-            logger.info('Will continue with continuum, original data is {0}'.format(vis+'.original'))
-            return_variable = ''
-        if mode == 'check':
-            logger.info('MS is mixed mode. Please split')
-            return_variable = True
-    else:
-        if mode == 'split':
-            logger.info('Not mixed mode, continuing')
-            return_variable = ''
-        if mode == 'check':
-            return_variable = False
-    return return_variable
-
 def update_mixed_mode(eMCP):
     # Default can be 'auto', 'none', 'force'
     default_mixed_mode = eMCP['defaults']['global']['is_mixed_mode']
@@ -566,7 +533,6 @@ def find_spwmap_sp(eMCP, msfile, msfile_sp):
         spwmap_sp = get_spwmap_sp(msfile, msfile_sp)
     else:
         spwmap_sp = eMCP['defaults']['global']['spwmap_sp']
-    logger.info('spwmap_sp = {0}'.format(spwmap_sp))
     return spwmap_sp
 
 def info_mixed_mode(eMCP, msinfo):
@@ -576,8 +542,12 @@ def info_mixed_mode(eMCP, msinfo):
         logger.debug(eMCP['is_mixed_mode'])
         logger.debug('msfile: {0}'.format(msinfo['msfile']))
         logger.debug('msfile narrow: {0}'.format(msinfo['msfile_sp']))
-        msinfo['spwmap_sp'] = find_spwmap_sp(eMCP, msinfo['msfile'],
-                                                   msinfo['msfile_sp'])
+        if eMCP['defaults']['import_eM']['spwmap_sp'] == []:
+            msinfo['spwmap_sp'] = find_spwmap_sp(eMCP, msinfo['msfile'],
+                                                       msinfo['msfile_sp'])
+        else:
+            msinfo['spwmap_sp'] = eMCP['defaults']['import_eM']['spwmap_sp']
+        logger.info('spwmap_sp = {0}'.format(msinfo['spwmap_sp']))
         msinfo['spwmap_sp_freq'] = get_cent_freq(msinfo['msfile_sp'])
         msinfo['spwmap_sp_width'] = get_chan_width(msinfo['msfile_sp'])
     else:
@@ -709,12 +679,15 @@ def mixed_mode(msfile):
     bw_spw = np.array(tb.getcol('TOTAL_BANDWIDTH'))
     tb.close()
     is_mixed_mode = len(np.unique(bw_spw)) != 1
+    logger.info('Natural spw and bandwidth of imported data:')
+    for i, bw_spw_i in enumerate(bw_spw):
+        logger.info('{0}: {1}'.format(i, bw_spw_i))
     if is_mixed_mode:
         cont_spw = ','.join(np.where(bw_spw==np.max(np.unique(bw_spw)))[0].astype('str'))
-        line_spw =','.join(np.where(bw_spw!=np.max(np.unique(bw_spw)))[0].astype('str'))
+        line_spw = ','.join(np.where(bw_spw!=np.max(np.unique(bw_spw)))[0].astype('str'))
         spw_separation = [cont_spw, line_spw] # Example ['0,1,2,3','4,5']
     else:
-        spw_separation = ['']
+        spw_separation = ['','']
     return is_mixed_mode, spw_separation
 
 
@@ -788,6 +761,7 @@ def import_eMERLIN_fitsIDI(eMCP):
     else:
         antenna = '*&*;'+import_eM['antenna']
         logger.info('Splitting antennas: {}'.format(antenna))
+    field = import_eM['field']
     timeaverage = import_eM['timeaverage']
     timebin = import_eM['timebin']
     chanaverage = import_eM['chanaverage']
@@ -796,6 +770,12 @@ def import_eMERLIN_fitsIDI(eMCP):
     do_hanning = decide_hanning(import_eM, msfile0)
     do_ms2mms = import_eM['ms2mms']
     is_mixed_mode, spw_separation = mixed_mode(msfile0)
+    if import_eM['spw_separation'] != ['','']:
+        spw_separation = import_eM['spw_separation']
+        logger.info('Using user-defined spw_separation:')
+    logger.info('Continuum:   {}'.format(spw_separation[0]))
+    if is_mixed_mode:
+        logger.info('Narrow (sp): {}'.format(spw_separation[1]))
     ext_ms = {False:'.ms',True:'.mms'}
     msfile1 = msfile_name+'_transformed' + ext_ms[do_ms2mms]
     if timeaverage:
@@ -813,7 +793,7 @@ def import_eMERLIN_fitsIDI(eMCP):
     rmdir(msfile1)
     if import_eM['fix_repeated_sources'] == True:
         fix_repeated_sources(msfile0, msfile1, datacolumn, antenna,
-                             spw_separation[0], timeaverage, timebin,
+                             str(spw_separation[0]), timeaverage, timebin,
                              chanaverage, chanbin, usewtspectrum, do_hanning,
                              do_ms2mms)
     else:
@@ -822,7 +802,7 @@ def import_eMERLIN_fitsIDI(eMCP):
                     keepflags = True,
                     datacolumn = datacolumn,
                     antenna = antenna,
-                    spw = spw_separation[0],
+                    spw = str(spw_separation[0]),
                     timeaverage = timeaverage, timebin=timebin,
                     chanaverage = chanaverage, chanbin=chanbin,
                     usewtspectrum = usewtspectrum,
@@ -840,7 +820,7 @@ def import_eMERLIN_fitsIDI(eMCP):
         rmdir(msfile1_sp)
         if import_eM['fix_repeated_sources'] == True:
             fix_repeated_sources(msfile0, msfile1_sp, datacolumn, antenna,
-                                 spw_separation[1], timeaverage, timebin,
+                                 str(spw_separation[1]), timeaverage, timebin,
                                  chanaverage, chanbin, usewtspectrum, do_hanning,
                                  do_ms2mms)
         mstransform(vis = msfile0,
@@ -848,7 +828,7 @@ def import_eMERLIN_fitsIDI(eMCP):
                 keepflags = True,
                 datacolumn = datacolumn,
                 antenna = antenna,
-                spw = spw_separation[1],
+                spw = str(spw_separation[1]),
                 timeaverage = timeaverage, timebin=timebin,
                 usewtspectrum = usewtspectrum,
                 createmms = do_ms2mms
