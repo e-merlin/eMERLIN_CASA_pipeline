@@ -273,7 +273,7 @@
     "p_offset_tablename"     : "narrow_p_offset.G3",
     "p_offset_prev_cal"      : ["allcal_d.K1", "allcal_p.G3"],
     "p_offset_solint"        : "inf",
-    "p_offset_spw"           : ["*", "innerchan"],
+    "p_offset_spw"           : ["*", ""],
     "p_offset_combine"       : "scan",
     "p_offset_interp"        : "linear",
     "p_offset_minblperant"   : 3,
