@@ -1277,7 +1277,7 @@ def flagdata1_apriori(eMCP):
             quack_estimating(eMCP)
             msg += 'Estimated quack. '
         else:
-            msg += 'Observatory flags. '
+            msg += 'Observatory flags: observatory.flags. '
     else:
         logger.info('No quacking selected')
 
@@ -1293,14 +1293,33 @@ def flagdata1_apriori(eMCP):
     eMCP = add_step_time('flag_apriori', eMCP, msg, t0)
     return eMCP
 
+def log_manual_flags(inpfile):
+    with open(inpfile, 'r') as f:
+        lines = [line.strip() for line in f.readlines() if line.strip()]
+        lines = [line for line in lines if line[0] != '#']
+    logger.info('Contents of {}'.format(inpfile))
+    max_lines = 30
+    if len(lines) > max_lines:
+        logger.info('Flagfile has {0} lines. '\
+                    'Only showing the first {1}'.format(len(lines),
+                                                        max_lines))
+    for l in lines[:max_lines]:
+        logger.info(l)
+    if len(lines) > max_lines:
+        logger.info('...')
+    if len(lines) > 0:
+        are_there_flags = True
+    else:
+        are_there_flags = False
+    return are_there_flags
 
 def flagdata_manual(eMCP, run_name='flag_manual'):
     logger.info(line0)
     msfile = eMCP['msinfo']['msfile']
     if run_name == 'flag_manual':
-        inpfile = './inputfg.flags'
+        inpfile = './manual.flags'
     elif run_name == 'flag_manual_avg':
-        inpfile = './inputfg_avg.flags'
+        inpfile = './manual_avg.flags'
     else:
         logger.warning('Wrong run_name specified')
         inpfile = ''
@@ -1308,32 +1327,32 @@ def flagdata_manual(eMCP, run_name='flag_manual'):
     t0 = datetime.datetime.utcnow()
     if os.path.isfile(inpfile) == True:
         logger.info('Applying manual flags from file: {0}'.format(inpfile))
-        with open(inpfile, 'r') as f:
-            lines = [line.strip() for line in f.readlines() if line.strip()]
-            lines = [line for line in lines if line[0] != '#']
-        logger.info('Contents of {}'.format(inpfile))
-        max_lines = 30
-        if len(lines) > max_lines:
-            logger.info('Flagfile has {0} lines. '\
-                        'Only showing the first {1}'.format(len(lines),
-                                                            max_lines))
-        for l in lines[:max_lines]:
-            logger.info(l)
-        if len(lines) > max_lines:
-            logger.info('...')
-        if len(lines) > 0:
+        are_there_flags = log_manual_flags(inpfile)
+        if are_there_flags:
             flagdata(vis=msfile, mode='list', inpfile=inpfile, flagbackup=False)
             find_casa_problems()
         else:
             logger.warning('Flagfile is empty')
-        msg = 'file={0}'.format(inpfile)
+        msg = '{0}. '.format(inpfile)
     else:
         logger.info('No manual flag file selected: {0}'.format(inpfile))
-        msg = 'No flagging file'
-    # Compute Lo_dropouts if needed and flag data
+        msg = 'No flagging file. '
     if run_name == 'flag_manual_avg':
+        # Compute Lo_dropouts if needed and flag data
         eMCP, msg_i = flag_Lo_dropouts(eMCP)
         msg += msg_i
+        # Apply manual_narrow.flags if available
+        inpfile_narrow = './manual_narrow.flags'
+        if eMCP['is_mixed_mode'] and os.path.isfile(inpfile_narrow) == True:
+            logger.info('Applying manual flags from file: {0}'.format(inpfile_narrow))
+            are_there_flags = log_manual_flags(inpfile_narrow)
+            if are_there_flags:
+                flagdata(vis=eMCP['msinfo']['msfile_sp'], mode='list',
+                         inpfile=inpfile_narrow, flagbackup=False)
+                find_casa_problems()
+            else:
+                logger.warning('Narrow (sp) flagfile is empty')
+            msg += 'Narrow (sp): {0}'.format(inpfile_narrow)
     flag_statistics(eMCP, step=run_name)
     logger.info('End {}'.format(run_name))
     eM = add_step_time(run_name, eMCP, msg, t0)
