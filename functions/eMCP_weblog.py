@@ -150,8 +150,18 @@ def weblog_obssum(msinfo):
     weblog_header(wlog, 'Observation summary', msinfo['run'])
     #------------------------------------------
     wlog.write('<h3>Summary:</h3>\n')
-    listobs_file = info_link + msinfo['msfile'] + '.listobs.txt'
-    write_link_txt(wlog, listobs_file, 'Summary of the observation (listobs)')
+    listobs_file = os.path.join(info_link, msinfo['msfile'] + '.listobs.txt')
+    write_link_txt(wlog, listobs_file, 'Summary of current observation (listobs)')
+    all_listobs = [os.path.basename(l) for l in
+                   glob.glob(info_dir+msinfo['run']+'*listobs.txt')]
+    try:
+        all_listobs.remove(os.path.basename(listobs_file))
+    except ValueError:
+        pass
+    if len(all_listobs)>0:
+        wlog.write('<br>Other available listobs files:<br>')
+        for listobs in all_listobs:
+            write_link_txt(wlog, info_link + listobs, os.path.basename(listobs))
     wlog.write('<h3>Sources:</h3>\n')
     sepfile = info_link + 'source_separations.txt'
     if msinfo['sources']['targets'] != '':
