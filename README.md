@@ -36,7 +36,7 @@ or (recommended) use the handy anaconda scripts to instantly install dependcies 
 
 If you have received calibrated data from the observatory and you want to refine the calibration, you can:
 
-1. [Optionally] Modify `default_params.json` or add manual flags to `inputfg_avg.flags` with your desired values
+1. [Optionally] Modify `default_params.json` or add manual flags to `manual_avg.flags` with your desired values.
 2. Run:
 
 `casa -c eMERLIN_CASA_pipeline/eMERLIN_CASA_pipeline.py -r calibration`
@@ -74,33 +74,45 @@ Names in capital need to be set by the user:
   -s           SKIP_STEPS [SKIP_STEPS ...]
   --skip-steps SKIP_STEPS [SKIP_STEPS ...]
                                  Whispace separated list of steps to skip
+                                 
+                                 
+  -l
+  --list-steps                   Show list of available steps and exit
+
 ```
 
-List of available steps to run/skip:
+You can get the list of available steps with:
 
-- pre_processing steps:
-  - run_importfits  
-  - flag_aoflagger  
-  - flag_apriori        
-  - flag_manual         
-  - average             
-  - plot_data           
-  - save_flags          
+`casa -c eMERLIN_CASA_pipeline/eMERLIN_CASA_pipeline.py -l`
 
-- calibration steps:
-  - restore_flags   
-  - flag_manual_avg 
-  - init_models         
-  - bandpass            
-  - initial_gaincal 
-  - fluxscale           
-  - bandpass_final  
-  - gaincal_final   
-  - applycal_all        
-  - flag_target         
-  - plot_corrected  
-  - first_images    
-  - split_fields  
+```
+pre_processing
+    run_importfits
+    flag_aoflagger
+    flag_apriori
+    flag_manual
+    average
+    plot_data
+    save_flags
+    
+calibration
+    restore_flags
+    flag_manual_avg
+    init_models
+    bandpass
+    initial_gaincal
+    fluxscale
+    bandpass_final
+    gaincal_final
+    applycal_all
+    flag_target
+    plot_corrected
+    first_images
+    split_fields
+
+```
+
+Selection options are any combination of: a list of any individual step names, `pre_processing`, `calibration` or `all`
   
 **Examples of step selection**
 
@@ -110,7 +122,7 @@ You need to specify which steps of the pipeline to run. Some example on how to c
 
 `casa -c eMERLIN_CASA_pipeline/eMERLIN_CASA_pipeline.py -r calibration`
 
-2. Run all pipeline steps:
+2. Run all pipeline steps (you will need the raw FITS-IDI files for the initial step):
 
 `casa -c eMERLIN_CASA_pipeline/eMERLIN_CASA_pipeline.py -r all`
 
@@ -137,7 +149,7 @@ execfile(pipeline_path + 'eMERLIN_CASA_pipeline.py')
 eMCP = run_pipeline(run_steps=['calibration'])
 ~~~~
 
-Function `run_pipeline` parameters and defaults are: `run_pipeline(inputs_file='./inputs.ini', run_steps=[''], skip_steps=[''])`. Variables run_steps and skip_steps are python lists of steps as explained above.
+Function `run_pipeline` parameters and defaults are: `run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[])`. Variables run_steps and skip_steps are python lists of steps as explained above.
 
 
 <a name="information"></a>
@@ -158,44 +170,20 @@ The weblog consist of a series of html files. From the working directory you can
 
 You can visit the tab `Pipeline info` in the weblog, where you will find which steps were executed. You will also find a link to the Pipeline log, the CASA log and two files with all the parameters used during the data processing.
 
-**How do a fine tune the parameters used to run the tasks?**
+**I want to re-run the pipeline to improve the calibration, what do I change?**
 
-All the parameters are included in the file `default_params.json` that you can edit manually. You can find the template inside the eMERLIN_CASA_pipeline folder. Steps to follow are:
+There are two main blocks: pre-processing and calibration. Most probably you will only need to repeat the calibration part. Recommended course of action:
 
-- Copy the file `default_param.json` from the eMERLIN_CASA_pipeline directory to the working directory if it does not exist already.
+- Identify changes you want to include in the data reduction, like changing calibration parameters or adding manual flags.
+- Add or edit file `manual_avg.flags` with your flag commands (follow the CASA syntax).
+- Edit the file `inputs.ini` if you need to change the sources used or they intend.
+- Edit the file `default_params.json` changing any parameter the pipeline is using, if needed.
+- Run the calibration block of the pipeline with the command:
 
-```
-cp eMERLIN_CASA_pipeline/default_params.json .
-```
-
-- Edit the file in the working directory and modify the appropriate parameters.
-- Rerun the required steps of the pipeline. For example if you have just modified parameters for tasks in the calibration block, you can run:
-
-```
-casa -c eMERLIN_CASA_pipeline/eMERLIN_CASA_pipeline.py -r calibration
-```
-
-If you modify parameters affecting steps in the pre-processing block, you will need to rerun all the steps after the modified one.
+`casa -c ./eMERLIN_CASA_pipeline/eMERLIN_CASA_pipeline.py -r calibration`
 
 
-You can have the file in your working directory where the pipeline is executed. If not there, the file inside the eMERLIN_CASA_pipeline directory will be used.
-
-**I want to flag already processed data, how do I add manual flags?**
-- Open/create a file called `inputfg_avg.flags` in the working directory.
-- Write all your flag commands, one per line.
-- You can find an example with the correct syntax in the [pipeline documentation](https://github.com/e-merlin/eMERLIN_CASA_pipeline/blob/master/documentation/docs.md#422-flag_manual_avg)
-- Now you can execute the pipeline again selecting `-r calibration` (this will run the whole calibration part).
-- Manual flags will be applied on the step `flag_manual_avg` of the calibration block.
-- Verify that the flag commands file was correctly loaded, check the logs!
-
-The pipeline accepts two optional manual flagging files:
-
-- `inputfg.flags` will be applied to the unaveraged dataset in the step `flag_manual` (in the pre-processing block).
-- `inputfg_avg.flags` will be applied to the averaged dataset in the step `flag_manual_avg` (in the calibration block).
-
-For observations after 25 January 2019 there should additional be an `observatory.flags` file based on antenna slewing. These flags are applied during the flag_apriori step. It is recommended not to modify or delete that file. Any manual flags should always be implemented using either `inputfg.flags` or `inputfg_avg.flags`. If you don't want to use the `observatory.flags`, set `do_quack` to false in the `default_params.json` file.
-
-**How do I fill the source names in inputs.txt if I don't know which fields were observed?**
+**How do I fill the source names in inputs.ini if I don't know which fields were observed?**
 
 By default you should have all the information from the observatory. But if you only have the FITS-IDI and don't know the source names, you can run the first pipeline step alone `casa -c eMERLIN_CASA_pipeline/eMERLIN_CASA_pipeline.py -r run_importfits`. When the execution is finished, open the weblog and go to the tab `Observation Summary` where you will find the fields included in the MS and the listobs file with all the scans.
 

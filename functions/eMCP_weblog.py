@@ -66,9 +66,15 @@ def weblog_header(wlog, section, project):
     wlog.write('<link rel="stylesheet" type="text/css" href="{0}eMCP.css"/>\n'.format(weblog_link))
     wlog.write('<head>\n')
     wlog.write('<title>{} - eMCP</title>\n'.format(project))
+    wlog.write('<link rel="icon" href="{0}{1}">\n'.format(weblog_link,
+                                                          'eMCP_logo.png'))
     wlog.write('</head>\n')
     wlog.write('<body>\n')
-    wlog.write('<h4 id="top">e-MERLIN Pipeline Web Log<br>{}</h4>\n'.format(project))
+    wlog.write('<div class="header-img">\n')
+    wlog.write('<a href="./index.html"><img src="{0}{1}" width="40"/></a>\n'.format(weblog_link,
+                                                                                   'eMCP_logo.png'))
+    wlog.write('<h3>e-MERLIN Pipeline Web Log<br>{}</h3>\n'.format(project))
+    wlog.write('</div><br><br>\n')
     wlog.write('<form>\n')
     wlog.write(weblog_button(weblog_link, 'Home', 'index'))
     wlog.write(weblog_button(weblog_link, 'Observation summary',

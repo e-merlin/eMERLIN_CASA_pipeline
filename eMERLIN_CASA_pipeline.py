@@ -13,7 +13,7 @@ from tasks import *
 import casadef
 
 
-current_version = 'v1.1.08'
+current_version = 'v1.1.09'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 try:
@@ -91,6 +91,7 @@ def create_dir_structure(pipeline_path):
     em.makedir(plots_dir+'caltables')
     os.system('cp -p {0}/utils/emerlin-2.gif {1}'.format(pipeline_path, weblog_dir))
     os.system('cp -p {0}/utils/eMCP.css {1}'.format(pipeline_path, weblog_dir))
+    os.system('cp -p {0}/utils/eMCP_logo.png {1}'.format(pipeline_path, weblog_dir))
     return calib_dir, info_dir
 
 def start_eMCP_dict(info_dir):
