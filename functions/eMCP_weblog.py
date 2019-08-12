@@ -307,19 +307,24 @@ def table_colors(steps, step, prev_steps):
     red = '#FF6347'
     green = '#008B45'
     outdated = {True: red, False: green}
+    outdated_status = {True: '', False: 'OK'}
     if steps[step][0] == 0:
         color = neutral
+        status = ''
     elif type(steps[step][0]) is str:
         time_step = datetime.datetime.strptime(steps[step][0], t_fmt)
         if prev_steps != []:
             latest_prev = max([datetime.datetime.strptime(steps[stepi][0], t_fmt)
                                for stepi in prev_steps])
             color = outdated[time_step < latest_prev]
+            status = outdated_status[time_step < latest_prev]
         else:
             color = green
+            status = 'OK'
     else:
         color = '#000000'
-    return color
+        status = ''
+    return color, status
 
 def elapsed_time(delta_min):
     if delta_min > 0.0 and delta_min < 1:
@@ -348,9 +353,9 @@ def table_steps(eMCP):
         delta_t = elapsed_time(delta_min)
         if step == 'start_pipeline':
             delta_t = '-'
-        color = table_colors(eMCP['steps'], step, prev_steps)
+        color, status = table_colors(eMCP['steps'], step, prev_steps)
         table_txt += ('<tr><td>{0}</td>'.format(step))
-        table_txt += ('<td bgcolor={0}></td>\n'.format(color))
+        table_txt += ('<td align="center" bgcolor={0}><small>{1}</small></td>\n'.format(color, status))
         table_txt += ('<td align="center">{0}</td>\n'.format(time_s))
         table_txt += ('<td align="center">{0}</td>\n'.format(delta_t))
         table_txt += ('<td>{0}</td></tr>\n'.format(msg))

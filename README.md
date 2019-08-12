@@ -195,9 +195,9 @@ There are four different flag files accepted by the pipeline:
 
 For the syntax needed for CASA follow [Basic Syntax Rules](https://casa.nrao.edu/casadocs/casa-5.5.0/global-task-list/task_flagdata/about) in the CASA docs flagdata (end of the section). The main rules are:
 
-  1  Use only ONE white space to separate the parameters (no commas). Each key should only appear once on a given command line/string.
-  2  There is an implicit mode for each command, with the default being 'manual' if not given.
-  3  Comment lines can start with '#' and will be ignored. The parser used in flagdata will check each parameter name and type and exit with an error if the parameter is not a valid flagdata parameter or of a wrong type.
+1. Use only ONE white space to separate the parameters (no commas). Each key should only appear once on a given command line/string.
+2. There is an implicit mode for each command, with the default being 'manual' if not given.
+3. Comment lines can start with '#' and will be ignored. The parser used in flagdata will check each parameter name and type and exit with an error if the parameter is not a valid flagdata parameter or of a wrong type.
 
 Example for e-MERLIN:
 
