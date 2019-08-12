@@ -182,6 +182,41 @@ There are two main blocks: pre-processing and calibration. Most probably you wil
 
 `casa -c ./eMERLIN_CASA_pipeline/eMERLIN_CASA_pipeline.py -r calibration`
 
+**Which flag files does the pipeline accept and what is the right syntax?**
+
+There are four different flag files accepted by the pipeline:
+
+| Flag file     | Used by step  | Notes |
+| ------------- |:-------------:| -----|
+| observatory.flags | flag_apriori | Created by the observatory with antenna slewing or other major faults. Please donot edit it yourself. |
+| manual.flags | flag_manual | This is meant to flag the unaveraged data set during the pre-processing stage |
+| manual_av.flags | flag_manual_avg | This is meant to flag the averaged data set during the calibration stage |
+| manual_narrow.flags | flag_manual_avg | Use this to add flag commands for narrow-band spectral line data set|
+
+For the syntax needed for CASA follow [Basic Syntax Rules](https://casa.nrao.edu/casadocs/casa-5.5.0/global-task-list/task_flagdata/about) in the CASA docs flagdata (end of the section). The main rules are:
+
+  1  Use only ONE white space to separate the parameters (no commas). Each key should only appear once on a given command line/string.
+  2  There is an implicit mode for each command, with the default being 'manual' if not given.
+  3  Comment lines can start with '#' and will be ignored. The parser used in flagdata will check each parameter name and type and exit with an error if the parameter is not a valid flagdata parameter or of a wrong type.
+
+Example for e-MERLIN:
+
+```
+mode='manual' field='1331+305' antenna='' timerange='10:00:00~10:11:30'
+mode='manual' field='' antenna='' timerange='' spw='0:0~30'
+mode='manual' field='' antenna='Mk2' timerange='09:05:00~16:27:00'
+mode='manual' field='1258-2219' antenna='' timerange='12:57:01~12:59:59'
+mode='quack' field='1258-2219,1309-2322' quackinterval=24.
+```
+
+Example from the CASA docs:
+```
+scan='1~3' mode='manual'
+# this line will be ignored
+spw='9' mode='tfcrop' correlation='ABS_XX,YY' ntime=51.0
+mode='extend' extendpols=True
+scan='1~3,10~12' mode='quack' quackinterval=1.0
+```
 
 **How do I fill the source names in inputs.ini if I don't know which fields were observed?**
 
