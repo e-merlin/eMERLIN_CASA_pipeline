@@ -190,7 +190,7 @@ There are four different flag files accepted by the pipeline:
 | ------------- |:-------------:| -----|
 | observatory.flags | flag_apriori | Created by the observatory with antenna slewing or other major faults. Please donot edit it yourself. |
 | manual.flags | flag_manual | This is meant to flag the unaveraged data set during the pre-processing stage |
-| manual_av.flags | flag_manual_avg | This is meant to flag the averaged data set during the calibration stage |
+| manual_avg.flags | flag_manual_avg | This is meant to flag the averaged data set during the calibration stage |
 | manual_narrow.flags | flag_manual_avg | Use this to add flag commands for narrow-band spectral line data set|
 
 For the syntax needed for CASA follow [Basic Syntax Rules](https://casa.nrao.edu/casadocs/casa-5.5.0/global-task-list/task_flagdata/about) in the CASA docs flagdata (end of the section). The main rules are:
