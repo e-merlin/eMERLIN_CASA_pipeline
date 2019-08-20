@@ -587,13 +587,7 @@ def get_msinfo(eMCP, msfile, doprint=False):
         msinfo['refant'] = ''
     msinfo['directions'] = get_directions(msfile)
     msinfo['separations'] = get_distances(msfile, directions=msinfo['directions'])
-    # If eMCP['Lo_dropout_scans'] already there, it may have been recomputed before
-    try:
-        msinfo['Lo_dropout_scans'] = eMCP['msinfo']['Lo_dropout_scans']
-    except:
-        msinfo['Lo_dropout_scans'] = eMCP['defaults']['flag_manual_avg']['Lo_dropout']
-    if eMCP['defaults']['flag_manual_avg']['Lo_dropout'] == 'none':
-        msinfo['Lo_dropout_scans'] = 'none'
+    msinfo['Lo_dropout_scans'] = eMCP['msinfo'].get('Lo_dropout_scans', 'none')
     # Info related to mixed mode:
     eMCP, msinfo = info_mixed_mode(eMCP, msinfo)
     # Show summary
@@ -820,17 +814,18 @@ def import_eMERLIN_fitsIDI(eMCP):
                                  str(spw_separation[1]), timeaverage, timebin,
                                  chanaverage, chanbin, usewtspectrum, do_hanning,
                                  do_ms2mms)
-        mstransform(vis = msfile0,
-                outputvis = msfile1_sp,
-                keepflags = True,
-                datacolumn = datacolumn,
-                antenna = antenna,
-                spw = str(spw_separation[1]),
-                timeaverage = timeaverage, timebin=timebin,
-                usewtspectrum = usewtspectrum,
-                createmms = do_ms2mms
-                )
-        find_casa_problems()
+        else:
+            mstransform(vis = msfile0,
+                    outputvis = msfile1_sp,
+                    keepflags = True,
+                    datacolumn = datacolumn,
+                    antenna = antenna,
+                    spw = str(spw_separation[1]),
+                    timeaverage = timeaverage, timebin=timebin,
+                    usewtspectrum = usewtspectrum,
+                    createmms = do_ms2mms
+                    )
+            find_casa_problems()
         logger.info('Transformed: {0} into {1}'.format(msfile0, msfile1_sp))
     if os.path.isdir(msfile1) == True:
         rmdir(msfile0)
@@ -921,6 +916,7 @@ def fix_repeated_sources(msfile0, msfile1, datacolumn, antenna,
         tmp_files.append(outputmsfile_tmp)
     logger.info('Concat individual fields')
     concat(vis=tmp_files, concatvis=msfile1, timesort=True)
+    find_casa_problems()
     for f in range(num_sources):
         outputmsfile_tmp = 'field_{0:02.0f}'.format(f)
         logger.info('Removing... {0}'.format(outputmsfile_tmp))
@@ -3875,9 +3871,9 @@ def flag_Lo_dropouts(eMCP):
     msinfo = eMCP['msinfo']
     msfile = msinfo['msfile']
     antennas = get_antennas(msfile)
-    Lo_dropout_scans = eMCP['msinfo']['Lo_dropout_scans']
     msg_out = ''
     if 'Lo' in antennas:
+        Lo_dropout_scans = eMCP['defaults']['flag_manual_avg']['Lo_dropout']
         if Lo_dropout_scans == 'none':
             eMCP['msinfo']['Lo_dropout_scans'] = 'none'
         elif Lo_dropout_scans == '':
@@ -3900,7 +3896,7 @@ def flag_Lo_dropouts(eMCP):
                     find_casa_problems()
                 msg_out = ' Searched Lo dropouts'
         else:
-            logger.info('Lo_dropout_scans previously set: {0}'.format(Lo_dropout_scans))
+            logger.info('Lo_dropout_scans manually selected: {0}'.format(Lo_dropout_scans))
             eMCP['msinfo']['Lo_dropout_scans'] = Lo_dropout_scans
             logger.info('Now flagging')
             flagdata(vis=msfile, antenna='Lo',
