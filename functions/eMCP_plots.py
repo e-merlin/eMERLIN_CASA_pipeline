@@ -191,13 +191,19 @@ def single_4plot(msinfo, field, datacolumn, plots_data_dir):
     showgui=False
     avgtime = '300'
     baseline = '*&*'
+    msmd.open(msfile)
+    all_times = msmd.timesforscans(msmd.scansforfield(field))
+    x_min_time = np.min(all_times)
+    x_max_time = np.max(all_times)
+    msmd.close()
     w, h = 1200, num_baselines*200
     plotms(vis=msfile, xaxis='time', yaxis='amp', title='Amp vs Time {0} (color=spw)'.format(field),
     gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=0, plotindex=0,
     xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
     antenna=baseline, field=field, iteraxis='baseline',
     averagedata = True, avgchannel = nchan, avgtime='4',
-    xselfscale = True, xsharedaxis = True, coloraxis = 'spw', plotrange=[-1,-1,0,-1],
+    xselfscale = True, xsharedaxis = True, coloraxis = 'spw',
+    plotrange=[x_min_time,x_max_time,0,-1],
     plotfile = plot_file+'0.png', expformat = 'png', customsymbol = True, symbolshape = 'circle',
     width=w, height=h, symbolsize=4,clearplots=False, overwrite=True, showgui=showgui)
     simple_plot_name(plot_file, 0)
@@ -207,7 +213,8 @@ def single_4plot(msinfo, field, datacolumn, plots_data_dir):
     xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
     antenna=baseline, field=field, iteraxis='baseline',
     averagedata = True, avgchannel = nchan, avgtime='4',
-    xselfscale = True, xsharedaxis = True, coloraxis   = 'spw', plotrange=[-1,-1,-180,180],
+    xselfscale = True, xsharedaxis = True, coloraxis   = 'spw',
+    plotrange=[x_min_time,x_max_time,-180,180],
     plotfile = plot_file+'1.png', expformat = 'png', customsymbol = True, symbolshape = 'circle',
     width=w, height=h, symbolsize=4,clearplots=False, overwrite=True, showgui=showgui)
     simple_plot_name(plot_file, 1)
