@@ -587,7 +587,7 @@ def get_msinfo(eMCP, msfile, doprint=False):
         msinfo['refant'] = ''
     msinfo['directions'] = get_directions(msfile)
     msinfo['separations'] = get_distances(msfile, directions=msinfo['directions'])
-    msinfo['Lo_dropout_scans'] = eMCP['msinfo'].get('Lo_dropout_scans', 'none')
+    msinfo['Lo_dropout_scans'] = msinfo.get('Lo_dropout_scans', 'none')
     # Info related to mixed mode:
     eMCP, msinfo = info_mixed_mode(eMCP, msinfo)
     # Show summary
