@@ -49,7 +49,8 @@
   },
   "flag_apriori": {
     "border_chan_perc"       : 5.0,
-    "do_quack"               : true,
+    "observatory_flags"      : true,
+    "do_estimated_quack"     : "auto",
     "all_quack"              : 4.0,
     "std_cal_quack"          : 120.0
   },

@@ -1261,18 +1261,24 @@ def flagdata1_apriori(eMCP):
     flagdata(vis=msfile, field='', mode='quack',
              quackinterval=all_quack, flagbackup=False)
     find_casa_problems()
-    # Slewing (typical):
-    do_quack = eMCP['defaults']['flag_apriori']['do_quack']
-    if do_quack:
+    # Flag slewing times based on observatory records
+    observatory_flags = eMCP['defaults']['flag_apriori']['observatory_flags']
+    do_estimated_quack = eMCP['defaults']['flag_apriori']['do_estimated_quack']
+    if observatory_flags:
         finished_autoflag = search_observatory_flags(eMCP)
-        if not finished_autoflag:
-            logger.warning('Observatory flags failed. Starting ad hoc procedure')
+        if not finished_autoflag and do_estimated_quack == 'auto':
+            logger.warning('Observatory flags failed. Starting ad-hoc procedure')
             quack_estimating(eMCP)
             msg += 'Estimated quack. '
         else:
             msg += 'Observatory flags: observatory.flags. '
     else:
-        logger.info('No quacking selected')
+        logger.info('No obsevatory flagging selected')
+    # Flag using estimated quacking interval
+    if do_estimated_quack == 'force':
+        logger.info('Starting ad-hoc procedure to estimate quack flagging.')
+        quack_estimating(eMCP)
+        msg += 'Estimated quack. '
 
     # Flag Lo-Mk2
     if 'Lo' in antennas and 'Mk2' in antennas:
