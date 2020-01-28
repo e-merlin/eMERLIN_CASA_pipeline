@@ -178,6 +178,11 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
     # Steps to run:
     eMCP['input_steps'] = em.find_run_steps(eMCP, run_steps, skip_steps)
 
+    # Update casa-data if requested
+    if eMCP['defaults']['global']['update_casa-data']:
+        logger.info('Updating casa-data')
+        os.system('update-data')
+
     ##################################
     ###  LOAD AND PREPROCESS DATA  ###
     ##################################

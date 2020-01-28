@@ -1,5 +1,6 @@
 {
   "global": {
+    "update_casa-data"       : true,
     "refantmode"             : "strict",
     "refant"                 : "",
     "is_mixed_mode"          : "auto",
