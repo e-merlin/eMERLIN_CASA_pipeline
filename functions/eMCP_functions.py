@@ -1757,6 +1757,14 @@ def run_initialize_models(eMCP):
     logger.info('Resetting corrected column with clearcal')
     clearcal(vis=msfile)
     find_casa_problems()
+    logger.info('Resetting weights')
+    logger.info('wtmode={0}, dowtsp={1}'.format(init_models['wtmode'],
+                                                init_models['dowtsp']))
+    initweights(vis=msfile,
+                wtmode=init_models['wtmode'],
+                dowtsp=init_models['dowtsp'])
+    find_casa_problems()
+
     if eMCP['is_mixed_mode']:
         msfile_sp = eMCP['msinfo']['msfile_sp']
         logger.info('Resetting from {0}'.format(msfile_sp))
@@ -2859,6 +2867,7 @@ def eM_fluxscale(eMCP, caltables):
     caltables[caltable_name] = copy.copy(caltables[ampcal_table])
     caltables[caltable_name]['table']=caltables[ampcal_table]['table']+'_fluxscaled'
     fluxes_txt = calib_dir+ caltables[caltable_name]['name']+'_fluxes.txt'
+    rmdir(caltables[caltable_name]['table'])
     logger.info('Flux density scale from: {0}'.format(fluxcal))
     logger.info('Transfered to: {0}'.format(cals_to_scale))
     logger.info('Input caltable: {0}'.format(caltables[ampcal_table]['table']))

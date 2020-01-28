@@ -79,7 +79,9 @@
     "manual_fluxcal"         : false,
     "fluxcal_flux"           : [-1],
     "fluxcal_spix"           : 0.0,
-    "fluxcal_reffreq"        : "0GHz"
+    "fluxcal_reffreq"        : "0GHz",
+    "wtmode"                 : "nyq",
+    "dowtsp"                 : false
   },
   "bandpass": {
     "delay_tablename"        : "bpcal_d.K0",
