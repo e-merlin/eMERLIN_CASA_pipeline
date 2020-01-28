@@ -2867,11 +2867,11 @@ def eM_fluxscale(eMCP, caltables):
     caltables[caltable_name] = copy.copy(caltables[ampcal_table])
     caltables[caltable_name]['table']=caltables[ampcal_table]['table']+'_fluxscaled'
     fluxes_txt = calib_dir+ caltables[caltable_name]['name']+'_fluxes.txt'
-    rmdir(caltables[caltable_name]['table'])
     logger.info('Flux density scale from: {0}'.format(fluxcal))
     logger.info('Transfered to: {0}'.format(cals_to_scale))
     logger.info('Input caltable: {0}'.format(caltables[ampcal_table]['table']))
     logger.info('Antennas used to scale: {0}'.format(anten_for_flux))
+    rmdir(caltables[caltable_name]['table'])
     calfluxes = fluxscale(vis=msfile, reference=fluxcal,
                           transfer=cals_to_scale,
                           antenna = ','.join(anten_for_flux),
