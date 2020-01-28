@@ -1071,7 +1071,7 @@ def quack_estimating(eMCP):
                          '1331+3030','1407+2728','0319+4130',
                          'J1331+3030','J1407+2728','J0319+4130']
     bright_cal = join_lists([si for si in standard_cal_list if si in
-                  msinfo['sources']['mssources']])
+                  msinfo['sources']['mssources'].split(',')])
     if bright_cal != '':
         std_cal_quack = eMCP['defaults']['flag_apriori']['std_cal_quack']
         logger.info('Flagging {0}s from bright calibrators'.format(std_cal_quack))
