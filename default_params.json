@@ -52,7 +52,8 @@
     "observatory_flags"      : true,
     "do_estimated_quack"     : "auto",
     "all_quack"              : 4.0,
-    "std_cal_quack"          : 120.0
+    "std_cal_quack"          : 120.0,
+    "observatory_flags"      : true
   },
   "average": {
     "field"                  : "",

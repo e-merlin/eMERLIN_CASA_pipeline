@@ -1282,9 +1282,12 @@ def flagdata1_apriori(eMCP):
 
     # Flag Lo-Mk2
     if 'Lo' in antennas and 'Mk2' in antennas:
-        logger.info('Flagging Lo-Mk2 baseline')
-        flagdata(vis=msfile, mode='manual', antenna='Lo*&Mk2*',
-                 flagbackup=False)
+        if eMCP['defaults']['flag_apriori']['flag_Lo-Mk2']:
+            logger.info('Flagging Lo-Mk2 baseline')
+            flagdata(vis=msfile, mode='manual', antenna='Lo*&Mk2*',
+                     flagbackup=False)
+        else:
+            logger.info('Flagging Lo-Mk2 baseline is disabled')
         find_casa_problems()
         msg += '. Lo-Mk2 flagged'
     flag_statistics(eMCP, step='flag_apriori')
