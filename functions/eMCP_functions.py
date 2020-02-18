@@ -3613,6 +3613,9 @@ def single_tclean(eMCP, s, num):
     cell = cellsize[msinfo['band']]
     niter = imgpar['niter']
     gain = imgpar['gain']
+    uvtaper=imgpar['uvtaper']
+    uvrange=imgpar['uvrange']
+    restoringbeam=imgpar['restoringbeam']
     deconvolver = imgpar['deconvolver']
     nterms = imgpar['nterms']
     scales = imgpar['scales']
@@ -3644,6 +3647,8 @@ def single_tclean(eMCP, s, num):
            gain=gain,
            nterms=nterms,
            scales=scales,
+           uvtaper=uvtaper, uvrange=uvrange,
+           restoringbeam=restoringbeam,
            weighting=weighting,
            robust=robust, niter=niter, usemask=usemask,
            nsigma=nsigma,
