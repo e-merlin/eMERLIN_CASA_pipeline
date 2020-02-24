@@ -1286,10 +1286,10 @@ def flagdata1_apriori(eMCP):
             logger.info('Flagging Lo-Mk2 baseline')
             flagdata(vis=msfile, mode='manual', antenna='Lo*&Mk2*',
                      flagbackup=False)
+            find_casa_problems()
+            msg += '. Lo-Mk2 flagged'
         else:
             logger.info('Flagging Lo-Mk2 baseline is disabled')
-        find_casa_problems()
-        msg += '. Lo-Mk2 flagged'
     flag_statistics(eMCP, step='flag_apriori')
     logger.info('End flag_apriori')
     eMCP = add_step_time('flag_apriori', eMCP, msg, t0)
