@@ -6,16 +6,22 @@ import getopt
 import logging
 import collections
 import json
+import argparse
+import time
 
 # CASA imports
-from taskinit import *
-from tasks import *
-import casadef
+#from taskinit import *
+#from tasks import *
+#import casadef
+import casalith
 
-
-current_version = 'v1.1.19'
+current_version = 'v2.0.0'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
+print(sys.argv)
+#pipeline_filename = sys.argv[sys.argv.index('-c') + 1]
+pipeline_filename = sys.argv[0]
+pipeline_path = os.path.abspath(os.path.dirname(pipeline_filename))
 try:
     pipeline_filename = sys.argv[sys.argv.index('-c') + 1]
     pipeline_path = os.path.abspath(os.path.dirname(pipeline_filename))
@@ -147,13 +153,13 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
     logger.info('Starting pipeline')
     logger.info('Running pipeline from:')
     logger.info('{}'.format(pipeline_path))
-    logger.info('CASA version: {}'.format(casadef.casa_version))
+    logger.info('CASA version: {}'.format(casalith.version_string()))
     logger.info('Pipeline version: {}'.format(pipeline_version))
     logger.info('Using github branch: {}'.format(branch))
     logger.info('github last commit: {}'.format(short_commit))
     logger.info('This log uses UTC times')
     eMCP['pipeline_path'] = pipeline_path
-    eMCP['casa_version'] = casadef.casa_version
+    eMCP['casa_version'] = casalith.version_string()
     em.check_pipeline_conflict(eMCP, pipeline_version)
     eMCP['pipeline_version'] = pipeline_version
     save_obj(eMCP, info_dir + 'eMCP_info.pkl')
@@ -164,8 +170,8 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
     else:
         defaults_file = pipeline_path+'default_params.json'
     logger.info('Loading default parameters from {0}:'.format(defaults_file))
-    eMCP['defaults'] = json.loads(open(defaults_file).read(),
-                                  object_pairs_hook=deunicodify_hook)
+    eMCP['defaults'] = json.loads(open(defaults_file).read())#,
+#                                  object_pairs_hook=deunicodify_hook)
 
     # Inputs
     if os.path.exists(inputs_file):
@@ -178,10 +184,10 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
     # Steps to run:
     eMCP['input_steps'] = em.find_run_steps(eMCP, run_steps, skip_steps)
 
-    # Update casa-data if requested
-    if eMCP['defaults']['global']['update_casa-data']:
-        logger.info('Updating casa-data')
-        os.system('update-data')
+#    # Update casa-data if requested
+#    if eMCP['defaults']['global']['update_casa-data']:
+#        logger.info('Updating casa-data')
+#        os.system('update-data')
 
     ##################################
     ###  LOAD AND PREPROCESS DATA  ###

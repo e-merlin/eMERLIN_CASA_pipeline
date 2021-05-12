@@ -5,10 +5,12 @@ import pickle
 import collections
 import datetime
 
-# CASA imports
-from taskinit import *
-from tasks import *
-import casadef
+## CASA imports
+#from taskinit import *
+#from tasks import *
+#import casadef
+
+import casatasks
 
 import logging
 logger = logging.getLogger('logger')
@@ -39,7 +41,7 @@ def load_obj(name):
 
 def prt_dict_tofile(d, tofilename=None, addfile='', pre=' '):
     if tofilename != None:
-        f = open(tofilename, 'wb')
+        f = open(tofilename, 'w')
     else:
         f = addfile
     subdict = []

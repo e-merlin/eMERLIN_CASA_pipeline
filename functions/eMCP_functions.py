@@ -5,7 +5,6 @@ import socket
 import pickle
 import glob
 import re
-import tkMessageBox
 import sys, shutil
 import copy
 import getopt
@@ -14,19 +13,33 @@ import dateutil
 import collections
 from scipy import stats
 import logging
-import ConfigParser
+import configparser
 from ast import literal_eval
 
 import functions.eMCP_weblog as emwlog
 import functions.eMCP_plots as emplt
 
+import casatasks
+import casalith
+from casaviewer import imview
+from casatools import table
+from casatools import msmetadata
+from casatools import ms as myms
+from casatools import measures
+tb = table()
+msmd = msmetadata()
+ms = myms()
+me = measures()
+
+from casatasks import casalog as casa_log
+
 # CASA imports
-from taskinit import *
-from tasks import *
-from recipes.setOrder import setToCasaOrder
-from casac import casac
-msmd = casac.msmetadata()
-import casadef
+#from taskinit import *
+#from tasks import *
+#from recipes.setOrder import setToCasaOrder
+#from casac import casac
+#msmd = casac.msmetadata()
+#import casadef
 
 # Logging
 logger = logging.getLogger('logger')
@@ -52,26 +65,31 @@ def backslash_check(directory):
     else:
         return directory
 
+#def read_inputs(inputs_file):
+#    if not os.path.isfile(inputs_file):
+#        logger.critical('inputs file: {} not found'.format(inputs_file))
+#        sys.exit()
+#    config_raw = ConfigParser.RawConfigParser()
+#    config_raw.read(inputs_file)
+#    config = config_raw._sections
+#    for key in config.keys():
+#        config[key].pop('__name__')
+#        for key2 in config[key].keys():
+#            try:
+#                config[key][key2] = literal_eval(config[key][key2])
+#            except ValueError:
+#                pass
+#            except SyntaxError:
+#                pass
+#    inputs = config['inputs']
+#    for key, value in inputs.items():
+#        logger.info('{0:10s}: {1}'.format(key, value))
+#    return config['inputs']
+
 def read_inputs(inputs_file):
-    if not os.path.isfile(inputs_file):
-        logger.critical('inputs file: {} not found'.format(inputs_file))
-        sys.exit()
-    config_raw = ConfigParser.RawConfigParser()
-    config_raw.read(inputs_file)
-    config = config_raw._sections
-    for key in config.keys():
-        config[key].pop('__name__')
-        for key2 in config[key].keys():
-            try:
-                config[key][key2] = literal_eval(config[key][key2])
-            except ValueError:
-                pass
-            except SyntaxError:
-                pass
-    inputs = config['inputs']
-    for key, value in inputs.items():
-        logger.info('{0:10s}: {1}'.format(key, value))
-    return config['inputs']
+    config = configparser.ConfigParser()
+    config.read(inputs_file)
+    return config._sections['inputs']
 
 def find_run_steps(eMCP, run_steps, skip_steps=[]):
     if run_steps == '': run_steps = []
@@ -368,6 +386,7 @@ def get_antennas(msfile):
 
 def get_obstime(msfile):
     # returns datetime object of first and last times in obs_id 0
+    ms = myms()
     ms.open(msfile)
     t = ms.getdata('TIME')['time']
     t_ini = mjdtodate(np.min(t)/60./60./24.)
@@ -393,7 +412,7 @@ def get_obsfreq(msfile):
     return freq_ini, freq_end, chan_res, nchan
 
 def find_mssources(msfile):
-    #mssources = ','.join(vishead(msfile,mode='list',listitems='field')['field'][0])
+    #mssources = ','.join(casatasks.vishead(msfile,mode='list',listitems='field')['field'][0])
     msmd.open(msfile)
     mssources = ','.join(np.sort(msmd.fieldnames()))
     msmd.done()
@@ -422,7 +441,7 @@ def get_directions(msfile):
     field_names = msmd.namesforfields()
     msmd.done()
     for field_id, field_name in enumerate(field_names):
-        vhead = vishead(msfile, mode = 'list', listitems = 'ptcs')
+        vhead = casatasks.vishead(msfile, mode = 'list', listitems = 'ptcs')
         ra_float = vhead['ptcs'][0]['r'+str(field_id+1)][0][0][0]*180./np.pi
         de_float = vhead['ptcs'][0]['r'+str(field_id+1)][1][0][0]*180./np.pi
         directions[field_name] = me.direction('J2000', '{}deg'.format(ra_float), '{}deg'.format(de_float))
@@ -437,7 +456,7 @@ def get_distances(msfile, directions=''):
     msmd.done()
     separations = collections.OrderedDict()
     # Write all separations in a txt file
-    sep_file = open(info_dir+'source_separations.txt', 'wb')
+    sep_file = open(info_dir+'source_separations.txt', 'w')
     for i in range(len(field_names)):
         for j in range(i+1, len(field_names)):
             f1 = field_names[i]
@@ -569,7 +588,7 @@ def get_msinfo(eMCP, msfile, doprint=False):
     msinfo['antennas'] = get_antennas(msfile)
     msinfo['band'] = check_band(msfile)
     msinfo['baselines'] = get_baselines(msfile)
-    msinfo['num_spw'] = len(vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
+    msinfo['num_spw'] = len(casatasks.vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
     t_ini, t_end = get_obstime(msfile)
     freq_ini, freq_end, chan_res, nchan = get_obsfreq(msfile)
     msinfo['t_ini'] = t_ini
@@ -640,7 +659,7 @@ def remove_missing_scans(caltable, scans2flag):
 
 def run_listobs(msfile):
     outfile = info_dir + msfile + '.listobs.txt'
-    listobs(vis=msfile, listfile=outfile, overwrite=True)
+    casatasks.listobs(vis=msfile, listfile=outfile, overwrite=True)
     find_casa_problems()
     logger.info('Listobs file in: {0}'.format(outfile))
 
@@ -729,12 +748,12 @@ def import_eMERLIN_fitsIDI(eMCP):
     t0 = datetime.datetime.utcnow()
     msfile0 = msfile_name+'_imported.ms'
     rmdir(msfile0)
-    importfitsidi(fitsidifile=fitsfiles, vis=msfile0,
+    casatasks.importfitsidi(fitsidifile=fitsfiles, vis=msfile0,
                   constobsid=constobsid, scanreindexgap_s=scanreindexgap_s)
     find_casa_problems()
     logger.info('Created file: {}'.format(msfile0))
     logger.info('Removing initial correlator flags')
-    flagdata(vis=msfile0, mode='unflag', flagbackup=False)
+    casatasks.flagdata(vis=msfile0, mode='unflag', flagbackup=False)
     find_casa_problems()
     logger.info('Finished importfitsIDI')
     msg = 'constobsid={0}, scanreindexgap_s={1}'.format(constobsid,
@@ -788,7 +807,7 @@ def import_eMERLIN_fitsIDI(eMCP):
                              chanaverage, chanbin, usewtspectrum, do_hanning,
                              do_ms2mms)
     else:
-        mstransform(vis = msfile0,
+        casatasks.mstransform(vis = msfile0,
                     outputvis = msfile1,
                     keepflags = True,
                     datacolumn = datacolumn,
@@ -815,7 +834,7 @@ def import_eMERLIN_fitsIDI(eMCP):
                                  chanaverage, chanbin, usewtspectrum, do_hanning,
                                  do_ms2mms)
         else:
-            mstransform(vis = msfile0,
+            casatasks.mstransform(vis = msfile0,
                     outputvis = msfile1_sp,
                     keepflags = True,
                     datacolumn = datacolumn,
@@ -850,7 +869,7 @@ def import_eMERLIN_fitsIDI(eMCP):
     msfile = eMCP['inputs']['inbase'] + ext_ms[do_ms2mms]
     logger.info('Start FIXVIS')
 #    t0 = datetime.datetime.utcnow()
-    fixvis(vis = msfile1,
+    casatasks.fixvis(vis = msfile1,
            outputvis = msfile,
            reuse = False)
     find_casa_problems()
@@ -865,7 +884,7 @@ def import_eMERLIN_fitsIDI(eMCP):
     if is_mixed_mode:
         msfile_sp = get_msfile_sp(eMCP)
         logger.info('Running FIXVIS on spectral line data')
-        fixvis(vis = msfile1_sp,
+        casatasks.fixvis(vis = msfile1_sp,
            outputvis = msfile_sp,
            reuse = False)
         find_casa_problems()
@@ -899,7 +918,7 @@ def fix_repeated_sources(msfile0, msfile1, datacolumn, antenna,
         outputmsfile_tmp = 'field_{0:02.0f}'.format(f)
         rmdir(outputmsfile_tmp)
         logger.info('Creating ... {0}'.format(outputmsfile_tmp))
-        mstransform(vis = msfile0,
+        casatasks.mstransform(vis = msfile0,
             outputvis = outputmsfile_tmp,
             field = str(f),
             keepflags = True,
@@ -915,7 +934,7 @@ def fix_repeated_sources(msfile0, msfile1, datacolumn, antenna,
         find_casa_problems()
         tmp_files.append(outputmsfile_tmp)
     logger.info('Concat individual fields')
-    concat(vis=tmp_files, concatvis=msfile1, timesort=True)
+    casatasks.concat(vis=tmp_files, concatvis=msfile1, timesort=True)
     find_casa_problems()
     for f in range(num_sources):
         outputmsfile_tmp = 'field_{0:02.0f}'.format(f)
@@ -964,7 +983,7 @@ def run_aoflagger_fields(eMCP):
         logger.critical('aoflagger version <2.9 does not work correctly.')
         logger.warning('Exiting pipeline.')
         exit_pipeline(eMCP)
-    vis_fields = vishead(msfile,mode='list',listitems='field')['field'][0]
+    vis_fields = casatasks.vishead(msfile,mode='list',listitems='field')['field'][0]
     fields_num = {f:i for i,f in enumerate(vis_fields)}
     if fields == 'all':
         fields = vis_fields
@@ -983,7 +1002,7 @@ def run_aoflagger_fields(eMCP):
             aostrategy = pipeline_path+'aoflagger_strategies/default/{0}.rfis'.format('default_faint')
         logger.info('Running AOFLagger for field {0} ({1}) using strategy {2}'.format(field,fields_num[field], aostrategy))
         if separate_bands:
-            num_spw = len(vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
+            num_spw = len(casatasks.vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
             for b in range(num_spw):
                 logger.info('Processing source {0}, band {1}'.format(field, b))
                 flagcommand = 'time aoflagger -fields {2} -bands {3} -strategy {0} {1}'.format(aostrategy, msfile, fields_num[field], b)
@@ -1075,7 +1094,7 @@ def quack_estimating(eMCP):
     if bright_cal != '':
         std_cal_quack = eMCP['defaults']['flag_apriori']['std_cal_quack']
         logger.info('Flagging {0}s from bright calibrators'.format(std_cal_quack))
-        flagdata(vis=msfile, field=bright_cal, mode='quack',
+        casatasks.flagdata(vis=msfile, field=bright_cal, mode='quack',
                  quackinterval=std_cal_quack, flagbackup=False)
         find_casa_problems()
     else:
@@ -1088,7 +1107,7 @@ def quack_estimating(eMCP):
             quacktime = find_quacktime(msinfo, s1, s2)
             if s1 != '':
                 logger.info('Flagging first {0} sec of target {1} and phasecal {2}'.format(quacktime, s1, s2))
-                flagdata(vis=msfile, field=','.join([s1,s2]), mode='quack',
+                casatasks.flagdata(vis=msfile, field=','.join([s1,s2]), mode='quack',
                          quackinterval=quacktime, flagbackup=False)
                 find_casa_problems()
         else:
@@ -1163,7 +1182,7 @@ def search_observatory_flags(eMCP):
         logger.info('Observatory flags already present, '\
                     'will not overwrite file {}'.format(flagfile))
         logger.info('Applying observatory flags in {}'.format(flagfile))
-        flagdata(vis=msfile, mode='list', inpfile=flagfile, flagbackup=False)
+        casatasks.flagdata(vis=msfile, mode='list', inpfile=flagfile, flagbackup=False)
         find_casa_problems()
         finished_autoflag = True
     else:
@@ -1186,12 +1205,12 @@ def search_observatory_flags(eMCP):
             data = read_flag_database(logfile, t0, t1)
             flag_commands = ''
             logger.info('Generating flags for this dataset')
-            with open(flagfile, 'wb') as f_file:
+            with open(flagfile, 'w') as f_file:
                 for ant in antennas:
                     all_commands_ant = write_flags_antenna(data, ant, t0, t1)
                     f_file.write(all_commands_ant)
             logger.info('Applying observatory flags in {}'.format(flagfile))
-            flagdata(vis=msfile, mode='list', inpfile=flagfile, flagbackup=False)
+            casatasks.flagdata(vis=msfile, mode='list', inpfile=flagfile, flagbackup=False)
             find_casa_problems()
             finished_autoflag = True
         else:
@@ -1230,19 +1249,19 @@ def flagdata1_apriori(eMCP):
     msg = ''
     # Remove pure zeros
     logger.info('Flagging zeros')
-    flagdata(vis=msfile, mode='clip', clipzeros=True, flagbackup=False)
+    casatasks.flagdata(vis=msfile, mode='clip', clipzeros=True, flagbackup=False)
     find_casa_problems()
     msg += 'Clip zeros. '
     if eMCP['is_mixed_mode']:
         msfile_sp = eMCP['msinfo']['msfile_sp']
         logger.info('Flagging zeros from narrow: {0}'.format(msfile_sp))
-        flagdata(vis=msfile_sp, mode='clip', clipzeros=True, flagbackup=False)
+        casatasks.flagdata(vis=msfile_sp, mode='clip', clipzeros=True, flagbackup=False)
         find_casa_problems()
     # Subband edges
     channels_to_flag = '*:0~{0};{1}~{2}'.format(nchan/128-1, nchan-nchan/128, nchan-1)
     logger.info('MS has {} channels/spw'.format(nchan))
     logger.info('Flagging edge channels {0}'.format(channels_to_flag))
-    flagdata(vis=msfile, mode='manual', spw=channels_to_flag, flagbackup=False)
+    casatasks.flagdata(vis=msfile, mode='manual', spw=channels_to_flag, flagbackup=False)
     find_casa_problems()
     msg += 'Subband edges {}. '.format(channels_to_flag)
     # 5% of first and last channels of MS
@@ -1250,15 +1269,15 @@ def flagdata1_apriori(eMCP):
     first_chan, last_chan = select_first_last_chan(msfile, spw_frac, nchan)
     logger.info('Flagging initial/end channels: {0} and {1}'.format(first_chan,
                                                                     last_chan))
-    flagdata(vis=msfile, mode='manual', spw=first_chan, flagbackup=False)
+    casatasks.flagdata(vis=msfile, mode='manual', spw=first_chan, flagbackup=False)
     find_casa_problems()
-    flagdata(vis=msfile, mode='manual', spw=last_chan,  flagbackup=False)
+    casatasks.flagdata(vis=msfile, mode='manual', spw=last_chan,  flagbackup=False)
     find_casa_problems()
     msg += 'channels {0} {1}. '.format(first_chan,last_chan)
     # Remove 4 sec from everywhere:
     all_quack = eMCP['defaults']['flag_apriori']['all_quack']
     logger.info('Flagging first {} seconds from all scans'.format(all_quack))
-    flagdata(vis=msfile, field='', mode='quack',
+    casatasks.flagdata(vis=msfile, field='', mode='quack',
              quackinterval=all_quack, flagbackup=False)
     find_casa_problems()
     # Flag slewing times based on observatory records
@@ -1284,7 +1303,7 @@ def flagdata1_apriori(eMCP):
     if 'Lo' in antennas and 'Mk2' in antennas:
         if eMCP['defaults']['flag_apriori']['flag_Lo-Mk2']:
             logger.info('Flagging Lo-Mk2 baseline')
-            flagdata(vis=msfile, mode='manual', antenna='Lo*&Mk2*',
+            casatasks.flagdata(vis=msfile, mode='manual', antenna='Lo*&Mk2*',
                      flagbackup=False)
             find_casa_problems()
             msg += '. Lo-Mk2 flagged'
@@ -1331,7 +1350,7 @@ def flagdata_manual(eMCP, run_name='flag_manual'):
         logger.info('Applying manual flags from file: {0}'.format(inpfile))
         are_there_flags = log_manual_flags(inpfile)
         if are_there_flags:
-            flagdata(vis=msfile, mode='list', inpfile=inpfile, flagbackup=False)
+            casatasks.flagdata(vis=msfile, mode='list', inpfile=inpfile, flagbackup=False)
             find_casa_problems()
         else:
             logger.warning('Flagfile is empty')
@@ -1349,7 +1368,7 @@ def flagdata_manual(eMCP, run_name='flag_manual'):
             logger.info('Applying manual flags from file: {0}'.format(inpfile_narrow))
             are_there_flags = log_manual_flags(inpfile_narrow)
             if are_there_flags:
-                flagdata(vis=eMCP['msinfo']['msfile_sp'], mode='list',
+                casatasks.flagdata(vis=eMCP['msinfo']['msfile_sp'], mode='list',
                          inpfile=inpfile_narrow, flagbackup=False)
                 find_casa_problems()
             else:
@@ -1377,7 +1396,7 @@ def flagdata_tfcrop(eMCP, defaults):
         tfcrop['maxnpieces']))
     logger.info("usewindowstats='{0}', halfwin={1}, extendflags={2}".format(
         tfcrop['uwstats'], tfcrop['halfwin'], tfcrop['extendflags']))
-    flagdata(vis=msfile,
+    casatasks.flagdata(vis=msfile,
              mode = 'tfcrop',
              field = eMCP['msinfo']['sources'][tfcrop['sources']],
              antenna = tfcrop['antenna'],
@@ -1422,7 +1441,7 @@ def flagdata_rflag(eMCP, defaults):
                 rflag['ntime'], rflag['combinescans'], rflag['datacolumn']))
     logger.info("timedevscale = {0}, freqdevscale = {1}".format(
                 rflag['timedevscale'], rflag['freqdevscale']))
-    flagdata(vis=msfile,
+    casatasks.flagdata(vis=msfile,
              mode=rflag['mode'],
              field=eMCP['msinfo']['sources'][rflag['sources']],
              antenna=rflag['antenna'],
@@ -1502,7 +1521,7 @@ def find_refant(msfile, field):
     # Find phase solutions per scan:
     tablename = calib_dir + 'find_refant.phase'
     logger.info('Phase calibration per scan to count number of good solutions')
-    gaincal(vis=msfile,
+    casatasks.gaincal(vis=msfile,
             caltable=tablename,
             field=field,
             refantmode='flex',
@@ -1596,12 +1615,12 @@ def saveflagstatus(eMCP):
     logger.info('Starting saveflagstatus')
     t0 = datetime.datetime.utcnow()
     logger.info('Saving current flagging status to versionname=\'initialize_flags\'')
-    flagmanager(msinfo['msfile'], mode='save', versionname='initialize_flags',
+    casatasks.flagmanager(msinfo['msfile'], mode='save', versionname='initialize_flags',
              comment='Restore this version to restart calibration without the flags produced by the calibration',
              merge='replace')
     find_casa_problems()
     if eMCP['is_mixed_mode']:
-        flagmanager(msinfo['msfile_sp'], mode='save', versionname='initialize_flags',
+        casatasks.flagmanager(msinfo['msfile_sp'], mode='save', versionname='initialize_flags',
                     comment='Restore this version to restart calibration without the flags produced by the calibration',
                      merge='replace')
         find_casa_problems()
@@ -1615,7 +1634,7 @@ def restoreflagstatus(eMCP):
     t0 = datetime.datetime.utcnow()
     logger.info('Starting restoreflagstatus')
     logger.info('Restoring flagging status in versionname=\'initialize_flags\'')
-    flagmanager(msinfo['msfile'], mode='restore', versionname='initialize_flags',
+    casatasks.flagmanager(msinfo['msfile'], mode='restore', versionname='initialize_flags',
              merge='replace')
     find_casa_problems()
     if eMCP['is_mixed_mode']:
@@ -1708,7 +1727,7 @@ def run_average(eMCP):
     logger.info('Fields: {0}'.format(fields))
     list_sources_out(eMCP)
     logger.info('Data column: {0}'.format(datacolumn))
-    mstransform(vis=msfile, outputvis=outputmsfile, field=fields,
+    casatasks.mstransform(vis=msfile, outputvis=outputmsfile, field=fields,
                 timeaverage=timeaverage, chanaverage=chanaverage,
                 timerange=timerange, scan=scan, antenna=antenna,
                 timebin=timebin,  chanbin=chanbin,
@@ -1743,13 +1762,13 @@ def load_3C286_model(eMCP):
         model_3C286 = ''
     logger.info('Initializing model for 3C286')
     logger.info('Model {0}'.format('./'+'/'.join(model_3C286.split('/')[-2:])))
-    setjy(vis=msfile, field=fluxcal,
+    casatasks.setjy(vis=msfile, field=fluxcal,
           model=model_3C286, scalebychan=True, usescratch=True)
     find_casa_problems()
     if eMCP['is_mixed_mode']:
         msfile_sp = eMCP['msinfo']['msfile_sp']
         logger.info('Initializing model for 3C286 for {0}'.format(msfile_sp))
-        setjy(vis=msfile_sp, field=fluxcal,
+        casatasks.setjy(vis=msfile_sp, field=fluxcal,
               model=model_3C286, scalebychan=True, usescratch=True)
         find_casa_problems()
     return
@@ -1764,12 +1783,12 @@ def run_initialize_models(eMCP):
     msfile = eMCP['msinfo']['msfile']
     fluxcal = eMCP['msinfo']['sources']['fluxcal']
     logger.info('Resetting corrected column with clearcal')
-    clearcal(vis=msfile)
+    casatasks.clearcal(vis=msfile)
     find_casa_problems()
     logger.info('Resetting weights')
     logger.info('wtmode={0}, dowtsp={1}'.format(init_models['wtmode'],
                                                 init_models['dowtsp']))
-    initweights(vis=msfile,
+    casatasks.initweights(vis=msfile,
                 wtmode=init_models['wtmode'],
                 dowtsp=init_models['dowtsp'])
     find_casa_problems()
@@ -1777,15 +1796,15 @@ def run_initialize_models(eMCP):
     if eMCP['is_mixed_mode']:
         msfile_sp = eMCP['msinfo']['msfile_sp']
         logger.info('Resetting from {0}'.format(msfile_sp))
-        clearcal(vis=msfile_sp)
+        casatasks.clearcal(vis=msfile_sp)
         find_casa_problems()
     logger.info('Deleting model of all sources')
-    delmod(vis=msfile, otf=True, scr=True) #scr to delete MODEL column
+    casatasks.delmod(vis=msfile, otf=True, scr=True) #scr to delete MODEL column
     find_casa_problems()
     if eMCP['is_mixed_mode']:
         msfile_sp = eMCP['msinfo']['msfile_sp']
         logger.info('Deleting model from {0}'.format(msfile_sp))
-        delmod(vis=msfile_sp, otf=True, scr=True)
+        casatasks.delmod(vis=msfile_sp, otf=True, scr=True)
         find_casa_problems()
     # Set flux density of flux calibrator:
     if fluxcal in ['1331+305', '1331+3030','J1331+305', 'J1331+3030']:
@@ -1801,7 +1820,7 @@ def run_initialize_models(eMCP):
                                     init_models['fluxcal_flux'],
                                     init_models['fluxcal_spix'],
                                     init_models['fluxcal_reffreq']))
-            setjy(vis = msfile,
+            casatasks.setjy(vis = msfile,
                   field = fluxcal,
                   standard = 'manual',
                   fluxdensity = init_models['fluxcal_flux'],
@@ -1855,8 +1874,8 @@ def initialize_cal_dict(eMCP):
 def read_gaincal_solutions():
     """ Compile solution statistics from the CASA log
         Needs to be executed right after gaincal """
-    casalog_file = casalog.logfile()
-    with open(casalog_file, 'rb') as f:
+    casalog_file = casa_log.logfile()
+    with open(casalog_file, 'r') as f:
         last_lines = f.readlines()[-40:]
     logger.info('CASA log: {}'.format(casalog_file))
     logger.debug(last_lines)
@@ -1872,8 +1891,8 @@ def read_gaincal_solutions():
 def read_applycal_flags():
     """ Compile flag statistics from the CASA log
         Needs to be executed right after applycal """
-    casalog_file = casalog.logfile()
-    with open(casalog_file, 'rb') as f:
+    casalog_file = casa_log.logfile()
+    with open(casalog_file, 'r') as f:
         last_lines = f.readlines()[-40:]
     logger.debug('CASA log: {}'.format(casalog_file))
     logger.debug(last_lines)
@@ -1910,7 +1929,7 @@ def run_gaincal(msfile, caltables, caltable_name):
     logger.info('Previous calibration interp: {0}'.format(str(interp)))
     logger.info('Generating cal table: {0}'.format(caltables[caltable_name]['table']))
     # Run CASA task gaincal
-    gaincal(vis=msfile,
+    casatasks.gaincal(vis=msfile,
             caltable  = caltables[caltable_name]['table'],
             field     = caltables[caltable_name]['field'],
             gaintype  = caltables[caltable_name]['gaintype'],
@@ -1968,7 +1987,7 @@ def run_gaincal_narrow(msfile_sp, caltables, caltable_name, spwmap_sp):
     logger.info('Previous calibration interp: {0}'.format(str(interp)))
     logger.info('Generating cal table: {0}'.format(caltables[caltable_name]['table']))
     # Run CASA task gaincal
-    gaincal(vis=msfile_sp,
+    casatasks.gaincal(vis=msfile_sp,
             caltable  = caltables[caltable_name]['table'],
             field     = caltables[caltable_name]['field'],
             gaintype  = caltables[caltable_name]['gaintype'],
@@ -2012,7 +2031,7 @@ def run_bandpass(msfile, caltables, caltable_name, minblperant=3, minsnr=2):
     logger.info('Previous calibration interp: {0}'.format(str(interp)))
     logger.info('Generating cal table: {0}'.format(caltables[caltable_name]['table']))
     # Run CASA task bandpass
-    bandpass(vis=msfile,
+    casatasks.bandpass(vis=msfile,
              caltable  = caltables[caltable_name]['table'],
              field     = caltables[caltable_name]['field'],
              solint    = caltables[caltable_name]['solint'],
@@ -2061,7 +2080,7 @@ def run_bandpass_narrow(msfile_sp, caltables, caltable_name, spwmap_sp, minblper
     logger.info('Previous calibration interp: {0}'.format(str(interp)))
     logger.info('Generating cal table: {0}'.format(caltables[caltable_name]['table']))
     # Run CASA task bandpass
-    bandpass(vis=msfile_sp,
+    casatasks.bandpass(vis=msfile_sp,
              caltable  = caltables[caltable_name]['table'],
              field     = caltables[caltable_name]['field'],
              solint    = caltables[caltable_name]['solint'],
@@ -2129,7 +2148,7 @@ def run_applycal(eMCP, caltables, step, dotarget=False, insources=''):
     logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
     logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
     logger.info('Previous calibration interp: {0}'.format(str(interp)))
-    applycal(vis=msfile,
+    casatasks.applycal(vis=msfile,
              field = fields,
              gaintable = gaintable,
              gainfield = gainfield,
@@ -2167,7 +2186,7 @@ def run_applycal(eMCP, caltables, step, dotarget=False, insources=''):
                 logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
                 logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
                 logger.info('Previous calibration interp: {0}'.format(str(interp)))
-                applycal(vis=msfile,
+                casatasks.applycal(vis=msfile,
                          field = s,
                          gaintable = gaintable,
                          gainfield = gainfield,
@@ -2224,7 +2243,7 @@ def run_applycal_narrow(eMCP, caltables, step, spwmap_sp, dotarget=False, insour
     logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
     logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
     logger.info('Previous calibration interp: {0}'.format(str(interp)))
-    applycal(vis=msfile_sp,
+    casatasks.applycal(vis=msfile_sp,
              field = fields,
              gaintable = gaintable,
              gainfield = gainfield,
@@ -2267,7 +2286,7 @@ def run_applycal_narrow(eMCP, caltables, step, spwmap_sp, dotarget=False, insour
                 logger.info('Previous calibration gainfield: {0}'.format(str(gainfield)))
                 logger.info('Previous calibration spwmap: {0}'.format(str(spwmap)))
                 logger.info('Previous calibration interp: {0}'.format(str(interp)))
-                applycal(vis=msfile_sp,
+                casatasks.applycal(vis=msfile_sp,
                          field = s,
                          gaintable = gaintable,
                          gainfield = gainfield,
@@ -2311,7 +2330,6 @@ def initial_bp_cal(eMCP, caltables):
 
     # Apply calibration if requested:
     if eMCP['input_steps']['bandpass'] == 2:
-        print ('AA')
         run_applycal(eMCP, caltables, step='bandpass')
 
     flag_statistics(eMCP, step='bandpass')
@@ -2392,7 +2410,7 @@ def run_bpcal(eMCP, caltables, doplots=True):
                       xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=3)
         logger.info('BP0_p phase plot: {0}'.format(caltableplot))
     logger.info('Apply phase calibration flags to bandpass, applymode=flagonly')
-    applycal(vis=msfile, gaintable=caltables[caltable_name]['table'],
+    casatasks.applycal(vis=msfile, gaintable=caltables[caltable_name]['table'],
              field=msinfo['sources']['bpcal'],
              applymode='flagonly',
              flagbackup=False)
@@ -2751,7 +2769,7 @@ def gain_p_ap(eMCP, caltables, doplots=True):
                       xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=3)
         logger.info('G0 phase plot: {0}'.format(caltableplot))
     logger.info('Apply phase calibration flags to calibrators, applymode=flagonly')
-    applycal(vis=msfile, gaintable=caltables[caltable_name]['table'],
+    casatasks.applycal(vis=msfile, gaintable=caltables[caltable_name]['table'],
              field=calsources,
              applymode='flagonly',
              flagbackup=False)
@@ -2825,7 +2843,7 @@ def read_source_model(model, field, msinfo, eMcalflux):
     scaled_model = [scaled_model_base+ext for ext in ['tt0','tt1']]
     rmdir(scaled_model[0])
     rmdir(scaled_model[1])
-    flux_in_model = imstat(model[0])
+    flux_in_model = casatasks.imstat(model[0])
     find_casa_problems()
     logger.info('Flux in model tt0 (sum): {0:5.3g}, rms: {1:5.3g}, mean: {2:5.3g}'.format(
         flux_in_model['sum'][0],
@@ -2881,7 +2899,7 @@ def eM_fluxscale(eMCP, caltables):
     logger.info('Input caltable: {0}'.format(caltables[ampcal_table]['table']))
     logger.info('Antennas used to scale: {0}'.format(anten_for_flux))
     rmdir(caltables[caltable_name]['table'])
-    calfluxes = fluxscale(vis=msfile, reference=fluxcal,
+    calfluxes = casatasks.fluxscale(vis=msfile, reference=fluxcal,
                           transfer=cals_to_scale,
                           antenna = ','.join(anten_for_flux),
                           caltable  = caltables[ampcal_table]['table'],
@@ -2943,7 +2961,7 @@ def eM_fluxscale(eMCP, caltables):
                                                 eMcalfluxes[field][0],
                                                 eMcalfluxes[field][1],
                                                 eMcalfluxes[field][2]))
-            setjy(vis = msfile,
+            casatasks.setjy(vis = msfile,
                   field = field,
                   standard = 'manual',
                   fluxdensity = eMcalfluxes[field][0],
@@ -2954,7 +2972,7 @@ def eM_fluxscale(eMCP, caltables):
             if eMCP['is_mixed_mode']:
                 msfile_sp = eMCP['msinfo']['msfile_sp']
                 logger.info('Filling model for sp: {0}'.format(msfile_sp))
-                setjy(vis = msfile_sp,
+                casatasks.setjy(vis = msfile_sp,
                       field = field,
                       standard = 'manual',
                       fluxdensity = eMcalfluxes[field][0],
@@ -3284,20 +3302,23 @@ def applycal_all(eMCP, caltables):
     flag_statistics(eMCP, step='applycal_all')
     # Run statwt if requested
     if eMCP['defaults']['applycal_all']['run_statwt']:
-        casa_version = casadef.casa_version.split('.')
-        if int(casa_version[0]) >= 5 and int(casa_version[1]) >= 4:
+        casa_version = casalith.version()
+        if int(casa_version[0]) == 5:
+            if int(casa_version[1]) >= 4:
+                timebin = eMCP['defaults']['applycal_all']['statwt_timebin']
+        elif int(casa_version[0]) >=6:
             timebin = eMCP['defaults']['applycal_all']['statwt_timebin']
         else:
             timebin = ''
         msfile = eMCP['msinfo']['msfile']
         logger.info('Running statwt on {}'.format(msfile))
         logger.info('timebin: {}'.format(timebin))
-        statwt(vis=msfile, timebin=timebin)
+        casatasks.statwt(vis=msfile, timebin=timebin)
         find_casa_problems()
         if eMCP['is_mixed_mode']:
             msfile_sp = eMCP['msinfo']['msfile_sp']
             logger.info('Running statwt on narrow data {}'.format(msfile_sp))
-            statwt(vis=msfile_sp, timebin=timebin)
+            casatasks.statwt(vis=msfile_sp, timebin=timebin)
             find_casa_problems()
     else:
         logger.info('statwt not selected')
@@ -3309,13 +3330,13 @@ def applycal_all(eMCP, caltables):
 #def compile_statistics(msfile, tablename=''):
 #    logger.info('Start compile_stats')
 #    # Num of spw and baselines
-#    num_spw = len(vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
+#    num_spw = len(casatasks.vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
 #    baselines = get_baselines(msfile)
 #    # Date and time of observation
 #    ms.open(msfile)
 #    axis_info = ms.getdata(['axis_info'],ifraxis=True)
 #    ms.close()
-#    vis_field = vishead(msfile,mode='list',listitems='field')['field'][0][0] # Only one expected
+#    vis_field = casatasks.vishead(msfile,mode='list',listitems='field')['field'][0][0] # Only one expected
 #    t_mjd, t = get_dates(axis_info)
 #    freq_ini = np.min(axis_info['axis_info']['freq_axis']['chan_freq'])/1e9
 #    freq_end = np.max(axis_info['axis_info']['freq_axis']['chan_freq'])/1e9
@@ -3468,7 +3489,7 @@ def dfluxpy(freq,baseline):
     lowest_freq = 300.0;
     highest_freq = 50000.0;
     if (freq < lowest_freq or freq > highest_freq):
-        print "Frequency must be between $lowest_freq and $highest_freq MHz. \n"
+        print("Frequency must be between $lowest_freq and $highest_freq MHz. \n")
 
     # Perley & Butler 2012 values
     A = 1.2515
@@ -3527,9 +3548,9 @@ def dfluxpy(freq,baseline):
 
 
 def plot_image(eMCP, imagename, center, ext='.tt0', dozoom=False):
-    imstat_residual = imstat(imagename+'.residual'+ext)
+    imstat_residual = casatasks.imstat(imagename+'.residual'+ext)
     find_casa_problems()
-    imstat_image = imstat(imagename+'.image'+ext)
+    imstat_image = casatasks.imstat(imagename+'.image'+ext)
     find_casa_problems()
     noise = imstat_residual['rms'][0]
     peak = imstat_image['max'][0]
@@ -3587,8 +3608,8 @@ def plot_image_add(imagename, center, zoom_range, ext='.tt0', dozoom=False):
     return
 
 def check_mpicasa():
-    casalog.post('Checking MPICASA')
-    with open(casalog.logfile(), 'r') as f:
+    casa_log.post('Checking MPICASA')
+    with open(casa_log.logfile(), 'r') as f:
         l = f.readlines()[-1]
     if 'MPIClient' in l:
         is_mpicasa = True
@@ -3641,7 +3662,7 @@ def single_tclean(eMCP, s, num):
                 weighting, robust))
     logger.info('usemask = {0}, growiterations = {1}'.format(usemask,
                                                              growiterations))
-    tclean(vis=msinfo['msfile'], field=s, datacolumn='corrected',
+    casatasks.tclean(vis=msinfo['msfile'], field=s, datacolumn='corrected',
            imagename=imagename,
            imsize=imsize, cell=cell, deconvolver=deconvolver,
            gain=gain,
@@ -3737,14 +3758,14 @@ def run_split_fields(eMCP):
         logger.info('Datacolumn: {0}'.format(datacolumn))
         if createmms:
             logger.info('Create MMS: {0}'.format(createmms))
-        mstransform(vis=msfile, outputvis=outputmsfile, field=field,
+        casatasks.mstransform(vis=msfile, outputvis=outputmsfile, field=field,
                     timeaverage=timeaverage, chanaverage=chanaverage,
                     timebin=str(timebin), chanbin=chanbin,
                     datacolumn=datacolumn, keepflags=True)
         find_casa_problems()
         flagtable_info = 'after_split'
         current_time = datetime.datetime.utcnow()
-        flagmanager(vis=outputmsfile, mode='save', versionname=flagtable_info,
+        casatasks.flagmanager(vis=outputmsfile, mode='save', versionname=flagtable_info,
                 comment='After splitting the source at {0}'.format(str(current_time)))
         find_casa_problems()
         if not os.path.exists(outputmsfile):
@@ -3764,18 +3785,18 @@ def shift_field_position(eMCP, msfile, shift):
     position_name = shift['new_field_name']
     logger.info('Field {0} will be shifted to {1} on {2}'.format(field, position_name, new_pos))
     msfile_split = '{0}_{1}'.format(msfile, position_name)
-    mssources = vishead(msfile,mode='list',listitems='field')['field'][0]
+    mssources = casatasks.vishead(msfile,mode='list',listitems='field')['field'][0]
     if field not in mssources:
         logger.critical('Requested field to shift: {} not in MS! Closing '.format(field))
         exit_pipeline(eMCP)
     rmdir(msfile_split)
     # Split
     logger.info('Splitting field: {}'.format(field))
-    mstransform(msfile, outputvis=msfile_split, field=field, datacolumn='data')
+    casatasks.mstransform(msfile, outputvis=msfile_split, field=field, datacolumn='data')
     find_casa_problems()
     #FIXVIS
     logger.info('Changing phase center to: {}'.format(new_pos))
-    fixvis(vis=msfile_split, field=field, outputvis='', phasecenter=new_pos, datacolumn='data')
+    casatasks.fixvis(vis=msfile_split, field=field, outputvis='', phasecenter=new_pos, datacolumn='data')
     find_casa_problems()
     # Change field name
     tb.open(msfile_split+'/FIELD',nomodify=False)
@@ -3799,7 +3820,7 @@ def shift_field_position(eMCP, msfile, shift):
     antenna = eMCP['defaults']['average']['antenna']
     timerange = eMCP['defaults']['average']['timerange']
     rmdir(msfile_split+'_avg')
-    mstransform(vis=msfile_split, outputvis=msfile_split+'_avg',
+    casatasks.mstransform(vis=msfile_split, outputvis=msfile_split+'_avg',
                 timeaverage=timeaverage, chanaverage=chanaverage,
                 timerange=timerange, scan=scan, antenna=antenna,
                 timebin=timebin,  chanbin=chanbin,
@@ -3822,7 +3843,7 @@ def shift_field_position(eMCP, msfile, shift):
 
 def read_shifts_file(shifts_file):
     shifts_list = []
-    with open(shifts_file, 'rb') as shifts_txt:
+    with open(shifts_file, 'r') as shifts_txt:
         lines = shifts_txt.readlines()
         for line in lines:
             if line.strip() != '':
@@ -3913,7 +3934,7 @@ def flag_Lo_dropouts(eMCP):
                     eMCP['msinfo']['Lo_dropout_scans'] = ','.join(Lo_drop_list.astype('str'))
                     logger.info('Flagging Lo dropout scans: '
                             '{0}'.format(eMCP['msinfo']['Lo_dropout_scans']))
-                    flagdata(vis=msfile, antenna='Lo',
+                    casatasks.flagdata(vis=msfile, antenna='Lo',
                              scan=eMCP['msinfo']['Lo_dropout_scans'],
                              flagbackup=False)
                     find_casa_problems()
@@ -3922,7 +3943,7 @@ def flag_Lo_dropouts(eMCP):
             logger.info('Lo_dropout_scans manually selected: {0}'.format(Lo_dropout_scans))
             eMCP['msinfo']['Lo_dropout_scans'] = Lo_dropout_scans
             logger.info('Now flagging')
-            flagdata(vis=msfile, antenna='Lo',
+            casatasks.flagdata(vis=msfile, antenna='Lo',
                      scan=eMCP['msinfo']['Lo_dropout_scans'], flagbackup=False)
             find_casa_problems()
     else:
@@ -4048,13 +4069,13 @@ def find_Lo_drops(msfile, phscals, eMCP):
     return lo_dropout_scans
 
 def remove_flagversion(msfile, versionname):
-    flag_list = flagmanager(vis=msfile, mode='list')
+    flag_list = casatasks.flagmanager(vis=msfile, mode='list')
     find_casa_problems()
     for key in flag_list.keys():
         if type(key) == int:
             if flag_list[key]['name'] == versionname:
                 logger.info('Removing previous versionname="{0}"'.format(versionname))
-                flagmanager(vis=msfile, mode='delete', versionname=versionname)
+                casatasks.flagmanager(vis=msfile, mode='delete', versionname=versionname)
                 find_casa_problems()
 
 def flag_statistics(eMCP, step):
@@ -4066,7 +4087,7 @@ def flag_statistics(eMCP, step):
     makedir(plots_obs_dir)
     logger.info('Running flagdata on {0}'.format(step))
     logger.info('mode="summary", action="calculate", antenna="*&*"'.format(msinfo['msfile']))
-    flag_stats = flagdata(vis=msinfo['msfile'], mode='summary',
+    flag_stats = casatasks.flagdata(vis=msinfo['msfile'], mode='summary',
                           action='calculate', display='none', antenna='*&*',
                           flagbackup=False)
     find_casa_problems()
@@ -4074,7 +4095,7 @@ def flag_statistics(eMCP, step):
     remove_flagversion(msfile, versionname)
     logger.info('Saving flagtable in versionname="{0}"'.format(versionname))
     current_time = datetime.datetime.utcnow()
-    flagmanager(vis=msfile, mode='save', versionname=versionname,
+    casatasks.flagmanager(vis=msfile, mode='save', versionname=versionname,
                 comment=str(current_time))
     find_casa_problems()
     outfile = weblog_dir + 'plots/plots_flagstats/flagstats_{}.pkl'.format(step)
