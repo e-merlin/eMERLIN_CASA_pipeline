@@ -1064,9 +1064,9 @@ def find_quacktime(msinfo, s1, s2):
     else:
         try:
             separation = float('{0:5.2f}'.format(separations[s1+'-'+s2]))
-        except:
+        except KeyError:
             try:
-                separation = '{0:5.2f}'.format(separations[s2+'-'+s1])
+                separation = float('{0:5.2f}'.format(separations[s2+'-'+s1]))
             except:
                 separation = 0.0
     if separation < 1.0:

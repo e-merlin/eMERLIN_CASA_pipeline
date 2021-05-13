@@ -107,7 +107,7 @@ def get_freqs(msfile, allfreqs=False):
     ms.close()
     if allfreqs:
         channels = axis_info['axis_info']['freq_axis']['chan_freq']
-        freqs=np.sort(axis_info['axis_info']['freq_axis']['chan_freq'].flatten())[::len(channels)/4]
+        freqs=np.sort(axis_info['axis_info']['freq_axis']['chan_freq'].flatten())[::int(len(channels)/4)]
     else:
         freqs = axis_info['axis_info']['freq_axis']['chan_freq'].mean(axis=0)
     return freqs
