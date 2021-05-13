@@ -17,7 +17,7 @@ from functions import eMCP_weblog as emwlog
 #import casadef
 #import casalith
 
-current_version = 'v2.0.0'
+current_version = 'v2.0.2'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 #pipeline_filename = sys.argv[sys.argv.index('-c') + 1]
@@ -67,16 +67,18 @@ casalog_name = 'casa_eMCP.log'
 def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
     #Create directory structure
     pipeline_path = os.path.dirname(os.path.realpath(__file__))
+    logger.info(f'Executing pipeline in: {pipeline_path}')
     calib_dir, info_dir = emutils.create_dir_structure(pipeline_path)
 
     # Initialize eMCP dictionary, or continue with previous pipeline configuration if possible:
     eMCP = emutils.start_eMCP_dict(info_dir)
 
     # Get git info about pipeline version
-    try:
-        branch, short_commit = emutils.get_pipeline_version(pipeline_path)
-    except:
-        branch, short_commit = 'unknown', 'unknown'
+    branch, short_commit = emutils.get_pipeline_version(pipeline_path)
+#    try:
+#        branch, short_commit = emutils.get_pipeline_version(pipeline_path)
+#    except:
+#        branch, short_commit = 'unknown', 'unknown'
     pipeline_version = current_version
 
     logger.info('Starting pipeline')

@@ -1,4 +1,5 @@
 import os
+import sys
 import pickle
 import configparser
 import time
@@ -114,9 +115,10 @@ def create_dir_structure(pipeline_path):
 #'#    sys.exit()
 
 def get_pipeline_version(pipeline_path):
-    headfile = pipeline_path + '.git/HEAD'
+    headfile = os.path.join(pipeline_path, '.git/HEAD')
     branch = open(headfile, 'r').readlines()[0].strip().split('/')[-1]
-    commit = open(pipeline_path + '.git/refs/heads/'+branch, 'r').readlines()[0].strip()
+    commitfile = os.path.join(pipeline_path, '.git/refs/heads/', branch)
+    commit = open(commitfile, 'r').readlines()[0].strip()
     short_commit = commit[:7]
     return branch, short_commit
 
