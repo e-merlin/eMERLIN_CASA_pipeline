@@ -13,6 +13,7 @@ import glob
 
 from functions import eMCP_weblog as emwlog
 from functions import eMCP_utils as emutils
+from functions import eMCP_functions as em
 
 
 #import casatasks
@@ -104,15 +105,23 @@ def get_scans(msfile, field):
     return num_scans, scans
 
 def get_freqs(msfile, allfreqs=False):
-    ms.open(msfile)
-    axis_info = ms.getdata(['axis_info'],ifraxis=True)
-    ms.close()
     if allfreqs:
-        channels = axis_info['axis_info']['freq_axis']['chan_freq']
-        freqs=np.sort(axis_info['axis_info']['freq_axis']['chan_freq'].flatten())[::int(len(channels)/4)]
+        channels = emutils.read_keyword(msfile, 'CHAN_FREQ', subtable='SPECTRAL_WINDOW')
+        freqs=np.sort(channels.flatten())[::int(len(channels.T)/4)]
     else:
-        freqs = axis_info['axis_info']['freq_axis']['chan_freq'].mean(axis=0)
+        freqs = channels.mean(axis=0)
     return freqs
+
+#'#def get_freqs(msfile, allfreqs=False):
+#'#    ms.open(msfile)
+#'#    axis_info = ms.getdata(['axis_info'],ifraxis=True)
+#'#    ms.close()
+#'#    if allfreqs:
+#'#        channels = axis_info['axis_info']['freq_axis']['chan_freq']
+#'#        freqs=np.sort(axis_info['axis_info']['freq_axis']['chan_freq'].flatten())[::int(len(channels)/4)]
+#'#    else:
+#'#        freqs = axis_info['axis_info']['freq_axis']['chan_freq'].mean(axis=0)
+#'#    return freqs
 
 def count_active_baselines(msfile):
     msmd.open(msfile)
@@ -424,30 +433,55 @@ def make_uvplt(eMCP):
 def make_uvcov(msfile, msinfo):
     plots_obs_dir = './weblog/plots/plots_observation/'
     makedir(plots_obs_dir)
-    msmd.open(msfile)
     # CASA 5.4 has a bug, it selects the uv limits of the first spw
     # I create this manual limit as a compromise
+    max_freq = emutils.read_keyword(msfile, 'CHAN_FREQ', subtable='SPECTRAL_WINDOW').max()
+#'#    msmd.open(msfile)
     c = 299792458.
-    max_freq = np.max(np.array([msmd.chanfreqs(spw) for spw in
-                                msmd.datadescids()]))
+#'#    max_freq = np.max(np.array([msmd.chanfreqs(spw) for spw in
+#'#                                msmd.datadescids()]))
     max_uvdist = 217000.0/c*max_freq  # For 217 km baseline
-    freqs = get_freqs(msfile, allfreqs=True)
+    #freqs = get_freqs(msfile, allfreqs=True)
     allsources = msinfo['sources']['allsources'].split(',')
     mssources = msinfo['sources']['mssources'].split(',')
     logger.info('Plotting uvcov for:')
     for f in allsources:
         if f in mssources:
-            plot_file = plots_obs_dir+'{0}_uvcov_{1}.png'.format(msinfo['msfilename'],f)
+            plot_file = os.path.join(plots_obs_dir,'{0}_uvcov_{1}.png'.format(msinfo['msfilename'],f))
             logger.info('{0}'.format(f))
             avgtime = '32'
             nchan = msinfo['nchan']
-            plotms(vis=msfile, xaxis='Uwave', yaxis='Vwave', field=f, title=f,
-            correlation = 'RR', spw='', coloraxis = 'spw',
-            width=900, height=900, symbolsize=1,
-            plotrange=[-max_uvdist,+max_uvdist,-max_uvdist,+max_uvdist],
-            averagedata = True, avgtime=avgtime, avgchannel = str(int(nchan/8)),
-            plotfile = plot_file, expformat = 'png', customsymbol = True, symbolshape = 'circle',
-            overwrite=True, showlegend=False, showgui=False)
+            commands = {}
+            commands['plotms'] = {
+                    'vis' :  msfile,
+                    'xaxis': 'Uwave',
+                    'yaxis': 'Vwave',
+                    'field': f,
+                    'title': f,
+                    'correlation': 'RR',
+                    'spw': '',
+                    'coloraxis': 'spw',
+                    'width': 900,
+                    'symbolsize': 1,
+                    'plotrange': [-max_uvdist,+max_uvdist,-max_uvdist,+max_uvdist],
+                    'averagedata':  True,
+                    'avgtime': avgtime,
+                    'avgchannel': str(int(nchan/8)),
+                    'plotfile':  plot_file,
+                    'expformat':  'png',
+                    'customsymbol':  True,
+                    'symbolshape':  'circle',
+                    'overwrite': True,
+                    'showlegend': True,
+                    'showgui': False}
+            em.run_casa_command(commands, 'plotms')
+#'#            plotms(vis=msfile, xaxis='Uwave', yaxis='Vwave', field=f, title=f,
+#'#            correlation = 'RR', spw='', coloraxis = 'spw',
+#'#            width=900, height=900, symbolsize=1,
+#'#            plotrange=[-max_uvdist,+max_uvdist,-max_uvdist,+max_uvdist],
+#'#            averagedata = True, avgtime=avgtime, avgchannel = str(int(nchan/8)),
+#'#            plotfile = plot_file, expformat = 'png', customsymbol = True, symbolshape = 'circle',
+#'#            overwrite=True, showlegend=False, showgui=False)
 #            u, v = read_uvw(msfile, f)
 #            single_uvcov(f, u, v, freqs, plot_file)
         else:
@@ -462,12 +496,27 @@ def make_elevation(msfile, msinfo):
     logger.info('{}'.format(plot_file))
     avgtime = '16'
     showgui = False
-    plotms(vis=msfile, xaxis='time', yaxis='elevation', correlation = 'RR',
-    spw='', coloraxis = 'field', width=900, symbolsize=5, plotrange=[-1,-1,0,90],
-    averagedata = True, avgtime=avgtime,
-    plotfile = plot_file, expformat = 'png', customsymbol = True, symbolshape = 'circle',
-    overwrite=True,showlegend=True, showgui=showgui)
-
+    commands = {}
+    commands['plotms'] = {
+            'vis' :  msfile,
+            'xaxis': 'time',
+            'yaxis': 'elevation',
+            'correlation': 'RR',
+            'spw': '',
+            'coloraxis': 'field',
+            'width': 900,
+            'symbolsize': 5,
+            'plotrange': [-1,-1,0,90],
+            'averagedata':  True,
+            'avgtime': avgtime,
+            'plotfile':  plot_file,
+            'expformat':  'png',
+            'customsymbol':  True,
+            'symbolshape':  'circle',
+            'overwrite': True,
+            'showlegend': True,
+            'showgui': showgui}
+    em.run_casa_command(commands, 'plotms')
 
 
 ### Flag statistics
