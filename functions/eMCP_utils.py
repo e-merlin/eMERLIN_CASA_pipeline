@@ -3,6 +3,7 @@ import sys
 import pickle
 import configparser
 import time
+import shutil
 
 import logging
 logger = logging.getLogger('logger')
@@ -113,6 +114,34 @@ def create_dir_structure(pipeline_path):
 #'#    for s in calibration_steps:
 #'#        print('    {}'.format(s))
 #'#    sys.exit()
+
+def prt_dict(d, pre=''):
+    subdict = []
+    for key in d.keys():
+        if type(d[key]) == dict:
+            subdict.append(key)
+        else:
+            print('{0:20s}: {1}'.format(pre+key, d[key]))
+    if subdict != []:
+        for key_inner in subdict:
+            print(pre+key_inner)
+            prt_dict(d[key_inner], pre=pre+'   ')
+
+def prt_dict_tofile(d, tofilename=None, addfile='', pre=' '):
+    if tofilename != None:
+        f = open(tofilename, 'wb')
+    else:
+        f = addfile
+    subdict = []
+    for key in d.keys():
+        if type(d[key]) in [collections.OrderedDict, dict]:
+            subdict.append(key)
+        else:
+            f.write('{0:20s}: {1}\n'.format(pre+key, d[key]))
+    if subdict != []:
+        for key_inner in subdict:
+            f.write('{}\n'.format(pre+key_inner))
+            prt_dict_tofile(d[key_inner], addfile=f, pre=pre+pre)
 
 def get_pipeline_version(pipeline_path):
     headfile = os.path.join(pipeline_path, '.git/HEAD')
@@ -235,4 +264,5 @@ def find_run_steps(eMCP, run_steps, skip_steps=[]):
             pass
 
     return input_steps
+
 

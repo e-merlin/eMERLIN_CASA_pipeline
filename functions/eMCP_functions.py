@@ -1,11 +1,12 @@
 #!/usr/local/python
-import os, subprocess
+import os
+import subprocess
 import numpy as np
 import socket
 import pickle
 import glob
 import re
-import sys, shutil
+import sys
 import copy
 import getopt
 import datetime
@@ -14,24 +15,29 @@ import collections
 from scipy import stats
 import logging
 #'#import configparser
-from ast import literal_eval
+#'#from ast import literal_eval
 
-import functions.eMCP_weblog as emwlog
-import functions.eMCP_plots as emplt
+from functions import eMCP_plots as emplt
+from functions import eMCP_weblog as emwlog
+from functions import eMCP_utils as emutils
 
-import casatasks
-import casalith
-from casaviewer import imview
-from casatools import table
-from casatools import msmetadata
-from casatools import ms as myms
-from casatools import measures
-tb = table()
-msmd = msmetadata()
-ms = myms()
-me = measures()
+casa_command = '/pipeline1/emerlin/casa/casa-6.1.2-7-pipeline-2020.1.0.36/bin/casa'
+#'#import functions.eMCP_weblog as emwlog
+#'#import functions.eMCP_plots as emplt
 
-from casatasks import casalog as casa_log
+#'#import casatasks
+#'#import casalith
+#'#from casaviewer import imview
+#'#from casatools import table
+#'#from casatools import msmetadata
+#'#from casatools import ms as myms
+#'#from casatools import measures
+#'#tb = table()
+#'#msmd = msmetadata()
+#'#ms = myms()
+#'#me = measures()
+#'#
+#'#from casatasks import casalog as casa_log
 
 # CASA imports
 #from taskinit import *
@@ -58,6 +64,34 @@ plots_link = './plots/'
 images_link= './images/'
 
 line0 = '-'*15
+
+def run_casa_command(config_command, key):
+    command_name = key
+    logger.debug(f'Dictionary passed to {command_name}')
+    logger.debug(config_command[command_name])
+    logger.info(f'Running command: {command_name}')
+    lines = []
+    for (k,v) in config_command[command_name].items():
+        #logger.debug(f'{k}: {v}')
+        t = type(v)
+        if t == str:
+            lines.append('{0}="{1}"'.format(k,v))
+        elif t == int or t == float:
+            lines.append('{0}={1}'.format(k,v))
+        elif t == list:
+            lines.append('{0}={1}'.format(k,v))
+        elif t == bool:
+            lines.append('{0}={1}'.format(k,v))
+        elif t == dict:
+            lines.append('{0}={1}'.format(k,v))
+        else:
+            logger.warning('Could not identify type '
+                           'of paremeter {0}, {1}'.format(k,v))
+    output = '{0}({1})'.format(command_name, ', '.join(lines))
+#'#    logger.code(output)
+    #subprocess.call([casa_command, '--nogui', '--logfile casa_eMCP.log', '-c', output]) 
+    subprocess.run([casa_command, '--nogui', '--logfile', 'casa_eMCP.log', '-c', output]) 
+    # Here it would be a good idea to add stdout and stderr handling
 
 def backslash_check(directory):
     if directory[-1] != '/':
@@ -147,42 +181,6 @@ def find_run_steps(eMCP, run_steps, skip_steps=[]):
     return input_steps
 
 
-def makedir(pathdir):
-    try:
-        os.mkdir(pathdir)
-        logger.info('Create directory: {}'.format(pathdir))
-    except:
-        logger.debug('Cannot create directory: {}'.format(pathdir))
-        pass
-
-def rmdir(pathdir,message='Deleted:'):
-    if os.path.exists(pathdir):
-        try:
-            shutil.rmtree(pathdir)
-            logger.info('{0} {1}'.format(message, pathdir))
-        except:
-            logger.debug('Could not delete: {0} {1}'.format(message, pathdir))
-            pass
-
-def rmfile(pathdir,message='Deleted:'):
-    if os.path.exists(pathdir):
-        try:
-            os.remove(pathdir)
-            logger.info('{0} {1}'.format(message, pathdir))
-        except:
-            logger.debug('Could not delete: {0} {1}'.format(message, pathdir))
-            pass
-
-def mvdir(pathdir, outpudir):
-    if os.path.exists(pathdir):
-        try:
-            shutil.move(pathdir, outpudir)
-            logger.info('Moved: {0} {1}'.format(pathdir, outpudir))
-        except:
-            logger.debug('Could not move: {0} {1}'.format(pathdir, outpudir))
-            pass
-
-
 def exit_pipeline(eMCP=''):
     os.system('cp eMCP.log {}eMCP.log.txt'.format(info_dir))
     os.system('cp casa_eMCP.log {}casa_eMCP.log.txt'.format(info_dir))
@@ -226,34 +224,6 @@ def save_obj(obj, name):
 def load_obj(name):
     with open(name, 'rb') as f:
         return pickle.load(f)
-
-def prt_dict(d, pre=''):
-    subdict = []
-    for key in d.keys():
-        if type(d[key]) == dict:
-            subdict.append(key)
-        else:
-            print('{0:20s}: {1}'.format(pre+key, d[key]))
-    if subdict != []:
-        for key_inner in subdict:
-            print(pre+key_inner)
-            prt_dict(d[key_inner], pre=pre+'   ')
-
-def prt_dict_tofile(d, tofilename=None, addfile='', pre=' '):
-    if tofilename != None:
-        f = open(tofilename, 'wb')
-    else:
-        f = addfile
-    subdict = []
-    for key in d.keys():
-        if type(d[key]) in [collections.OrderedDict, dict]:
-            subdict.append(key)
-        else:
-            f.write('{0:20s}: {1}\n'.format(pre+key, d[key]))
-    if subdict != []:
-        for key_inner in subdict:
-            f.write('{}\n'.format(pre+key_inner))
-            prt_dict_tofile(d[key_inner], addfile=f, pre=pre+pre)
 
 def add_step_time(step, eMCP, msg, t0, doweblog=True):
     t1 = datetime.datetime.utcnow()
@@ -616,7 +586,7 @@ def get_msinfo(eMCP, msfile, doprint=False):
     logger.info('> Channels per spw: {0}'.format(msinfo['nchan']))
     logger.info('> Itegration time {0:3.1f}s'.format(msinfo['int_time']))
     if doprint:
-        prt_dict(msinfo)
+        emutils.prt_dict(msinfo)
     eMCP['msinfo'] = msinfo
     save_obj(eMCP, info_dir + 'eMCP_info.pkl')
     return eMCP, msinfo, msfile
@@ -635,7 +605,7 @@ def get_unique_field(caltable):
 
 def backup_table(caltable):
     try:
-        shutil.rmtree(caltable+'_backup_missing')
+        emutils.rmdir(caltable+'_backup_missing')
     except OSError:
         pass
     shutil.copytree(caltable, caltable+'_backup_missing')
@@ -737,23 +707,35 @@ def import_eMERLIN_fitsIDI(eMCP):
         logger.critical('No fits files found in {}'.format(fits_path))
         exit_pipeline(eMCP='')
 
-    rmdir(eMCP['inputs']['inbase'] + '.ms')
-    rmdir(eMCP['inputs']['inbase'] + '.ms.flagversions')
-    rmdir(eMCP['inputs']['inbase'] + '.mms')
-    rmdir(eMCP['inputs']['inbase'] + '.mms.flagversions')
-    rmdir(eMCP['inputs']['inbase'] + '_sp.ms')
-    rmdir(eMCP['inputs']['inbase'] + '_sp.mms')
+    emutils.rmdir(eMCP['inputs']['inbase'] + '.ms')
+    emutils.rmdir(eMCP['inputs']['inbase'] + '.ms.flagversions')
+    emutils.rmdir(eMCP['inputs']['inbase'] + '.mms')
+    emutils.rmdir(eMCP['inputs']['inbase'] + '.mms.flagversions')
+    emutils.rmdir(eMCP['inputs']['inbase'] + '_sp.ms')
+    emutils.rmdir(eMCP['inputs']['inbase'] + '_sp.mms')
 
     logger.info('Running importfitsIDI')
     t0 = datetime.datetime.utcnow()
     msfile0 = msfile_name+'_imported.ms'
-    rmdir(msfile0)
-    casatasks.importfitsidi(fitsidifile=fitsfiles, vis=msfile0,
-                  constobsid=constobsid, scanreindexgap_s=scanreindexgap_s)
+    emutils.rmdir(msfile0)
+    commands = {}
+    commands['importfitsidi'] = {
+        'fitsidifile': fitsfiles,
+        'vis': msfile0,
+        'constobsid' : constobsid,
+        'scanreindexgap_s': scanreindexgap_s}
+    run_casa_command(commands, 'importfitsidi')
+#'#    casatasks.importfitsidi(fitsidifile=fitsfiles, vis=msfile0,
+#'#                  constobsid=constobsid, scanreindexgap_s=scanreindexgap_s)
     find_casa_problems()
     logger.info('Created file: {}'.format(msfile0))
     logger.info('Removing initial correlator flags')
-    casatasks.flagdata(vis=msfile0, mode='unflag', flagbackup=False)
+    commands['flagdata'] = {
+        'vis': msfile0,
+        'mode' : 'unflag',
+        'flagbackup': False}
+    run_casa_command(commands, 'flagdata')
+#'#    casatasks.flagdata(vis=msfile0, mode='unflag', flagbackup=False)
     find_casa_problems()
     logger.info('Finished importfitsIDI')
     msg = 'constobsid={0}, scanreindexgap_s={1}'.format(constobsid,
@@ -799,55 +781,67 @@ def import_eMERLIN_fitsIDI(eMCP):
     if do_ms2mms:
         logger.info('Data will be converted to MMS')
     logger.info('Start mstransform')
-#    t0 = datetime.datetime.utcnow()
-    rmdir(msfile1)
+    t0 = datetime.datetime.utcnow()
+    emutils.rmdir(msfile1)
     if import_eM['fix_repeated_sources'] == True:
         fix_repeated_sources(msfile0, msfile1, datacolumn, antenna,
                              str(spw_separation[0]), timeaverage, timebin,
                              chanaverage, chanbin, usewtspectrum, do_hanning,
                              do_ms2mms)
     else:
-        casatasks.mstransform(vis = msfile0,
-                    outputvis = msfile1,
-                    keepflags = True,
-                    datacolumn = datacolumn,
-                    antenna = antenna,
-                    spw = str(spw_separation[0]),
-                    timeaverage = timeaverage, timebin=timebin,
-                    chanaverage = chanaverage, chanbin=chanbin,
-                    usewtspectrum = usewtspectrum,
-                    hanning = do_hanning,
-                    createmms = do_ms2mms
-                    )
+        commands = {}
+        commands['mstransform'] = {
+                'vis' :  msfile0,
+                'outputvis': msfile1,
+                'keepflags': True,
+                'datacolumn': datacolumn,
+                'antenna': antenna,
+                'spw': spw_separation,
+                'timeaverage': timeaverage, 'timebin': timebin,
+                'chanaverage': chanaverage, 'chanbin': chanbin,
+                'usewtspectrum': usewtspectrum,
+                'hanning': do_hanning,
+                'createmms': do_ms2mms}
+        run_casa_command(commands, 'mstransform')
         find_casa_problems()
     logger.info('Transformed: {0} into {1}'.format(msfile0, msfile1))
-    if do_hanning:
-        ms.writehistory(message='Hanning smoothing applied',msname=msfile1)
     if is_mixed_mode: # No hanning and no channel average
         logger.info('Mixed mode data detected')
         msfile1_sp = msfile_name+'_transformed_sp' + ext_ms[do_ms2mms]
         logger.info('Running mstransform on spectral line data')
-        rmdir(msfile1_sp)
+        emutils.rmdir(msfile1_sp)
         if import_eM['fix_repeated_sources'] == True:
             fix_repeated_sources(msfile0, msfile1_sp, datacolumn, antenna,
                                  str(spw_separation[1]), timeaverage, timebin,
                                  chanaverage, chanbin, usewtspectrum, do_hanning,
                                  do_ms2mms)
         else:
-            casatasks.mstransform(vis = msfile0,
-                    outputvis = msfile1_sp,
-                    keepflags = True,
-                    datacolumn = datacolumn,
-                    antenna = antenna,
-                    spw = str(spw_separation[1]),
-                    timeaverage = timeaverage, timebin=timebin,
-                    usewtspectrum = usewtspectrum,
-                    createmms = do_ms2mms
-                    )
+            commands = {}
+            commands['mstransform'] = {
+                    'vis' :  msfile0,
+                    'outputvis': msfile1_sp,
+                    'keepflags': True,
+                    'datacolumn': datacolumn,
+                    'antenna': antenna,
+                    'spw': str(spw_separation[1]),
+                    'timeaverage': timeaverage, 'timebin': timebin,
+                    'usewtspectrum': usewtspectrum,
+                    'createmms': do_ms2mms}
+            run_casa_command(commands, 'mstransform')
+#'#            casatasks.mstransform(vis = msfile0,
+#'#                    outputvis = msfile1_sp,
+#'#                    keepflags = True,
+#'#                    datacolumn = datacolumn,
+#'#                    antenna = antenna,
+#'#                    spw = str(spw_separation[1]),
+#'#                    timeaverage = timeaverage, timebin=timebin,
+#'#                    usewtspectrum = usewtspectrum,
+#'#                    createmms = do_ms2mms
+#'#                    )
             find_casa_problems()
         logger.info('Transformed: {0} into {1}'.format(msfile0, msfile1_sp))
     if os.path.isdir(msfile1) == True:
-        rmdir(msfile0)
+        emutils.rmdir(msfile0)
     else:
         logger.critical('Problem generating {}. Stopping ' \
                         'pipeline'.format(msfile1))
@@ -863,45 +857,45 @@ def import_eMERLIN_fitsIDI(eMCP):
         msg += ', antenna="{}"'.format(antenna)
     msfile = msfile1
     eMCP, msinfo, msfile = get_msinfo(eMCP, msfile)
-#    eMCP = add_step_time('mstransform', eMCP, msg, t0, doweblog=True)
-
-    # FIXVIS
-    msfile = eMCP['inputs']['inbase'] + ext_ms[do_ms2mms]
-    logger.info('Start FIXVIS')
-#    t0 = datetime.datetime.utcnow()
-    casatasks.fixvis(vis = msfile1,
-           outputvis = msfile,
-           reuse = False)
-    find_casa_problems()
-    logger.info('Fixed {0} into {1}'.format(msfile1, msfile))
-    run_listobs(msfile)
-    if os.path.isdir(msfile) == True:
-        rmdir(msfile1)
-    else:
-        logger.critical('Problem generating {}. Stopping ' \
-                        'pipeline'.format(msfile))
-        exit_pipeline(eMCP)
-    if is_mixed_mode:
-        msfile_sp = get_msfile_sp(eMCP)
-        logger.info('Running FIXVIS on spectral line data')
-        casatasks.fixvis(vis = msfile1_sp,
-           outputvis = msfile_sp,
-           reuse = False)
-        find_casa_problems()
-        logger.info('Fixed {0} into {1}'.format(msfile1_sp, msfile_sp))
-        run_listobs(msfile_sp)
-        if os.path.isdir(msfile_sp) == True:
-            rmdir(msfile1_sp)
-        else:
-            logger.critical('Problem generating FIXVIS ms. Stopping pipeline')
-            exit_pipeline(eMCP)
-    logger.info('Finished FIXVIS')
-#    msg = ''
-    logger.info('End run_importfits')
-    eMCP, msinfo, msfile = get_msinfo(eMCP, msfile)
-    eMCP = add_step_time('run_importfits', eMCP, msg, t0, doweblog=True)
-    flag_statistics(eMCP, step='run_importfits')
-    return eMCP
+    eMCP = add_step_time('mstransform', eMCP, msg, t0, doweblog=True)
+#
+#    # FIXVIS
+#    msfile = eMCP['inputs']['inbase'] + ext_ms[do_ms2mms]
+#    logger.info('Start FIXVIS')
+##    t0 = datetime.datetime.utcnow()
+#    casatasks.fixvis(vis = msfile1,
+#           outputvis = msfile,
+#           reuse = False)
+#    find_casa_problems()
+#    logger.info('Fixed {0} into {1}'.format(msfile1, msfile))
+#    run_listobs(msfile)
+#    if os.path.isdir(msfile) == True:
+#        emutils.rmdir(msfile1)
+#    else:
+#        logger.critical('Problem generating {}. Stopping ' \
+#                        'pipeline'.format(msfile))
+#        exit_pipeline(eMCP)
+#    if is_mixed_mode:
+#        msfile_sp = get_msfile_sp(eMCP)
+#        logger.info('Running FIXVIS on spectral line data')
+#        casatasks.fixvis(vis = msfile1_sp,
+#           outputvis = msfile_sp,
+#           reuse = False)
+#        find_casa_problems()
+#        logger.info('Fixed {0} into {1}'.format(msfile1_sp, msfile_sp))
+#        run_listobs(msfile_sp)
+#        if os.path.isdir(msfile_sp) == True:
+#            emutils.rmdir(msfile1_sp)
+#        else:
+#            logger.critical('Problem generating FIXVIS ms. Stopping pipeline')
+#            exit_pipeline(eMCP)
+#    logger.info('Finished FIXVIS')
+##    msg = ''
+#    logger.info('End run_importfits')
+#    eMCP, msinfo, msfile = get_msinfo(eMCP, msfile)
+#    eMCP = add_step_time('run_importfits', eMCP, msg, t0, doweblog=True)
+#    flag_statistics(eMCP, step='run_importfits')
+#    return eMCP
 
 def fix_repeated_sources(msfile0, msfile1, datacolumn, antenna,
                          spw_separation, timeaverage, timebin,
@@ -916,21 +910,35 @@ def fix_repeated_sources(msfile0, msfile1, datacolumn, antenna,
     tmp_files = []
     for f in range(num_sources):
         outputmsfile_tmp = 'field_{0:02.0f}'.format(f)
-        rmdir(outputmsfile_tmp)
+        emutils.rmdir(outputmsfile_tmp)
         logger.info('Creating ... {0}'.format(outputmsfile_tmp))
-        casatasks.mstransform(vis = msfile0,
-            outputvis = outputmsfile_tmp,
-            field = str(f),
-            keepflags = True,
-            datacolumn = datacolumn,
-            antenna = antenna,
-            spw = spw_separation,
-            timeaverage = timeaverage, timebin=timebin,
-            chanaverage = chanaverage, chanbin=chanbin,
-            usewtspectrum = usewtspectrum,
-            hanning = do_hanning,
-            createmms = do_ms2mms
-            )
+        commands = {}
+        commands['mstransform'] = {
+                'vis' :  msfile0,
+                'outputvis': outputmsfile_tmp,
+                'keepflags': True,
+                'datacolumn': datacolumn,
+                'antenna': antenna,
+                'spw': spw_separation,
+                'timeaverage': timeaverage, 'timebin': timebin,
+                'chanaverage': chanaverage, 'chanbin': chanbin,
+                'usewtspectrum': usewtspectrum,
+                'hanning': do_hanning,
+                'createmms': do_ms2mms}
+        run_casa_command(commands, 'mstransform')
+#'#        casatasks.mstransform(vis = msfile0,
+#'#            outputvis = outputmsfile_tmp,
+#'#            field = str(f),
+#'#            keepflags = True,
+#'#            datacolumn = datacolumn,
+#'#            antenna = antenna,
+#'#            spw = spw_separation,
+#'#            timeaverage = timeaverage, timebin=timebin,
+#'#            chanaverage = chanaverage, chanbin=chanbin,
+#'#            usewtspectrum = usewtspectrum,
+#'#            hanning = do_hanning,
+#'#            createmms = do_ms2mms
+#'#            )
         find_casa_problems()
         tmp_files.append(outputmsfile_tmp)
     logger.info('Concat individual fields')
@@ -939,7 +947,7 @@ def fix_repeated_sources(msfile0, msfile1, datacolumn, antenna,
     for f in range(num_sources):
         outputmsfile_tmp = 'field_{0:02.0f}'.format(f)
         logger.info('Removing... {0}'.format(outputmsfile_tmp))
-        rmdir(outputmsfile_tmp)
+        emutils.rmdir(outputmsfile_tmp)
     return
 
 
@@ -1719,8 +1727,8 @@ def run_average(eMCP):
     name = '.'.join(msfile.split('.')[:-1])
     exte = ''.join(msfile.split('.')[-1])
     outputmsfile = name+'_avg.'+exte
-    rmdir(outputmsfile)
-    rmdir(outputmsfile+'.flagversions')
+    emutils.rmdir(outputmsfile)
+    emutils.rmdir(outputmsfile+'.flagversions')
     logger.info('Input MS: {0}'.format(msfile))
     logger.info('Output MS: {0}'.format(outputmsfile))
     logger.info('chanbin={0}, timebin={1}'.format(chanbin, timebin))
@@ -1907,7 +1915,7 @@ def read_applycal_flags():
 
 def run_gaincal(msfile, caltables, caltable_name):
     logger.info(line0)
-    rmdir(caltables[caltable_name]['table'])
+    emutils.rmdir(caltables[caltable_name]['table'])
     logger.info('Running gaincal to generate: {0}'.format(caltables[caltable_name]['name']))
     logger.info('Field(s) = {0}, gaintype = {1}, calmode = {2}'.format(
                 caltables[caltable_name]['field'],
@@ -1962,7 +1970,7 @@ def convert_spwmap(spwmap, spwmap_sp):
 
 def run_gaincal_narrow(msfile_sp, caltables, caltable_name, spwmap_sp):
     logger.info(line0)
-    rmdir(caltables[caltable_name]['table'])
+    emutils.rmdir(caltables[caltable_name]['table'])
     logger.info('Running gaincal to generate: {0}'.format(caltables[caltable_name]['name']))
     logger.info('Field(s) = {0}, gaintype = {1}, calmode = {2}'.format(
                 caltables[caltable_name]['field'],
@@ -2010,7 +2018,7 @@ def run_gaincal_narrow(msfile_sp, caltables, caltable_name, spwmap_sp):
 
 def run_bandpass(msfile, caltables, caltable_name, minblperant=3, minsnr=2):
     logger.info(line0)
-    rmdir(caltables[caltable_name]['table'])
+    emutils.rmdir(caltables[caltable_name]['table'])
     logger.info('Running bandpass to generate: {0}'.format(caltables[caltable_name]['name']))
     logger.info('Field(s) {0}, solint = {1}, spw = {2}, combine = {3}, solnorm = {4}'.format(
                  caltables[caltable_name]['field'],
@@ -2053,7 +2061,7 @@ def run_bandpass(msfile, caltables, caltable_name, minblperant=3, minsnr=2):
 
 def run_bandpass_narrow(msfile_sp, caltables, caltable_name, spwmap_sp, minblperant=3, minsnr=2):
     logger.info(line0)
-    rmdir(caltables[caltable_name]['table'])
+    emutils.rmdir(caltables[caltable_name]['table'])
     logger.info('Running bandpass to generate: {0}'.format(caltables[caltable_name]['name']))
     logger.info('Field(s) {0}, solint = {1}, spw = {2}, combine = {3}, solnorm = {4}'.format(
                  caltables[caltable_name]['field'],
@@ -2616,7 +2624,7 @@ def solve_delays(eMCP, caltables, doplots=True):
 
 def run_fringefit(msfile, caltables, caltable_name, minblperant=3, minsnr=2, smodel=[]):
     previous_cal = caltables[caltable_name]['previous_cal']
-    rmdir(caltables[caltable_name]['table'])
+    emutils.rmdir(caltables[caltable_name]['table'])
     logger.info('Running fringefit to generate: {0}'.format(caltables[caltable_name]['name']))
     logger.info('Field(s) = {0}, zerorates = {1}'.format(
                 caltables[caltable_name]['field'],
@@ -2841,8 +2849,8 @@ def read_source_model(model, field, msinfo, eMcalflux):
     model_name = os.path.splitext(modelfilename)[0]
     scaled_model_base = '{0}/{1}_{2}.'.format(model_path,msinfo['msfilename'],model_name)
     scaled_model = [scaled_model_base+ext for ext in ['tt0','tt1']]
-    rmdir(scaled_model[0])
-    rmdir(scaled_model[1])
+    emutils.rmdir(scaled_model[0])
+    emutils.rmdir(scaled_model[1])
     flux_in_model = casatasks.imstat(model[0])
     find_casa_problems()
     logger.info('Flux in model tt0 (sum): {0:5.3g}, rms: {1:5.3g}, mean: {2:5.3g}'.format(
@@ -2887,8 +2895,8 @@ def eM_fluxscale(eMCP, caltables):
     fluxcal = sources['fluxcal']
     caltable_name = flux['tablename']
     # Remove previous results:
-    rmfile(calib_dir + 'allcal_ap.G1_fluxes.txt')
-    rmfile(calib_dir+ '{0}_fluxscale.png'.format(msinfo['msfilename']))
+    emutils.rmfile(calib_dir + 'allcal_ap.G1_fluxes.txt')
+    emutils.rmfile(calib_dir+ '{0}_fluxscale.png'.format(msinfo['msfilename']))
     # Check if table allcal_ap.G1 exists:
     check_table_exists(caltables, ampcal_table)
     caltables[caltable_name] = copy.copy(caltables[ampcal_table])
@@ -2898,7 +2906,7 @@ def eM_fluxscale(eMCP, caltables):
     logger.info('Transfered to: {0}'.format(cals_to_scale))
     logger.info('Input caltable: {0}'.format(caltables[ampcal_table]['table']))
     logger.info('Antennas used to scale: {0}'.format(anten_for_flux))
-    rmdir(caltables[caltable_name]['table'])
+    emutils.rmdir(caltables[caltable_name]['table'])
     calfluxes = casatasks.fluxscale(vis=msfile, reference=fluxcal,
                           transfer=cals_to_scale,
                           antenna = ','.join(anten_for_flux),
@@ -3624,7 +3632,7 @@ def single_tclean(eMCP, s, num):
     imagename = images_dir+'{0}/{1}_{0}_img{2:02d}'.format(s, msinfo['msfilename'], num)
     prev_images = glob.glob(imagename+'*')
     for prev_image in prev_images:
-        rmdir(prev_image)
+        emutils.rmdir(prev_image)
     cellsize = {'C':'0.008arcsec',
                 'L':'0.02arcsec',
                 'K':'0.002arcsec'
@@ -3747,8 +3755,8 @@ def run_split_fields(eMCP):
         # Define output name
         msfile_name = '{0}_{1}.ms'.format(msinfo['run'], field)
         outputmsfile = os.path.join(output_dir, msfile_name)
-        rmdir(outputmsfile)
-        rmdir(outputmsfile+'.flagversions')
+        emutils.rmdir(outputmsfile)
+        emutils.rmdir(outputmsfile+'.flagversions')
         logger.info('Input MS: {0}'.format(msfile))
         logger.info('Output MS: {0}'.format(outputmsfile))
         if chanaverage:
@@ -3789,7 +3797,7 @@ def shift_field_position(eMCP, msfile, shift):
     if field not in mssources:
         logger.critical('Requested field to shift: {} not in MS! Closing '.format(field))
         exit_pipeline(eMCP)
-    rmdir(msfile_split)
+    emutils.rmdir(msfile_split)
     # Split
     logger.info('Splitting field: {}'.format(field))
     casatasks.mstransform(msfile, outputvis=msfile_split, field=field, datacolumn='data')
@@ -3819,7 +3827,7 @@ def shift_field_position(eMCP, msfile, shift):
     scan = eMCP['defaults']['average']['scan']
     antenna = eMCP['defaults']['average']['antenna']
     timerange = eMCP['defaults']['average']['timerange']
-    rmdir(msfile_split+'_avg')
+    emutils.rmdir(msfile_split+'_avg')
     casatasks.mstransform(vis=msfile_split, outputvis=msfile_split+'_avg',
                 timeaverage=timeaverage, chanaverage=chanaverage,
                 timerange=timerange, scan=scan, antenna=antenna,
@@ -3827,7 +3835,7 @@ def shift_field_position(eMCP, msfile, shift):
                 datacolumn=datacolumn, keepflags=True)
     find_casa_problems()
     if os.path.isdir(msfile_split+'_avg') == True:
-        rmdir(msfile_split)
+        emutils.rmdir(msfile_split)
     # Concatenate again
     s = msfile.split('.')
     sn, se = s[:-1], s[-1]
@@ -3835,7 +3843,7 @@ def shift_field_position(eMCP, msfile, shift):
     logger.info('Concatenating {0} into {1}'.format(msfile_split+'_avg',
                                                     msfile0))
     concat(vis= msfile_split+'_avg', concatvis= msfile0)
-    rmdir(msfile_split+'_avg')
+    emutils.rmdir(msfile_split+'_avg')
     logger.info('Updating listobs for MS: {}'.format(msfile0))
     run_listobs(msfile0)
     logger.warning('New field: {} in MS. Make sure you include it in the inputs file'.format(position_name))
@@ -3867,7 +3875,7 @@ def shift_all_positions(eMCP):
         logger.critical('Unable to open {0} with new position information'.format(shifts_file))
         exit_pipeline(eMCP)
     listobs_file = info_dir + msfile
-    mvdir(listobs_file + '.listobs.txt', listobs_file+'preshift_listobs.txt')
+    emutils.mvdir(listobs_file + '.listobs.txt', listobs_file+'preshift_listobs.txt')
     logger.info('Found {0} shifts to apply. {0} new fields will be added'.format(len(shifts_list)))
     for shift in shifts_list:
         shift_field_position(eMCP, msfile, shift)

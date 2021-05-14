@@ -13,16 +13,16 @@ import glob
 
 import functions.eMCP_weblog as emwlog
 
-import casatasks
-from casaplotms import plotms
-from casatools import table
-from casatools import msmetadata
-from casatools import ms as myms
-from casatools import measures
-tb = table()
-msmd = msmetadata()
-ms = myms()
-me = measures()
+#import casatasks
+#from casaplotms import plotms
+#from casatools import table
+#from casatools import msmetadata
+#from casatools import ms as myms
+#from casatools import measures
+#tb = table()
+#msmd = msmetadata()
+#ms = myms()
+#me = measures()
 
 ## CASA imports
 #from taskinit import *
@@ -30,7 +30,7 @@ me = measures()
 #from casac import casac
 #msmd = casac.msmetadata()
 
-plt.ioff()
+#plt.ioff()
 
 import logging
 logger = logging.getLogger('logger')

@@ -5,6 +5,8 @@ import pickle
 #'#import collections
 import datetime
 
+from functions import eMCP_utils as emutils
+
 ## CASA imports
 #from taskinit import *
 #from tasks import *
@@ -30,37 +32,6 @@ plots_link = './plots/'
 images_link= './images/'
 
 line0 = '-'*15
-
-def save_obj(obj, name):
-    with open(name, 'wb') as f:
-        pickle.dump(obj, f)
-
-def load_obj(name):
-    with open(name, 'rb') as f:
-        return pickle.load(f)
-
-def prt_dict_tofile(d, tofilename=None, addfile='', pre=' '):
-    if tofilename != None:
-        f = open(tofilename, 'w')
-    else:
-        f = addfile
-    subdict = []
-    for key in d.keys():
-        if type(d[key]) in [collections.OrderedDict, dict]:
-            subdict.append(key)
-        else:
-            f.write('{0:20s}: {1}\n'.format(pre+key, d[key]))
-    if subdict != []:
-        for key_inner in subdict:
-            f.write('{}\n'.format(pre+key_inner))
-            prt_dict_tofile(d[key_inner], addfile=f, pre=pre+pre)
-
-
-def weblog_button(weblog_link, name, link):
-    line = ('<input type="button" value="{0}" '
-            'onclick="window.location.href=\''
-            '{1}{2}.html\'">\n').format(name, weblog_link, link)
-    return line
 
 def weblog_header(wlog, section, project):
     wlog.write('<!DOCTYPE html>\n')
@@ -381,14 +352,14 @@ def weblog_pipelineinfo(eMCP):
     write_link_txt(wlog, info_link + 'eMCP.log.txt', 'Pipeline log', text='eMCP.log')
     write_link_txt(wlog, info_link + 'casa_eMCP.log.txt', 'CASA log', text='casa_eMCP.log')
     # eMCP_info dictionary as text
-    prt_dict_tofile(eMCP, tofilename=info_dir + 'eMCP_info.txt', pre='  ')
+    emutils.prt_dict_tofile(eMCP, tofilename=info_dir + 'eMCP_info.txt', pre='  ')
     eMCP_txtfile = info_link + 'eMCP_info.txt'
     wlog.write('<br><h4>Relevant parameter files:</h4>\n')
     write_link_txt(wlog, eMCP_txtfile, 'Pipeline info (dict)', text='eMCP_info.txt')
     # caltables dictionary as text
     try:
         caltables = load_obj(calib_dir+'caltables.pkl')
-        prt_dict_tofile(caltables, tofilename=info_dir + 'caltables.txt', pre='  ')
+        emutils.prt_dict_tofile(caltables, tofilename=info_dir + 'caltables.txt', pre='  ')
         caltables_txtfile = info_link + 'caltables.txt'
         write_link_txt(wlog, caltables_txtfile, 'Calibration info (dict)', text='caltables.txt')
     except:

@@ -9,6 +9,7 @@ import json
 import argparse
 #'#import time
 
+from functions import eMCP_functions as em
 from functions import eMCP_utils as emutils
 from functions import eMCP_weblog as emwlog
 # CASA imports
@@ -99,7 +100,7 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
     if os.path.isfile('./default_params.json'):
         defaults_file = './default_params.json'
     else:
-        defaults_file = pipeline_path+'default_params.json'
+        defaults_file = os.path.join(pipeline_path, 'default_params.json')
     logger.info('Loading default parameters from {0}:'.format(defaults_file))
     eMCP['defaults'] = json.loads(open(defaults_file).read())#,
 #                                  object_pairs_hook=deunicodify_hook)
@@ -124,10 +125,10 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
     ###  LOAD AND PREPROCESS DATA  ###
     ##################################
 
-#    ## Pipeline processes, inputs are read from the inputs dictionary
-#    if eMCP['input_steps']['run_importfits'] > 0:
-#        eMCP = em.import_eMERLIN_fitsIDI(eMCP)
-#
+    ## Pipeline processes, inputs are read from the inputs dictionary
+    if eMCP['input_steps']['run_importfits'] > 0:
+        eMCP = em.import_eMERLIN_fitsIDI(eMCP)
+
 #    if os.path.isdir('./'+inputs['inbase']+'.ms') == True:
 #        msfile = inputs['inbase']+'.ms'
 #        eMCP, msinfo, msfile = emutils.get_msinfo(eMCP, msfile)
