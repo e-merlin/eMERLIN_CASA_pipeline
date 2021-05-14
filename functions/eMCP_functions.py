@@ -1025,8 +1025,7 @@ def run_aoflagger_fields(eMCP):
     run_input = eMCP['defaults']['aoflagger']['run']
     if run_input == 'auto':
         logger.info('aoflagger mode "auto"')
-#'#        if eMCP['msinfo']['band'] == 'L':
-        if eMCP['msinfo']['band'] == 'C':
+        if eMCP['msinfo']['band'] == 'L':
             logger.info('L-band data, aoflagger will be executed')
             run_aoflagger = True
         else:
@@ -1494,7 +1493,14 @@ def flagdata_manual(eMCP, run_name='flag_manual'):
         logger.info('Applying manual flags from file: {0}'.format(inpfile))
         are_there_flags = log_manual_flags(inpfile)
         if are_there_flags:
-            casatasks.flagdata(vis=msfile, mode='list', inpfile=inpfile, flagbackup=False)
+            commands = {}
+            commands['flagdata'] = {
+                    'vis' :  msfile,
+                    'mode': 'list',
+                    'inpfile': inpfile,
+                    'flagbackup': False}
+            run_casa_command(commands, 'flagdata')
+#'#            casatasks.flagdata(vis=msfile, mode='list', inpfile=inpfile, flagbackup=False)
             find_casa_problems()
         else:
             logger.warning('Flagfile is empty')
@@ -1512,8 +1518,15 @@ def flagdata_manual(eMCP, run_name='flag_manual'):
             logger.info('Applying manual flags from file: {0}'.format(inpfile_narrow))
             are_there_flags = log_manual_flags(inpfile_narrow)
             if are_there_flags:
-                casatasks.flagdata(vis=eMCP['msinfo']['msfile_sp'], mode='list',
-                         inpfile=inpfile_narrow, flagbackup=False)
+                commands = {}
+                commands['flagdata'] = {
+                        'vis' :  eMCP['msinfo']['msfile_sp'],
+                        'mode': 'list',
+                        'spw': inpfile_narrow,
+                        'flagbackup': False}
+                run_casa_command(commands, 'flagdata')
+#'#                casatasks.flagdata(vis=eMCP['msinfo']['msfile_sp'], mode='list',
+#'#                         inpfile=inpfile_narrow, flagbackup=False)
                 find_casa_problems()
             else:
                 logger.warning('Narrow (sp) flagfile is empty')
@@ -1872,9 +1885,10 @@ def run_average(eMCP):
     antenna = eMCP['defaults']['average']['antenna']
     timerange = eMCP['defaults']['average']['timerange']
     fields = eMCP['msinfo']['sources']['allsources']
-    name = '.'.join(msfile.split('.')[:-1])
-    exte = ''.join(msfile.split('.')[-1])
-    outputmsfile = name+'_avg.'+exte
+    name, exte = os.path.splitext(msfile)
+#'#    name = '.'.join(msfile.split('.')[:-1])
+#'#    exte = ''.join(msfile.split('.')[-1])
+    outputmsfile = name+'_avg'+exte
     emutils.rmdir(outputmsfile)
     emutils.rmdir(outputmsfile+'.flagversions')
     logger.info('Input MS: {0}'.format(msfile))
@@ -1883,11 +1897,25 @@ def run_average(eMCP):
     logger.info('Fields: {0}'.format(fields))
     list_sources_out(eMCP)
     logger.info('Data column: {0}'.format(datacolumn))
-    casatasks.mstransform(vis=msfile, outputvis=outputmsfile, field=fields,
-                timeaverage=timeaverage, chanaverage=chanaverage,
-                timerange=timerange, scan=scan, antenna=antenna,
-                timebin=timebin,  chanbin=chanbin,
-                datacolumn=datacolumn, keepflags=True)
+    commands = {}
+    commands['mstransform'] = {
+            'vis': msfile,
+            'outputvis': outputmsfile,
+            'field': fields,
+            'timerange': timerange,
+            'datacolumn': datacolumn,
+            'antenna': antenna,
+            'scan': scan,
+            'timeaverage': timeaverage, 'timebin': timebin,
+            'chanaverage': chanaverage, 'chanbin': chanbin,
+            'datacolumn': datacolumn,
+            'keepflags': True }
+    run_casa_command(commands, 'mstransform')
+#'#    casatasks.mstransform(vis=msfile, outputvis=outputmsfile, field=fields,
+#'#                timeaverage=timeaverage, chanaverage=chanaverage,
+#'#                timerange=timerange, scan=scan, antenna=antenna,
+#'#                timebin=timebin,  chanbin=chanbin,
+#'#                datacolumn=datacolumn, keepflags=True)
     find_casa_problems()
     run_listobs(outputmsfile)
     msg = 'chanbin={0}, timebin={1}, datacolumn={2}'.format(chanbin, timebin,
@@ -4252,7 +4280,7 @@ def flag_statistics(eMCP, step):
     logger.info('mode="summary", action="calculate", antenna="*&*"'.format(msinfo['msfile']))
     pipeline_path = os.path.dirname(os.path.realpath(__file__))
     flag_statistics_script = os.path.join(pipeline_path, 'run_flagstatistics.py')
-    with open('stdout.txt', 'a') as f:
+    with open('stdout_err.log', 'a') as f:
         subprocess.run([casa_command, '--nogui', '--logfile', 'casa_eMCP.log', '-c', 
                         flag_statistics_script, '-msfile', msfile, '-step', step],
                         stdout=f, stderr=subprocess.STDOUT) 

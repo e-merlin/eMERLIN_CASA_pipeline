@@ -19,7 +19,7 @@ from functions import eMCP_weblog as emwlog
 #import casadef
 #import casalith
 
-current_version = 'v2.0.6'
+current_version = 'v2.0.7'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 #pipeline_filename = sys.argv[sys.argv.index('-c') + 1]
@@ -149,13 +149,13 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
     if eMCP['input_steps']['flag_apriori'] > 0:
         eMCP = em.flagdata1_apriori(eMCP)
 
-#    ### Load manual flagging file
-#    if eMCP['input_steps']['flag_manual'] > 0:
-#        eMCP = em.flagdata_manual(eMCP, run_name='flag_manual')
-#
-#    ### Average data ###
-#    if eMCP['input_steps']['average'] > 0:
-#        eMCP = em.run_average(eMCP)
+    ### Load manual flagging file
+    if eMCP['input_steps']['flag_manual'] > 0:
+        eMCP = em.flagdata_manual(eMCP, run_name='flag_manual')
+
+    ### Average data ###
+    if eMCP['input_steps']['average'] > 0:
+        eMCP = em.run_average(eMCP)
 #
 #    # Check if averaged data already generated
 #    if os.path.isdir('./'+inputs['inbase']+'_avg.mms') == True:

@@ -618,7 +618,7 @@ def plot_flagstatistics(flag_stats, msinfo, step):
     ax4.axes.set_yticklabels([])
     ax5.axes.set_yticklabels([])
 
-    [ax2.annotate('{0} ({1})'.format(si, i), (i+0.1, 0.95), va='top', ha='right', rotation=90) for i, si in enumerate(i_field)]
+    [ax2.annotate('{0} ({1})'.format(si, i), (i+0.1, 0.95), va='top', ha='right', rotation=90, zorder=100) for i, si in enumerate(i_field)]
     #[ax3.annotate(si, (i+0.5, f_corr[i])) for i, si in enumerate(i_corr)]
     #[ax5.annotate(si, (i+0.3, f_ant[i])) for i, si in enumerate(i_ant)]
 
