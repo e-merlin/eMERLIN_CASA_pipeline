@@ -116,12 +116,12 @@ def prt_dict(d, pre=''):
 
 def prt_dict_tofile(d, tofilename=None, addfile='', pre=' '):
     if tofilename != None:
-        f = open(tofilename, 'wb')
+        f = open(tofilename, 'w')
     else:
         f = addfile
     subdict = []
     for key in d.keys():
-        if type(d[key]) in [collections.OrderedDict, dict]:
+        if type(d[key]) in [ dict]:
             subdict.append(key)
         else:
             f.write('{0:20s}: {1}\n'.format(pre+key, d[key]))

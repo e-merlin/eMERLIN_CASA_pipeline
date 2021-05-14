@@ -33,6 +33,12 @@ images_link= './images/'
 
 line0 = '-'*15
 
+def weblog_button(weblog_link, name, link):
+    line = ('<input type="button" value="{0}" '
+            'onclick="window.location.href=\''
+            '{1}{2}.html\'">\n').format(name, weblog_link, link)
+    return line
+
 def weblog_header(wlog, section, project):
     wlog.write('<!DOCTYPE html>\n')
     wlog.write('<html lang="eng">\n')
@@ -69,7 +75,7 @@ def weblog_foot(wlog):
     wlog.write('<a href="http://www.e-merlin.ac.uk/" target="_blank"><img ' \
                'src="{0}emerlin-2.gif"></a><br>\n'.format(weblog_link))
     wlog.write('<small>')
-    links = collections.OrderedDict()
+    links = {}
     links['e-MERLIN Pipeline Github'] = 'https://github.com/e-merlin/eMERLIN_CASA_pipeline'
     links['e-MERLIN']  = 'http://www.e-merlin.ac.uk/'
     links['User support and data reduction for e-MERLIN'] = 'http://www.e-merlin.ac.uk/data_red/'
@@ -343,7 +349,7 @@ def weblog_pipelineinfo(eMCP):
     wlog = open(weblog_dir + "pipelineinfo.html","w")
     weblog_header(wlog, 'Pipeline info', msinfo['run'])
     #------------------------------------------         
-    wlog.write('CASA version: {}\n<br>'.format(eMCP['casa_version']))
+#'#'    wlog.write('CASA version: {}\n<br>'.format(eMCP['casa_version']))
     wlog.write('Pipeline version: {}\n<br>'.format(eMCP['pipeline_version']))
     wlog.write(table_steps(eMCP))
     wlog.write('Green = executed<br>')
@@ -473,7 +479,7 @@ def weblog_flagstats(msinfo):
     prev_perc_flagged = 0.0
     for step in flagstats_steps:
         try:
-            flag_stats = load_obj('./weblog/plots/plots_flagstats/flagstats_{}.pkl'.format(step))
+            flag_stats = emutils.load_obj('./weblog/plots/plots_flagstats/flagstats_{}.pkl'.format(step))
             perc_flagged = flag_stats['flagged']/flag_stats['total']*100.
             diff_flagged = perc_flagged-prev_perc_flagged
             prev_perc_flagged = perc_flagged
@@ -485,7 +491,7 @@ def weblog_flagstats(msinfo):
                                                                 perc_flagged,
                                                                 diff_flagged))
                 wlog.write('<a href = ".{0}"><img style="max-width:1200px" src=".{0}"></a><br>\n'.format(all_plots[0]))
-        except:
+        except FileNotFoundError:
             pass
     #------------------------------------------
     weblog_foot(wlog)

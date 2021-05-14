@@ -94,7 +94,10 @@ def run_casa_command(config_command, key):
     output = '{0}({1})'.format(command_name, ', '.join(lines))
 #'#    logger.code(output)
     #subprocess.call([casa_command, '--nogui', '--logfile casa_eMCP.log', '-c', output]) 
-    subprocess.run([casa_command, '--nogui', '--logfile', 'casa_eMCP.log', '-c', output]) 
+#    subprocess.run([casa_command, '--nogui', '--logfile', 'casa_eMCP.log', '-c', output]) 
+#    subprocess.run([casa_command, '--nogui', '--logfile', 'casa_eMCP.log', '-c', output], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) 
+    with open('stdout.txt', 'a') as f:
+        subprocess.run([casa_command, '--nogui', '--logfile', 'casa_eMCP.log', '-c', output], stdout=f, stderr=subprocess.STDOUT) 
     # Here it would be a good idea to add stdout and stderr handling
 
 def backslash_check(directory):
@@ -206,7 +209,7 @@ def find_casa_problems():
     else:
         last_line = 0
     logger.debug(last_line)
-    logger.debug(lines[last_line:])
+    #logger.debug(lines[last_line:])
     if any(['SEVERE' in line for line in lines[last_line:]]):
         problems = True
     else:
@@ -674,8 +677,13 @@ def remove_missing_scans(caltable, scans2flag):
     tb.close()
 
 def run_listobs(msfile):
-    outfile = info_dir + msfile + '.listobs.txt'
-    casatasks.listobs(vis=msfile, listfile=outfile, overwrite=True)
+    outfile = os.path.join(info_dir, msfile.rstrip('/'), '.listobs.txt')
+    commands = {}
+    commands['listobs'] = {
+            'vis' :  msfile,
+            'listfile': outfile,
+            'overwrite': True}
+    run_casa_command(commands, 'listobs')
     find_casa_problems()
     logger.info('Listobs file in: {0}'.format(outfile))
 
@@ -701,9 +709,7 @@ def decide_hanning(import_eM, msfile):
 
 
 def mixed_mode(msfile):
-    tb.open(msfile + '/SPECTRAL_WINDOW')
-    bw_spw = np.array(tb.getcol('TOTAL_BANDWIDTH'))
-    tb.close()
+    bw_spw = emutils.read_keyword(msfile, 'TOTAL_BANDWIDTH', subtable='SPECTRAL_WINDOW')
     is_mixed_mode = len(np.unique(bw_spw)) != 1
     logger.info('Natural spw and bandwidth of imported data:')
     for i, bw_spw_i in enumerate(bw_spw):
@@ -842,7 +848,7 @@ def import_eMERLIN_fitsIDI(eMCP):
                 'keepflags': True,
                 'datacolumn': datacolumn,
                 'antenna': antenna,
-                'spw': spw_separation,
+                'spw': str(spw_separation[0]),
                 'timeaverage': timeaverage, 'timebin': timebin,
                 'chanaverage': chanaverage, 'chanbin': chanbin,
                 'usewtspectrum': usewtspectrum,
@@ -904,44 +910,57 @@ def import_eMERLIN_fitsIDI(eMCP):
     msfile = msfile1
     eMCP, msinfo, msfile = get_msinfo(eMCP, msfile)
     eMCP = add_step_time('mstransform', eMCP, msg, t0, doweblog=True)
-#
-#    # FIXVIS
-#    msfile = eMCP['inputs']['inbase'] + ext_ms[do_ms2mms]
-#    logger.info('Start FIXVIS')
-##    t0 = datetime.datetime.utcnow()
-#    casatasks.fixvis(vis = msfile1,
-#           outputvis = msfile,
-#           reuse = False)
-#    find_casa_problems()
-#    logger.info('Fixed {0} into {1}'.format(msfile1, msfile))
-#    run_listobs(msfile)
-#    if os.path.isdir(msfile) == True:
-#        emutils.rmdir(msfile1)
-#    else:
-#        logger.critical('Problem generating {}. Stopping ' \
-#                        'pipeline'.format(msfile))
-#        exit_pipeline(eMCP)
-#    if is_mixed_mode:
-#        msfile_sp = get_msfile_sp(eMCP)
-#        logger.info('Running FIXVIS on spectral line data')
-#        casatasks.fixvis(vis = msfile1_sp,
-#           outputvis = msfile_sp,
-#           reuse = False)
-#        find_casa_problems()
-#        logger.info('Fixed {0} into {1}'.format(msfile1_sp, msfile_sp))
-#        run_listobs(msfile_sp)
-#        if os.path.isdir(msfile_sp) == True:
-#            emutils.rmdir(msfile1_sp)
-#        else:
-#            logger.critical('Problem generating FIXVIS ms. Stopping pipeline')
-#            exit_pipeline(eMCP)
-#    logger.info('Finished FIXVIS')
-##    msg = ''
-#    logger.info('End run_importfits')
-#    eMCP, msinfo, msfile = get_msinfo(eMCP, msfile)
-#    eMCP = add_step_time('run_importfits', eMCP, msg, t0, doweblog=True)
-#    flag_statistics(eMCP, step='run_importfits')
-#    return eMCP
+
+    # FIXVIS
+    msfile = eMCP['inputs']['inbase'] + ext_ms[do_ms2mms]
+    logger.info('Start FIXVIS')
+#    t0 = datetime.datetime.utcnow()
+    commands = {}
+    commands['fixvis'] = {
+            'vis' :  msfile1,
+            'outputvis': msfile,
+            'reuse': False}
+    run_casa_command(commands, 'fixvis')
+
+#'#    casatasks.fixvis(vis = msfile1,
+#'#           outputvis = msfile,
+#'#           reuse = False)
+    find_casa_problems()
+    logger.info('Fixed {0} into {1}'.format(msfile1, msfile))
+    run_listobs(msfile)
+    if os.path.isdir(msfile) == True:
+        emutils.rmdir(msfile1)
+    else:
+        logger.critical('Problem generating {}. Stopping ' \
+                        'pipeline'.format(msfile))
+        exit_pipeline(eMCP)
+    if is_mixed_mode:
+        msfile_sp = get_msfile_sp(eMCP)
+        logger.info('Running FIXVIS on spectral line data')
+        commands = {}
+        commands['fixvis'] = {
+                'vis' :  msfile1_sp,
+                'outputvis': msfile_sp,
+                'reuse': False},
+        run_casa_command(commands, 'fixvis')
+#'#        casatasks.fixvis(vis = msfile1_sp,
+#'#           outputvis = msfile_sp,
+#'#           reuse = False)
+        find_casa_problems()
+        logger.info('Fixed {0} into {1}'.format(msfile1_sp, msfile_sp))
+        run_listobs(msfile_sp)
+        if os.path.isdir(msfile_sp) == True:
+            emutils.rmdir(msfile1_sp)
+        else:
+            logger.critical('Problem generating FIXVIS ms. Stopping pipeline')
+            exit_pipeline(eMCP)
+    logger.info('Finished FIXVIS')
+    msg = ''
+    logger.info('End run_importfits')
+    eMCP, msinfo, msfile = get_msinfo(eMCP, msfile)
+    eMCP = add_step_time('run_importfits', eMCP, msg, t0, doweblog=True)
+    flag_statistics(eMCP, step='run_importfits')
+    return eMCP
 
 def fix_repeated_sources(msfile0, msfile1, datacolumn, antenna,
                          spw_separation, timeaverage, timebin,
@@ -1573,16 +1592,28 @@ def define_refant(eMCP):
 
 def find_refant(msfile, field):
     # Find phase solutions per scan:
-    tablename = calib_dir + 'find_refant.phase'
+    tablename = os.path.join(calib_dir, 'find_refant.phase')
     logger.info('Phase calibration per scan to count number of good solutions')
-    casatasks.gaincal(vis=msfile,
-            caltable=tablename,
-            field=field,
-            refantmode='flex',
-            solint = 'inf',
-            minblperant = 2,
-            gaintype = 'G',
-            calmode = 'p')
+    commands = {}
+    commands['gaincal'] = {
+            'vis' :  msfile,
+            'caltable': tablename,
+            'field': field,
+            'refantmode': 'flex',
+            'solint': '300s',
+            'minblperant': 2,
+            'gaintype': 'G',
+            'calmode': 'p'}
+    run_casa_command(commands, 'gaincal')
+
+#'#    casatasks.gaincal(vis=msfile,
+#'#            caltable=tablename,
+#'#            field=field,
+#'#            refantmode='flex',
+#'#            solint = 'inf',
+#'#            minblperant = 2,
+#'#            gaintype = 'G',
+#'#            calmode = 'p')
     find_casa_problems()
     # Read solutions (phases):
     tb.open(tablename+'/ANTENNA')
@@ -3674,7 +3705,7 @@ def check_mpicasa():
 def single_tclean(eMCP, s, num):
     msinfo = eMCP['msinfo']
     logger.info('Producing tclean images for {0}, field: {1}'.format(msinfo['msfile'], s))
-    makedir(images_dir+'{}'.format(s))
+    emutils.makedir(images_dir+'{}'.format(s))
     imagename = images_dir+'{0}/{1}_{0}_img{2:02d}'.format(s, msinfo['msfilename'], num)
     prev_images = glob.glob(imagename+'*')
     for prev_image in prev_images:
@@ -3770,7 +3801,7 @@ def run_split_fields(eMCP):
     datacolumn = split_fields_defaults['datacolumn']
     createmms = split_fields_defaults['createmms']
     output_dir = split_fields_defaults['output_dir']
-    makedir(output_dir)
+    emutils.makedir(output_dir)
     if fields_to_split in msinfo['sources'].keys():
         fields_str = msinfo['sources'][fields_to_split]
     elif fields_to_split == '':
@@ -4123,14 +4154,21 @@ def find_Lo_drops(msfile, phscals, eMCP):
     return lo_dropout_scans
 
 def remove_flagversion(msfile, versionname):
-    flag_list = casatasks.flagmanager(vis=msfile, mode='list')
+#    flag_list = casatasks.flagmanager(vis=msfile, mode='list')
+    commands = {}
+    commands['flagmanager'] = {
+            'vis' :  msfile,
+            'mode': 'delete',
+            'versionname': versionname}
+    run_casa_command(commands, 'flagmanager')
+
     find_casa_problems()
-    for key in flag_list.keys():
-        if type(key) == int:
-            if flag_list[key]['name'] == versionname:
-                logger.info('Removing previous versionname="{0}"'.format(versionname))
-                casatasks.flagmanager(vis=msfile, mode='delete', versionname=versionname)
-                find_casa_problems()
+#    for key in flag_list.keys():
+#        if type(key) == int:
+#            if flag_list[key]['name'] == versionname:
+#                logger.info('Removing previous versionname="{0}"'.format(versionname))
+#                casatasks.flagmanager(vis=msfile, mode='delete', versionname=versionname)
+#                find_casa_problems()
 
 def flag_statistics(eMCP, step):
     msinfo = eMCP['msinfo']
@@ -4138,23 +4176,33 @@ def flag_statistics(eMCP, step):
     logger.info(line0)
     logger.info('Start flagstatistics')
     plots_obs_dir = './weblog/plots/plots_flagstats/'
-    makedir(plots_obs_dir)
+    emutils.makedir(plots_obs_dir)
     logger.info('Running flagdata on {0}'.format(step))
     logger.info('mode="summary", action="calculate", antenna="*&*"'.format(msinfo['msfile']))
-    flag_stats = casatasks.flagdata(vis=msinfo['msfile'], mode='summary',
-                          action='calculate', display='none', antenna='*&*',
-                          flagbackup=False)
-    find_casa_problems()
+    pipeline_path = os.path.dirname(os.path.realpath(__file__))
+    flag_statistics_script = os.path.join(pipeline_path, 'run_flagstatistics.py')
+    with open('stdout.txt', 'a') as f:
+        subprocess.run([casa_command, '--nogui', '--logfile', 'casa_eMCP.log', '-c', 
+                        flag_statistics_script, '-msfile', msfile, '-step', step],
+                        stdout=f, stderr=subprocess.STDOUT) 
     versionname = 'eMCP_{}'.format(step)
     remove_flagversion(msfile, versionname)
     logger.info('Saving flagtable in versionname="{0}"'.format(versionname))
     current_time = datetime.datetime.utcnow()
-    casatasks.flagmanager(vis=msfile, mode='save', versionname=versionname,
-                comment=str(current_time))
+    commands = {}
+    commands['flagmanager'] = {
+            'vis' :  msfile,
+            'mode': 'save',
+            'versionname': versionname,
+            'comment': str(current_time)}
+    run_casa_command(commands, 'flagmanager')
+#'#    casatasks.flagmanager(vis=msfile, mode='save', versionname=versionname,
+#'#                comment=str(current_time))
     find_casa_problems()
     outfile = weblog_dir + 'plots/plots_flagstats/flagstats_{}.pkl'.format(step)
-    save_obj(flag_stats, outfile)
+#'#    save_obj(flag_stats, outfile)
     logger.info('flagstats file saved to: {}'.format(outfile))
     logger.info('Flag statistics ready. Now plotting.')
+    flag_stats = load_obj(outfile)
     emplt.plot_flagstatistics(flag_stats, msinfo, step)
     logger.info('End flagstatistics')

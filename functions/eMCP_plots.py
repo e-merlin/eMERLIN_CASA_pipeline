@@ -11,7 +11,9 @@ import datetime
 import shutil
 import glob
 
-import functions.eMCP_weblog as emwlog
+from functions import eMCP_weblog as emwlog
+from functions import eMCP_utils as emutils
+
 
 #import casatasks
 #from casaplotms import plotms
@@ -503,12 +505,20 @@ def count_flags(flag_stats, label, list_order=[]):
 
 def plot_flagstatistics(flag_stats, msinfo, step):
     # Different colors for each field
-    scan_summary = read_scan_summary(msinfo['msfile'])
-    scan_fieldID_dict =  {si:scan_summary[str(si)]['0']['FieldId'] for si in scan_summary.keys()}
-    #vis_fields = vishead(msinfo['msfile'],mode='list',listitems='field')['field'][0]
-    msmd.open(msinfo['msfile'])
-    vis_fields = np.array(msmd.fieldnames())
-    msmd.done()
+#'#    scan_summary = read_scan_summary(msinfo['msfile'])
+#'#    scan_fieldID_dict =  {si:scan_summary[str(si)]['0']['FieldId'] for si in scan_summary.keys()}
+#'#    #vis_fields = vishead(msinfo['msfile'],mode='list',listitems='field')['field'][0]
+#'#    msmd.open(msinfo['msfile'])
+#'#    vis_fields = np.array(msmd.fieldnames())
+#'#    msmd.done()
+    msfile = msinfo['msfile']
+    scan_number = emutils.read_keyword(msfile, 'SCAN_NUMBER')
+    field_id = emutils.read_keyword(msfile, 'FIELD_ID')
+    scan_fieldID_dict = {}
+    for scan in np.unique(scan_number):
+        scan_fieldID_dict[str(scan)] = np.unique(field_id[np.where(scan_number == scan)[0]])[0]
+    vis_fields = emutils.read_keyword(msfile, 'NAME', 'FIELD')
+
 
     # Compute % statistics
     i_scan, f_scan = count_flags(flag_stats, 'scan')
