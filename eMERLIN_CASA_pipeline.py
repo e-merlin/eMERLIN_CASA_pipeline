@@ -19,7 +19,7 @@ from functions import eMCP_weblog as emwlog
 #import casadef
 #import casalith
 
-current_version = 'v2.0.3'
+current_version = 'v2.0.6'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 #pipeline_filename = sys.argv[sys.argv.index('-c') + 1]
@@ -130,25 +130,25 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
     if eMCP['input_steps']['run_importfits'] > 0:
         eMCP = em.import_eMERLIN_fitsIDI(eMCP)
 
-#    if os.path.isdir('./'+inputs['inbase']+'.ms') == True:
-#        msfile = inputs['inbase']+'.ms'
-#        eMCP, msinfo, msfile = emutils.get_msinfo(eMCP, msfile)
-#        em.plot_elev_uvcov(eMCP)
-#
-#    ### check for parallelisation
-#    if os.path.isdir('./'+inputs['inbase']+'.mms') == True:
-#        msfile = inputs['inbase']+'.mms'
-#        eMCP, msinfo, msfile = em.get_msinfo(eMCP, msfile)
-#        em.plot_elev_uvcov(eMCP)
-#
-#    ### Run AOflagger
-#    if eMCP['input_steps']['flag_aoflagger'] > 0:
-#        eMCP = em.run_aoflagger_fields(eMCP)
-#
-#    ### A-priori flagdata: Lo&Mk2, edge channels, standard quack
-#    if eMCP['input_steps']['flag_apriori'] > 0:
-#        eMCP = em.flagdata1_apriori(eMCP)
-#
+    if os.path.isdir('./'+inputs['inbase']+'.ms') == True:
+        msfile = inputs['inbase']+'.ms'
+        eMCP, msinfo, msfile = em.get_msinfo(eMCP, msfile)
+        em.plot_elev_uvcov(eMCP)
+
+    ### check for parallelisation
+    if os.path.isdir('./'+inputs['inbase']+'.mms') == True:
+        msfile = inputs['inbase']+'.mms'
+        eMCP, msinfo, msfile = em.get_msinfo(eMCP, msfile)
+        em.plot_elev_uvcov(eMCP)
+
+    ### Run AOflagger
+    if eMCP['input_steps']['flag_aoflagger'] > 0:
+        eMCP = em.run_aoflagger_fields(eMCP)
+
+    ### A-priori flagdata: Lo&Mk2, edge channels, standard quack
+    if eMCP['input_steps']['flag_apriori'] > 0:
+        eMCP = em.flagdata1_apriori(eMCP)
+
 #    ### Load manual flagging file
 #    if eMCP['input_steps']['flag_manual'] > 0:
 #        eMCP = em.flagdata_manual(eMCP, run_name='flag_manual')

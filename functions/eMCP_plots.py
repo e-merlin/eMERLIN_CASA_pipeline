@@ -653,7 +653,8 @@ def plot_flagstatistics(flag_stats, msinfo, step):
     ax4.set_ylim(0,1)
     ax5.set_ylim(0,1)
 
-    ax1.set_xlim(np.min(i_scan)-0.5, np.max(i_scan)+0.5)
+#'#    ax1.set_xlim(np.min(i_scan)-0.5, np.max(i_scan)+0.5)
+    ax1.set_xlim(np.min(i_scan)-1.0, np.max(i_scan)+0.)
     ax2.set_xlim(-0.5, len(i_field)-0.5)
 #    ax3.set_xlim(-0.5, len(i_corr)-0.5)
     ax4.set_xlim(-0.5, len(i_spw)-0.5)

@@ -1025,7 +1025,8 @@ def run_aoflagger_fields(eMCP):
     run_input = eMCP['defaults']['aoflagger']['run']
     if run_input == 'auto':
         logger.info('aoflagger mode "auto"')
-        if eMCP['msinfo']['band'] == 'L':
+#'#        if eMCP['msinfo']['band'] == 'L':
+        if eMCP['msinfo']['band'] == 'C':
             logger.info('L-band data, aoflagger will be executed')
             run_aoflagger = True
         else:
@@ -1056,7 +1057,8 @@ def run_aoflagger_fields(eMCP):
         logger.critical('aoflagger version <2.9 does not work correctly.')
         logger.warning('Exiting pipeline.')
         exit_pipeline(eMCP)
-    vis_fields = casatasks.vishead(msfile,mode='list',listitems='field')['field'][0]
+    vis_fields = emutils.read_keyword(msfile, 'NAME', 'FIELD')
+#'#    vis_fields = casatasks.vishead(msfile,mode='list',listitems='field')['field'][0]
     fields_num = {f:i for i,f in enumerate(vis_fields)}
     if fields == 'all':
         fields = vis_fields
@@ -1069,25 +1071,25 @@ def run_aoflagger_fields(eMCP):
         # If nothing is found, just use the default strategy
         if os.path.isfile('./aoflagger_strategies/user/{0}.rfis'.format(field))==True:
             aostrategy = './aoflagger_strategies/user/{0}.rfis'.format(field)
-        elif os.path.isfile(pipeline_path+'aoflagger_strategies/default/{0}.rfis'.format(field))==True:
-            aostrategy = pipeline_path+'aoflagger_strategies/default/{0}.rfis'.format(field)
+        elif os.path.isfile(os.path.join(pipeline_path,'aoflagger_strategies/default/{0}.rfis'.format(field))==True):
+            aostrategy = os.path.join(pipeline_path,'aoflagger_strategies/default/{0}.rfis'.format(field))
         else:
-            aostrategy = pipeline_path+'aoflagger_strategies/default/{0}.rfis'.format('default_faint')
+            aostrategy = os.path.join(pipeline_path,'aoflagger_strategies/default/{0}.rfis'.format('default_faint'))
         logger.info('Running AOFLagger for field {0} ({1}) using strategy {2}'.format(field,fields_num[field], aostrategy))
         if separate_bands:
             num_spw = len(casatasks.vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
             for b in range(num_spw):
                 logger.info('Processing source {0}, band {1}'.format(field, b))
-                flagcommand = 'time aoflagger -fields {2} -bands {3} -strategy {0} {1}'.format(aostrategy, msfile, fields_num[field], b)
+                flagcommand = 'aoflagger -fields {2} -bands {3} -strategy {0} {1}'.format(aostrategy, msfile, fields_num[field], b)
                 #os.system(flagcommand+' | tee -a pre-cal_flag_stats.txt')
                 os.system(flagcommand)
             logger.info('Last AOFlagger command: {}'.format(flagcommand))
         else:
             logger.info('Processing source {0}, all bands'.format(field))
-            flagcommand = 'time aoflagger -fields {2} -strategy {0} {1}'.format(aostrategy, msfile, fields_num[field])
+            flagcommand = 'aoflagger -fields {2} -strategy {0} {1}'.format(aostrategy, msfile, fields_num[field])
             os.system(flagcommand+' | tee -a pre-cal_flag_stats.txt')
             logger.info('Last AOFlagger command: {}'.format(flagcommand))
-        ms.writehistory(message='eMER_CASA_Pipeline: AOFlag field {0} with strategy {1}:'.format(field, aostrategy),msname=msfile)
+#'#        ms.writehistory(message='eMER_CASA_Pipeline: AOFlag field {0} with strategy {1}:'.format(field, aostrategy),msname=msfile)
     #flag_applied(flags, 'flagdata0_aoflagger')
     flag_statistics(eMCP, step='flag_aoflagger')
     logger.info('End flag_aoflagger')
@@ -1167,8 +1169,16 @@ def quack_estimating(eMCP):
     if bright_cal != '':
         std_cal_quack = eMCP['defaults']['flag_apriori']['std_cal_quack']
         logger.info('Flagging {0}s from bright calibrators'.format(std_cal_quack))
-        casatasks.flagdata(vis=msfile, field=bright_cal, mode='quack',
-                 quackinterval=std_cal_quack, flagbackup=False)
+        commands = {}
+        commands['flagdata'] = {
+                'vis' :  msfile,
+                'field': bright_cal,
+                'mode': 'quack',
+                'quackinterval': std_cal_quack,
+                'flagbackup': False}
+        run_casa_command(commands, 'flagdata')
+#'#        casatasks.flagdata(vis=msfile, field=bright_cal, mode='quack',
+#'#                 quackinterval=std_cal_quack, flagbackup=False)
         find_casa_problems()
     else:
         logger.warning('No main calibrators (3C84, 3C286, OQ208) found in data set')
@@ -1180,8 +1190,16 @@ def quack_estimating(eMCP):
             quacktime = find_quacktime(msinfo, s1, s2)
             if s1 != '':
                 logger.info('Flagging first {0} sec of target {1} and phasecal {2}'.format(quacktime, s1, s2))
-                casatasks.flagdata(vis=msfile, field=','.join([s1,s2]), mode='quack',
-                         quackinterval=quacktime, flagbackup=False)
+                commands = {}
+                commands['flagdata'] = {
+                        'vis' :  msfile,
+                        'field': ','.join([s1,s2]),
+                        'mode': 'quack',
+                        'quackinterval': quacktime,
+                        'flagbackup': False}
+                run_casa_command(commands, 'flagdata')
+#'#                casatasks.flagdata(vis=msfile, field=','.join([s1,s2]), mode='quack',
+#'#                         quackinterval=quacktime, flagbackup=False)
                 find_casa_problems()
         else:
             logger.warning('Warning, source(s) {} not present in MS, will not flag this pair'.format(','.join(missing_sources)))
@@ -1292,10 +1310,12 @@ def search_observatory_flags(eMCP):
     return finished_autoflag
 
 def select_first_last_chan(msfile, spw_frac, nchan):
-    msmd.open(msfile)
-    first_spw = min(msmd.datadescids())
-    last_spw  = max(msmd.datadescids())
-    msmd.close()
+    first_spw = emutils.read_keyword(msfile, 'DATA_DESC_ID').min()
+    last_spw  = emutils.read_keyword(msfile, 'DATA_DESC_ID').max()
+#'#    msmd.open(msfile)
+#'#    first_spw = min(msmd.datadescids())
+#'#    last_spw  = max(msmd.datadescids())
+#'#    msmd.close()
     chan_fact = (nchan-nchan/512.)
     first_chan = '{0}:{1:.0f}~{2:.0f}'.format(first_spw,
                                               0.*chan_fact,
@@ -1316,25 +1336,47 @@ def flagdata1_apriori(eMCP):
     # Check if all sources are in the MS:
     check_sources_in_ms(eMCP)
     # Find number of channels in MS:
-    msmd.open(msfile)
-    nchan = len(msmd.chanwidths(0))
-    msmd.done()
+    nchan = emutils.read_keyword(msfile, 'CHAN_FREQ', subtable='SPECTRAL_WINDOW').shape[1]
+#'#    msmd.open(msfile)
+#'#    nchan = len(msmd.chanwidths(0))
+#'#    msmd.done()
     msg = ''
     # Remove pure zeros
     logger.info('Flagging zeros')
-    casatasks.flagdata(vis=msfile, mode='clip', clipzeros=True, flagbackup=False)
+    commands = {}
+    commands['flagdata'] = {
+            'vis' :  msfile,
+            'mode': 'clip',
+            'clipzeros': True,
+            'flagbackup': False}
+    run_casa_command(commands, 'flagdata')
+#'#    casatasks.flagdata(vis=msfile, mode='clip', clipzeros=True, flagbackup=False)
     find_casa_problems()
     msg += 'Clip zeros. '
     if eMCP['is_mixed_mode']:
         msfile_sp = eMCP['msinfo']['msfile_sp']
         logger.info('Flagging zeros from narrow: {0}'.format(msfile_sp))
-        casatasks.flagdata(vis=msfile_sp, mode='clip', clipzeros=True, flagbackup=False)
+        commands = {}
+        commands['flagdata'] = {
+                'vis' :  msfile_sp,
+                'mode': 'clip',
+                'clipzeros': True,
+                'flagbackup': False}
+        run_casa_command(commands, 'flagdata')
+#'#        casatasks.flagdata(vis=msfile_sp, mode='clip', clipzeros=True, flagbackup=False)
         find_casa_problems()
     # Subband edges
     channels_to_flag = '*:0~{0};{1}~{2}'.format(nchan/128-1, nchan-nchan/128, nchan-1)
     logger.info('MS has {} channels/spw'.format(nchan))
     logger.info('Flagging edge channels {0}'.format(channels_to_flag))
-    casatasks.flagdata(vis=msfile, mode='manual', spw=channels_to_flag, flagbackup=False)
+    commands = {}
+    commands['flagdata'] = {
+            'vis' :  msfile,
+            'mode': 'manual',
+            'spw': channels_to_flag,
+            'flagbackup': False}
+    run_casa_command(commands, 'flagdata')
+#'#    casatasks.flagdata(vis=msfile, mode='manual', spw=channels_to_flag, flagbackup=False)
     find_casa_problems()
     msg += 'Subband edges {}. '.format(channels_to_flag)
     # 5% of first and last channels of MS
@@ -1342,16 +1384,38 @@ def flagdata1_apriori(eMCP):
     first_chan, last_chan = select_first_last_chan(msfile, spw_frac, nchan)
     logger.info('Flagging initial/end channels: {0} and {1}'.format(first_chan,
                                                                     last_chan))
-    casatasks.flagdata(vis=msfile, mode='manual', spw=first_chan, flagbackup=False)
+    commands = {}
+    commands['flagdata'] = {
+            'vis' :  msfile,
+            'mode': 'manual',
+            'spw': first_chan,
+            'flagbackup': False}
+    run_casa_command(commands, 'flagdata')
+#'#    casatasks.flagdata(vis=msfile, mode='manual', spw=first_chan, flagbackup=False)
     find_casa_problems()
-    casatasks.flagdata(vis=msfile, mode='manual', spw=last_chan,  flagbackup=False)
+    commands = {}
+    commands['flagdata'] = {
+            'vis' :  msfile,
+            'mode': 'manual',
+            'spw': last_chan,
+            'flagbackup': False}
+    run_casa_command(commands, 'flagdata')
+#'#    casatasks.flagdata(vis=msfile, mode='manual', spw=last_chan,  flagbackup=False)
     find_casa_problems()
     msg += 'channels {0} {1}. '.format(first_chan,last_chan)
     # Remove 4 sec from everywhere:
     all_quack = eMCP['defaults']['flag_apriori']['all_quack']
     logger.info('Flagging first {} seconds from all scans'.format(all_quack))
-    casatasks.flagdata(vis=msfile, field='', mode='quack',
-             quackinterval=all_quack, flagbackup=False)
+    commands = {}
+    commands['flagdata'] = {
+            'vis' :  msfile,
+            'field': '',
+            'mode': 'quack',
+            'quackinterval': all_quack,
+            'flagbackup': False}
+    run_casa_command(commands, 'flagdata')
+#'#    casatasks.flagdata(vis=msfile, field='', mode='quack',
+#'#             quackinterval=all_quack, flagbackup=False)
     find_casa_problems()
     # Flag slewing times based on observatory records
     observatory_flags = eMCP['defaults']['flag_apriori']['observatory_flags']
@@ -1376,8 +1440,15 @@ def flagdata1_apriori(eMCP):
     if 'Lo' in antennas and 'Mk2' in antennas:
         if eMCP['defaults']['flag_apriori']['flag_Lo-Mk2']:
             logger.info('Flagging Lo-Mk2 baseline')
-            casatasks.flagdata(vis=msfile, mode='manual', antenna='Lo*&Mk2*',
-                     flagbackup=False)
+            commands = {}
+            commands['flagdata'] = {
+                    'vis' :  msfile,
+                    'mode': 'manual',
+                    'antenna': 'Lo*&Mk2*',
+                    'flagbackup': False}
+            run_casa_command(commands, 'flagdata')
+#'#            casatasks.flagdata(vis=msfile, mode='manual', antenna='Lo*&Mk2*',
+#'#                     flagbackup=False)
             find_casa_problems()
             msg += '. Lo-Mk2 flagged'
         else:
@@ -4206,3 +4277,9 @@ def flag_statistics(eMCP, step):
     flag_stats = load_obj(outfile)
     emplt.plot_flagstatistics(flag_stats, msinfo, step)
     logger.info('End flagstatistics')
+
+
+
+
+
+
