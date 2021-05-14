@@ -2,16 +2,16 @@ name: eMCP
 channels:
   - pkgw-forge
   - conda-forge
-  - http://ssb.stsci.edu/astroconda
   - defaults
 dependencies:
-  - aplpy=2.0.3
-  - astropy=4.2.1
-  - astroquery=0.4.1
-  - casacore=3.3.0
-  - ipython=7.22.0
-  - matplotlib=3.3.4
-  - numpy=1.20.1
-  - python=3.8.8
-  - python-casacore=3.3.1
-  - wsclean=2.10.1
+  - aplpy
+  - astropy
+  - astroquery
+  - casacore
+  - ipython
+  - matplotlib
+  - numpy
+  - python=3.7
+  - python-casacore
+  - scipy
+#  - wsclean

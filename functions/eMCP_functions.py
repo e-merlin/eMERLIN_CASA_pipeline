@@ -6,14 +6,18 @@ import socket
 import pickle
 import glob
 import re
+import itertools
 import sys
 import copy
 import getopt
 import datetime
-import dateutil
-import collections
-from scipy import stats
+#import dateutil
+from scipy.stats import mode
+#from scipy import stats
 import logging
+from astropy.coordinates import SkyCoord
+import astropy.units as u
+
 #'#import configparser
 #'#from ast import literal_eval
 
@@ -167,7 +171,7 @@ def find_run_steps(eMCP, run_steps, skip_steps=[]):
 
     # Define final step dictionary:
     logger.info('Sorted list of steps to execute:')
-    input_steps = collections.OrderedDict()
+    input_steps = {}
     for s in all_steps:
         if s in step_list:
             logger.info('{0:16s}: {1}'.format(s, eMCP['defaults']['global'][s]))
@@ -278,10 +282,12 @@ def update_mixed_mode(eMCP):
     return eMCP
 
 def check_band(msfile):
+    # Output example: 'C'
     # Take first frequency in the MS
-    msmd.open(msfile)
-    freq = msmd.chanfreqs(0)[0]/1e9
-    msmd.done()
+    freq = emutils.read_keyword(msfile, 'CHAN_FREQ', subtable='SPECTRAL_WINDOW').mean()/1e9
+#    msmd.open(msfile)
+#    freq = msmd.chanfreqs(0)[0]/1e9
+#    msmd.done()
     band = ''
     if (freq > 1.2) and (freq < 1.7):
         band = 'L'
@@ -292,18 +298,26 @@ def check_band(msfile):
     else:
         logger.critical('Cannot determine band from frequency {}'.format(freq))
         exit_pipeline(eMCP)
+    logger.debug(f'Mean frequency in {msfile}; {freq}. Band {band}')
     return band
 
 def get_baselines(msfile):
-    msmd.open(msfile)
-    antennas0 = msmd.antennanames()
-    baselines0 = msmd.baselines()
-    msmd.close()
-    baselines = []
-    for i, a in enumerate(antennas0):
-        for j, b in enumerate(antennas0):
-            if j > i:
-                baselines.append('{0}-{1}'.format(a, b))
+    # Output example: array(['Mk2-Kn', 'Mk2-De', 'Mk2-Pi', 'Mk2-Da', 'Mk2-Cm', 'Kn-De', 'Kn-Pi',
+    #   'Kn-Da', 'Kn-Cm', 'De-Pi', 'De-Da', 'De-Cm', 'Pi-Da', 'Pi-Cm',
+    #   'Da-Cm'], 
+    #  dtype='|S6')
+    antennas = emutils.read_keyword(msfile, 'NAME', subtable='ANTENNA')
+    baselines = [f'{pair[0]}-{pair[1]}' for pair in itertools.combinations(antennas, 2)]
+    logger.debug(f'Baselines in {msfile}; {baselines}')
+#'#    msmd.open(msfile)
+#'#    antennas0 = msmd.antennanames()
+#'#    baselines0 = msmd.baselines()
+#'#    msmd.close()
+#'#    baselines = []
+#'#    for i, a in enumerate(antennas0):
+#'#        for j, b in enumerate(antennas0):
+#'#            if j > i:
+#'#                baselines.append('{0}-{1}'.format(a, b))
     return np.array(baselines)
 
 def get_dates(d):
@@ -323,7 +337,7 @@ def join_lists(x=[]):
     return ','.join(x2)
 
 def user_sources(inputs):
-    sources = collections.OrderedDict()
+    sources = {}
     sources['targets'] = inputs['targets']
     sources['phscals'] = inputs['phscals']
     sources['fluxcal'] = inputs['fluxcal']
@@ -345,47 +359,65 @@ def user_sources(inputs):
     return sources
 
 def get_antennas(msfile):
+    # Output example: ['Mk2', 'Pi', 'Da', 'Kn', 'De', 'Cm']
     # Antenna list 
-    msmd.open(msfile)
-    antennas = msmd.antennanames()
-    msmd.close()
+    antennas = emutils.read_keyword(msfile, 'NAME', subtable='ANTENNA')
+#'#    msmd.open(msfile)
+#'#    antennas = msmd.antennanames()
+#'#    msmd.close()
     nice_order = ['Lo', 'Mk2', 'Pi', 'Da', 'Kn', 'De', 'Cm']
-    antennas = [a for a in nice_order if a in antennas]
-    logger.debug('Antennas in MS {0}: {1}'.format(msfile, antennas))
-    return antennas
+    antennas_sorted = [a for a in nice_order if a in antennas]
+    external = [a for a in antennas if a not in antennas_sorted]
+    antennas_all = antennas_sorted + external
+    logger.debug('Antennas in MS {0}: {1}'.format(msfile, antennas_all))
+    return antennas_all
 
 def get_obstime(msfile):
-    # returns datetime object of first and last times in obs_id 0
-    ms = myms()
-    ms.open(msfile)
-    t = ms.getdata('TIME')['time']
-    t_ini = mjdtodate(np.min(t)/60./60./24.)
-    t_end = mjdtodate(np.max(t)/60./60./24.)
-    ms.close()
-    # This method fails when working with pseudo wideband data
-    #msmd.open(msfile)
-    #t_ini = mjdtodate(msmd.timerangeforobs(0)['begin']['m0']['value'])
-    #t_end = mjdtodate(msmd.timerangeforobs(0)['end']['m0']['value'])
-    #msmd.done()
+    # returns datetime object of first and last times
+    # Output example:  time objects: 2017-12-20 00:35:00, 2017-12-20 03:42:58
+    #time_range = read_keyword(msfile, 'TIME_RANGE', subtable='OBSERVATION')
+    times = emutils.read_keyword(msfile, 'TIME')
+    t_ini = mjdtodate(times.min()/60./60./24.)
+    t_end = mjdtodate(times.max()/60./60./24.)
+    logger.debug(f'Ini and end times: {t_ini}, {t_end}')
+#'#    ms = myms()
+#'#    ms.open(msfile)
+#'#    t = ms.getdata('TIME')['time']
+#'#    t_ini = mjdtodate(np.min(t)/60./60./24.)
+#'#    t_end = mjdtodate(np.max(t)/60./60./24.)
+#'#    ms.close()
+#'#    # This method fails when working with pseudo wideband data
+#'#    #msmd.open(msfile)
+#'#    #t_ini = mjdtodate(msmd.timerangeforobs(0)['begin']['m0']['value'])
+#'#    #t_end = mjdtodate(msmd.timerangeforobs(0)['end']['m0']['value'])
+#'#    #msmd.done()
     return t_ini, t_end
 
 def get_obsfreq(msfile):
     # Returns freq of first channel, end chan, channel resolution
     # and number of channels (first spw) in GHz
-    msmd.open(msfile)
-    nspw = msmd.nspw()
-    freq_ini = msmd.chanfreqs(0)[0]/1e9
-    freq_end = msmd.chanfreqs(nspw-1)[-1]/1e9
-    chan_res = msmd.chanwidths(0)[0]/1e9
-    nchan = len(msmd.chanwidths(0))
-    msmd.done()
+    # Output example: (4.816125, 5.327875, 0.00025, 512)
+    freq_ini = emutils.read_keyword(msfile, 'CHAN_FREQ', subtable='SPECTRAL_WINDOW').min()/1e9
+    freq_end = emutils.read_keyword(msfile, 'CHAN_FREQ', subtable='SPECTRAL_WINDOW').max()/1e9
+    chan_res = emutils.read_keyword(msfile, 'RESOLUTION', subtable='SPECTRAL_WINDOW').mean()/1e9
+    nchan = emutils.read_keyword(msfile, 'CHAN_FREQ', subtable='SPECTRAL_WINDOW').shape[1]
+#'#    msmd.open(msfile)
+#'#    nspw = msmd.nspw()
+#'#    freq_ini = msmd.chanfreqs(0)[0]/1e9
+#'#    freq_end = msmd.chanfreqs(nspw-1)[-1]/1e9
+#'#    chan_res = msmd.chanwidths(0)[0]/1e9
+#'#    nchan = len(msmd.chanwidths(0))
+#'#    msmd.done()
+    logger.debug(f'freq_ini, freq_end, chan_res, nchan: {freq_ini}, {freq_end}, {chan_res}, {nchan}')
     return freq_ini, freq_end, chan_res, nchan
 
 def find_mssources(msfile):
-    #mssources = ','.join(casatasks.vishead(msfile,mode='list',listitems='field')['field'][0])
-    msmd.open(msfile)
-    mssources = ','.join(np.sort(msmd.fieldnames()))
-    msmd.done()
+    # Output example: '1107-1226,1109-1235,1118-1232,1331+305,1407+284'
+    fieldnames = emutils.read_keyword(msfile, 'NAME', subtable='FIELD')
+    mssources = ','.join(np.sort(fieldnames))
+#'#    #mssources = ','.join(casatasks.vishead(msfile,mode='list',listitems='field')['field'][0])
+#'#    msmd.open(msfile)
+#'#    msmd.done()
     logger.debug('Sources in MS {0}: {1}'.format(msfile, mssources))
     return mssources
 
@@ -394,71 +426,84 @@ def find_source_intent(msinfo, cats=['targets', 'phscals', 'bpcal', 'fluxcal', '
     return {source: ','.join([cat for cat in cats if source in msinfo['sources'][cat].split(',')]) for source in fields_ms}
 
 def get_project(msfile):
-    tb.open(msfile+'/OBSERVATION')
-    project = tb.getcol('PROJECT')
-    tb.close()
-    return project[0]
+    # Output example: 'CY0000'
+    project = emutils.read_keyword(msfile, 'PROJECT', subtable='OBSERVATION')
+    logger.debug(f'Read project from {msfile}: {project}')
+    return project
 
 def get_polarization(msfile):
-    tb.open(msfile+'/FEED')
-    polarization = tb.getcol('POLARIZATION_TYPE')
-    tb.close()
-    return ', '.join(polarization[:,0])
+    # Output example: 'L, R'
+    pol_types = np.unique(emutils.read_keyword(msfile, 'POLARIZATION_TYPE', 'FEED')['array'])
+    polarization = ', '.join(pol_types)
+    logger.debug(f'Polarization types for {msfile}: {polarization}')
+    return polarization
 
 def get_directions(msfile):
-    directions = collections.OrderedDict()
-    msmd.open(msfile)
-    field_names = msmd.namesforfields()
-    msmd.done()
-    for field_id, field_name in enumerate(field_names):
-        vhead = casatasks.vishead(msfile, mode = 'list', listitems = 'ptcs')
-        ra_float = vhead['ptcs'][0]['r'+str(field_id+1)][0][0][0]*180./np.pi
-        de_float = vhead['ptcs'][0]['r'+str(field_id+1)][1][0][0]*180./np.pi
-        directions[field_name] = me.direction('J2000', '{}deg'.format(ra_float), '{}deg'.format(de_float))
+    directions = {}
+    field_names = emutils.read_keyword(msfile, 'NAME', 'FIELD')
+    phase_dir = emutils.read_keyword(msfile, 'PHASE_DIR', 'FIELD')
+    for i, field in enumerate(field_names):
+        ra = phase_dir[i][0][0]*u.rad
+        de = phase_dir[i][0][1]*u.rad
+        directions[field] = SkyCoord(ra, de, frame='icrs')
     return directions
+
+#'#def get_directions(msfile):
+#'#    directions = {}
+#'#    msmd.open(msfile)
+#'#    field_names = msmd.namesforfields()
+#'#    msmd.done()
+#'#    for field_id, field_name in enumerate(field_names):
+#'#        vhead = casatasks.vishead(msfile, mode = 'list', listitems = 'ptcs')
+#'#        ra_float = vhead['ptcs'][0]['r'+str(field_id+1)][0][0][0]*180./np.pi
+#'#        de_float = vhead['ptcs'][0]['r'+str(field_id+1)][1][0][0]*180./np.pi
+#'#        directions[field_name] = me.direction('J2000', '{}deg'.format(ra_float), '{}deg'.format(de_float))
+#'#    return directions
 
 
 def get_distances(msfile, directions=''):
     if directions == '':
         directions = get_directions(msfile)
-    msmd.open(msfile)
-    field_names = msmd.namesforfields()
-    msmd.done()
-    separations = collections.OrderedDict()
+    field_names = emutils.read_keyword(msfile, 'NAME', 'FIELD')
+    separations = {}
     # Write all separations in a txt file
-    sep_file = open(info_dir+'source_separations.txt', 'w')
-    for i in range(len(field_names)):
-        for j in range(i+1, len(field_names)):
-            f1 = field_names[i]
-            f2 = field_names[j]
-            separations[f1+'-'+f2] = me.separation(directions[f1],directions[f2])['value']
-            sep_file.write('{0:10} {1:10} {2:7.2f}deg\n'.format(f1, f2, separations[f1+'-'+f2]))
+    with open(os.path.join(info_dir, 'source_separations.txt'), 'w') as sep_file:
+        for (f1, f2) in itertools.combinations(field_names, 2):
+            separations[f1+'-'+f2] = directions[f1].separation(directions[f2]).to(u.deg)
+            sep_file.write('{0:10} {1:10} {2:7.2f}\n'.format(f1, f2, separations[f1+'-'+f2]))
     return separations
 
 def get_integration_time(msfile, usemsmd=True):
-    if usemsmd:
-        msmd.open(msfile)
-        first_scan_number = msmd.scannumbers()[0]
-        int_time = msmd.exposuretime(first_scan_number)['value']
-        msmd.done()
-    if not usemsmd or int_time <= 0:
-        logger.info('Finding integration time manually')
-        ms.open(msfile)
-        axis_info = ms.getdata(['axis_info'],ifraxis=True)
-        t_mjd   = axis_info['axis_info']['time_axis']['MJDseconds']
-        ms.close()
-        a = np.diff(t_mjd)
-        # Get the mode of time intervals
-        (_, idx, counts) = np.unique(a, return_index=True, return_counts=True)
-        index = idx[np.argmax(counts)]
-        mode = a[index]
-        int_time = mode
+    time_diff = np.diff(emutils.read_keyword(msfile, 'TIME'))
+    intervals = time_diff[time_diff>0]
+    int_mode = mode(intervals)
+    int_time = int_mode[0][0]
+    perc = int_mode[1][0]/len(intervals)*100.
+    logger.debug(f'Mode time interval: {int_time}s (for {perc:4.1f}% of gaps)')
+#    
+#    if usemsmd:
+#        msmd.open(msfile)
+#        first_scan_number = msmd.scannumbers()[0]
+#        int_time = msmd.exposuretime(first_scan_number)['value']
+#        msmd.done()
+#    if not usemsmd or int_time <= 0:
+#        logger.info('Finding integration time manually')
+#        ms.open(msfile)
+#        axis_info = ms.getdata(['axis_info'],ifraxis=True)
+#        t_mjd   = axis_info['axis_info']['time_axis']['MJDseconds']
+#        ms.close()
+#        a = np.diff(t_mjd)
+#        # Get the mode of time intervals
+#        (_, idx, counts) = np.unique(a, return_index=True, return_counts=True)
+#        index = idx[np.argmax(counts)]
+#        mode = a[index]
+#        int_time = mode
     return int_time
 
 def get_msfile_sp(eMCP):
     ext_ms = {False:'.ms',True:'.mms'}
     do_ms2mms = eMCP['defaults']['import_eM']['ms2mms']
-    msfile_sp = './'+ eMCP['inputs']['inbase'] + '_sp' + ext_ms[do_ms2mms]
+    msfile_sp = os.path.join('./',eMCP['inputs']['inbase'], '_sp', ext_ms[do_ms2mms])
     return msfile_sp
 
 def find_wide_narrow(spw_sp, cent_chan_sp, msfile):
@@ -546,7 +591,7 @@ def get_msinfo(eMCP, msfile, doprint=False):
     inputs = eMCP['inputs']
     logger.info('Found MS file: {0}'.format(msfile))
     logger.info('Reading ms file information for MS: {0}'.format(msfile))
-    msinfo = collections.OrderedDict()
+    msinfo = {}
     msinfo['msfile'] = msfile
     msinfo['msfile_sp'] = get_msfile_sp(eMCP)
     msinfo['msfilename'] = os.path.splitext(msfile)[0].split('/')[-1]
@@ -558,7 +603,8 @@ def get_msinfo(eMCP, msfile, doprint=False):
     msinfo['antennas'] = get_antennas(msfile)
     msinfo['band'] = check_band(msfile)
     msinfo['baselines'] = get_baselines(msfile)
-    msinfo['num_spw'] = len(casatasks.vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
+#    msinfo['num_spw'] = len(casatasks.vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
+    msinfo['num_spw'] = len(emutils.read_keyword(msfile, 'MEAS_FREQ_REF', subtable='SPECTRAL_WINDOW'))
     t_ini, t_end = get_obstime(msfile)
     freq_ini, freq_end, chan_res, nchan = get_obsfreq(msfile)
     msinfo['t_ini'] = t_ini
@@ -1610,7 +1656,7 @@ def find_refant(msfile, field):
 #                       [a for a  in pref_ant if a in secondary],
 #                       return_index=True)
 #    refant = ','.join(u[np.argsort(ind)])
-#    refant_pref = collections.OrderedDict()
+#    refant_pref = {}
 #    refant_pref['snr'] = snr_sorted
 #    refant_pref['sorted_antennas'] = pref_ant
 #    refant_pref['refant'] = refant
@@ -2166,9 +2212,9 @@ def run_applycal(eMCP, caltables, step, dotarget=False, insources=''):
              flagbackup= False)
     find_casa_problems()
     read_applycal_flags()
-    applycal_dict = collections.OrderedDict()
+    applycal_dict = {}
     for source in fields.split(','):
-        applycal_dict[source] = collections.OrderedDict()
+        applycal_dict[source] = {}
         for i, p in enumerate(previous_cal):
             applycal_dict[source][p] = [gainfield[i],spwmap[i],interp[i]]
 
@@ -2204,7 +2250,7 @@ def run_applycal(eMCP, caltables, step, dotarget=False, insources=''):
                          flagbackup= False)
                 find_casa_problems()
                 read_applycal_flags()
-                applycal_dict[s] = collections.OrderedDict()
+                applycal_dict[s] = {}
                 for j, p in enumerate(previous_cal_targets):
                     applycal_dict[s][p] = [gainfield[j],spwmap[j],interp[j]]
             else:
@@ -2260,9 +2306,9 @@ def run_applycal_narrow(eMCP, caltables, step, spwmap_sp, dotarget=False, insour
              flagbackup= False)
     find_casa_problems()
     read_applycal_flags()
-    applycal_dict_sp = collections.OrderedDict()
+    applycal_dict_sp = {}
     for source in fields.split(','):
-        applycal_dict_sp[source] = collections.OrderedDict()
+        applycal_dict_sp[source] = {}
         for i, p in enumerate(previous_cal):
             applycal_dict_sp[source][p] = [gainfield[i],spwmap[i],interp[i]]
 
@@ -2303,7 +2349,7 @@ def run_applycal_narrow(eMCP, caltables, step, spwmap_sp, dotarget=False, insour
                          flagbackup= False)
                 find_casa_problems()
                 read_applycal_flags()
-                applycal_dict_sp[s] = collections.OrderedDict()
+                applycal_dict_sp[s] = {}
                 for j, p in enumerate(previous_cal_targets):
                     applycal_dict_sp[s][p] = [gainfield[j],spwmap[j],interp[j]]
             else:
@@ -2360,7 +2406,7 @@ def run_bpcal(eMCP, caltables, doplots=True):
     msinfo = eMCP['msinfo']
     # 0 Delay calibration of bpcal
     caltable_name = bp['delay_tablename']
-    caltables[caltable_name] = collections.OrderedDict()
+    caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
     caltables[caltable_name]['previous_cal'] = bp['delay_prev_cal']
@@ -2390,7 +2436,7 @@ def run_bpcal(eMCP, caltables, doplots=True):
 
     # 1 Phase calibration
     caltable_name = bp['phase_tablename']
-    caltables[caltable_name] = collections.OrderedDict()
+    caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
     caltables[caltable_name]['previous_cal'] = bp['phase_prev_cal']
@@ -2427,7 +2473,7 @@ def run_bpcal(eMCP, caltables, doplots=True):
 
     # 2 Amplitude calibration
     caltable_name = bp['ap_tablename']
-    caltables[caltable_name] = collections.OrderedDict()
+    caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
     caltables[caltable_name]['previous_cal'] = bp['ap_prev_cal']
@@ -2462,7 +2508,7 @@ def run_bpcal(eMCP, caltables, doplots=True):
 
     # 3 Bandpass calibration
     caltable_name = bp['bp_tablename']
-    caltables[caltable_name] = collections.OrderedDict()
+    caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
     caltables[caltable_name]['previous_cal'] = bp['bp_prev_cal']
@@ -2586,7 +2632,7 @@ def solve_delays(eMCP, caltables, doplots=True):
     msfile = eMCP['msinfo']['msfile']
     msinfo = eMCP['msinfo']
     caltable_name = delay['tablename']
-    caltables[caltable_name] = collections.OrderedDict()
+    caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
     caltables[caltable_name]['previous_cal'] = delay['prev_cal']
@@ -2671,7 +2717,7 @@ def delay_fringefit(eMCP, caltables):
     msfile = eMCP['msinfo']['msfile']
     msinfo = eMCP['msinfo']
     caltable_name = delay['tablename']
-    caltables[caltable_name] = collections.OrderedDict()
+    caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
     caltables[caltable_name]['previous_cal'] = delay['prev_cal']
@@ -2749,7 +2795,7 @@ def gain_p_ap(eMCP, caltables, doplots=True):
 
     # 1 Phase calibration
     caltable_name = gain_p_ap['p_tablename']
-    caltables[caltable_name] = collections.OrderedDict()
+    caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
     caltables[caltable_name]['previous_cal'] = gain_p_ap['p_prev_cal']
@@ -2786,7 +2832,7 @@ def gain_p_ap(eMCP, caltables, doplots=True):
 
     # 2 Amplitude calibration
     caltable_name = gain_p_ap['ap_tablename']
-    caltables[caltable_name] = collections.OrderedDict()
+    caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
     caltables[caltable_name]['previous_cal'] = gain_p_ap['ap_prev_cal']
@@ -2931,7 +2977,7 @@ def eM_fluxscale(eMCP, caltables):
     with open(fluxes_txt, 'a') as file:
         file.write('# WARNING: All flux densities in this file need to be multiplied by eMfactor={0:6.4f} to match the corrections that have been applied to the data.'.format(eMfactor))
     # Get fitted flux density and spectral index, correctly scaled for e-MERLIN
-    eMcalfluxes = collections.OrderedDict()
+    eMcalfluxes = {}
     for k in calfluxes.keys():
         if type(calfluxes[k]) is dict:
             try:
@@ -3011,7 +3057,7 @@ def bandpass_final(eMCP, caltables):
     msinfo = eMCP['msinfo']
     # Bandpass calibration
     caltable_name = bp_final['bp_tablename']
-    caltables[caltable_name] = collections.OrderedDict()
+    caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
     caltables[caltable_name]['previous_cal'] = bp_final['bp_prev_cal']
@@ -3093,7 +3139,7 @@ def gaincal_narrow(eMCP, caltables, doplots=True):
 
     # 1 Phase offset wide-narrow
     caltable_name = gain_final['p_offset_tablename']
-    caltables[caltable_name] = collections.OrderedDict()
+    caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
     caltables[caltable_name]['previous_cal'] = gain_final['p_offset_prev_cal']
@@ -3126,7 +3172,7 @@ def gaincal_narrow(eMCP, caltables, doplots=True):
     msinfo = eMCP['msinfo']
     # Bandpass calibration
     caltable_name = gain_final['narrow_bp_tablename']
-    caltables[caltable_name] = collections.OrderedDict()
+    caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
     caltables[caltable_name]['previous_cal'] = gain_final['narrow_bp_prev_cal']
@@ -3168,7 +3214,7 @@ def gaincal_final_cals(eMCP, caltables):
     msinfo = eMCP['msinfo']
     # 1 Phase calibration
     caltable_name = gain_final['p_tablename']
-    caltables[caltable_name] = collections.OrderedDict()
+    caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
     caltables[caltable_name]['previous_cal'] = gain_final['p_prev_cal']
@@ -3196,7 +3242,7 @@ def gaincal_final_cals(eMCP, caltables):
 
     # 1 Amplitude calibration
     caltable_name = gain_final['ap_tablename']
-    caltables[caltable_name] = collections.OrderedDict()
+    caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
     caltables[caltable_name]['previous_cal'] = gain_final['ap_prev_cal']
@@ -3237,7 +3283,7 @@ def gaincal_final_scan(eMCP, caltables):
 
     # 1 Phase calibration on phasecal: Scan-averaged phase calibration
     caltable_name = gain_final['p_scan_tablename']
-    caltables[caltable_name] = collections.OrderedDict()
+    caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
     caltables[caltable_name]['previous_cal'] = gain_final['p_scan_prev_cal']
@@ -3266,7 +3312,7 @@ def gaincal_final_scan(eMCP, caltables):
 
     # 2 Amplitude calibration on phasecal: scan-averaged amplitude solutions
     caltable_name = gain_final['ap_scan_tablename']
-    caltables[caltable_name] = collections.OrderedDict()
+    caltables[caltable_name] = {}
     caltables[caltable_name]['name'] = caltable_name
     caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
     caltables[caltable_name]['previous_cal'] = gain_final['ap_scan_prev_cal']
@@ -3705,7 +3751,7 @@ def run_first_images(eMCP):
     logger.info('Start run_first_images')
     t0 = datetime.datetime.utcnow()
     num = 0
-    eMCP['img_stats'] = collections.OrderedDict()
+    eMCP['img_stats'] = {}
     for s in msinfo['sources']['targets_phscals'].split(','):
         eMCP = single_tclean(eMCP, s, num)
     logger.info('End first_images')
@@ -3901,7 +3947,7 @@ def eMCP_info_start_steps():
     default_value = [0, 0, '']
     all_steps = list_of_steps()[0]
 
-    steps = collections.OrderedDict()
+    steps = {}
     steps['start_pipeline'] = default_value
     for s in all_steps:
         steps[s] = default_value

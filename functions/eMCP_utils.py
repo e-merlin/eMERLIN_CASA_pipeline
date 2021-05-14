@@ -4,6 +4,7 @@ import pickle
 import configparser
 import time
 import shutil
+import casacore.tables
 
 import logging
 logger = logging.getLogger('logger')
@@ -57,6 +58,7 @@ def get_logger(
         LOG_FORMAT     = '%(asctime)s | %(levelname)s | %(message)s',
         DATE_FORMAT    = '%Y-%m-%d %H:%M:%S',
         LOG_NAME       = 'logger',
+        LOG_LEVEL      = logging.DEBUG,
         LOG_FILE_INFO  = 'eMCP.log'):
 
     log           = logging.getLogger(LOG_NAME)
@@ -75,7 +77,7 @@ def get_logger(
     file_handler_info.setLevel(logging.INFO)
     log.addHandler(file_handler_info)
 
-    log.setLevel(logging.INFO)
+    log.setLevel(LOG_LEVEL)
     return log
 
 def create_dir_structure(pipeline_path):
@@ -99,21 +101,6 @@ def create_dir_structure(pipeline_path):
     os.system('cp -p {0}/utils/eMCP.css {1}'.format(pipeline_path, weblog_dir))
     os.system('cp -p {0}/utils/eMCP_logo.png {1}'.format(pipeline_path, weblog_dir))
     return calib_dir, info_dir
-
-
-
-
-# Pipeline management
-
-#'#def list_steps():
-#'#    all_steps, pre_processing_steps, calibration_steps = emutils.list_of_steps()
-#'#    print('\npre_processing')
-#'#    for s in pre_processing_steps:
-#'#        print('    {}'.format(s))
-#'#    print('\ncalibration')
-#'#    for s in calibration_steps:
-#'#        print('    {}'.format(s))
-#'#    sys.exit()
 
 def prt_dict(d, pre=''):
     subdict = []
@@ -142,6 +129,21 @@ def prt_dict_tofile(d, tofilename=None, addfile='', pre=' '):
         for key_inner in subdict:
             f.write('{}\n'.format(pre+key_inner))
             prt_dict_tofile(d[key_inner], addfile=f, pre=pre+pre)
+
+
+
+# Pipeline management
+
+def list_steps():
+    all_steps, pre_processing_steps, calibration_steps = list_of_steps()
+    print('\npre_processing')
+    for s in pre_processing_steps:
+        print('    {}'.format(s))
+    print('\ncalibration')
+    for s in calibration_steps:
+        print('    {}'.format(s))
+    sys.exit()
+
 
 def get_pipeline_version(pipeline_path):
     headfile = os.path.join(pipeline_path, '.git/HEAD')
@@ -266,3 +268,22 @@ def find_run_steps(eMCP, run_steps, skip_steps=[]):
     return input_steps
 
 
+
+## CASACORE funcions
+
+def read_keyword(infile, column, subtable=None):
+    with casacore.tables.table(infile, ack=False) as maintable:
+        if subtable != None:
+            tb = casacore.tables.table(maintable.getkeyword(subtable), ack=False)
+            maintable.close()
+        else:
+            tb = maintable
+        column = tb.getcol(column)
+#        tb.close()
+    return column
+
+def read_all_keywords(infile, subtable):
+    with  casacore.tables.table(infile, ack=False) as maintable:
+        with  casacore.tables.table(maintable.getkeyword(subtable), ack=False) as subtable:
+            keywords = {column: subtable.getcol(column) for column in subtable.colnames()}
+    return keywords

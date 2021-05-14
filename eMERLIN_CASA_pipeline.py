@@ -12,13 +12,14 @@ import argparse
 from functions import eMCP_functions as em
 from functions import eMCP_utils as emutils
 from functions import eMCP_weblog as emwlog
+
 # CASA imports
 #from taskinit import *
 #from tasks import *
 #import casadef
 #import casalith
 
-current_version = 'v2.0.2'
+current_version = 'v2.0.3'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 #pipeline_filename = sys.argv[sys.argv.index('-c') + 1]
@@ -285,7 +286,7 @@ def get_args():
 if __name__ == '__main__':
     args = get_args()
     if args.list_steps:
-        list_steps()
+        emutils.list_steps()
     else:
         # Setup logger
         logger = emutils.get_logger()
