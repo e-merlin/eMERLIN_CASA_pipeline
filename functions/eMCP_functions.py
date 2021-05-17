@@ -9,7 +9,7 @@ import re
 import itertools
 import sys
 import copy
-import getopt
+#'#import getopt
 import datetime
 #import dateutil
 from scipy.stats import mode
@@ -909,7 +909,7 @@ def import_eMERLIN_fitsIDI(eMCP):
         msg += ', antenna="{}"'.format(antenna)
     msfile = msfile1
     eMCP, msinfo, msfile = get_msinfo(eMCP, msfile)
-    eMCP = add_step_time('mstransform', eMCP, msg, t0, doweblog=True)
+#    eMCP = add_step_time('mstransform', eMCP, msg, t0, doweblog=True)
 
     # FIXVIS
     msfile = eMCP['inputs']['inbase'] + ext_ms[do_ms2mms]

@@ -9,9 +9,14 @@ import json
 import argparse
 #'#import time
 
+#pipeline_filename = sys.argv[0]
+#pipeline_path = os.path.abspath(os.path.dirname(pipeline_filename))
+#sys.path.append(pipeline_path)
 from functions import eMCP_functions as em
 from functions import eMCP_utils as emutils
 from functions import eMCP_weblog as emwlog
+from functions import eMCP_plots as emplt
+
 
 # CASA imports
 #from taskinit import *
@@ -19,7 +24,7 @@ from functions import eMCP_weblog as emwlog
 #import casadef
 #import casalith
 
-current_version = 'v2.0.7'
+current_version = 'v2.0.9'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 #pipeline_filename = sys.argv[sys.argv.index('-c') + 1]
@@ -156,20 +161,20 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
     ### Average data ###
     if eMCP['input_steps']['average'] > 0:
         eMCP = em.run_average(eMCP)
-#
-#    # Check if averaged data already generated
-#    if os.path.isdir('./'+inputs['inbase']+'_avg.mms') == True:
-#        msfile = './'+inputs['inbase']+'_avg.mms'
-#        eMCP, msinfo, msfile = em.get_msinfo(eMCP, msfile)
-#        em.plot_elev_uvcov(eMCP)
-#    elif os.path.isdir('./'+inputs['inbase']+'_avg.ms') == True:
-#        msfile = './'+inputs['inbase']+'_avg.ms'
-#        eMCP, msinfo, msfile = em.get_msinfo(eMCP, msfile)
-#        em.plot_elev_uvcov(eMCP)
-#
-#    ### Produce some plots ###
-#    if eMCP['input_steps']['plot_data'] == 1:
-#        eMCP = emplt.make_4plots(eMCP, datacolumn='data')
+
+    # Check if averaged data already generated
+    if os.path.isdir('./'+inputs['inbase']+'_avg.mms') == True:
+        msfile = './'+inputs['inbase']+'_avg.mms'
+        eMCP, msinfo, msfile = em.get_msinfo(eMCP, msfile)
+        em.plot_elev_uvcov(eMCP)
+    elif os.path.isdir('./'+inputs['inbase']+'_avg.ms') == True:
+        msfile = './'+inputs['inbase']+'_avg.ms'
+        eMCP, msinfo, msfile = em.get_msinfo(eMCP, msfile)
+        em.plot_elev_uvcov(eMCP)
+
+    ### Produce some plots ###
+    if eMCP['input_steps']['plot_data'] == 1:
+        eMCP = emplt.make_4plots(eMCP, datacolumn='data')
 #
 #    ### Save flag status up to this point
 #    if eMCP['input_steps']['save_flags'] == 1:

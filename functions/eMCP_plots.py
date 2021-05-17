@@ -4,7 +4,8 @@ import numpy as np
 import pickle
 import matplotlib
 import matplotlib.pyplot as plt
-#import multiprocessing
+plt.ioff()
+
 from matplotlib.ticker import MultipleLocator, MaxNLocator
 from matplotlib.ticker import ScalarFormatter
 import datetime
@@ -54,63 +55,34 @@ images_link= './images/'
 
 line0 = '-'*15
 
-# Functions to save and load dictionaries
-def save_obj(obj, name):
-    with open(name, 'wb') as f:
-        pickle.dump(obj, f)
-
-def load_obj(name):
-    with open(name, 'rb') as f:
-        return pickle.load(f)
-
-def prt_dict(d, pre=''):
-    subdict = []
-    for key in d.keys():
-        if type(d[key]) == dict:
-            subdict.append(key)
-        else:
-            print('{0:20s}: {1}'.format(pre+key, d[key]))
-    if subdict != []:
-        for key_inner in subdict:
-            print(pre+key_inner)
-            prt_dict(d[key_inner], pre=pre+'   ')
-
-
-def makedir(pathdir):
-    try:
-        os.mkdir(pathdir)
-        logger.info('Create directory: {}'.format(pathdir))
-    except:
-        logger.debug('Cannot create directory: {}'.format(pathdir))
-        pass
 
 def add_step_time(step, eMCP, msg, t0, doweblog=True):
     t1 = datetime.datetime.utcnow()
     timestamp = t1.strftime('%Y-%m-%d %H:%M:%S')
     delta_t_min = (t1-t0).total_seconds()/60.
     eMCP['steps'][step] = [timestamp, delta_t_min, msg]
-    save_obj(eMCP, info_dir + 'eMCP_info.pkl')
+    emutils.save_obj(eMCP, info_dir + 'eMCP_info.pkl')
     os.system('cp eMCP.log {}eMCP.log.txt'.format(info_dir))
     os.system('cp casa_eMCP.log {}casa_eMCP.log.txt'.format(info_dir))
     if doweblog:
         emwlog.start_weblog(eMCP)
     return eMCP
 
-def get_scans(msfile, field):
-    ms.open(msfile)
-    ms.msselect({'field':field})
-    scans = ms.getdata('scan_number')['scan_number']
-    num_scans = len(np.unique(scans))
-    ms.close()
-    return num_scans, scans
+#'#def get_scans(msfile, field):
+#'#    ms.open(msfile)
+#'#    ms.msselect({'field':field})
+#'#    scans = ms.getdata('scan_number')['scan_number']
+#'#    num_scans = len(np.unique(scans))
+#'#    ms.close()
+#'#    return num_scans, scans
 
-def get_freqs(msfile, allfreqs=False):
-    if allfreqs:
-        channels = emutils.read_keyword(msfile, 'CHAN_FREQ', subtable='SPECTRAL_WINDOW')
-        freqs=np.sort(channels.flatten())[::int(len(channels.T)/4)]
-    else:
-        freqs = channels.mean(axis=0)
-    return freqs
+#'#def get_freqs(msfile, allfreqs=False):
+#'#    if allfreqs:
+#'#        channels = emutils.read_keyword(msfile, 'CHAN_FREQ', subtable='SPECTRAL_WINDOW')
+#'#        freqs=np.sort(channels.flatten())[::int(len(channels.T)/4)]
+#'#    else:
+#'#        freqs = channels.mean(axis=0)
+#'#    return freqs
 
 #'#def get_freqs(msfile, allfreqs=False):
 #'#    ms.open(msfile)
@@ -123,18 +95,18 @@ def get_freqs(msfile, allfreqs=False):
 #'#        freqs = axis_info['axis_info']['freq_axis']['chan_freq'].mean(axis=0)
 #'#    return freqs
 
-def count_active_baselines(msfile):
-    msmd.open(msfile)
-    a = np.array(msmd.antennanames())
-    b = np.array(msmd.baselines())
-    msmd.done()
-    active_baselines = 0
-    for i, ant1 in enumerate(a):
-        for ant2 in a[i+1:]:
-            j = np.argwhere(ant2==a)[0][0]
-            if b[i,j]:
-                active_baselines += 1
-    return active_baselines
+#'#def count_active_baselines(msfile):
+#'#    msmd.open(msfile)
+#'#    a = np.array(msmd.antennanames())
+#'#    b = np.array(msmd.baselines())
+#'#    msmd.done()
+#'#    active_baselines = 0
+#'#    for i, ant1 in enumerate(a):
+#'#        for ant2 in a[i+1:]:
+#'#            j = np.argwhere(ant2==a)[0][0]
+#'#            if b[i,j]:
+#'#                active_baselines += 1
+#'#    return active_baselines
 
 def simple_plot_name(plot_file, i):
     try:
@@ -202,66 +174,128 @@ def plot_caltable(msinfo, caltable, plot_file, xaxis='', yaxis='', title='',
 def single_4plot(msinfo, field, datacolumn, plots_data_dir):
     logger.info('Visibility plots for field: {0}, datacolumn: {1}'.format(field, datacolumn))
     msfile = msinfo['msfile']
-    tb.open(msfile+'/SPECTRAL_WINDOW')
-    nchan = str(tb.getcol('NUM_CHAN')[0])
-    tb.close()
-    plot_file = plots_data_dir+'{0}_4plot_{1}_{2}'.format(msinfo['msfilename'],
-                                                          field, datacolumn)
-    num_baselines = count_active_baselines(msfile)
+    nchan = str(msinfo['nchan'])
+#    tb.open(msfile+'/SPECTRAL_WINDOW')
+#    nchan = str(tb.getcol('NUM_CHAN')[0])
+#    tb.close()
+    plot_file = os.path.join(plots_data_dir, f"{msinfo['msfilename']}_4plot_{field}_{datacolumn}")
+    num_baselines = len(msinfo['baselines'])
+#'#    num_baselines = count_active_baselines(msfile)
     gridrows = num_baselines
     gridcols = 1
     showgui=False
     avgtime = '300'
     baseline = '*&*'
-    msmd.open(msfile)
-    all_times = msmd.timesforscans(msmd.scansforfield(field))
-    x_min_time = np.min(all_times)
-    x_max_time = np.max(all_times)
-    msmd.close()
+    # Find min and max times per field
+    times = emutils.find_source_timerange(msfile, field)
+    x_min_time = times.min()
+    x_max_time = times.max()
+#'#    msmd.open(msfile)
+#'#    all_times = msmd.timesforscans(msmd.scansforfield(field))
+#'#    x_min_time = np.min(all_times)
+#'#    x_max_time = np.max(all_times)
+#'#    msmd.close()
     w, h = 1200, num_baselines*200
-    plotms(vis=msfile, xaxis='time', yaxis='amp', title='Amp vs Time {0} (color=spw)'.format(field),
-    gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=0, plotindex=0,
-    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
-    antenna=baseline, field=field, iteraxis='baseline',
-    averagedata = True, avgchannel = nchan, avgtime='4',
-    xselfscale = True, xsharedaxis = True, coloraxis = 'spw',
-    plotrange=[x_min_time,x_max_time,0,-1],
-    plotfile = plot_file+'0.png', expformat = 'png', customsymbol = True, symbolshape = 'circle',
-    width=w, height=h, symbolsize=4,clearplots=False, overwrite=True, showgui=showgui)
+    # 0
+    commands = {}
+    commands['plotms'] = {
+            'vis' :  msfile,
+            'xaxis': 'time', 'yaxis': 'amp',
+            'title':  f"Amp vs Time {field} (color=spw)",
+            'gridrows':gridrows, 'gridcols':gridcols, 
+            'rowindex':0, 'colindex':0, 'plotindex':0,
+            'xdatacolumn':datacolumn, 'ydatacolumn':datacolumn,
+            'correlation': 'RR,LL',
+            'antenna':baseline, 'field':field, 'iteraxis':'baseline',
+            'averagedata':True, 'avgchannel':nchan, 'avgtime':'4',
+            'xselfscale':True, 'xsharedaxis': True, 'coloraxis': 'spw',
+            'plotrange':[x_min_time,x_max_time,0,-1],
+            'plotfile': plot_file+'0.png', 'expformat': 'png', 'customsymbol': True, 'symbolshape': 'circle',
+            'width':w, 'height':h, 'symbolsize':4,'clearplots':False, 'overwrite':True, 'showgui':showgui}
+    em.run_casa_command(commands, 'plotms')
+    em.find_casa_problems()
+
     simple_plot_name(plot_file, 0)
 
-    plotms(vis=msfile, xaxis='time', yaxis='phase', title='Phase vs Time {0} (color=spw)'.format(field),
-    gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=0, plotindex=0,
-    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
-    antenna=baseline, field=field, iteraxis='baseline',
-    averagedata = True, avgchannel = nchan, avgtime='4',
-    xselfscale = True, xsharedaxis = True, coloraxis   = 'spw',
-    plotrange=[x_min_time,x_max_time,-180,180],
-    plotfile = plot_file+'1.png', expformat = 'png', customsymbol = True, symbolshape = 'circle',
-    width=w, height=h, symbolsize=4,clearplots=False, overwrite=True, showgui=showgui)
+    # 1
+    commands = {}
+    commands['plotms'] = {
+            'vis' :  msfile,
+            'xaxis': 'time', 'yaxis': 'phase',
+            'title':  f"Phase vs Time {field} (color=spw)",
+            'gridrows':gridrows, 'gridcols':gridcols, 
+            'rowindex':0, 'colindex':0, 'plotindex':0,
+            'xdatacolumn':datacolumn, 'ydatacolumn':datacolumn,
+            'correlation': 'RR,LL',
+            'antenna':baseline, 'field':field, 'iteraxis':'baseline',
+            'averagedata':True, 'avgchannel':nchan, 'avgtime':'4',
+            'xselfscale':True, 'xsharedaxis': True, 'coloraxis': 'spw',
+            'plotrange':[x_min_time,x_max_time,-180,180],
+            'plotfile': plot_file+'1.png', 'expformat': 'png', 'customsymbol': True, 'symbolshape': 'circle',
+            'width':w, 'height':h, 'symbolsize':4,'clearplots':False, 'overwrite':True, 'showgui':showgui}
+    em.run_casa_command(commands, 'plotms')
+    em.find_casa_problems()
     simple_plot_name(plot_file, 1)
 
-    plotms(vis=msfile, xaxis='freq', yaxis='amp', title='Amp vs Frequency {0} (color=corr)'.format(field),
-    gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=0, plotindex=0,
-    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
-    antenna=baseline, field=field, iteraxis='baseline',
-    averagedata = True, avgtime=avgtime, avgchannel='4',
-    xselfscale = True, xsharedaxis = True, coloraxis   = 'corr', plotrange=[-1,-1,0,-1],
-    plotfile = plot_file+'2.png', expformat = 'png', customsymbol = True, symbolshape = 'circle',
-    width=w, height=h, symbolsize=4,clearplots=False, overwrite=True, showgui=showgui)
+    # 2
+    commands = {}
+    commands['plotms'] = {
+            'vis' :  msfile,
+            'xaxis': 'freq', 'yaxis': 'amp',
+            'title':  f"Amp vs Freq {field} (color=corr)",
+            'gridrows':gridrows, 'gridcols':gridcols, 
+            'rowindex':0, 'colindex':0, 'plotindex':0,
+            'xdatacolumn':datacolumn, 'ydatacolumn':datacolumn,
+            'correlation': 'RR,LL',
+            'antenna':baseline, 'field':field, 'iteraxis':'baseline',
+            'averagedata':True, 'avgtime':avgtime, 'avgchannel':'4',
+            'xselfscale':True, 'xsharedaxis': True, 'coloraxis':'corr',
+            'plotrange':[-1,-1,0,-1],
+            'plotfile': plot_file+'2.png', 'expformat': 'png', 'customsymbol': True, 'symbolshape': 'circle',
+            'width':w, 'height':h, 'symbolsize':4,'clearplots':False, 'overwrite':True, 'showgui':showgui}
+    em.run_casa_command(commands, 'plotms')
+    em.find_casa_problems()
     simple_plot_name(plot_file, 2)
 
-    plotms(vis=msfile, xaxis='freq', yaxis='phase', title='Phase vs Frequency {0} (color=corr)'.format(field),
-    gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=0, plotindex=0,
-    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
-    antenna=baseline, field=field, iteraxis='baseline',
-    averagedata = True, avgtime=avgtime, avgchannel='4',
-    xselfscale = True, xsharedaxis = True, coloraxis   = 'corr', plotrange=[-1,-1,-180,180],
-    plotfile = plot_file+'3.png', expformat = 'png', customsymbol = True, symbolshape = 'circle',
-    width=w, height=h, symbolsize=4,clearplots=False, overwrite=True, showgui=showgui)
+#'#    plotms(vis=msfile, xaxis='freq', yaxis='amp', title='Amp vs Frequency {0} (color=corr)'.format(field),
+#'#    gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=0, plotindex=0,
+#'#    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
+#'#    antenna=baseline, field=field, iteraxis='baseline',
+#'#    averagedata = True, avgtime=avgtime, avgchannel='4',
+#'#    xselfscale = True, xsharedaxis = True, coloraxis   = 'corr', plotrange=[-1,-1,0,-1],
+#'#    plotfile = plot_file+'2.png', expformat = 'png', customsymbol = True, symbolshape = 'circle',
+#'#    width=w, height=h, symbolsize=4,clearplots=False, overwrite=True, showgui=showgui)
+#'#    simple_plot_name(plot_file, 2)
+
+    # 3
+    commands = {}
+    commands['plotms'] = {
+            'vis' :  msfile,
+            'xaxis': 'freq', 'yaxis': 'phase',
+            'title':  f"Phase vs Freq {field} (color=corr)",
+            'gridrows':gridrows, 'gridcols':gridcols, 
+            'rowindex':0, 'colindex':0, 'plotindex':0,
+            'xdatacolumn':datacolumn, 'ydatacolumn':datacolumn,
+            'correlation': 'RR,LL',
+            'antenna':baseline, 'field':field, 'iteraxis':'baseline',
+            'averagedata':True, 'avgtime':avgtime, 'avgchannel':'4',
+            'xselfscale':True, 'xsharedaxis': True, 'coloraxis': 'corr',
+            'plotrange':[-1,-1,-180,180],
+            'plotfile': plot_file+'3.png', 'expformat': 'png', 'customsymbol': True, 'symbolshape': 'circle',
+            'width':w, 'height':h, 'symbolsize':4,'clearplots':False, 'overwrite':True, 'showgui':showgui}
+    em.run_casa_command(commands, 'plotms')
+    em.find_casa_problems()
+#'#    plotms(vis=msfile, xaxis='freq', yaxis='phase', title='Phase vs Frequency {0} (color=corr)'.format(field),
+#'#    gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=0, plotindex=0,
+#'#    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR, LL',
+#'#    antenna=baseline, field=field, iteraxis='baseline',
+#'#    averagedata = True, avgtime=avgtime, avgchannel='4',
+#'#    xselfscale = True, xsharedaxis = True, coloraxis   = 'corr', plotrange=[-1,-1,-180,180],
+#'#    plotfile = plot_file+'3.png', expformat = 'png', customsymbol = True, symbolshape = 'circle',
+#'#    width=w, height=h, symbolsize=4,clearplots=False, overwrite=True, showgui=showgui)
 #    logger.info('Finished {0}:'.format(field))
-    logger.info('{0}{{0-4}}.png'.format(plot_file))
     simple_plot_name(plot_file, 3)
+    logger.info('{0}{{0-4}}.png'.format(plot_file))
 
 
 def make_4plots(eMCP, datacolumn='data'):
@@ -276,7 +310,7 @@ def make_4plots(eMCP, datacolumn='data'):
         plots_data_dir = './weblog/plots/plots_corrected/'
     else:
         plots_data_dir = './weblog/plots/'
-    makedir(plots_data_dir)
+    emutils.makedir(plots_data_dir)
     allsources = msinfo['sources']['allsources'].split(',')
     mssources = msinfo['sources']['mssources'].split(',')
     logger.info('Producing plots for: {}'.format(','.join(allsources)))
@@ -309,23 +343,59 @@ def single_uvplt(msinfo, field, plots_data_dir):
     showgui = False
     gridrows = 1
     gridcols = 2
-    plotms(vis=msfile, xaxis='UVwave', yaxis='amp', title='Amplitude vs UVWave {0} (color=spw)'.format(field),
-    gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=0, plotindex=0,
-    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR,LL',
-    antenna='*&*', field=field,
-    averagedata = True, avgtime=avgtime, avgchannel = str(nchan),
-    xselfscale = True, xsharedaxis = True, coloraxis   = 'spw',
-    plotfile = '', expformat = 'png', customsymbol = True, symbolshape = 'circle',
-    symbolsize=4, clearplots=True, overwrite=True, showgui=showgui)
+    # Amp
+    commands = {}
+    commands['plotms'] = {
+            'vis' :  msfile,
+            'xaxis': 'UVwave', 'yaxis': 'amp',
+            'title':  f"Amplitude vs UVWave {field} (color=spw)",
+            'gridrows':gridrows, 'gridcols':gridcols, 
+            'rowindex':0, 'colindex':0, 'plotindex':0,
+            'xdatacolumn':datacolumn, 'ydatacolumn':datacolumn,
+            'correlation': 'RR,LL',
+            'antenna':'*&*', 'field':field,
+            'averagedata':True, 'avgchannel':str(nchan), 'avgtime':avgtime,
+            'xselfscale':True, 'xsharedaxis': True, 'coloraxis': 'spw',
+            'plotfile': '', 'expformat': 'png', 'customsymbol': True, 'symbolshape': 'circle',
+            'width':w, 'height':h, 'symbolsize':4,'clearplots':False, 'overwrite':True, 'showgui':showgui}
+    em.run_casa_command(commands, 'plotms')
+    em.find_casa_problems()
+#'#    plotms(vis=msfile, xaxis='UVwave', yaxis='amp', title='Amplitude vs UVWave {0} (color=spw)'.format(field),
+#'#    gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=0, plotindex=0,
+#'#    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR,LL',
+#'#    antenna='*&*', field=field,
+#'#    averagedata = True, avgtime=avgtime, avgchannel = str(nchan),
+#'#    xselfscale = True, xsharedaxis = True, coloraxis   = 'spw',
+#'#    plotfile = '', expformat = 'png', customsymbol = True, symbolshape = 'circle',
+#'#    symbolsize=4, clearplots=True, overwrite=True, showgui=showgui)
 
-    plotms(vis=msfile, xaxis='UVwave', yaxis='phase', title='Phase vs UVWave {0} (color=spw)'.format(field),
-    gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=1, plotindex=1,
-    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR,LL',
-    antenna='*&*', field=field,
-    averagedata = True, avgtime=avgtime, avgchannel = str(nchan),
-    xselfscale = True, xsharedaxis = True, coloraxis   = 'spw', plotrange=[-1,-1,-180,180],
-    plotfile = plot_file, expformat = 'png', customsymbol = True, symbolshape = 'circle',
-    width=1200, height=573, symbolsize=4, clearplots=False, overwrite=True, showgui=showgui)
+    # Phase
+    commands = {}
+    commands['plotms'] = {
+            'vis' :  msfile,
+            'xaxis': 'UVwave', 'yaxis': 'phase',
+            'title':  f"Phase vs UVWave {field} (color=spw)",
+            'gridrows':gridrows, 'gridcols':gridcols, 
+            'rowindex':0, 'colindex':1, 'plotindex':1,
+            'xdatacolumn':datacolumn, 'ydatacolumn':datacolumn,
+            'correlation': 'RR,LL',
+            'antenna':'*&*', 'field':field,
+            'averagedata':True, 'avgchannel':str(nchan), 'avgtime':avgtime,
+            'xselfscale':True, 'xsharedaxis': True, 'coloraxis': 'spw',
+            'plotrange':[-1,-1,-180,180],
+            'plotfile': plot_file, 'expformat': 'png', 'customsymbol': True, 'symbolshape': 'circle',
+            'width':1200, 'height':573, 'symbolsize':4,'clearplots':False, 'overwrite':True, 'showgui':showgui}
+    em.run_casa_command(commands, 'plotms')
+    em.find_casa_problems()
+
+#'#    plotms(vis=msfile, xaxis='UVwave', yaxis='phase', title='Phase vs UVWave {0} (color=spw)'.format(field),
+#'#    gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=1, plotindex=1,
+#'#    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR,LL',
+#'#    antenna='*&*', field=field,
+#'#    averagedata = True, avgtime=avgtime, avgchannel = str(nchan),
+#'#    xselfscale = True, xsharedaxis = True, coloraxis   = 'spw', plotrange=[-1,-1,-180,180],
+#'#    plotfile = plot_file, expformat = 'png', customsymbol = True, symbolshape = 'circle',
+#'#    width=1200, height=573, symbolsize=4, clearplots=False, overwrite=True, showgui=showgui)
 
 def single_uvplt_model(msinfo, field, plots_data_dir):
     logger.info('uvplt (model) for field: {}'.format(field))
@@ -337,30 +407,68 @@ def single_uvplt_model(msinfo, field, plots_data_dir):
     showgui = False
     gridrows = 1
     gridcols = 2
-    plotms(vis=msfile, xaxis='UVwave', yaxis='amp', title='Model Amplitude vs UVWave {0} (color=spw)'.format(field),
-    gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=0, plotindex=0,
-    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR,LL',
-    antenna='*&*', field=field,
-    averagedata = True, avgtime=avgtime, avgchannel = str(int(nchan/16)),
-    xselfscale = True, xsharedaxis = True, coloraxis   = 'spw',
-    plotfile = '', expformat = 'png', customsymbol = True, symbolshape = 'circle',
-    symbolsize=4, clearplots=True, overwrite=True, showgui=showgui)
+    # Amp
+    commands = {}
+    commands['plotms'] = {
+            'vis' :  msfile,
+            'xaxis': 'UVwave', 'yaxis': 'amp',
+            'title':  f"Amplitude vs UVWave {field} (color=spw)",
+            'gridrows':gridrows, 'gridcols':gridcols, 
+            'rowindex':0, 'colindex':0, 'plotindex':0,
+            'xdatacolumn':datacolumn, 'ydatacolumn':datacolumn,
+            'correlation': 'RR,LL',
+            'antenna':'*&*', 'field':field,
+            'averagedata':True, 'avgchannel':str(int(nchan/16)), 'avgtime':avgtime,
+            'xselfscale':True, 'xsharedaxis': True, 'coloraxis': 'spw',
+            'plotfile': '', 'expformat': 'png', 'customsymbol': True, 'symbolshape': 'circle',
+            'width':w, 'height':h, 'symbolsize':4,'clearplots':False, 'overwrite':True, 'showgui':showgui}
+    em.run_casa_command(commands, 'plotms')
+    em.find_casa_problems()
+#'#
+#'#    plotms(vis=msfile, xaxis='UVwave', yaxis='amp', title='Model Amplitude vs UVWave {0} (color=spw)'.format(field),
+#'#    gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=0, plotindex=0,
+#'#    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR,LL',
+#'#    antenna='*&*', field=field,
+#'#    averagedata = True, avgtime=avgtime, avgchannel = str(int(nchan/16)),
+#'#    xselfscale = True, xsharedaxis = True, coloraxis   = 'spw',
+#'#    plotfile = '', expformat = 'png', customsymbol = True, symbolshape = 'circle',
+#'#    symbolsize=4, clearplots=True, overwrite=True, showgui=showgui)
+#'#
+    # Phase
+    commands = {}
+    commands['plotms'] = {
+            'vis' :  msfile,
+            'xaxis': 'UVwave', 'yaxis': 'phase',
+            'title':  f"Phase vs UVWave {field} (color=spw)",
+            'gridrows':gridrows, 'gridcols':gridcols, 
+            'rowindex':0, 'colindex':1, 'plotindex':1,
+            'xdatacolumn':datacolumn, 'ydatacolumn':datacolumn,
+            'correlation': 'RR,LL',
+            'antenna':'*&*', 'field':field,
+            'averagedata':True, 'avgchannel':str(nchan), 'avgtime':avgtime,
+            'xselfscale':True, 'xsharedaxis': True, 'coloraxis': 'spw',
+            'plotrange':[-1,-1,-180,180],
+            'plotfile': plot_file, 'expformat': 'png', 'customsymbol': True, 'symbolshape': 'circle',
+            'width':1200, 'height':573, 'symbolsize':4,'clearplots':False, 'overwrite':True, 'showgui':showgui}
+    em.run_casa_command(commands, 'plotms')
+    em.find_casa_problems()
 
-    plotms(vis=msfile, xaxis='UVwave', yaxis='phase', title='Model Phase vs UVWave {0} (color=spw)'.format(field),
-    gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=1, plotindex=1,
-    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR,LL',
-    antenna='*&*', field=field,
-    averagedata = True, avgtime=avgtime, avgchannel = str(nchan),
-    xselfscale = True, xsharedaxis = True, coloraxis   = 'spw', plotrange=[-1,-1,-180,180],
-    plotfile = plot_file, expformat = 'png', customsymbol = True, symbolshape = 'circle',
-    width=1200, height=573, symbolsize=4, clearplots=False, overwrite=True, showgui=showgui)
+#'#
+#'#    plotms(vis=msfile, xaxis='UVwave', yaxis='phase', title='Model Phase vs UVWave {0} (color=spw)'.format(field),
+#'#    gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=1, plotindex=1,
+#'#    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR,LL',
+#'#    antenna='*&*', field=field,
+#'#    averagedata = True, avgtime=avgtime, avgchannel = str(nchan),
+#'#    xselfscale = True, xsharedaxis = True, coloraxis   = 'spw', plotrange=[-1,-1,-180,180],
+#'#    plotfile = plot_file, expformat = 'png', customsymbol = True, symbolshape = 'circle',
+#'#    width=1200, height=573, symbolsize=4, clearplots=False, overwrite=True, showgui=showgui)
 
 
 def make_uvplt(eMCP):
     msinfo = eMCP['msinfo']
     num_proc = eMCP['defaults']['plot_data']['num_proc']
     plots_data_dir = './weblog/plots/plots_uvplt/'
-    makedir(plots_data_dir)
+    emutils.makedir(plots_data_dir)
     allsources = msinfo['sources']['allsources'].split(',')
     mssources = msinfo['sources']['mssources'].split(',')
     logger.info('Producing uvplot for: {}'.format(','.join(allsources)))
@@ -432,7 +540,7 @@ def make_uvplt(eMCP):
 
 def make_uvcov(msfile, msinfo):
     plots_obs_dir = './weblog/plots/plots_observation/'
-    makedir(plots_obs_dir)
+    emutils.makedir(plots_obs_dir)
     # CASA 5.4 has a bug, it selects the uv limits of the first spw
     # I create this manual limit as a compromise
     max_freq = emutils.read_keyword(msfile, 'CHAN_FREQ', subtable='SPECTRAL_WINDOW').max()
@@ -475,6 +583,7 @@ def make_uvcov(msfile, msinfo):
                     'showlegend': True,
                     'showgui': False}
             em.run_casa_command(commands, 'plotms')
+            em.find_casa_problems()
 #'#            plotms(vis=msfile, xaxis='Uwave', yaxis='Vwave', field=f, title=f,
 #'#            correlation = 'RR', spw='', coloraxis = 'spw',
 #'#            width=900, height=900, symbolsize=1,
@@ -490,7 +599,7 @@ def make_uvcov(msfile, msinfo):
 
 def make_elevation(msfile, msinfo):
     plots_obs_dir = './weblog/plots/plots_observation/'
-    makedir(plots_obs_dir)
+    emutils.makedir(plots_obs_dir)
     plot_file = plots_obs_dir+'{0}_elevation.png'.format(msinfo['msfilename'])
     logger.info('Plotting elevation to:')
     logger.info('{}'.format(plot_file))
@@ -517,6 +626,7 @@ def make_elevation(msfile, msinfo):
             'showlegend': True,
             'showgui': showgui}
     em.run_casa_command(commands, 'plotms')
+    em.find_casa_problems()
 
 
 ### Flag statistics
@@ -698,7 +808,7 @@ def plot_flagstatistics(flag_stats, msinfo, step):
 
 def plot_Lo_drops(phscal_scans, scans, amp_mean, lo_dropout_scans, phscal, eMCP):
     plots_obs_dir = './weblog/plots/plots_flagstats/'
-    makedir(plots_obs_dir)
+    emutils.makedir(plots_obs_dir)
     msinfo = eMCP['msinfo']
     drops = np.array([scan in lo_dropout_scans for scan in phscal_scans])
     fig = plt.figure(figsize=(30,8))

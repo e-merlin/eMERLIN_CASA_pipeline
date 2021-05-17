@@ -11,7 +11,10 @@ dependencies:
   - ipython
   - matplotlib
   - numpy
-  - python=3.7
+  - python=3.6
   - python-casacore
   - scipy
 #  - wsclean
+#  - pip
+#  - pip:
+#    - shadeMS

@@ -287,3 +287,15 @@ def read_all_keywords(infile, subtable):
         with  casacore.tables.table(maintable.getkeyword(subtable), ack=False) as subtable:
             keywords = {column: subtable.getcol(column) for column in subtable.colnames()}
     return keywords
+
+def find_source_timerange(msfile, source):
+    field_names = read_keyword(msfile, 'NAME', 'FIELD')
+    source_id = [i for i,j in enumerate(field_names) if source==j][0]
+    field_id = read_keyword(msfile, 'FIELD_ID')
+    t = casacore.tables.table(msfile, ack=False)
+    t1 = casacore.tables.taql('select from $t where FIELD_ID == $source_id')
+    times = t1.getcol('TIME')
+    t.close()
+    t1.close()
+    return times
+
