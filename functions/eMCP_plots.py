@@ -187,9 +187,9 @@ def single_4plot(msinfo, field, datacolumn, plots_data_dir):
     avgtime = '300'
     baseline = '*&*'
     # Find min and max times per field
-    times = emutils.find_source_timerange(msfile, field)
-    x_min_time = times.min()
-    x_max_time = times.max()
+    x_min_time, x_max_time = emutils.find_source_timerange(msfile, field)
+#'#    x_min_time = times.min()
+#'#    x_max_time = times.max()
 #'#    msmd.open(msfile)
 #'#    all_times = msmd.timesforscans(msmd.scansforfield(field))
 #'#    x_min_time = np.min(all_times)

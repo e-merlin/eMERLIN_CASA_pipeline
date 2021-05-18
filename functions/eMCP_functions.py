@@ -428,6 +428,16 @@ def find_source_intent(msinfo, cats=['targets', 'phscals', 'bpcal', 'fluxcal', '
     fields_ms = msinfo['sources']['mssources'].split(',')
     return {source: ','.join([cat for cat in cats if source in msinfo['sources'][cat].split(',')]) for source in fields_ms}
 
+def find_source_timerange(msfile):
+    fieldnames = emutils.read_keyword(msfile, 'NAME', subtable='FIELD')
+    source_timerange_mjd = {}
+    fact = 60.*60.*24.
+    for source in fieldnames:
+        mjd_min, mjd_max = emutils.find_source_timerange(msfile, source)
+        source_timerange_mjd[source] = [mjd_min/fact, mjd_max/fact]
+    return source_timerange_mjd
+
+
 def get_project(msfile):
     # Output example: 'CY0000'
     project = emutils.read_keyword(msfile, 'PROJECT', subtable='OBSERVATION')
@@ -603,6 +613,7 @@ def get_msinfo(eMCP, msfile, doprint=False):
     msinfo['sources'] = user_sources(inputs)
     msinfo['sources']['mssources'] = find_mssources(msfile)
     msinfo['sources']['source_intent'] = find_source_intent(msinfo)
+    msinfo['sources']['source_timerange_mjd'] = find_source_timerange(msinfo['msfile'])
     msinfo['antennas'] = get_antennas(msfile)
     msinfo['band'] = check_band(msfile)
     msinfo['baselines'] = get_baselines(msfile)

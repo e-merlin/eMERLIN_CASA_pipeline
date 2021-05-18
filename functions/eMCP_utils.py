@@ -297,5 +297,5 @@ def find_source_timerange(msfile, source):
     times = t1.getcol('TIME')
     t.close()
     t1.close()
-    return times
+    return times.min(), times.max()
 

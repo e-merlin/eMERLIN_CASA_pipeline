@@ -175,9 +175,11 @@ def weblog_obssum(msinfo):
                '<a href="{0}" target="_blank">txt</a><br><br>\n').format(sepfile))
     wlog.write('<table  class="table1" bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:30%">\n')
     wlog.write('Sources in MS:')
-    wlog.write('<tr><td><b>Source</b> </td><td> <b>Intent</b></td>\n')
+    wlog.write('<tr><td><b>Source</b> </td><td> <b>Intent</b><td><b>MJD range</b></td>\n')
     for source in msinfo['sources']['mssources'].split(','):
-        wlog.write('<tr><td>{0} </td><td> {1}</td>\n'.format(source, msinfo['sources']['source_intent'][source]))
+        mjd_ini, mjd_end = msinfo['sources']['source_timerange_mjd'][source]
+        mjd_range = f"{mjd_ini:11.5f} - {mjd_end:11.5f}"
+        wlog.write('<tr><td>{0} </td><td> {1}</td> <td>{2}</td>\n'.format(source, msinfo['sources']['source_intent'][source], mjd_range))
     wlog.write('</table><br>\n')
     missing_sources = ', '.join([s for s in
                                  msinfo['sources']['allsources'].split(',') if s not in

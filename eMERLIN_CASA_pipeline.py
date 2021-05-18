@@ -9,9 +9,6 @@ import json
 import argparse
 #'#import time
 
-#pipeline_filename = sys.argv[0]
-#pipeline_path = os.path.abspath(os.path.dirname(pipeline_filename))
-#sys.path.append(pipeline_path)
 from functions import eMCP_functions as em
 from functions import eMCP_utils as emutils
 from functions import eMCP_weblog as emwlog
@@ -24,7 +21,7 @@ from functions import eMCP_plots as emplt
 #import casadef
 #import casalith
 
-current_version = 'v2.0.9'
+current_version = 'v2.0.10'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 #pipeline_filename = sys.argv[sys.argv.index('-c') + 1]
