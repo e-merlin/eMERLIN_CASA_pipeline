@@ -429,7 +429,7 @@ def weblog_calibration(eMCP):
         all_calsteps.append('narrow_p_offset.G3')
         all_calsteps.append('narrow_bpcal.BP2')
     if os.path.isfile('./weblog/calib/caltables.pkl'):
-        caltables = load_obj('./weblog/calib/caltables.pkl')
+        caltables = emutils.load_obj('./weblog/calib/caltables.pkl')
         for calstep in all_calsteps:
             logger.debug('calstep {}'.format(calstep))
             try:

@@ -1711,25 +1711,30 @@ def find_refant(msfile, field):
 #'#            calmode = 'p')
     find_casa_problems()
     # Read solutions (phases):
-    tb.open(tablename+'/ANTENNA')
-    antenna_names = tb.getcol('NAME')
-    tb.close()
-    tb.open(tablename)
-    antenna_ids = tb.getcol('ANTENNA1')
-    #times  = tb.getcol('TIME')
-    flags = tb.getcol('FLAG')
-    phases = np.angle(tb.getcol('CPARAM'))
-    snrs = tb.getcol('SNR')
-    tb.close()
+    antenna_names = emutils.read_keyword(tablename, 'NAME', subtable='ANTENNA')
+#'#    tb.open(tablename+'/ANTENNA')
+#'#    antenna_names = tb.getcol('NAME')
+#'#    tb.close()
+    antenna_ids = emutils.read_keyword(tablename, 'ANTENNA1')
+    flags = emutils.read_keyword(tablename, 'FLAG')
+    phases = np.angle(emutils.read_keyword(tablename, 'CPARAM'))
+    snrs = emutils.read_keyword(tablename, 'SNR')
+#'#    tb.open(tablename)
+#'#    antenna_ids = tb.getcol('ANTENNA1')
+#'#    #times  = tb.getcol('TIME')
+#'#    flags = tb.getcol('FLAG')
+#'#    phases = np.angle(tb.getcol('CPARAM'))
+#'#    snrs = tb.getcol('SNR')
+#'#    tb.close()
     # Analyse number of good solutions:
     good_frac = []
     good_snrs = []
     for i, ant_id in enumerate(np.unique(antenna_ids)):
         cond = antenna_ids == ant_id
         #t = times[cond]
-        f = flags[0,0,:][cond]
-        p = phases[0,0,:][cond]
-        snr = snrs[0,0,:][cond]
+        f = flags[:,0,0][cond]
+        p = phases[:,0,0][cond]
+        snr = snrs[:,0,0][cond]
         frac =  1.0*np.count_nonzero(~f)/len(f)*100.
         snr_mean = np.nanmean(snr[~f])
         good_frac.append(frac)
@@ -1744,7 +1749,7 @@ def find_refant(msfile, field):
         logger.warning('Small fraction of good solutions with selected refant!')
         logger.warning('Please inspect antennas to select optimal refant')
         logger.warning('You may want to use refantmode= flex" in default_params')
-    pref_ant = antenna_names[sort_idx]
+    pref_ant = np.array(antenna_names)[sort_idx]
     if 'Lo' in antenna_names:
         priorities = ['Pi','Da','Kn','De','Cm']
     else:
@@ -1795,14 +1800,30 @@ def saveflagstatus(eMCP):
     logger.info('Starting saveflagstatus')
     t0 = datetime.datetime.utcnow()
     logger.info('Saving current flagging status to versionname=\'initialize_flags\'')
-    casatasks.flagmanager(msinfo['msfile'], mode='save', versionname='initialize_flags',
-             comment='Restore this version to restart calibration without the flags produced by the calibration',
-             merge='replace')
+    commands = {}
+    commands['flagmanager'] = {
+            'vis': msinfo['msfile'],
+            'mode': 'save',
+            'versionname': 'initialize_flags',
+            'comment': 'Restore this version to restart calibration without the flags produced by the calibration',
+            'merge': 'replace'}
+    run_casa_command(commands, 'flagmanager')
+#'#    casatasks.flagmanager(msinfo['msfile'], mode='save', versionname='initialize_flags',
+#'#             comment='Restore this version to restart calibration without the flags produced by the calibration',
+#'#             merge='replace')
     find_casa_problems()
     if eMCP['is_mixed_mode']:
-        casatasks.flagmanager(msinfo['msfile_sp'], mode='save', versionname='initialize_flags',
-                    comment='Restore this version to restart calibration without the flags produced by the calibration',
-                     merge='replace')
+        commands = {}
+        commands['flagmanager'] = {
+                 'vis': msinfo['msfile_sp'],
+                 'mode': 'save',
+                 'versionname': 'initialize_flags',
+                 'comment': 'Restore this version to restart calibration without the flags produced by the calibration',
+                 'merge': 'replace'}
+        run_casa_command(commands, 'flagmanager')
+#'#        casatasks.flagmanager(msinfo['msfile_sp'], mode='save', versionname='initialize_flags',
+#'#                    comment='Restore this version to restart calibration without the flags produced by the calibration',
+#'#                     merge='replace')
         find_casa_problems()
     msg = 'versionname=initialize_flags'
     eMCP = add_step_time('save_flags', eMCP, msg, t0)
@@ -1814,12 +1835,26 @@ def restoreflagstatus(eMCP):
     t0 = datetime.datetime.utcnow()
     logger.info('Starting restoreflagstatus')
     logger.info('Restoring flagging status in versionname=\'initialize_flags\'')
-    casatasks.flagmanager(msinfo['msfile'], mode='restore', versionname='initialize_flags',
-             merge='replace')
+    commands = {}
+    commands['flagmanager'] = {
+            'vis': msinfo['msfile'],
+            'mode': 'restore',
+            'versionname': 'initialize_flags',
+            'merge': 'replace'}
+    run_casa_command(commands, 'flagmanager')
+#'#    casatasks.flagmanager(msinfo['msfile'], mode='restore', versionname='initialize_flags',
+#'#             merge='replace')
     find_casa_problems()
     if eMCP['is_mixed_mode']:
-        flagmanager(msinfo['msfile_sp'], mode='restore', versionname='initialize_flags',
-                 merge='replace')
+        commands = {}
+        commands['flagmanager'] = {
+                 'vis': msinfo['msfile_sp'],
+                 'mode': 'restore',
+                 'versionname': 'initialize_flags',
+                 'merge': 'replace'}
+        run_casa_command(commands, 'flagmanager')
+#'#        flagmanager(msinfo['msfile_sp'], mode='restore', versionname='initialize_flags',
+#'#                 merge='replace')
         find_casa_problems()
 
     flag_statistics(eMCP, step='restore_flags')
@@ -2048,7 +2083,7 @@ def initialize_cal_dict(eMCP):
                     'bandpass_final','gaincal_final','applycal_all']
     if np.array([eMCP['input_steps'][cal]>0 for cal in any_calsteps]).any():
         try:
-            caltables = load_obj(calib_dir+'caltables.pkl')
+            caltables = load_obj(os.path.join(calib_dir,'caltables.pkl'))
             logger.info('Loaded previous calibration tables from: {0}'.format(calib_dir+'caltables.pkl'))
         except:
             caltables = {}
@@ -2059,11 +2094,11 @@ def initialize_cal_dict(eMCP):
             logger.info('New caltables dictionary created. Saved to: {0}'.format(calib_dir+'caltables.pkl'))
         # Refant
         eMCP['msinfo']['refant'] = define_refant(eMCP)
-        save_obj(eMCP, info_dir + 'eMCP_info.pkl')
+        save_obj(eMCP, os.path.join(info_dir, 'eMCP_info.pkl'))
         caltables['refant'] = eMCP['msinfo']['refant']
         caltables['Lo_dropout_scans'] = eMCP['msinfo']['Lo_dropout_scans']
         caltables['refantmode'] = eMCP['defaults']['global']['refantmode']
-        save_obj(caltables, calib_dir+'caltables.pkl')
+        save_obj(caltables, os.path.join(calib_dir, 'caltables.pkl'))
         return caltables
 
 def read_gaincal_solutions():

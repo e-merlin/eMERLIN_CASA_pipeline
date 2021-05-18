@@ -21,7 +21,7 @@ from functions import eMCP_plots as emplt
 #import casadef
 #import casalith
 
-current_version = 'v2.0.10'
+current_version = 'v2.0.11'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 #pipeline_filename = sys.argv[sys.argv.index('-c') + 1]
@@ -172,28 +172,28 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
     ### Produce some plots ###
     if eMCP['input_steps']['plot_data'] == 1:
         eMCP = emplt.make_4plots(eMCP, datacolumn='data')
-#
-#    ### Save flag status up to this point
-#    if eMCP['input_steps']['save_flags'] == 1:
-#        eMCP = em.saveflagstatus(eMCP)
-#
-#    ###################
-#    ### CALIBRATION ###
-#    ###################
-#
-#    ### Initialize caltable dictionary
-#    caltables = em.initialize_cal_dict(eMCP)
-#
-#    ### Restore flag status at to this point
-#    if eMCP['input_steps']['restore_flags'] == 1:
-#        eMCP = em.restoreflagstatus(eMCP)
-#
-#    ### Load manual flagging file
-#    if eMCP['input_steps']['flag_manual_avg'] == 1:
-#        eMCP = em.flagdata_manual(eMCP, run_name='flag_manual_avg')
-#        caltables['Lo_dropout_scans'] = eMCP['msinfo']['Lo_dropout_scans']
-#        utils.save_obj(caltables, calib_dir+'caltables.pkl')
-#
+
+    ### Save flag status up to this point
+    if eMCP['input_steps']['save_flags'] == 1:
+        eMCP = em.saveflagstatus(eMCP)
+
+    ###################
+    ### CALIBRATION ###
+    ###################
+
+    ### Initialize caltable dictionary
+    caltables = em.initialize_cal_dict(eMCP)
+
+    ### Restore flag status at to this point
+    if eMCP['input_steps']['restore_flags'] == 1:
+        eMCP = em.restoreflagstatus(eMCP)
+
+    ### Load manual flagging file
+    if eMCP['input_steps']['flag_manual_avg'] == 1:
+        eMCP = em.flagdata_manual(eMCP, run_name='flag_manual_avg')
+        caltables['Lo_dropout_scans'] = eMCP['msinfo']['Lo_dropout_scans']
+        emutils.save_obj(caltables, os.path.join(calib_dir, 'caltables.pkl'))
+
 #    ### Initialize models ###
 #    if eMCP['input_steps']['init_models'] > 0:  # Need to add parameter to GUI
 #        eMCP = em.run_initialize_models(eMCP)
