@@ -92,6 +92,7 @@ def run_casa_command(config_command, key):
             logger.warning('Could not identify type '
                            'of paremeter {0}, {1}'.format(k,v))
     output = '{0}({1})'.format(command_name, ', '.join(lines))
+    logger.debug(f"CASA command -c: {output}")
 #    output = 'import matplotlib.pyplot as plt; plt.ioff();{0}({1})'.format(command_name, ', '.join(lines))
 #'#    logger.code(output)
     #subprocess.call([casa_command, '--nogui', '--logfile casa_eMCP.log', '-c', output]) 
@@ -2531,7 +2532,7 @@ def run_applycal(eMCP, caltables, step, dotarget=False, insources=''):
             'gainfield' :  gainfield,
             'interp' :  interp,
             'spwmap' :  spwmap,
-            'applymodel' :  applymode,
+            'applymode' :  str(applymode),
             'flagbackup' :  False}
     run_casa_command(commands, 'applycal') 
     find_casa_problems()
@@ -2580,7 +2581,7 @@ def run_applycal(eMCP, caltables, step, dotarget=False, insources=''):
                         'gainfield' : gainfield,
                         'interp' :  interp,
                         'spwmap' :  spwmap,
-                        'applymodel' :  applymode,
+                        'applymode' :  applymode,
                         'flagbackup' :  False}
                 run_casa_command(commands, 'applycal') 
                 find_casa_problems()
@@ -2837,7 +2838,7 @@ def run_bpcal(eMCP, caltables, doplots=True):
             'vis' :  msfile, 
             'gaintable' :  caltables[caltable_name]['table'], 
             'field' :  msinfo['sources']['bpcal'],
-            'applymodel' :  'flagonly', 
+            'applymode' :  'flagonly', 
             'flagbackup' :  False}
     run_casa_command(commands, 'applycal') 
 #'#    casatasks.applycal(vis=msfile, gaintable=caltables[caltable_name]['table'],
@@ -3230,7 +3231,7 @@ def gain_p_ap(eMCP, caltables, doplots=True):
             'vis' :  msfile, 
             'gaintable' :  caltables[caltable_name]['table'], 
             'field' :  calsources, 
-            'applymodel' :  'flagonly', 
+            'applymode' :  'flagonly', 
             'flagbackup' :  False}
     run_casa_command(commands, 'applycal') 
     find_casa_problems() 

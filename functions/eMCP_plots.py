@@ -323,34 +323,33 @@ def single_4plot(msinfo, field, datacolumn, plots_data_dir):
 
 
 def make_4plots(eMCP, datacolumn='data'):
-# aqui
-#    logger.info(line0)
-#    msinfo = eMCP['msinfo']
-#    msfile = eMCP['msinfo']['msfile']
-#    logger.info('Start plot_{}'.format(datacolumn))
+    logger.info(line0)
+    msinfo = eMCP['msinfo']
+    msfile = eMCP['msinfo']['msfile']
+    logger.info('Start plot_{}'.format(datacolumn))
     t0 = datetime.datetime.utcnow()
-#    if datacolumn == 'data':
-#        plots_data_dir = './weblog/plots/plots_data/'
-#    elif datacolumn == 'corrected':
-#        plots_data_dir = './weblog/plots/plots_corrected/'
-#    else:
-#        plots_data_dir = './weblog/plots/'
-#    emutils.makedir(plots_data_dir)
-#    allsources = msinfo['sources']['allsources'].split(',')
-#    mssources = msinfo['sources']['mssources'].split(',')
-#    logger.info('Producing plots for: {}'.format(','.join(allsources)))
-#    for field in allsources:
-#        if field in mssources:
-#            single_4plot(msinfo, field, datacolumn, plots_data_dir)
-#        else:
-#            logger.warning('Cannot plot {0}. Source not in ms.'.format(field))
-###    num_proc = eMCP['defaults']['plot_data']['num_proc']
-###    pool = multiprocessing.Pool(num_proc)
-###    input_args = [(msinfo, field, datacolumn, plots_data_dir) for field in fields]
-###    p = pool.map(single_4plot, input_args)
-###    pool.close()
-###    pool.join()
-#    logger.info('Visibility plots finished')
+    if datacolumn == 'data':
+        plots_data_dir = './weblog/plots/plots_data/'
+    elif datacolumn == 'corrected':
+        plots_data_dir = './weblog/plots/plots_corrected/'
+    else:
+        plots_data_dir = './weblog/plots/'
+    emutils.makedir(plots_data_dir)
+    allsources = msinfo['sources']['allsources'].split(',')
+    mssources = msinfo['sources']['mssources'].split(',')
+    logger.info('Producing plots for: {}'.format(','.join(allsources)))
+    for field in allsources:
+        if field in mssources:
+            single_4plot(msinfo, field, datacolumn, plots_data_dir)
+        else:
+            logger.warning('Cannot plot {0}. Source not in ms.'.format(field))
+##    num_proc = eMCP['defaults']['plot_data']['num_proc']
+##    pool = multiprocessing.Pool(num_proc)
+##    input_args = [(msinfo, field, datacolumn, plots_data_dir) for field in fields]
+##    p = pool.map(single_4plot, input_args)
+##    pool.close()
+##    pool.join()
+    logger.info('Visibility plots finished')
     if datacolumn == 'corrected':
         make_uvplt(eMCP)
     logger.info('End plot_{}'.format(datacolumn))
