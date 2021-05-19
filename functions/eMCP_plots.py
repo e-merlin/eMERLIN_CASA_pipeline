@@ -4,7 +4,10 @@ import numpy as np
 import pickle
 import matplotlib
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 plt.ioff()
+
+from astropy.time import Time
 
 from matplotlib.ticker import MultipleLocator, MaxNLocator
 from matplotlib.ticker import ScalarFormatter
@@ -131,65 +134,65 @@ def simple_plot_name(plot_file, i):
 #    active_antennas = [a for a in nice_order if a in active_antennas]
 #    return active_antennas
 
-def plot_caltable(msinfo, caltable, plot_file, xaxis='', yaxis='', title='',
-                  ymin=-1, ymax=-1, coloraxis='spw', symbolsize=8):
-    gridcols = 1
-    showgui=False
-    tab = caltable['table']
-    if xaxis == 'time':
-        time_mjd = emutils.read_keyword(tab, 'TIME')
-#'#        tb.open(tab)
-#'#        time_mjd = tb.getcol('TIME')
-#'#        tb.close()
-        x_min, x_max = np.min(time_mjd), np.max(time_mjd)
-    elif xaxis == 'freq':
-        f = emutils.read_keyword(msinfo['msfile'], 'CHAN_FREQ', subtable='SPECTRAL_WINDOW').flatten()/1e9
-#'#        tb.open(tab+'/SPECTRAL_WINDOW')
-#'#        f = tb.getcol('CHAN_FREQ').flatten()/1e9
-#'#        tb.close()
-        x_min0, x_max0 = np.min(f), np.max(f)
-        x_span = x_max0 - x_min0
-        x_min = x_min0 - x_span*0.1
-        x_max = x_max0 + x_span*0.1
-    else:
-        x_min, x_max = -1, -1
-
-    active_antennas = em.get_antennas(msinfo['msfile'])
-#'#    active_antennas = count_active_antennas(msinfo['msfile'])
-    num_anten = len(active_antennas)
-    logger.debug(f'Active antennas {active_antennas}')
-    emutils.rmfile(plot_file)
-    for i, anten in enumerate(active_antennas):
-        logger.debug(i)
-        logger.debug(anten)
-        if i == len(active_antennas)-1:
-            plotfile = plot_file
-        else:
-            plotfile = plot_file
-        commands = {}
-        commands['plotms'] = {
-                'vis' :  caltable['table'],
-                'xaxis': xaxis, 'yaxis': yaxis,
-                'title':  f"{title} {anten}",
-                'gridrows':num_anten, 'gridcols':gridcols, 
-                'rowindex':i, 'colindex': 0, #'plotindex':0,
-                'antenna':str(anten),
-                'xselfscale':True, 'xsharedaxis': True, 'coloraxis':coloraxis,
-#check                'plotrange':[x_min, x_max, ymin, ymax],
-                'plotfile': plotfile, 'expformat': 'png', 'customsymbol': True, 'symbolshape': 'circle',
-                'width':1000, 'height':240*num_anten, 'symbolsize':symbolsize,'clearplots':False, 'overwrite':False, 'showgui':showgui}
-        em.run_casa_command(commands, 'plotms')
-        em.find_casa_problems()
-#'#        plotms(vis=caltable['table'], xaxis=xaxis, yaxis=yaxis, title='{0} {1}'.format(title, anten),
-#'#               gridrows=num_anten, gridcols=gridcols, rowindex=i, colindex=0, plotindex=i,
-#'#               #timerange='{}~{}'.format(msinfo['t_ini'].time(), msinfo['t_end'].time()),
-#'#               antenna = str(anten),
-#'#               xselfscale = True, xsharedaxis = True, coloraxis = coloraxis,
-#'#               plotrange=[x_min, x_max, ymin, ymax],
-#'#               plotfile = plotfile, expformat = 'png', customsymbol = True,
-#'#               symbolshape = 'circle', symbolsize=symbolsize,
-#'#               width=1000, height=240*num_anten, clearplots=False, overwrite=True,
-#'#               showgui=showgui)
+#def plot_caltable(msinfo, caltable, plot_file, xaxis='', yaxis='', title='',
+#                  ymin=-1, ymax=-1, coloraxis='spw', symbolsize=8):
+#    gridcols = 1
+#    showgui=False
+#    tab = caltable['table']
+#    if xaxis == 'time':
+#        time_mjd = emutils.read_keyword(tab, 'TIME')
+##'#        tb.open(tab)
+##'#        time_mjd = tb.getcol('TIME')
+##'#        tb.close()
+#        x_min, x_max = np.min(time_mjd), np.max(time_mjd)
+#    elif xaxis == 'freq':
+#        f = emutils.read_keyword(msinfo['msfile'], 'CHAN_FREQ', subtable='SPECTRAL_WINDOW').flatten()/1e9
+##'#        tb.open(tab+'/SPECTRAL_WINDOW')
+##'#        f = tb.getcol('CHAN_FREQ').flatten()/1e9
+##'#        tb.close()
+#        x_min0, x_max0 = np.min(f), np.max(f)
+#        x_span = x_max0 - x_min0
+#        x_min = x_min0 - x_span*0.1
+#        x_max = x_max0 + x_span*0.1
+#    else:
+#        x_min, x_max = -1, -1
+#
+#    active_antennas = em.get_antennas(msinfo['msfile'])
+##'#    active_antennas = count_active_antennas(msinfo['msfile'])
+#    num_anten = len(active_antennas)
+#    logger.debug(f'Active antennas {active_antennas}')
+#    emutils.rmfile(plot_file)
+#    for i, anten in enumerate(active_antennas):
+#        logger.debug(i)
+#        logger.debug(anten)
+#        if i == len(active_antennas)-1:
+#            plotfile = plot_file
+#        else:
+#            plotfile = plot_file
+#        commands = {}
+#        commands['plotms'] = {
+#                'vis' :  caltable['table'],
+#                'xaxis': xaxis, 'yaxis': yaxis,
+#                'title':  f"{title} {anten}",
+#                'gridrows':num_anten, 'gridcols':gridcols, 
+#                'rowindex':i, 'colindex': 0, #'plotindex':0,
+#                'antenna':str(anten),
+#                'xselfscale':True, 'xsharedaxis': True, 'coloraxis':coloraxis,
+##check                'plotrange':[x_min, x_max, ymin, ymax],
+#                'plotfile': plotfile, 'expformat': 'png', 'customsymbol': True, 'symbolshape': 'circle',
+#                'width':1000, 'height':240*num_anten, 'symbolsize':symbolsize,'clearplots':False, 'overwrite':False, 'showgui':showgui}
+#        em.run_casa_command(commands, 'plotms')
+#        em.find_casa_problems()
+##'#        plotms(vis=caltable['table'], xaxis=xaxis, yaxis=yaxis, title='{0} {1}'.format(title, anten),
+##'#               gridrows=num_anten, gridcols=gridcols, rowindex=i, colindex=0, plotindex=i,
+##'#               #timerange='{}~{}'.format(msinfo['t_ini'].time(), msinfo['t_end'].time()),
+##'#               antenna = str(anten),
+##'#               xselfscale = True, xsharedaxis = True, coloraxis = coloraxis,
+##'#               plotrange=[x_min, x_max, ymin, ymax],
+##'#               plotfile = plotfile, expformat = 'png', customsymbol = True,
+##'#               symbolshape = 'circle', symbolsize=symbolsize,
+##'#               width=1000, height=240*num_anten, clearplots=False, overwrite=True,
+##'#               showgui=showgui)
 
 
 def single_4plot(msinfo, field, datacolumn, plots_data_dir):
@@ -934,3 +937,126 @@ def fluxscale_models(calfluxes, eMfactor, msinfo):
     plots_obs_dir = calib_dir
     plot_file = plots_obs_dir+'{0}_fluxscale.png'.format(msinfo['msfilename'])
     fig.savefig(plot_file, bbox_inches='tight')
+
+
+
+### Plot caltables with matplotlib
+
+
+def plot_gaintable(data, antenna, ax, calmode='ap', field_id=None):
+    t = data['TIME']
+    tm = Time(t/60/60/24., format='mjd')
+    antenna_id, antenna_name = antenna
+    if calmode=='p':
+        value = np.angle(data['CPARAM'])*180/np.pi
+        ax.set_ylim(-180, 180)
+        ax.set_ylabel('Phase [deg]')
+    elif calmode=='ap':
+        value = np.abs(data['CPARAM'])
+        ax.set_ylabel('Amplitude')
+#        ax.set_ylim(bottom=0)
+    else:
+        value=0
+    if field_id == None:
+        cond1 = True
+    else:
+        cond1 = data['FIELD_ID'] == field_id
+    cond2 = data['ANTENNA1'] == antenna_id
+    cond3 = ~data['FLAG'][:,0,0]
+    cond = cond1*cond2*cond3
+    if len(np.unique(data['SPECTRAL_WINDOW_ID'])) > 1:
+        color1 = color2 = data['SPECTRAL_WINDOW_ID'][cond]
+    else:
+        color1, color2 = '#0067cb', '#c67d50'
+    s = 40
+    if np.count_nonzero(cond) > 1:
+        ax.scatter(tm[cond].datetime64, value[cond][:,0,0], marker='.', s=s, c=color1, ec='None', alpha=0.5, cmap=plt.get_cmap('winter_r'))
+        ax.scatter(tm[cond].datetime64, value[cond][:,0,1], marker='.', s=s, c=color2, ec='None', alpha=0.5, cmap=plt.get_cmap('copper'))
+    ax.annotate(antenna_name, (0.01,0.9), xycoords='axes fraction')
+    return ax
+
+def plot_delaytable(data, antenna, ax, calmode='p', field_id=None):
+    t = data['TIME']
+    tm = Time(t/60/60/24., format='mjd')
+    antenna_id, antenna_name = antenna
+    value = data['FPARAM']
+    if field_id == None:
+        cond1 = True
+    else:
+        cond1 = data['FIELD_ID'] == field_id
+    cond2 = data['ANTENNA1'] == antenna_id
+    cond3 = ~data['FLAG'][:,0,0]
+    cond = cond1*cond2*cond3
+    if len(np.unique(data['SPECTRAL_WINDOW_ID'])) > 1:
+        color1 = color2 = data['SPECTRAL_WINDOW_ID'][cond]
+    else:
+        color1, color2 = '#0067cb', '#c67d50'
+    s = 100
+    logger.debug(antenna_name)
+    logger.debug(tm[cond].datetime64)
+    logger.debug(cond)
+    if np.count_nonzero(cond) > 1:
+        ax.scatter(tm[cond][0:10].datetime64, value[cond][:,0,0][0:10])
+        ax.scatter(tm[cond].datetime64, value[cond][:,0,0], marker='.', s=s, c=color1, ec='None', alpha=1.0, cmap=plt.get_cmap('winter_r'))
+        ax.scatter(tm[cond].datetime64, value[cond][:,0,1], marker='.', s=s, c=color2, ec='None', alpha=1.0, cmap=plt.get_cmap('copper'))
+    ax.annotate(antenna_name, (0.01,0.9), xycoords='axes fraction')
+    ax.set_ylabel('Delay [ns]')
+    return ax
+
+def plot_bptable(data, caltable, antenna, ax, calmode='p', field_id=None):
+    antenna_id, antenna_name = antenna
+    if calmode=='p':
+        value = np.angle(data['CPARAM'])*180/np.pi
+        value_err = data['PARAMERR']
+        ax.set_ylim(-180, 180)
+        ax.set_ylabel('Phase [deg]')
+    elif calmode=='ap':
+        value = np.abs(data['CPARAM'])
+        value_err = np.abs(data['PARAMERR'])
+        ax.set_ylabel('Amplitude')
+#        ax.set_ylim(bottom=0)
+    if field_id == None:
+        cond1 = True
+    else:
+        cond1 = data['FIELD_ID'] == field_id
+    cond2 = data['ANTENNA1'] == antenna_id
+    cond3 = ~data['FLAG'][:,0,0]
+    cond = cond1*cond2*cond3
+    value[data['FLAG']] = np.nan
+    s=50
+    spws = np.unique(emutils.read_keyword(caltable, 'SPECTRAL_WINDOW_ID'))
+    all_freqs = emutils.read_keyword(caltable, 'CHAN_FREQ', subtable='SPECTRAL_WINDOW')
+    for spw in spws:
+        cond4 = data['SPECTRAL_WINDOW_ID'] == spw
+        cond = cond1*cond2*cond4
+        freq = all_freqs[spw]/1e9
+        ax.scatter(freq, value[cond][0,:,0], marker='.', s=s, c='#0067cb')
+        ax.scatter(freq, value[cond][0,:,1], marker='.', s=s, c='#c67d50')
+        ax.errorbar(freq, value[cond][0,:,0], value_err[cond][0,:,0], marker='.', ls='', color='#0067cb', ms=1, alpha=0.5)
+        ax.errorbar(freq, value[cond][0,:,1], value_err[cond][0,:,1], marker='.', ls='', color='#c67d50', ms=1, alpha=0.5)
+    ax.annotate(antenna_name, (0.01,0.9), xycoords='axes fraction')
+    ax.set_xlabel('Freq [GHz]')
+    return ax
+
+def plot_caltable(caltable, filename, gaintype='G', calmode=''):
+    logger.debug(f'Plotting {caltable}')
+    data = emutils.read_caltable_data(caltable)
+    antenna_names = emutils.read_keyword(caltable, 'NAME', subtable='ANTENNA')
+    num_antennas = len(antenna_names)
+    fig, axes = plt.subplots(nrows=num_antennas, ncols=1, sharex=True, figsize=(10,14))
+    fig.subplots_adjust(hspace=0)
+    for i, ax in enumerate(axes):
+        if gaintype=='G':
+            ax = plot_gaintable(data, antenna=[i, antenna_names[i]], ax=ax, calmode=calmode, field_id=None)
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y/%m/%d %H:%M'))
+        elif gaintype=='K':
+            plot_delaytable(data, antenna=[i, antenna_names[i]], ax=ax, calmode=calmode, field_id=None)
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y/%m/%d %H:%M'))
+        elif gaintype=='B':
+            plot_bptable(data, caltable=caltable, antenna=[i, antenna_names[i]], ax=ax, calmode=calmode, field_id=None)
+    if gaintype != 'B':
+        fig.autofmt_xdate()
+    print(f"Saving {filename}")
+    fig.savefig(filename, bbox_inches='tight')
+
+

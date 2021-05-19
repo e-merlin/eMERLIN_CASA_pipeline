@@ -288,6 +288,13 @@ def read_all_keywords(infile, subtable):
             keywords = {column: subtable.getcol(column) for column in subtable.colnames()}
     return keywords
 
+def read_caltable_data(caltable):
+    with casacore.tables.table(caltable, ack=False) as maintable:
+        colnames = maintable.colnames()
+        dontread = ['WEIGHT', 'INTERVAL']
+        data = {colname:maintable.getcol(colname) for colname in colnames if colname not in dontread}
+    return data
+
 def find_source_timerange(msfile, source):
     field_names = read_keyword(msfile, 'NAME', 'FIELD')
     source_id = [i for i,j in enumerate(field_names) if source==j][0]

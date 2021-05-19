@@ -2734,16 +2734,16 @@ def run_applycal_narrow(eMCP, caltables, step, spwmap_sp, dotarget=False, insour
 def initial_bp_cal(eMCP, caltables):
     logger.info('Start initial_bpcal')
     t0 = datetime.datetime.utcnow()
-#tmp    # Pass 1
-#tmp    logger.info('Starting pass 1 of initial_bpcal')
-#tmp    eMCP, caltables = run_bpcal(eMCP, caltables, doplots=False)
-#tmp
-#tmp    # Apply solutions
-#tmp    run_applycal(eMCP, caltables, step = 'bp_apply_mid', insources=eMCP['msinfo']['sources']['bpcal'])
-#tmp
-#tmp    # Flagging
-#tmp    if eMCP['defaults']['bandpass']['run_flag']:
-#tmp        eMCP = flagdata_tfcrop(eMCP, defaults='bandpass')
+    # Pass 1
+    logger.info('Starting pass 1 of initial_bpcal')
+    eMCP, caltables = run_bpcal(eMCP, caltables, doplots=False)
+
+    # Apply solutions
+    run_applycal(eMCP, caltables, step = 'bp_apply_mid', insources=eMCP['msinfo']['sources']['bpcal'])
+
+    # Flagging
+    if eMCP['defaults']['bandpass']['run_flag']:
+        eMCP = flagdata_tfcrop(eMCP, defaults='bandpass')
 
     # Pass 2
     logger.info('Starting pass 2 of initial_bpcal')
@@ -2797,8 +2797,9 @@ def run_bpcal(eMCP, caltables, doplots=True):
     # Plots
     if doplots:
         caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_1.png'
-        emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Delay',
-                      xaxis='time', yaxis='delay', ymin=-1, ymax=-1, coloraxis='corr', symbolsize=8)
+        emplt.plot_caltable(caltables[caltable_name]['table'], caltableplot, gaintype='K')
+#'#        emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Delay',
+#'#                      xaxis='time', yaxis='delay', ymin=-1, ymax=-1, coloraxis='corr', symbolsize=8)
         logger.info('Delay plot in: {0}'.format(caltableplot))
 
     # 1 Phase calibration
@@ -2827,8 +2828,9 @@ def run_bpcal(eMCP, caltables, doplots=True):
     # Plots
     if doplots:
         caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
-        emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Phase',
-                      xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=3)
+        emplt.plot_caltable(caltables[caltable_name]['table'], caltableplot, gaintype='G', calmode='p')
+#'#        emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Phase',
+#'#                      xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=3)
         logger.info('BP0_p phase plot: {0}'.format(caltableplot))
     logger.info('Apply phase calibration flags to bandpass, applymode=flagonly')
     commands = {}
@@ -2873,12 +2875,14 @@ def run_bpcal(eMCP, caltables, doplots=True):
     # Plots
     if doplots:
         caltableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
-        emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot_phs, title='Phase',
-                      xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=5)
+        emplt.plot_caltable(caltables[caltable_name]['table'], caltableplot_phs, gaintype='G', calmode='p')
+#'#        emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot_phs, title='Phase',
+#'#                      xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=5)
         logger.info('BP0_ap phase plot: {0}'.format(caltableplot_phs))
         caltableplot_amp = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_amp.png'
-        emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot_amp, title='Amp',
-                      xaxis='time', yaxis='amp', ymin=-1, ymax=-1, coloraxis='spw', symbolsize=5)
+        emplt.plot_caltable(caltables[caltable_name]['table'], caltableplot_amp, gaintype='G', calmode='ap')
+#'#        emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot_amp, title='Amp',
+#'#                      xaxis='time', yaxis='amp', ymin=-1, ymax=-1, coloraxis='spw', symbolsize=5)
         logger.info('BP0_ap amp plot: {0}'.format(caltableplot_amp))
 
     # 3 Bandpass calibration
@@ -2905,11 +2909,13 @@ def run_bpcal(eMCP, caltables, doplots=True):
     if doplots:
         bptableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
         bptableplot_amp = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_amp.png'
-        emplt.plot_caltable(msinfo, caltables[caltable_name], bptableplot_phs, title='Bandpass phase',
-                      xaxis='freq', yaxis='phase', ymin=-180, ymax=180, coloraxis='corr', symbolsize=5)
+        emplt.plot_caltable(caltables[caltable_name]['table'], bptableplot_phs, gaintype='B', calmode='p')
+#'#        emplt.plot_caltable(msinfo, caltables[caltable_name], bptableplot_phs, title='Bandpass phase',
+#'#                      xaxis='freq', yaxis='phase', ymin=-180, ymax=180, coloraxis='corr', symbolsize=5)
         logger.info('BP0 phase plot: {0}'.format(bptableplot_phs))
-        emplt.plot_caltable(msinfo, caltables[caltable_name], bptableplot_amp, title='Bandpass amp',
-                      xaxis='freq', yaxis='amp', ymin=-1, ymax=-1, coloraxis='corr', symbolsize=5)
+        emplt.plot_caltable(caltables[caltable_name]['table'], bptableplot_amp, gaintype='B', calmode='ap')
+#'#        emplt.plot_caltable(msinfo, caltables[caltable_name], bptableplot_amp, title='Bandpass amp',
+#'#                      xaxis='freq', yaxis='amp', ymin=-1, ymax=-1, coloraxis='corr', symbolsize=5)
         logger.info('BP0 amplitude plot: {0}'.format(bptableplot_amp))
     return eMCP, caltables
 
@@ -3032,8 +3038,9 @@ def solve_delays(eMCP, caltables, doplots=True):
     if doplots:
         # 1 No range
         caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_1.png'
-        emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Delay',
-                      xaxis='time', yaxis='delay', ymin=-1, ymax=-1, coloraxis='field', symbolsize=8)
+        emplt.plot_caltable(caltables[caltable_name]['table'], caltableplot, gaintype='K')
+#'#        emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Delay',
+#'#                      xaxis='time', yaxis='delay', ymin=-1, ymax=-1, coloraxis='field', symbolsize=8)
 #        caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_2.png'
 #        emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Delay',
 #                      xaxis='time', yaxis='delay', ymin=-20, ymax=20, coloraxis='field', symbolsize=8)
@@ -3134,17 +3141,20 @@ def delay_fringefit(eMCP, caltables):
     # 1 Phases
     if doplots:
         caltableplot =  caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
-        emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Phase',
-                      xaxis='time', yaxis='phase', ymin=-180, ymax=-180, coloraxis='field')
+        emplt.plot_caltable(caltables[caltable_name]['table'], caltableplot, gaintype='G', calmode='p')
+#'#        emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Phase',
+#'#                      xaxis='time', yaxis='phase', ymin=-180, ymax=-180, coloraxis='field')
         logger.info('Fringe calibration (phases) plot in: {0}'.format(caltableplot))
     # 2 Delays
     caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_dela.png'
-    emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Phase',
-                  xaxis='time', yaxis='delay', ymin=-1, ymax=-1, coloraxis='field', symbolsize=8)
+    emplt.plot_caltable(caltables[caltable_name]['table'], caltableplot, gaintype='K')
+#'#    emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Phase',
+#'#                  xaxis='time', yaxis='delay', ymin=-1, ymax=-1, coloraxis='field', symbolsize=8)
     logger.info('Fringe calibration (delays) plot in: {0}'.format(caltableplot))
     caltableplot =  caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_dela2.png'
-    emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Phase',
-                  xaxis='time', yaxis='delay', ymin=-20, ymax=-20, coloraxis='field', symbolsize=8)
+    emplt.plot_caltable(caltables[caltable_name]['table'], caltableplot, gaintype='K')
+#'#    emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Phase',
+#'#                  xaxis='time', yaxis='delay', ymin=-20, ymax=-20, coloraxis='field', symbolsize=8)
     logger.info('Fringe calibration (delays range) plot in: {0}'.format(caltableplot))
     ## 3 Rates (they are zeroed)
     #caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_rate.png'
@@ -3211,8 +3221,9 @@ def gain_p_ap(eMCP, caltables, doplots=True):
     # Plots
     if doplots:
         caltableplot = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
-        emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Phase',
-                      xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=3)
+        emplt.plot_caltable(caltables[caltable_name]['table'], caltableplot, gaintype='G', calmode='p')
+#'#        emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot, title='Phase',
+#'#                      xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=3)
         logger.info('G0 phase plot: {0}'.format(caltableplot))
     logger.info('Apply phase calibration flags to calibrators, applymode=flagonly')
     commands = {} 
@@ -3257,12 +3268,14 @@ def gain_p_ap(eMCP, caltables, doplots=True):
     # Plots
     if doplots:
         caltableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
-        emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot_phs, title='Phase',
-                      xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=3)
+        emplt.plot_caltable(caltables[caltable_name]['table'], caltableplot_phs, gaintype='G', calmode='p')
+#'#        emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot_phs, title='Phase',
+#'#                      xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=3)
         logger.info('G1_ap phase plot: {0}'.format(caltableplot_phs))
         caltableplot_amp = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_amp.png'
-        emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot_amp, title='Amp',
-                      xaxis='time', yaxis='amp', ymin=-1, ymax=-1, coloraxis='spw', symbolsize=5)
+        emplt.plot_caltable(caltables[caltable_name]['table'], caltableplot_amp, gaintype='G', calmode='ap')
+#'#        emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot_amp, title='Amp',
+#'#                      xaxis='time', yaxis='amp', ymin=-1, ymax=-1, coloraxis='spw', symbolsize=5)
         logger.info('G1_ap amp plot: {0}'.format(caltableplot_amp))
 
     logger.info('Finished gain_p_ap')
@@ -3478,11 +3491,13 @@ def bandpass_final(eMCP, caltables):
     # Plots
     bptableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
     bptableplot_amp = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_amp.png'
-    emplt.plot_caltable(msinfo, caltables[caltable_name], bptableplot_phs, title='Bandpass phase',
-                  xaxis='freq', yaxis='phase', ymin=-180, ymax=180, coloraxis='corr', symbolsize=5)
+    emplt.plot_caltable(caltables[caltable_name]['table'], bptableplot_phs, gaintype='B', calmode='p')
+#'#    emplt.plot_caltable(msinfo, caltables[caltable_name], bptableplot_phs, title='Bandpass phase',
+#'#                  xaxis='freq', yaxis='phase', ymin=-180, ymax=180, coloraxis='corr', symbolsize=5)
     logger.info('Bandpass_final BP phase plot: {0}'.format(bptableplot_phs))
-    emplt.plot_caltable(msinfo, caltables[caltable_name], bptableplot_amp, title='Bandpass amp',
-                  xaxis='freq', yaxis='amp', ymin=-1, ymax=-1, coloraxis='corr', symbolsize=5)
+    emplt.plot_caltable(caltables[caltable_name]['table'], bptableplot_amp, gaintype='B', calmode='ap')
+#'#    emplt.plot_caltable(msinfo, caltables[caltable_name], bptableplot_amp, title='Bandpass amp',
+#'#                  xaxis='freq', yaxis='amp', ymin=-1, ymax=-1, coloraxis='corr', symbolsize=5)
     logger.info('Bandpass_final BP amplitude plot: {0}'.format(bptableplot_amp))
     logger.info('End bandpass_final')
     # Apply calibration if requested:
@@ -3562,9 +3577,10 @@ def gaincal_narrow(eMCP, caltables, doplots=True):
     # Plots
     if doplots:
         caltableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
-        emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot_phs, title='Phase',
-                      xaxis='spw', yaxis='phase', ymin=-180, ymax=180,
-                      coloraxis='corr', symbolsize=10)
+        emplt.plot_caltable(caltables[caltable_name]['table'], caltableplot_phs, gaintype='G', calmode='p')
+#'#        emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot_phs, title='Phase',
+#'#                      xaxis='spw', yaxis='phase', ymin=-180, ymax=180,
+#'#                      coloraxis='corr', symbolsize=10)
         logger.info('{0} phase plot: {1}'.format(caltable_name,caltableplot_phs))
 
     # 2 Narrow bandpass final calibration
@@ -3593,11 +3609,13 @@ def gaincal_narrow(eMCP, caltables, doplots=True):
     # Plots
     bptableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
     bptableplot_amp = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_amp.png'
-    emplt.plot_caltable(msinfo, caltables[caltable_name], bptableplot_phs, title='Bandpass phase',
-                  xaxis='freq', yaxis='phase', ymin=-180, ymax=180, coloraxis='corr', symbolsize=5)
+    emplt.plot_caltable(caltables[caltable_name]['table'], bptableplot_phs, gaintype='B', calmode='p')
+#'#    emplt.plot_caltable(msinfo, caltables[caltable_name], bptableplot_phs, title='Bandpass phase',
+#'#                  xaxis='freq', yaxis='phase', ymin=-180, ymax=180, coloraxis='corr', symbolsize=5)
     logger.info('Bandpass_final BP phase plot: {0}'.format(bptableplot_phs))
-    emplt.plot_caltable(msinfo, caltables[caltable_name], bptableplot_amp, title='Bandpass amp',
-                  xaxis='freq', yaxis='amp', ymin=-1, ymax=-1, coloraxis='corr', symbolsize=5)
+    emplt.plot_caltable(caltables[caltable_name]['table'], bptableplot_amp, gaintype='B', calmode='ap')
+#'#    emplt.plot_caltable(msinfo, caltables[caltable_name], bptableplot_amp, title='Bandpass amp',
+#'#                  xaxis='freq', yaxis='amp', ymin=-1, ymax=-1, coloraxis='corr', symbolsize=5)
     logger.info('Bandpass_final BP amplitude plot: {0}'.format(bptableplot_amp))
     # Apply calibration if requested:
     if eMCP['input_steps']['bandpass_final'] == 2:
@@ -3636,8 +3654,9 @@ def gaincal_final_cals(eMCP, caltables):
         remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
     # Plots
     caltableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
-    emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot_phs, title='Phase',
-                  xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=3)
+    emplt.plot_caltable(caltables[caltable_name]['table'], caltableplot_phs, gaintype='G', calmode='p')
+#'#    emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot_phs, title='Phase',
+#'#                  xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=3)
     logger.info('{0} phase plot: {1}'.format(caltable_name,caltableplot_phs))
 
     # 1 Amplitude calibration
@@ -3666,12 +3685,14 @@ def gaincal_final_cals(eMCP, caltables):
 #    smooth_caltable(msfile=msfile, plotdir=plotdir, tablein=caltable2, caltable='', field='', smoothtype='median', smoothtime=60*20.)
     # Plots
     caltableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
-    emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot_phs, title='Phase',
-                  xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=5)
+    emplt.plot_caltable(caltables[caltable_name]['table'], caltableplot_phs, gaintype='G', calmode='p')
+#'#    emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot_phs, title='Phase',
+#'#                  xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=5)
     logger.info('{0} phase plot: {1}'.format(caltable_name,caltableplot_phs))
     caltableplot_amp = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_amp.png'
-    emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot_amp, title='Amp',
-                  xaxis='time', yaxis='amp', ymin=-1, ymax=-1, coloraxis='spw', symbolsize=5)
+    emplt.plot_caltable(caltables[caltable_name]['table'], caltableplot_amp, gaintype='G', calmode='ap')
+#'#    emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot_amp, title='Amp',
+#'#                  xaxis='time', yaxis='amp', ymin=-1, ymax=-1, coloraxis='spw', symbolsize=5)
     logger.info('{0} amp plot: {1}'.format(caltable_name,caltableplot_amp))
     return eMCP, caltables
 
@@ -3707,8 +3728,9 @@ def gaincal_final_scan(eMCP, caltables):
 #    smooth_caltable(msfile=msfile, plotdir=plotdir, tablein=caltable2, caltable='', field='', smoothtype='median', smoothtime=60*20.)
     # Plots
     caltableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
-    emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot_phs, title='Phase',
-                  xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=5)
+    emplt.plot_caltable(caltables[caltable_name]['table'], caltableplot_phs, gaintype='G', calmode='p')
+#'#    emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot_phs, title='Phase',
+#'#                  xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=5)
 
     # 2 Amplitude calibration on phasecal: scan-averaged amplitude solutions
     caltable_name = gain_final['ap_scan_tablename']
@@ -3736,12 +3758,14 @@ def gaincal_final_scan(eMCP, caltables):
 #    smooth_caltable(msfile=msfile, plotdir=plotdir, tablein=caltable2, caltable='', field='', smoothtype='median', smoothtime=60*20.)
     # Plots
     caltableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
-    emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot_phs, title='Phase',
-                  xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=5)
+    emplt.plot_caltable(caltables[caltable_name]['table'], caltableplot_phs, gaintype='G', calmode='p')
+#'#    emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot_phs, title='Phase',
+#'#                  xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=5)
     logger.info('{0} phase plot: {1}'.format(caltable_name,caltableplot_phs))
     caltableplot_amp = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_amp.png'
-    emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot_amp, title='Amp',
-                  xaxis='time', yaxis='amp', ymin=-1, ymax=-1, coloraxis='spw', symbolsize=5)
+    emplt.plot_caltable(caltables[caltable_name]['table'], caltableplot_amp, gaintype='G', calmode='ap')
+#'#    emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot_amp, title='Amp',
+#'#                  xaxis='time', yaxis='amp', ymin=-1, ymax=-1, coloraxis='spw', symbolsize=5)
     logger.info('{0} amp plot: {1}'.format(caltable_name,caltableplot_amp))
     return eMCP, caltables
 

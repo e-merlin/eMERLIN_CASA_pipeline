@@ -21,7 +21,7 @@ from functions import eMCP_plots as emplt
 #import casadef
 #import casalith
 
-current_version = 'v2.0.12'
+current_version = 'v2.0.13'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 #pipeline_filename = sys.argv[sys.argv.index('-c') + 1]
@@ -202,10 +202,10 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
     if eMCP['input_steps']['bandpass'] > 0:
         eMCP, caltables = em.initial_bp_cal(eMCP, caltables)
 
-#    ### Initial gaincal = delay, p, ap ###
-#    if eMCP['input_steps']['initial_gaincal'] > 0:
-#        eMCP, caltables = em.initial_gaincal(eMCP, caltables)
-#
+    ### Initial gaincal = delay, p, ap ###
+    if eMCP['input_steps']['initial_gaincal'] > 0:
+        eMCP, caltables = em.initial_gaincal(eMCP, caltables)
+
 #    ### Flux scale ###
 #    if eMCP['input_steps']['fluxscale'] > 0:
 #        eMCP, caltables = em.eM_fluxscale(eMCP, caltables)
