@@ -21,7 +21,7 @@ from functions import eMCP_plots as emplt
 #import casadef
 #import casalith
 
-current_version = 'v2.0.11'
+current_version = 'v2.0.12'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 #pipeline_filename = sys.argv[sys.argv.index('-c') + 1]
@@ -194,14 +194,14 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
         caltables['Lo_dropout_scans'] = eMCP['msinfo']['Lo_dropout_scans']
         emutils.save_obj(caltables, os.path.join(calib_dir, 'caltables.pkl'))
 
-#    ### Initialize models ###
-#    if eMCP['input_steps']['init_models'] > 0:  # Need to add parameter to GUI
-#        eMCP = em.run_initialize_models(eMCP)
-#
-#    ### Initial BandPass calibration ###
-#    if eMCP['input_steps']['bandpass'] > 0:
-#        eMCP, caltables = em.initial_bp_cal(eMCP, caltables)
-#
+    ### Initialize models ###
+    if eMCP['input_steps']['init_models'] > 0:  # Need to add parameter to GUI
+        eMCP = em.run_initialize_models(eMCP)
+
+    ### Initial BandPass calibration ###
+    if eMCP['input_steps']['bandpass'] > 0:
+        eMCP, caltables = em.initial_bp_cal(eMCP, caltables)
+
 #    ### Initial gaincal = delay, p, ap ###
 #    if eMCP['input_steps']['initial_gaincal'] > 0:
 #        eMCP, caltables = em.initial_gaincal(eMCP, caltables)

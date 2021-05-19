@@ -115,21 +115,21 @@ def simple_plot_name(plot_file, i):
     except:
         pass
 
-def count_active_antennas(msfile):
-    msmd.open(msfile)
-    a = np.array(msmd.antennanames())
-    b = np.array(msmd.baselines())
-    msmd.done()
-    active_antennas = []
-    for i, ant1 in enumerate(a):
-        for ant2 in a[i+1:]:
-            j = np.argwhere(ant2==a)[0][0]
-            if b[i,j]:
-                active_antennas.append(ant1)
-                active_antennas.append(ant2)
-    nice_order = ['Lo', 'Mk2', 'Pi', 'Da', 'Kn', 'De', 'Cm']
-    active_antennas = [a for a in nice_order if a in active_antennas]
-    return active_antennas
+#def count_active_antennas(msfile):
+#    msmd.open(msfile)
+#    a = np.array(msmd.antennanames())
+#    b = np.array(msmd.baselines())
+#    msmd.done()
+#    active_antennas = []
+#    for i, ant1 in enumerate(a):
+#        for ant2 in a[i+1:]:
+#            j = np.argwhere(ant2==a)[0][0]
+#            if b[i,j]:
+#                active_antennas.append(ant1)
+#                active_antennas.append(ant2)
+#    nice_order = ['Lo', 'Mk2', 'Pi', 'Da', 'Kn', 'De', 'Cm']
+#    active_antennas = [a for a in nice_order if a in active_antennas]
+#    return active_antennas
 
 def plot_caltable(msinfo, caltable, plot_file, xaxis='', yaxis='', title='',
                   ymin=-1, ymax=-1, coloraxis='spw', symbolsize=8):
@@ -137,14 +137,16 @@ def plot_caltable(msinfo, caltable, plot_file, xaxis='', yaxis='', title='',
     showgui=False
     tab = caltable['table']
     if xaxis == 'time':
-        tb.open(tab)
-        time_mjd = tb.getcol('TIME')
-        tb.close()
+        time_mjd = emutils.read_keyword(tab, 'TIME')
+#'#        tb.open(tab)
+#'#        time_mjd = tb.getcol('TIME')
+#'#        tb.close()
         x_min, x_max = np.min(time_mjd), np.max(time_mjd)
     elif xaxis == 'freq':
-        tb.open(tab+'/SPECTRAL_WINDOW')
-        f = tb.getcol('CHAN_FREQ').flatten()/1e9
-        tb.close()
+        f = emutils.read_keyword(msinfo['msfile'], 'CHAN_FREQ', subtable='SPECTRAL_WINDOW').flatten()/1e9
+#'#        tb.open(tab+'/SPECTRAL_WINDOW')
+#'#        f = tb.getcol('CHAN_FREQ').flatten()/1e9
+#'#        tb.close()
         x_min0, x_max0 = np.min(f), np.max(f)
         x_span = x_max0 - x_min0
         x_min = x_min0 - x_span*0.1
@@ -152,23 +154,42 @@ def plot_caltable(msinfo, caltable, plot_file, xaxis='', yaxis='', title='',
     else:
         x_min, x_max = -1, -1
 
-    active_antennas = count_active_antennas(msinfo['msfile'])
+    active_antennas = em.get_antennas(msinfo['msfile'])
+#'#    active_antennas = count_active_antennas(msinfo['msfile'])
     num_anten = len(active_antennas)
+    logger.debug(f'Active antennas {active_antennas}')
+    emutils.rmfile(plot_file)
     for i, anten in enumerate(active_antennas):
+        logger.debug(i)
+        logger.debug(anten)
         if i == len(active_antennas)-1:
             plotfile = plot_file
         else:
-            plotfile = ''
-        plotms(vis=caltable['table'], xaxis=xaxis, yaxis=yaxis, title='{0} {1}'.format(title, anten),
-               gridrows=num_anten, gridcols=gridcols, rowindex=i, colindex=0, plotindex=i,
-               #timerange='{}~{}'.format(msinfo['t_ini'].time(), msinfo['t_end'].time()),
-               antenna = str(anten),
-               xselfscale = True, xsharedaxis = True, coloraxis = coloraxis,
-               plotrange=[x_min, x_max, ymin, ymax],
-               plotfile = plotfile, expformat = 'png', customsymbol = True,
-               symbolshape = 'circle', symbolsize=symbolsize,
-               width=1000, height=240*num_anten, clearplots=False, overwrite=True,
-               showgui=showgui)
+            plotfile = plot_file
+        commands = {}
+        commands['plotms'] = {
+                'vis' :  caltable['table'],
+                'xaxis': xaxis, 'yaxis': yaxis,
+                'title':  f"{title} {anten}",
+                'gridrows':num_anten, 'gridcols':gridcols, 
+                'rowindex':i, 'colindex': 0, #'plotindex':0,
+                'antenna':str(anten),
+                'xselfscale':True, 'xsharedaxis': True, 'coloraxis':coloraxis,
+#check                'plotrange':[x_min, x_max, ymin, ymax],
+                'plotfile': plotfile, 'expformat': 'png', 'customsymbol': True, 'symbolshape': 'circle',
+                'width':1000, 'height':240*num_anten, 'symbolsize':symbolsize,'clearplots':False, 'overwrite':False, 'showgui':showgui}
+        em.run_casa_command(commands, 'plotms')
+        em.find_casa_problems()
+#'#        plotms(vis=caltable['table'], xaxis=xaxis, yaxis=yaxis, title='{0} {1}'.format(title, anten),
+#'#               gridrows=num_anten, gridcols=gridcols, rowindex=i, colindex=0, plotindex=i,
+#'#               #timerange='{}~{}'.format(msinfo['t_ini'].time(), msinfo['t_end'].time()),
+#'#               antenna = str(anten),
+#'#               xselfscale = True, xsharedaxis = True, coloraxis = coloraxis,
+#'#               plotrange=[x_min, x_max, ymin, ymax],
+#'#               plotfile = plotfile, expformat = 'png', customsymbol = True,
+#'#               symbolshape = 'circle', symbolsize=symbolsize,
+#'#               width=1000, height=240*num_anten, clearplots=False, overwrite=True,
+#'#               showgui=showgui)
 
 
 def single_4plot(msinfo, field, datacolumn, plots_data_dir):
