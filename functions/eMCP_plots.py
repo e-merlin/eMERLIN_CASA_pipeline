@@ -274,7 +274,7 @@ def single_4plot(msinfo, field, datacolumn, plots_data_dir):
             'antenna':baseline, 'field':field, 'iteraxis':'baseline',
             'averagedata':True, 'avgtime':avgtime, 'avgchannel':'4',
             'xselfscale':True, 'xsharedaxis': True, 'coloraxis':'corr',
-            'plotrange':[-1,-1,0,-1],
+#            'plotrange':[-1,-1,0,-1],
             'plotfile': plot_file+'2.png', 'expformat': 'png', 'customsymbol': True, 'symbolshape': 'circle',
             'width':w, 'height':h, 'symbolsize':4,'clearplots':False, 'overwrite':True, 'showgui':showgui}
     em.run_casa_command(commands, 'plotms')
@@ -323,33 +323,34 @@ def single_4plot(msinfo, field, datacolumn, plots_data_dir):
 
 
 def make_4plots(eMCP, datacolumn='data'):
-    logger.info(line0)
-    msinfo = eMCP['msinfo']
-    msfile = eMCP['msinfo']['msfile']
-    logger.info('Start plot_{}'.format(datacolumn))
+# aqui
+#    logger.info(line0)
+#    msinfo = eMCP['msinfo']
+#    msfile = eMCP['msinfo']['msfile']
+#    logger.info('Start plot_{}'.format(datacolumn))
     t0 = datetime.datetime.utcnow()
-    if datacolumn == 'data':
-        plots_data_dir = './weblog/plots/plots_data/'
-    elif datacolumn == 'corrected':
-        plots_data_dir = './weblog/plots/plots_corrected/'
-    else:
-        plots_data_dir = './weblog/plots/'
-    emutils.makedir(plots_data_dir)
-    allsources = msinfo['sources']['allsources'].split(',')
-    mssources = msinfo['sources']['mssources'].split(',')
-    logger.info('Producing plots for: {}'.format(','.join(allsources)))
-    for field in allsources:
-        if field in mssources:
-            single_4plot(msinfo, field, datacolumn, plots_data_dir)
-        else:
-            logger.warning('Cannot plot {0}. Source not in ms.'.format(field))
-##    num_proc = eMCP['defaults']['plot_data']['num_proc']
-##    pool = multiprocessing.Pool(num_proc)
-##    input_args = [(msinfo, field, datacolumn, plots_data_dir) for field in fields]
-##    p = pool.map(single_4plot, input_args)
-##    pool.close()
-##    pool.join()
-    logger.info('Visibility plots finished')
+#    if datacolumn == 'data':
+#        plots_data_dir = './weblog/plots/plots_data/'
+#    elif datacolumn == 'corrected':
+#        plots_data_dir = './weblog/plots/plots_corrected/'
+#    else:
+#        plots_data_dir = './weblog/plots/'
+#    emutils.makedir(plots_data_dir)
+#    allsources = msinfo['sources']['allsources'].split(',')
+#    mssources = msinfo['sources']['mssources'].split(',')
+#    logger.info('Producing plots for: {}'.format(','.join(allsources)))
+#    for field in allsources:
+#        if field in mssources:
+#            single_4plot(msinfo, field, datacolumn, plots_data_dir)
+#        else:
+#            logger.warning('Cannot plot {0}. Source not in ms.'.format(field))
+###    num_proc = eMCP['defaults']['plot_data']['num_proc']
+###    pool = multiprocessing.Pool(num_proc)
+###    input_args = [(msinfo, field, datacolumn, plots_data_dir) for field in fields]
+###    p = pool.map(single_4plot, input_args)
+###    pool.close()
+###    pool.join()
+#    logger.info('Visibility plots finished')
     if datacolumn == 'corrected':
         make_uvplt(eMCP)
     logger.info('End plot_{}'.format(datacolumn))
@@ -359,14 +360,15 @@ def make_4plots(eMCP, datacolumn='data'):
 
 def single_uvplt(msinfo, field, plots_data_dir):
     logger.info('uvplt for field: {}'.format(field))
-    plot_file =  plots_data_dir+'{0}_uvplt_{1}.png'.format(msinfo['msfilename'], field)
+    plot_file_p =  plots_data_dir+'{0}_uvplt_p_{1}.png'.format(msinfo['msfilename'], field)
+    plot_file_a =  plots_data_dir+'{0}_uvplt_a_{1}.png'.format(msinfo['msfilename'], field)
     msfile = msinfo['msfile']
     nchan = msinfo['nchan']
     datacolumn='corrected'
     avgtime = '16'
     showgui = False
     gridrows = 1
-    gridcols = 2
+    gridcols = 1
     # Amp
     commands = {}
     commands['plotms'] = {
@@ -374,14 +376,14 @@ def single_uvplt(msinfo, field, plots_data_dir):
             'xaxis': 'UVwave', 'yaxis': 'amp',
             'title':  f"Amplitude vs UVWave {field} (color=spw)",
             'gridrows':gridrows, 'gridcols':gridcols, 
-            'rowindex':0, 'colindex':0, 'plotindex':0,
+#            'rowindex':0, 'colindex':0, 'plotindex':0,
             'xdatacolumn':datacolumn, 'ydatacolumn':datacolumn,
             'correlation': 'RR,LL',
             'antenna':'*&*', 'field':field,
             'averagedata':True, 'avgchannel':str(nchan), 'avgtime':avgtime,
             'xselfscale':True, 'xsharedaxis': True, 'coloraxis': 'spw',
-            'plotfile': '', 'expformat': 'png', 'customsymbol': True, 'symbolshape': 'circle',
-            'width':w, 'height':h, 'symbolsize':4,'clearplots':False, 'overwrite':True, 'showgui':showgui}
+            'plotfile': plot_file_a, 'expformat': 'png', 'customsymbol': True, 'symbolshape': 'circle',
+            'width':700, 'height':573, 'symbolsize':4,'clearplots':True, 'overwrite':True, 'showgui':showgui}
     em.run_casa_command(commands, 'plotms')
     em.find_casa_problems()
 #'#    plotms(vis=msfile, xaxis='UVwave', yaxis='amp', title='Amplitude vs UVWave {0} (color=spw)'.format(field),
@@ -400,15 +402,15 @@ def single_uvplt(msinfo, field, plots_data_dir):
             'xaxis': 'UVwave', 'yaxis': 'phase',
             'title':  f"Phase vs UVWave {field} (color=spw)",
             'gridrows':gridrows, 'gridcols':gridcols, 
-            'rowindex':0, 'colindex':1, 'plotindex':1,
+#            'rowindex':0, 'colindex':0, 'plotindex':0,
             'xdatacolumn':datacolumn, 'ydatacolumn':datacolumn,
             'correlation': 'RR,LL',
             'antenna':'*&*', 'field':field,
             'averagedata':True, 'avgchannel':str(nchan), 'avgtime':avgtime,
             'xselfscale':True, 'xsharedaxis': True, 'coloraxis': 'spw',
             'plotrange':[-1,-1,-180,180],
-            'plotfile': plot_file, 'expformat': 'png', 'customsymbol': True, 'symbolshape': 'circle',
-            'width':1200, 'height':573, 'symbolsize':4,'clearplots':False, 'overwrite':True, 'showgui':showgui}
+            'plotfile': plot_file_p, 'expformat': 'png', 'customsymbol': True, 'symbolshape': 'circle',
+            'width':700, 'height':573, 'symbolsize':4,'clearplots':True, 'overwrite':True, 'showgui':showgui}
     em.run_casa_command(commands, 'plotms')
     em.find_casa_problems()
 
@@ -423,14 +425,15 @@ def single_uvplt(msinfo, field, plots_data_dir):
 
 def single_uvplt_model(msinfo, field, plots_data_dir):
     logger.info('uvplt (model) for field: {}'.format(field))
-    plot_file =  plots_data_dir+'{0}_uvpltmodel_{1}.png'.format(msinfo['msfilename'], field)
+    plot_file_p =  plots_data_dir+'{0}_uvpltmodel_p_{1}.png'.format(msinfo['msfilename'], field)
+    plot_file_a =  plots_data_dir+'{0}_uvpltmodel_a_{1}.png'.format(msinfo['msfilename'], field)
     msfile = msinfo['msfile']
     nchan = msinfo['nchan']
     datacolumn='model'
     avgtime = '600'
     showgui = False
     gridrows = 1
-    gridcols = 2
+    gridcols = 1
     # Amp
     commands = {}
     commands['plotms'] = {
@@ -438,17 +441,17 @@ def single_uvplt_model(msinfo, field, plots_data_dir):
             'xaxis': 'UVwave', 'yaxis': 'amp',
             'title':  f"Amplitude vs UVWave {field} (color=spw)",
             'gridrows':gridrows, 'gridcols':gridcols, 
-            'rowindex':0, 'colindex':0, 'plotindex':0,
+#            'rowindex':0, 'colindex':0, 'plotindex':0,
             'xdatacolumn':datacolumn, 'ydatacolumn':datacolumn,
             'correlation': 'RR,LL',
             'antenna':'*&*', 'field':field,
             'averagedata':True, 'avgchannel':str(int(nchan/16)), 'avgtime':avgtime,
             'xselfscale':True, 'xsharedaxis': True, 'coloraxis': 'spw',
-            'plotfile': '', 'expformat': 'png', 'customsymbol': True, 'symbolshape': 'circle',
-            'width':w, 'height':h, 'symbolsize':4,'clearplots':False, 'overwrite':True, 'showgui':showgui}
+            'plotfile': plot_file_a, 'expformat': 'png', 'customsymbol': True, 'symbolshape': 'circle',
+            'width':700, 'height':573, 'symbolsize':4,'clearplots':True, 'overwrite':True, 'showgui':showgui}
     em.run_casa_command(commands, 'plotms')
     em.find_casa_problems()
-#'#
+
 #'#    plotms(vis=msfile, xaxis='UVwave', yaxis='amp', title='Model Amplitude vs UVWave {0} (color=spw)'.format(field),
 #'#    gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=0, plotindex=0,
 #'#    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR,LL',
@@ -465,15 +468,15 @@ def single_uvplt_model(msinfo, field, plots_data_dir):
             'xaxis': 'UVwave', 'yaxis': 'phase',
             'title':  f"Phase vs UVWave {field} (color=spw)",
             'gridrows':gridrows, 'gridcols':gridcols, 
-            'rowindex':0, 'colindex':1, 'plotindex':1,
+#            'rowindex':0, 'colindex':0, 'plotindex':0,
             'xdatacolumn':datacolumn, 'ydatacolumn':datacolumn,
             'correlation': 'RR,LL',
             'antenna':'*&*', 'field':field,
             'averagedata':True, 'avgchannel':str(nchan), 'avgtime':avgtime,
             'xselfscale':True, 'xsharedaxis': True, 'coloraxis': 'spw',
             'plotrange':[-1,-1,-180,180],
-            'plotfile': plot_file, 'expformat': 'png', 'customsymbol': True, 'symbolshape': 'circle',
-            'width':1200, 'height':573, 'symbolsize':4,'clearplots':False, 'overwrite':True, 'showgui':showgui}
+            'plotfile': plot_file_p, 'expformat': 'png', 'customsymbol': True, 'symbolshape': 'circle',
+            'width':700, 'height':573, 'symbolsize':4,'clearplots':True, 'overwrite':True, 'showgui':showgui}
     em.run_casa_command(commands, 'plotms')
     em.find_casa_problems()
 
@@ -887,7 +890,7 @@ def read_calfluxes(calfluxes, k, eMfactor):
 def fluxscale_models(calfluxes, eMfactor, msinfo):
     factor_unit= 1e-9
     units = 'Jy'
-    fig = plt.figure(figsize=(10,8))
+    fig = plt.figure(figsize=(8,6))
     ax1 = fig.add_subplot(111)
 
     freq_min, freq_max = 1e20,0.
@@ -943,7 +946,7 @@ def fluxscale_models(calfluxes, eMfactor, msinfo):
 ### Plot caltables with matplotlib
 
 
-def plot_gaintable(data, antenna, ax, calmode='ap', field_id=None):
+def plot_gaintable(data, antenna, ax, calmode='ap', field_id=None, s=60):
     t = data['TIME']
     tm = Time(t/60/60/24., format='mjd')
     antenna_id, antenna_name = antenna
@@ -968,14 +971,14 @@ def plot_gaintable(data, antenna, ax, calmode='ap', field_id=None):
         color1 = color2 = data['SPECTRAL_WINDOW_ID'][cond]
     else:
         color1, color2 = '#0067cb', '#c67d50'
-    s = 40
+    logger.debug(f'Num points in plot: {len(value[cond][:,0,0])}')
     if np.count_nonzero(cond) > 1:
         ax.scatter(tm[cond].datetime64, value[cond][:,0,0], marker='.', s=s, c=color1, ec='None', alpha=0.5, cmap=plt.get_cmap('winter_r'))
         ax.scatter(tm[cond].datetime64, value[cond][:,0,1], marker='.', s=s, c=color2, ec='None', alpha=0.5, cmap=plt.get_cmap('copper'))
     ax.annotate(antenna_name, (0.01,0.9), xycoords='axes fraction')
     return ax
 
-def plot_delaytable(data, antenna, ax, calmode='p', field_id=None):
+def plot_delaytable(data, antenna, ax, calmode='p', field_id=None, s=120):
     t = data['TIME']
     tm = Time(t/60/60/24., format='mjd')
     antenna_id, antenna_name = antenna
@@ -991,7 +994,6 @@ def plot_delaytable(data, antenna, ax, calmode='p', field_id=None):
         color1 = color2 = data['SPECTRAL_WINDOW_ID'][cond]
     else:
         color1, color2 = '#0067cb', '#c67d50'
-    s = 100
     logger.debug(antenna_name)
     logger.debug(tm[cond].datetime64)
     logger.debug(cond)
@@ -1023,7 +1025,7 @@ def plot_bptable(data, caltable, antenna, ax, calmode='p', field_id=None):
     cond3 = ~data['FLAG'][:,0,0]
     cond = cond1*cond2*cond3
     value[data['FLAG']] = np.nan
-    s=50
+    s=80
     spws = np.unique(emutils.read_keyword(caltable, 'SPECTRAL_WINDOW_ID'))
     all_freqs = emutils.read_keyword(caltable, 'CHAN_FREQ', subtable='SPECTRAL_WINDOW')
     for spw in spws:
@@ -1041,16 +1043,20 @@ def plot_bptable(data, caltable, antenna, ax, calmode='p', field_id=None):
 def plot_caltable(caltable, filename, gaintype='G', calmode=''):
     logger.debug(f'Plotting {caltable}')
     data = emutils.read_caltable_data(caltable)
-    antenna_names = emutils.read_keyword(caltable, 'NAME', subtable='ANTENNA')
+    antenna_names = em.get_antennas(caltable)
     num_antennas = len(antenna_names)
     fig, axes = plt.subplots(nrows=num_antennas, ncols=1, sharex=True, figsize=(10,14))
     fig.subplots_adjust(hspace=0)
+    logger.debug(f"Points in table: {len(data['TIME'])}")
+    points_in_table = len(data['TIME'])
+    s = 120 + 10*(30000/points_in_table)**0.3
+    s = np.min([np.max([s, 50]), 200])
     for i, ax in enumerate(axes):
         if gaintype=='G':
-            ax = plot_gaintable(data, antenna=[i, antenna_names[i]], ax=ax, calmode=calmode, field_id=None)
+            ax = plot_gaintable(data, antenna=[i, antenna_names[i]], ax=ax, calmode=calmode, field_id=None, s=s)
             ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y/%m/%d %H:%M'))
         elif gaintype=='K':
-            plot_delaytable(data, antenna=[i, antenna_names[i]], ax=ax, calmode=calmode, field_id=None)
+            plot_delaytable(data, antenna=[i, antenna_names[i]], ax=ax, calmode=calmode, field_id=None, s=s)
             ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y/%m/%d %H:%M'))
         elif gaintype=='B':
             plot_bptable(data, caltable=caltable, antenna=[i, antenna_names[i]], ax=ax, calmode=calmode, field_id=None)

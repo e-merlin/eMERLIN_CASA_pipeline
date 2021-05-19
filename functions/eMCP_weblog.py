@@ -262,15 +262,17 @@ def plots_corrected(msinfo, wlog):
 
 def plots_uvplt(msinfo, wlog):
     wlog.write('<h3>Calibrated UVplots</h3>\n')
-    all_plots = np.sort(glob.glob('./weblog/plots/plots_uvplt/*_uvplt_*png'))
+    all_plots = np.sort(glob.glob('./weblog/plots/plots_uvplt/*_uvplt_a_*png'))
     for p in all_plots:
         source_name = os.path.splitext(p)[0].split('_')[-1]
         wlog.write('<h4>{0}</h4>\n'.format(source_name))
         wlog.write('<table cellspacing = "0" cellpadding = "4px" style="width:40%">\n')
-        wlog.write('<tr><td  valign="top"><a href = ".{0}"><img style="max-width:960px" src=".{0}"></a></td>\n'.format(p))
+        wlog.write('<tr><td  valign="top"><a href = ".{0}"><img style="max-width:500px" src=".{0}"></a></td>\n'.format(p))
+        wlog.write('<td  valign="top"><a href = ".{0}"><img style="max-width:500px" src=".{0}"></a></td>\n'.format(p.replace('_a_', '_p_')))
         if source_name in msinfo['sources']['calsources'].split(','):
-            p_model = './weblog/plots/plots_uvplt/{0}_uvpltmodel_{1}.png'.format(msinfo['msfilename'],source_name)
-            wlog.write('<td><a href = ".{0}"><img style="max-width:960px" src=".{0}"></a></td>\n'.format(p_model))
+            p_model = './weblog/plots/plots_uvplt/{0}_uvpltmodel_a_{1}.png'.format(msinfo['msfilename'],source_name)
+            wlog.write('<td><a href = ".{0}"><img style="max-width:500px" src=".{0}"></a></td>\n'.format(p_model))
+            wlog.write('<td><a href = ".{0}"><img style="max-width:500px" src=".{0}"></a></td>\n'.format(p_model.replace('_a_', '_p_')))
         wlog.write('</tr></table><br><br>\n<hr>\n')
 
 def write_caltable(caltable, wlog):

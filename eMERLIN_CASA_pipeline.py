@@ -206,30 +206,30 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
     if eMCP['input_steps']['initial_gaincal'] > 0:
         eMCP, caltables = em.initial_gaincal(eMCP, caltables)
 
-#    ### Flux scale ###
-#    if eMCP['input_steps']['fluxscale'] > 0:
-#        eMCP, caltables = em.eM_fluxscale(eMCP, caltables)
-#
-#    ### BandPass calibration with spectral index information ###
-#    if eMCP['input_steps']['bandpass_final'] > 0:
-#        eMCP, caltables = em.bandpass_final(eMCP, caltables)
-#
-#    ### Amplitude calibration including spectral information ###
-#    if eMCP['input_steps']['gaincal_final'] > 0:
-#        eMCP, caltables = em.gaincal_final(eMCP, caltables)
-#
-#    ### Apply calibration  ###
-#    if eMCP['input_steps']['applycal_all'] > 0:
-#        eMCP = em.applycal_all(eMCP, caltables)
-#
-#    ### RFLAG automatic flagging ###
-#    if eMCP['input_steps']['flag_target'] > 0:
-#        em.run_flag_target(eMCP)
-#
-#    ### Produce some visibility plots ###
-#    if eMCP['input_steps']['plot_corrected'] > 0:
-#        eMCP = emplt.make_4plots(eMCP, datacolumn='corrected')
-#
+    ### Flux scale ###
+    if eMCP['input_steps']['fluxscale'] > 0:
+        eMCP, caltables = em.eM_fluxscale(eMCP, caltables)
+
+    ### BandPass calibration with spectral index information ###
+    if eMCP['input_steps']['bandpass_final'] > 0:
+        eMCP, caltables = em.bandpass_final(eMCP, caltables)
+
+    ### Amplitude calibration including spectral information ###
+    if eMCP['input_steps']['gaincal_final'] > 0:
+        eMCP, caltables = em.gaincal_final(eMCP, caltables)
+
+    ### Apply calibration  ###
+    if eMCP['input_steps']['applycal_all'] > 0:
+        eMCP = em.applycal_all(eMCP, caltables)
+
+    ### RFLAG automatic flagging ###
+    if eMCP['input_steps']['flag_target'] > 0:
+        em.run_flag_target(eMCP)
+
+    ### Produce some visibility plots ###
+    if eMCP['input_steps']['plot_corrected'] > 0:
+        eMCP = emplt.make_4plots(eMCP, datacolumn='corrected')
+
 #    ### First images ###
 #    if eMCP['input_steps']['first_images'] > 0:
 #        eMCP = em.run_first_images(eMCP)

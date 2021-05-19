@@ -97,9 +97,8 @@ def run_casa_command(config_command, key):
     #subprocess.call([casa_command, '--nogui', '--logfile casa_eMCP.log', '-c', output]) 
 #    subprocess.run([casa_command, '--nogui', '--logfile', 'casa_eMCP.log', '-c', output]) 
 #    subprocess.run([casa_command, '--nogui', '--logfile', 'casa_eMCP.log', '-c', output], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) 
-    with open('stdout.txt', 'a') as f:
-        subprocess.run([casa_command, '--nogui', '--logfile', 'casa_eMCP.log', '-c', output], stdout=f, stderr=subprocess.STDOUT) 
-    # Here it would be a good idea to add stdout and stderr handling
+    with open('stdouterr.log', 'a') as f:
+        subprocess.run([casa_command, '--nogui', '--log2term', '--logfile', 'casa_eMCP.log', '-c', output], stdout=f, stderr=subprocess.STDOUT) 
 
 def backslash_check(directory):
     if directory[-1] != '/':
@@ -230,7 +229,7 @@ def save_obj(obj, name):
         pickle.dump(obj, f)
 
 def load_obj(name):
-    with open(name, 'rb') as f:
+     with open(name, 'rb') as f:
         return pickle.load(f)
 
 def add_step_time(step, eMCP, msg, t0, doweblog=True):
@@ -1665,7 +1664,7 @@ def flagdata_rflag(eMCP, defaults):
              'action': rflag['action'],
              'display': rflag['display'],
              'flagbackup': rflag['flagbackup']}
-    em.run_casa_command(commands, 'flagdata')
+    run_casa_command(commands, 'flagdata')
 #'#    casatasks.flagdata(vis=msfile,
 #'#             mode=rflag['mode'],
 #'#             field=eMCP['msinfo']['sources'][rflag['sources']],
@@ -3087,8 +3086,8 @@ def run_fringefit(msfile, caltables, caltable_name, minblperant=3, minsnr=2, smo
             'interp'   : interp,
             'spwmap'   : spwmap,
             'zerorates': caltables[caltable_name]['zerorates']}
-    em.run_casa_command(commands, 'fringefit') 
-    em.find_casa_problems() 
+    run_casa_command(commands, 'fringefit') 
+    find_casa_problems() 
 #'#    fringefit(vis=msfile,
 #'#            caltable  = caltables[caltable_name]['table'],
 #'#            field     = caltables[caltable_name]['field'],
@@ -3233,8 +3232,8 @@ def gain_p_ap(eMCP, caltables, doplots=True):
             'field' :  calsources, 
             'applymodel' :  'flagonly', 
             'flagbackup' :  False}
-    em.run_casa_command(commands, 'applycal') 
-    em.find_casa_problems() 
+    run_casa_command(commands, 'applycal') 
+    find_casa_problems() 
 #'#    casatasks.applycal(vis=msfile, gaintable=caltables[caltable_name]['table'],
 #'#             field=calsources,
 #'#             applymode='flagonly',
@@ -3366,13 +3365,38 @@ def eM_fluxscale(eMCP, caltables):
     logger.info('Input caltable: {0}'.format(caltables[ampcal_table]['table']))
     logger.info('Antennas used to scale: {0}'.format(anten_for_flux))
     emutils.rmdir(caltables[caltable_name]['table'])
-    calfluxes = casatasks.fluxscale(vis=msfile, reference=fluxcal,
-                          transfer=cals_to_scale,
-                          antenna = ','.join(anten_for_flux),
-                          caltable  = caltables[ampcal_table]['table'],
-                          fluxtable = caltables[caltable_name]['table'],
-                          listfile  = fluxes_txt)
-    find_casa_problems()
+    pipeline_path = os.path.dirname(os.path.realpath(__file__))
+    fluxscale_script = os.path.join(pipeline_path, 'run_fluxscale.py')
+    with open('stdouterr.log', 'a') as f:
+        subprocess.run([casa_command, '--nogui', '--logfile', 'casa_eMCP.log', '-c',
+                        fluxscale_script,
+                        '-vis', msfile,
+                       '-reference', fluxcal,
+                       '-transfer', cals_to_scale,
+                       '-antenna', ','.join(anten_for_flux),
+                       '-caltable', caltables[ampcal_table]['table'],
+                       '-fluxtable', caltables[caltable_name]['table'],
+                       '-listfile',  fluxes_txt],
+                        stdout=f, stderr=subprocess.STDOUT)
+    calfluxes = load_obj(calib_dir + 'calfluxes.pkl')
+
+#'#    commands = {}
+#'#    commands['fluxscale'] = {
+#'#            'vis' :  msfile,
+#'#            'reference': fluxcal,
+#'#            'transfer': cals_to_scale,
+#'#            'antenna': ','.join(anten_for_flux),
+#'#            'caltable': caltables[ampcal_table]['table'],
+#'#            'fluxtable': caltables[caltable_name]['table'],
+#'#            'listfile':  fluxes_txt}
+#'#    run_casa_command(commands, 'fluxscale')
+#'#    find_casa_problems()
+#'#    calfluxes = casatasks.fluxscale(vis=msfile, reference=fluxcal,
+#'#                          transfer=cals_to_scale,
+#'#                          antenna = ','.join(anten_for_flux),
+#'#                          caltable  = caltables[ampcal_table]['table'],
+#'#                          fluxtable = caltables[caltable_name]['table'],
+#'#                          listfile  = fluxes_txt)
     logger.info('Modified caltable: {0}'.format(caltables[caltable_name]['table']))
     logger.info('Spectrum information: {0}'.format(caltables[caltable_name]['table']+'_fluxes.txt'))
     if calfluxes == None:
@@ -3381,7 +3405,6 @@ def eM_fluxscale(eMCP, caltables):
         logger.warning('Required sources: {0}'.format(cals_to_scale))
         logger.warning('Required antennas: {0}'.format(','.join(anten_for_flux)))
         exit_pipeline(eMCP)
-    save_obj(calfluxes, calib_dir + 'calfluxes.pkl')
     # Compute correction to scale the flux density of 3C286 according to
     # resolution provided by the shortest available baseline of e-MERLIN
     eMfactor = calc_eMfactor(msfile, field=fluxcal)
@@ -3428,24 +3451,44 @@ def eM_fluxscale(eMCP, caltables):
                                                 eMcalfluxes[field][0],
                                                 eMcalfluxes[field][1],
                                                 eMcalfluxes[field][2]))
-            casatasks.setjy(vis = msfile,
-                  field = field,
-                  standard = 'manual',
-                  fluxdensity = eMcalfluxes[field][0],
-                  spix = eMcalfluxes[field][1],
-                  reffreq = str(eMcalfluxes[field][2])+'Hz',
-                  usescratch = True)
+            commands = {}
+            commands['setjy'] = {
+                    'vis' : msfile,
+                    'field': field,
+                    'standard': 'manual',
+                    'fluxdensity': eMcalfluxes[field][0],
+                    'spix': eMcalfluxes[field][1],
+                    'reffreq': str(eMcalfluxes[field][2])+'Hz',
+                    'usescratch': True}
+            run_casa_command(commands, 'setjy')
+#'#            casatasks.setjy(vis = msfile,
+#'#                  field = field,
+#'#                  standard = 'manual',
+#'#                  fluxdensity = eMcalfluxes[field][0],
+#'#                  spix = eMcalfluxes[field][1],
+#'#                  reffreq = str(eMcalfluxes[field][2])+'Hz',
+#'#                  usescratch = True)
             find_casa_problems()
             if eMCP['is_mixed_mode']:
                 msfile_sp = eMCP['msinfo']['msfile_sp']
                 logger.info('Filling model for sp: {0}'.format(msfile_sp))
-                casatasks.setjy(vis = msfile_sp,
-                      field = field,
-                      standard = 'manual',
-                      fluxdensity = eMcalfluxes[field][0],
-                      spix = eMcalfluxes[field][1],
-                      reffreq = str(eMcalfluxes[field][2])+'Hz',
-                      usescratch = True)
+                commands = {}
+                commands['setjy'] = {
+                        'vis' : msfile,
+                        'field': field,
+                        'standard': 'manual',
+                        'fluxdensity': eMcalfluxes[field][0],
+                        'spix': eMcalfluxes[field][1],
+                        'reffreq': str(eMcalfluxes[field][2])+'Hz',
+                        'usescratch': True}
+                run_casa_command(commands, 'setjy')
+#'#                casatasks.setjy(vis = msfile_sp,
+#'#                          field = field,
+#'#                          standard = 'manual',
+#'#                          fluxdensity = eMcalfluxes[field][0],
+#'#                          spix = eMcalfluxes[field][1],
+#'#                          reffreq = str(eMcalfluxes[field][2])+'Hz',
+#'#                          usescratch = True)
                 find_casa_problems()
 
     # Apply calibration if requested:
@@ -4549,6 +4592,1207 @@ def find_Lo_drops(msfile, phscals, eMCP):
 def remove_flagversion(msfile, versionname):
 #    flag_list = casatasks.flagmanager(vis=msfile, mode='list')
     commands = {}
+    calfluxes = casatasks.fluxscale(vis=msfile, reference=fluxcal,
+                          transfer=cals_to_scale,
+                          antenna = ','.join(anten_for_flux),
+                          caltable  = caltables[ampcal_table]['table'],
+                          fluxtable = caltables[caltable_name]['table'],
+                          listfile  = fluxes_txt)
+    find_casa_problems()
+    logger.info('Modified caltable: {0}'.format(caltables[caltable_name]['table']))
+    logger.info('Spectrum information: {0}'.format(caltables[caltable_name]['table']+'_fluxes.txt'))
+    if calfluxes == None:
+        logger.critical('Something went wrong with fluxscale')
+        logger.warning('This probably means that necessary data are missing:')
+        logger.warning('Required sources: {0}'.format(cals_to_scale))
+        logger.warning('Required antennas: {0}'.format(','.join(anten_for_flux)))
+        exit_pipeline(eMCP)
+    save_obj(calfluxes, calib_dir + 'calfluxes.pkl')
+    # Compute correction to scale the flux density of 3C286 according to
+    # resolution provided by the shortest available baseline of e-MERLIN
+    eMfactor = calc_eMfactor(msfile, field=fluxcal)
+    # Include a note in the fluxes.txt file warning that the values in that
+    # file should be corrected by eMfactor
+    with open(fluxes_txt, 'a') as file:
+        file.write('# WARNING: All flux densities in this file need to be multiplied by eMfactor={0:6.4f} to match the corrections that have been applied to the data.'.format(eMfactor))
+    # Get fitted flux density and spectral index, correctly scaled for e-MERLIN
+    eMcalfluxes = {}
+    for k in calfluxes.keys():
+        if type(calfluxes[k]) is dict:
+            try:
+                a=[]
+                a.append(calfluxes[k]['fitFluxd']*eMfactor)
+                a.append(calfluxes[k]['spidx'][1])
+                a.append(calfluxes[k]['fitRefFreq'])
+                eMcalfluxes[calfluxes[k]['fieldName']]=a
+                logger.info('Spectrum for {0:>9s}: Flux density = {1:6.3f} +/-{2:6.3f}, spidx ={3:5.2f}+/-{4:5.2f}'.format(calfluxes[k]['fieldName'],
+                    calfluxes[k]['fitFluxd']*eMfactor, calfluxes[k]['fitFluxdErr']*eMfactor,
+                    calfluxes[k]['spidx'][1], calfluxes[k]['spidxerr'][1]))
+            except:
+                pass
+    logger.info('Plotting fluxscale models')
+    emplt.fluxscale_models(calfluxes, eMfactor, msinfo)
+    # Scale and fill model column:
+    for field in eMcalfluxes.keys():
+        # Check if there are image models (tt0, tt1) for each field:
+        model = ['./source_models/{0}.model.tt0'.format(field),
+                 './source_models/{0}.model.tt1'.format(field)]
+        if os.path.exists(model[0]) and os.path.exists(model[1]):
+            scaled_model = read_source_model(model, field, msinfo,
+                                             eMcalfluxes[field][0])
+            logger.info('New model for this observation: {0}, {1}'.format(scaled_model[0], scaled_model[1]))
+            ft(vis=msfile, field=field, model=scaled_model, nterms=2, usescratch=True)
+            logger.info('Model for {0} included in MODEL column in {1}'.format(field, msfile))
+            if eMCP['is_mixed_mode']:
+                msfile_sp = eMCP['msinfo']['msfile_sp']
+                logger.info('Filling sp: {0}'.format(msfile_sp))
+                ft(vis=msfile_sp, field=field, model=scaled_model, nterms=2, usescratch=True)
+        else:
+            # If there is no model, just assume point source:
+            logger.info('Filling model column for point-like source: {0}'.format(field))
+            logger.info('Model: flux={0:6.3g}Jy, spix={1:6.3g}, reffreq={2:6.3g}Hz'.format(
+                                                eMcalfluxes[field][0],
+                                                eMcalfluxes[field][1],
+                                                eMcalfluxes[field][2]))
+            casatasks.setjy(vis = msfile,
+                  field = field,
+                  standard = 'manual',
+                  fluxdensity = eMcalfluxes[field][0],
+                  spix = eMcalfluxes[field][1],
+                  reffreq = str(eMcalfluxes[field][2])+'Hz',
+                  usescratch = True)
+            find_casa_problems()
+            if eMCP['is_mixed_mode']:
+                msfile_sp = eMCP['msinfo']['msfile_sp']
+                logger.info('Filling model for sp: {0}'.format(msfile_sp))
+                casatasks.setjy(vis = msfile_sp,
+                      field = field,
+                      standard = 'manual',
+                      fluxdensity = eMcalfluxes[field][0],
+                      spix = eMcalfluxes[field][1],
+                      reffreq = str(eMcalfluxes[field][2])+'Hz',
+                      usescratch = True)
+                find_casa_problems()
+
+    # Apply calibration if requested:
+    if eMCP['input_steps']['fluxscale'] == 2:
+        #logger.warning('Applying short-solint tables to target.')
+        run_applycal(eMCP, caltables, step = 'fluxscale')
+    logger.info('End fluxscale')
+    save_obj(caltables, caltables['calib_dir']+'caltables.pkl')
+    msg = ''
+    eMCP = add_step_time('fluxscale', eMCP, msg, t0)
+    return eMCP, caltables
+
+
+
+def bandpass_final(eMCP, caltables):
+    logger.info('Start bandpass_final')
+    t0 = datetime.datetime.utcnow()
+    # Check if all sources are in the MS: 
+    check_sources_in_ms(eMCP)
+    bp_final = eMCP['defaults']['bandpass_final']
+    msfile = eMCP['msinfo']['msfile']
+    msinfo = eMCP['msinfo']
+    # Bandpass calibration
+    caltable_name = bp_final['bp_tablename']
+    caltables[caltable_name] = {}
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['previous_cal'] = bp_final['bp_prev_cal']
+    caltables[caltable_name]['field'] = msinfo['sources']['bpcal']
+    caltables[caltable_name]['solint'] = bp_final['bp_solint']
+    caltables[caltable_name]['spw'] = make_spw(msinfo, bp_final['bp_spw'])
+    caltables[caltable_name]['combine'] = bp_final['bp_combine']
+    caltables[caltable_name]['uvrange'] = bp_final['bp_uvrange']
+    caltables[caltable_name]['fillgaps'] = bp_final['bp_fillgaps']
+    caltables[caltable_name]['solnorm'] = bp_final['bp_solnorm']
+    caltables[caltable_name]['spwmap'] = make_spwmap(caltables,bp_final['bp_combine'])
+    caltables[caltable_name]['interp'] = bp_final['bp_interp']
+    bptable = caltables[caltable_name]['table']
+    # Calibration
+    run_bandpass(msfile, caltables, caltable_name)
+    caltables[caltable_name]['gainfield'] = get_unique_field(caltables[caltable_name]['table'])
+    logger.info('Bandpass_final BP {0}: {1}'.format(caltable_name,bptable))
+    # Plots
+    bptableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
+    bptableplot_amp = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_amp.png'
+    emplt.plot_caltable(caltables[caltable_name]['table'], bptableplot_phs, gaintype='B', calmode='p')
+#'#    emplt.plot_caltable(msinfo, caltables[caltable_name], bptableplot_phs, title='Bandpass phase',
+#'#                  xaxis='freq', yaxis='phase', ymin=-180, ymax=180, coloraxis='corr', symbolsize=5)
+    logger.info('Bandpass_final BP phase plot: {0}'.format(bptableplot_phs))
+    emplt.plot_caltable(caltables[caltable_name]['table'], bptableplot_amp, gaintype='B', calmode='ap')
+#'#    emplt.plot_caltable(msinfo, caltables[caltable_name], bptableplot_amp, title='Bandpass amp',
+#'#                  xaxis='freq', yaxis='amp', ymin=-1, ymax=-1, coloraxis='corr', symbolsize=5)
+    logger.info('Bandpass_final BP amplitude plot: {0}'.format(bptableplot_amp))
+    logger.info('End bandpass_final')
+    # Apply calibration if requested:
+    if eMCP['input_steps']['bandpass_final'] == 2:
+        run_applycal(eMCP, caltables, step = 'bandpass_final')
+
+    save_obj(caltables, caltables['calib_dir']+'caltables.pkl')
+    msg = 'field={0}, combine={1}, solint={2}'.format(
+                    msinfo['sources']['bpcal'],
+                    bp_final['bp_combine'],
+                    bp_final['bp_solint'])
+    eMCP = add_step_time('bandpass_final', eMCP, msg, t0)
+    return eMCP, caltables
+
+
+def gaincal_final(eMCP, caltables):
+    logger.info('Start gaincal_final')
+    t0 = datetime.datetime.utcnow()
+    # Check if all sources are in the MS: 
+    check_sources_in_ms(eMCP)
+    gain_final = eMCP['defaults']['gaincal_final']
+
+    # Compute p, ap for calibrators
+    eMCP, caltables = gaincal_final_cals(eMCP, caltables)
+
+    # Compute p, ap for targets (per scan)
+    eMCP, caltables = gaincal_final_scan(eMCP, caltables)
+
+    if eMCP['is_mixed_mode']:
+        #eMCP, caltables = gaincal_narrow(eMCP, caltables, doplots=False)
+        #run_applycal(eMCP, caltables, step = 'initial_gaincal')
+        eMCP, caltables = gaincal_narrow(eMCP, caltables)
+    #    # Flagging
+    #    if eMCP['defaults']['bandpass']['run_flag']:
+    #        eMCP = flagdata_tfcrop(eMCP, defaults='bandpass')
+
+    # Apply calibration if requested:
+    if eMCP['input_steps']['gaincal_final'] == 2:
+        run_applycal(eMCP, caltables, step = 'gaincal_final')
+    save_obj(caltables, caltables['calib_dir']+'caltables.pkl')
+    logger.info('End gaincal_final')
+    msg = 'p_solint={0}, ap_solint={1}'.format(gain_final['p_solint'],
+                                               gain_final['ap_solint'])
+    eMCP = add_step_time('gaincal_final', eMCP, msg, t0)
+    return eMCP, caltables
+
+
+def gaincal_narrow(eMCP, caltables, doplots=True):
+    gain_final = eMCP['defaults']['gaincal_final']
+    msinfo = eMCP['msinfo']
+    msfile = eMCP['msinfo']['msfile']
+    msfile_sp = eMCP['msinfo']['msfile_sp']
+    spwmap_sp = eMCP['msinfo']['spwmap_sp']
+
+    # 1 Phase offset wide-narrow
+    caltable_name = gain_final['p_offset_tablename']
+    caltables[caltable_name] = {}
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['previous_cal'] = gain_final['p_offset_prev_cal']
+    caltables[caltable_name]['gaintype'] = 'G'
+    caltables[caltable_name]['calmode'] = 'p'
+    caltables[caltable_name]['field'] = msinfo['sources']['ptcal']
+    caltables[caltable_name]['solint'] = gain_final['p_offset_solint']
+    caltables[caltable_name]['combine'] = gain_final['p_offset_combine']
+    caltables[caltable_name]['spw'] = make_spw(msinfo, gain_final['p_offset_spw'])
+    caltables[caltable_name]['spwmap'] = make_spwmap(caltables,gain_final['p_offset_combine'])
+    caltables[caltable_name]['interp'] = gain_final['p_offset_interp']
+    caltables[caltable_name]['minblperant'] = gain_final['p_offset_minblperant']
+    caltables[caltable_name]['minsnr'] = gain_final['p_offset_minsnr']
+    caltable = caltables[caltable_name]['table']
+    # Calibration
+    run_gaincal_narrow(msfile_sp, caltables, caltable_name, spwmap_sp)
+    caltables[caltable_name]['gainfield'] = get_unique_field(caltables[caltable_name]['table'])
+    if caltables['Lo_dropout_scans'] != '' and caltables['Lo_dropout_scans'] != 'none':
+        remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
+    # Plots
+    if doplots:
+        caltableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
+        emplt.plot_caltable(caltables[caltable_name]['table'], caltableplot_phs, gaintype='G', calmode='p')
+#'#        emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot_phs, title='Phase',
+#'#                      xaxis='spw', yaxis='phase', ymin=-180, ymax=180,
+#'#                      coloraxis='corr', symbolsize=10)
+        logger.info('{0} phase plot: {1}'.format(caltable_name,caltableplot_phs))
+
+    # 2 Narrow bandpass final calibration
+    msfile = eMCP['msinfo']['msfile']
+    msinfo = eMCP['msinfo']
+    # Bandpass calibration
+    caltable_name = gain_final['narrow_bp_tablename']
+    caltables[caltable_name] = {}
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['previous_cal'] = gain_final['narrow_bp_prev_cal']
+    caltables[caltable_name]['field'] = msinfo['sources']['ptcal']
+    caltables[caltable_name]['solint'] = gain_final['narrow_bp_solint']
+    caltables[caltable_name]['spw'] = make_spw(msinfo, gain_final['narrow_bp_spw'])
+    caltables[caltable_name]['combine'] = gain_final['narrow_bp_combine']
+    caltables[caltable_name]['uvrange'] = gain_final['narrow_bp_uvrange']
+    caltables[caltable_name]['fillgaps'] = gain_final['narrow_bp_fillgaps']
+    caltables[caltable_name]['solnorm'] = gain_final['narrow_bp_solnorm']
+    caltables[caltable_name]['spwmap'] = make_spwmap(caltables,gain_final['narrow_bp_combine'])
+    caltables[caltable_name]['interp'] = gain_final['narrow_bp_interp']
+    bptable = caltables[caltable_name]['table']
+    # Calibration
+    run_bandpass_narrow(msfile_sp, caltables, caltable_name, spwmap_sp)
+    caltables[caltable_name]['gainfield'] = get_unique_field(caltables[caltable_name]['table'])
+    logger.info('Bandpass_final BP {0}: {1}'.format(caltable_name,bptable))
+    # Plots
+    bptableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
+    bptableplot_amp = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_amp.png'
+    emplt.plot_caltable(caltables[caltable_name]['table'], bptableplot_phs, gaintype='B', calmode='p')
+#'#    emplt.plot_caltable(msinfo, caltables[caltable_name], bptableplot_phs, title='Bandpass phase',
+#'#                  xaxis='freq', yaxis='phase', ymin=-180, ymax=180, coloraxis='corr', symbolsize=5)
+    logger.info('Bandpass_final BP phase plot: {0}'.format(bptableplot_phs))
+    emplt.plot_caltable(caltables[caltable_name]['table'], bptableplot_amp, gaintype='B', calmode='ap')
+#'#    emplt.plot_caltable(msinfo, caltables[caltable_name], bptableplot_amp, title='Bandpass amp',
+#'#                  xaxis='freq', yaxis='amp', ymin=-1, ymax=-1, coloraxis='corr', symbolsize=5)
+    logger.info('Bandpass_final BP amplitude plot: {0}'.format(bptableplot_amp))
+    # Apply calibration if requested:
+    if eMCP['input_steps']['bandpass_final'] == 2:
+        run_applycal(eMCP, caltables, step = 'bandpass_final')
+    logger.info('End bandpass_final')
+    return eMCP, caltables
+
+
+
+def gaincal_final_cals(eMCP, caltables):
+    gain_final = eMCP['defaults']['gaincal_final']
+    calsources = eMCP['msinfo']['sources']['calsources']
+    msfile = eMCP['msinfo']['msfile']
+    msinfo = eMCP['msinfo']
+    # 1 Phase calibration
+    caltable_name = gain_final['p_tablename']
+    caltables[caltable_name] = {}
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['previous_cal'] = gain_final['p_prev_cal']
+    caltables[caltable_name]['gaintype'] = 'G'
+    caltables[caltable_name]['calmode'] = 'p'
+    caltables[caltable_name]['field'] = ','.join(np.unique(calsources.split(',')))
+    caltables[caltable_name]['solint'] = gain_final['p_solint']
+    caltables[caltable_name]['combine'] = gain_final['p_combine']
+    caltables[caltable_name]['spw'] = make_spw(msinfo, gain_final['p_spw'])
+    caltables[caltable_name]['gainfield'] = caltables[caltable_name]['field']
+    caltables[caltable_name]['spwmap'] = make_spwmap(caltables,gain_final['p_combine'])
+    caltables[caltable_name]['interp'] = gain_final['p_interp']
+    caltables[caltable_name]['minblperant'] = gain_final['p_minblperant']
+    caltables[caltable_name]['minsnr'] = gain_final['p_minsnr']
+    caltable = caltables[caltable_name]['table']
+    # Calibration
+    run_gaincal(msfile, caltables, caltable_name)
+    if caltables['Lo_dropout_scans'] != '' and caltables['Lo_dropout_scans'] != 'none':
+        remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
+    # Plots
+    caltableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
+    emplt.plot_caltable(caltables[caltable_name]['table'], caltableplot_phs, gaintype='G', calmode='p')
+#'#    emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot_phs, title='Phase',
+#'#                  xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=3)
+    logger.info('{0} phase plot: {1}'.format(caltable_name,caltableplot_phs))
+
+    # 1 Amplitude calibration
+    caltable_name = gain_final['ap_tablename']
+    caltables[caltable_name] = {}
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['previous_cal'] = gain_final['ap_prev_cal']
+    caltables[caltable_name]['gaintype'] = 'G'
+    caltables[caltable_name]['calmode'] = 'ap'
+    caltables[caltable_name]['field'] = select_calibrator(gain_final['ap_calibrator'], eMCP)
+    caltables[caltable_name]['solint'] = gain_final['ap_solint']
+    caltables[caltable_name]['combine'] = gain_final['ap_combine']
+    caltables[caltable_name]['spw'] = make_spw(msinfo, gain_final['ap_spw'])
+    caltables[caltable_name]['gainfield'] = caltables[caltable_name]['field']
+    caltables[caltable_name]['spwmap'] = make_spwmap(caltables,gain_final['ap_combine'])
+    caltables[caltable_name]['interp'] = gain_final['ap_interp']
+    caltables[caltable_name]['minblperant'] = gain_final['ap_minblperant']
+    caltables[caltable_name]['minsnr'] = gain_final['ap_minsnr']
+    caltable = caltables[caltable_name]['table']
+    # Calibration
+    run_gaincal(msfile, caltables, caltable_name)
+    if caltables['Lo_dropout_scans'] != '' and caltables['Lo_dropout_scans'] != 'none':
+        remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
+#    logger.info('Gain amplitude calibration {0}: {1}'.format(caltable_name,caltable))
+#    smooth_caltable(msfile=msfile, plotdir=plotdir, tablein=caltable2, caltable='', field='', smoothtype='median', smoothtime=60*20.)
+    # Plots
+    caltableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
+    emplt.plot_caltable(caltables[caltable_name]['table'], caltableplot_phs, gaintype='G', calmode='p')
+#'#    emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot_phs, title='Phase',
+#'#                  xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=5)
+    logger.info('{0} phase plot: {1}'.format(caltable_name,caltableplot_phs))
+    caltableplot_amp = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_amp.png'
+    emplt.plot_caltable(caltables[caltable_name]['table'], caltableplot_amp, gaintype='G', calmode='ap')
+#'#    emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot_amp, title='Amp',
+#'#                  xaxis='time', yaxis='amp', ymin=-1, ymax=-1, coloraxis='spw', symbolsize=5)
+    logger.info('{0} amp plot: {1}'.format(caltable_name,caltableplot_amp))
+    return eMCP, caltables
+
+def gaincal_final_scan(eMCP, caltables):
+    gain_final = eMCP['defaults']['gaincal_final']
+    phscals = eMCP['msinfo']['sources']['phscals']
+    msfile = eMCP['msinfo']['msfile']
+    msinfo = eMCP['msinfo']
+
+    # 1 Phase calibration on phasecal: Scan-averaged phase calibration
+    caltable_name = gain_final['p_scan_tablename']
+    caltables[caltable_name] = {}
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['previous_cal'] = gain_final['p_scan_prev_cal']
+    caltables[caltable_name]['gaintype'] = 'G'
+    caltables[caltable_name]['calmode'] = 'p'
+    caltables[caltable_name]['field'] = ','.join(np.unique(phscals.split(',')))
+    caltables[caltable_name]['solint'] = gain_final['p_scan_solint']
+    caltables[caltable_name]['combine'] = gain_final['p_scan_combine']
+    caltables[caltable_name]['spw'] = make_spw(msinfo, gain_final['p_scan_spw'])
+    caltables[caltable_name]['gainfield'] = caltables[caltable_name]['field']
+    caltables[caltable_name]['spwmap'] = make_spwmap(caltables,gain_final['p_scan_combine'])
+    caltables[caltable_name]['interp'] = gain_final['p_scan_interp']
+    caltables[caltable_name]['minblperant'] = gain_final['p_scan_minblperant']
+    caltables[caltable_name]['minsnr'] = gain_final['p_scan_minsnr']
+    caltable = caltables[caltable_name]['table']
+    # Calibration
+    run_gaincal(msfile, caltables, caltable_name)
+    if caltables['Lo_dropout_scans'] != '' and caltables['Lo_dropout_scans'] != 'none':
+        remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
+#    logger.info('{0}: {1}'.format(caltable_name,caltable))
+#    smooth_caltable(msfile=msfile, plotdir=plotdir, tablein=caltable2, caltable='', field='', smoothtype='median', smoothtime=60*20.)
+    # Plots
+    caltableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
+    emplt.plot_caltable(caltables[caltable_name]['table'], caltableplot_phs, gaintype='G', calmode='p')
+#'#    emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot_phs, title='Phase',
+#'#                  xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=5)
+
+    # 2 Amplitude calibration on phasecal: scan-averaged amplitude solutions
+    caltable_name = gain_final['ap_scan_tablename']
+    caltables[caltable_name] = {}
+    caltables[caltable_name]['name'] = caltable_name
+    caltables[caltable_name]['table'] = caltables['calib_dir']+caltables['inbase']+'_'+caltable_name
+    caltables[caltable_name]['previous_cal'] = gain_final['ap_scan_prev_cal']
+    caltables[caltable_name]['gaintype'] = 'G'
+    caltables[caltable_name]['calmode'] = 'ap'
+    caltables[caltable_name]['field'] = select_calibrator(gain_final['ap_scan_calibrator'], eMCP, add_main=False)
+    caltables[caltable_name]['solint'] = gain_final['ap_scan_solint']
+    caltables[caltable_name]['combine'] = gain_final['ap_scan_combine']
+    caltables[caltable_name]['spw'] = make_spw(msinfo, gain_final['ap_scan_spw'])
+    caltables[caltable_name]['gainfield'] = msinfo['sources']['phscals']
+    caltables[caltable_name]['spwmap'] = make_spwmap(caltables,gain_final['ap_scan_combine'])
+    caltables[caltable_name]['interp'] = gain_final['ap_scan_interp']
+    caltables[caltable_name]['minblperant'] = gain_final['ap_scan_minblperant']
+    caltables[caltable_name]['minsnr'] = gain_final['ap_scan_minsnr']
+    caltable = caltables[caltable_name]['table']
+    # Calibration
+    run_gaincal(msfile, caltables, caltable_name)
+    if caltables['Lo_dropout_scans'] != '' and caltables['Lo_dropout_scans'] != 'none':
+        remove_missing_scans(caltable, caltables['Lo_dropout_scans'])
+#    logger.info('{0}: {1}'.format(caltable_name,caltable))
+#    smooth_caltable(msfile=msfile, plotdir=plotdir, tablein=caltable2, caltable='', field='', smoothtype='median', smoothtime=60*20.)
+    # Plots
+    caltableplot_phs = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_phs.png'
+    emplt.plot_caltable(caltables[caltable_name]['table'], caltableplot_phs, gaintype='G', calmode='p')
+#'#    emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot_phs, title='Phase',
+#'#                  xaxis='time', yaxis='phase', ymin=-180, ymax=180, coloraxis='spw', symbolsize=5)
+    logger.info('{0} phase plot: {1}'.format(caltable_name,caltableplot_phs))
+    caltableplot_amp = caltables['plots_dir']+'caltables/'+caltables['inbase']+'_'+caltable_name+'_amp.png'
+    emplt.plot_caltable(caltables[caltable_name]['table'], caltableplot_amp, gaintype='G', calmode='ap')
+#'#    emplt.plot_caltable(msinfo, caltables[caltable_name], caltableplot_amp, title='Amp',
+#'#                  xaxis='time', yaxis='amp', ymin=-1, ymax=-1, coloraxis='spw', symbolsize=5)
+    logger.info('{0} amp plot: {1}'.format(caltable_name,caltableplot_amp))
+    return eMCP, caltables
+
+def applycal_all(eMCP, caltables):
+    #logger.info('Start applycal_all')
+    t0 = datetime.datetime.utcnow()
+    run_applycal(eMCP, caltables, step='applycal_all', dotarget=True)
+    if eMCP['is_mixed_mode']:
+        spwmap_sp = eMCP['msinfo']['spwmap_sp']
+        run_applycal_narrow(eMCP, caltables, step='applycal_all', spwmap_sp=spwmap_sp, dotarget=True)
+    #logger.info('End applycal_all')
+    flag_statistics(eMCP, step='applycal_all')
+    # Run statwt if requested
+    if eMCP['defaults']['applycal_all']['run_statwt']:
+        timebin = eMCP['defaults']['applycal_all']['statwt_timebin']
+#'#        casa_version = casalith.version()
+#'#        if int(casa_version[0]) == 5:
+#'#            if int(casa_version[1]) >= 4:
+#'#                timebin = eMCP['defaults']['applycal_all']['statwt_timebin']
+#'#        elif int(casa_version[0]) >=6:
+#'#            timebin = eMCP['defaults']['applycal_all']['statwt_timebin']
+#'#        else:
+#'#            timebin = ''
+        msfile = eMCP['msinfo']['msfile']
+        logger.info('Running statwt on {}'.format(msfile))
+        logger.info('timebin: {}'.format(timebin))
+        commands = {}
+        commands['statwt'] = {
+                'vis' :  msfile,
+                'timebin': timebin}
+        run_casa_command(commands, 'statwt')
+#'#        casatasks.statwt(vis=msfile, timebin=timebin)
+        find_casa_problems()
+        if eMCP['is_mixed_mode']:
+            msfile_sp = eMCP['msinfo']['msfile_sp']
+            logger.info('Running statwt on narrow data {}'.format(msfile_sp))
+            commands = {}
+            commands['statwt'] = {
+                    'vis' :  msfile_sp,
+                    'timebin': timebin}
+            run_casa_command(commands, 'statwt')
+#'#            casatasks.statwt(vis=msfile_sp, timebin=timebin)
+            find_casa_problems()
+    else:
+        logger.info('statwt not selected')
+    msg = ''
+    eMCP = add_step_time('applycal_all', eMCP, msg, t0)
+    return eMCP
+
+
+#def compile_statistics(msfile, tablename=''):
+#    logger.info('Start compile_stats')
+#    # Num of spw and baselines
+#    num_spw = len(casatasks.vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
+#    baselines = get_baselines(msfile)
+#    # Date and time of observation
+#    ms.open(msfile)
+#    axis_info = ms.getdata(['axis_info'],ifraxis=True)
+#    ms.close()
+#    vis_field = casatasks.vishead(msfile,mode='list',listitems='field')['field'][0][0] # Only one expected
+#    t_mjd, t = get_dates(axis_info)
+#    freq_ini = np.min(axis_info['axis_info']['freq_axis']['chan_freq'])/1e9
+#    freq_end = np.max(axis_info['axis_info']['freq_axis']['chan_freq'])/1e9
+#    chan_res = np.mean(axis_info['axis_info']['freq_axis']['resolution'])/1e9
+#    band = check_band(msfile)
+#    data_stats = []
+#    for bsl in baselines:
+#        print('Processing baseline: {}'.format(bsl))
+#        for spw in range(num_spw):
+#            for corr in ['RR', 'LL']:
+#                d = visstat(msfile, antenna=bsl, axis='amplitude',
+#                            spw=str(spw)+':100~400', correlation=corr)
+#                data_stats.append([t[0],
+#                                   t[-1],
+#                                   np.mean(t_mjd),
+#                                   band,
+#                                   freq_ini,
+#                                   freq_end,
+#                                   chan_res,
+#                                   vis_field,
+#                                   bsl,
+#                                   spw,
+#                                   corr,
+#                                   d['DATA']['mean'],
+#                                   d['DATA']['npts'],
+#                                   d['DATA']['median'],
+#                                   d['DATA']['stddev']])
+#                print t[0], vis_field, bsl, spw, corr, d['DATA']['median'], d['DATA']['stddev']
+#    data_stats = np.asarray(data_stats)
+#    ini_date = str(t[0]).replace('-', '').replace(':','').replace(' ','_').split('.')[0]
+#    outname = '{0}_{1}_{2}.npy'.format(ini_date, vis_field, band)
+#    np.save('data_'+outname, data_stats)
+#    logger.info('Data statistics saved to: {0}'.format(outname))
+#    if tablename != '':
+#       compile_delays(tablename, outname)
+#    logger.info('End compile_stats')
+#
+
+def compile_delays(tablename, outname):
+    tb.open(tablename+'/ANTENNA')
+    antennas = tb.getcol('NAME')
+    tb.close()
+    tb.open(tablename)
+    a = tb.getcol('ANTENNA1')
+    times  = tb.getcol('TIME')
+    delays = tb.getcol('FPARAM')
+    tb.close()
+    delay_stats = []
+    for i in range(len(times)):
+        delay_stats.append([antennas[a[i]], 'RR', delays[0,0,i]])
+        delay_stats.append([antennas[a[i]], 'LL', delays[1,0,i]])
+    delay_stats = np.asarray(delay_stats)
+    np.save('delay_'+outname, delay_stats)
+    logger.info('Delay statistics saved to: {0}'.format(outname))
+
+
+#def monitoring(msfile, msinfo, caltables, previous_cal):
+#    # This is intented to run on a single-source file for daily monitoring on
+#    # unaveraged data
+#    logger.info('Starting monitoring')
+#    band = check_band(msfile)
+#    if band == 'L':
+#        hanning(inputvis=msfile,deloriginal=True)
+#
+#    flagdata1_apriori(msfile=msfile, msinfo=msinfo, do_quack=True)
+#
+#    flagdata_tfcrop_bright(msfile=msfile, sources=msinfo['sources'])
+#    caltables = solve_delays(msfile=msfile, caltables=caltables,
+#                   previous_cal=[], calsources=msinfo['sources']['calsources'],
+#                             solint='60s')
+#    run_applycal(msfile=msfile, caltables=caltables, sources=msinfo['sources'],
+#                    previous_cal=['delay.K1'],
+#                    previous_cal_targets=['delay.K1'])
+#    compile_statistics(msfile, tablename=caltables['delay.K1']['table'])
+#    return caltables
+
+
+def calc_eMfactor(msfile, field='1331+305'):
+    logger.info('Computing eMfactor')
+    if field not in ['1331+305', '1331+3030', 'J1331+305', 'J1331+3030']:
+        logger.warning('Scaling flux assuming 3C286 is the flux calibrator. Your flux calibrator is: {}. Scaling could wrong.'.format(field))
+        logger.info('Assuming eMfactor = 1')
+        eMfactor = 1.0
+        return eMfactor
+    names = np.array(emutils.read_keyword(msfile, 'NAME', subtable='FIELD'))
+#'#    tb.open(msfile+'/FIELD')
+#'#    names = tb.getcol('NAME')
+#'#    tb.close()
+    field_id = np.argwhere(names == field)[0][0]
+
+    anten = np.array(emutils.read_keyword(msfile, 'NAME', subtable='ANTENNA'))
+#'#    tb.open(msfile+'/ANTENNA')
+#'#    anten = tb.getcol('NAME')
+#'#    tb.close()
+    try:
+        Lo_id = np.argwhere(anten=='Lo')[0][0]
+    except:
+        Lo_id = -1
+
+    uvw = emutils.read_keyword(msfile, 'UVW').T
+    a1 = emutils.read_keyword(msfile, 'ANTENNA1')
+    a2 = emutils.read_keyword(msfile, 'ANTENNA2')
+    field = emutils.read_keyword(msfile, 'FIELD_ID')
+#'#    tb.open(msfile)
+#'#    uvw = tb.getcol('UVW')
+#'#    a1 = tb.getcol('ANTENNA1')
+#'#    a2 = tb.getcol('ANTENNA2')
+#'#    field = tb.getcol('FIELD_ID')
+#'#    tb.close()
+
+    uvdist = np.sqrt(uvw[0]**2+uvw[1]**2)
+    mask = (uvdist==0) + (field!=field_id) + (anten[a1]=='Lo')
+    uvdist_nonzero = np.ma.array(uvdist, mask=mask)
+
+    # To exclude completely flagged data:
+    # I comment this out because for some data sets tb.getcol returns a flatten
+    # array without shape
+    #flags = tb.getcol('FLAG')
+    #allflag = np.sum(flags, axis=(0,1))
+    #flags_entries = flags.shape[0]*flags.shape[1]
+    #mask = (uvdist==0) | (allflag==flags_entries) | field!=field_id
+
+    n = np.argmin(uvdist_nonzero)
+
+    chan_freq = emutils.read_keyword(msfile, 'CHAN_FREQ', subtable='SPECTRAL_WINDOW').T
+#'#    tb.open(msfile+'/SPECTRAL_WINDOW')
+#'#    chan_freq = tb.getcol('CHAN_FREQ')
+#'#    tb.close()
+
+    shortest_baseline = uvdist_nonzero[n] # Shortest baseline in m
+    center_freq = np.mean(chan_freq)/1e6 # Center frequency in MHz
+    dfluxpy_output = dfluxpy(center_freq, shortest_baseline)
+    eMfactor = dfluxpy_output[1]/dfluxpy_output[0]
+    logger.info('Shortest projected baseline: {0} [{1}] - {2} [{3}] {4:10.2f}m'.format(
+        anten[a1[n]], a1[n], anten[a2[n]], a2[n], uvdist_nonzero[n]))
+    logger.info('Central frequency of the MS: {0} MHz'.format(center_freq))
+    logger.info('eMfactor: {0:6.4f}'.format(eMfactor))
+    return eMfactor
+
+
+def dfluxpy(freq,baseline):
+    import math
+    #######
+    # Python version of 3C286 flux calculation program (original author unknown)
+    # ..............................
+    # Author DMF       20/10/2011
+    # ..............................
+    #
+    # Update to use Perley & Butler 2012 coefficients
+    # 10/04/2013
+    # DMF
+    ########
+
+    # Reworked to use the 1999 VLA flux formula, and a 2nd formula to give a continuous estimate of the resolved fraction, by Ian Stewart, JBO, 8 Aug 2007.
+    # Minor changes by amsr, 8 Aug 2007
+
+    lowest_freq = 300.0;
+    highest_freq = 50000.0;
+    if (freq < lowest_freq or freq > highest_freq):
+        print("Frequency must be between $lowest_freq and $highest_freq MHz. \n")
+
+    # Perley & Butler 2012 values
+    A = 1.2515
+    B = -0.4605
+    C = -0.1715
+    D = 0.0336
+
+    log10f = (math.log(freq)/2.3025851) - 3.0; # Why the -3? Because freq has to be GHz for the formula to work.
+    log_flux = A + B*log10f + C*log10f*log10f + D*log10f*log10f*log10f
+    vlaflux = math.pow(10.0,log_flux)
+
+    # The VLA flux must now be corrected to account for the higher resolving power of merlin. The formula used was obtained with the help of Peter Thomasson. If we assume that 3C286 is represented by a gaussian of angular size theta_s, and represent the resolving power of the given baseline as a function of frequency f and antenna separation L by theta_b(f,L), then the reduction in central flux density A(0) due to the finite theta_s is given by
+    #
+    #                               1
+    #                -----------------------------------
+    #     A'(0)       2 pi (theta_b(f,L)^2 + theta_s^2)
+    #    ------- = --------------------------------------- ,
+    #     A(0)                      1
+    #                       ---------------------
+    #                        2 pi theta_b(f,L)^2
+    #
+    #                   1
+    #            = -------------- ,
+    #               1 + rho(f,L)
+    #
+    # where the resolved fraction rho(f,L) is given by
+    #
+    #                  theta_s^2
+    #    rho(f,L) = ---------------- .
+    #                theta_b(f,L)^2
+    #
+    # Use of theta_b(f,L) = k/(fL) allows this to be written
+    #
+    #               (   f*L     )^2
+    #    rho(f,L) = (-----------)   * rho_ref .
+    #               (f_ref*L_ref)
+    #
+    # The reference value of rho is fixed at 0.04 for the MK-TA baseline at 5 GHz (Peter Thomasson).
+
+    ref_bl_length = 11236.79 # MK-TA separation in metres.
+    ref_freq = 5000.0
+    ref_rho = 0.04
+    thisbl = "this baseline (Mk-Ta)"
+
+    bl_length = baseline
+
+    frac = (freq / ref_freq) * (bl_length / ref_bl_length)
+    rho = frac * frac * ref_rho
+    merlinflux = vlaflux / (1.0 + rho)
+
+    # Another useful quantity is the resolved percentage:
+    resolved_percent = 100.0 * rho / (1.0 + rho)
+    caution_res_pc = 10.0
+
+    return vlaflux, merlinflux, resolved_percent, caution_res_pc, thisbl
+
+
+def plot_image(eMCP, imagename, center, ext='.tt0', dozoom=False):
+    imstat_residual = casatasks.imstat(imagename+'.residual'+ext)
+    find_casa_problems()
+    imstat_image = casatasks.imstat(imagename+'.image'+ext)
+    find_casa_problems()
+    noise = imstat_residual['rms'][0]
+    peak = imstat_image['max'][0]
+    scaling =  np.min([0, -np.log(1.0*peak/noise)+4])
+    #scaling = np.min([0.0, -int(np.log(1.0*peak/noise)+1)])
+    imgpar = eMCP['defaults']['first_images']
+    level0 = imgpar['level0']
+    levels = level0*np.sqrt(3**np.arange(20))
+    zoom_range = 150
+    for extension in ['image'+ext]:
+        filename = '{0}.{1}'.format(imagename, extension)
+        logger.info('Creating png for image: {0}'.format(filename))
+        logger.info('Peak: {0:5.2e} mJy, noise: {1:5.2e} mJy, ' \
+                    'scaling: {2:3.1f}'.format(peak*1000.,
+                                               noise*1000.,
+                                               scaling))
+        imview(raster={'file':filename,
+                       'scaling': float(scaling),
+                       'colorwedge':True},
+               contour = {'file':filename,
+                   'levels':list(levels),
+                   'base':0,
+                   'unit':float(noise)*2.},
+               out = filename+'.png')
+        find_casa_problems()
+        if dozoom:
+            imview(raster={'file':filename,
+                           'scaling': float(scaling),
+                           'colorwedge':True},
+                   contour = {'file':filename,
+                              'levels':list(levels),
+                              'base':0,
+                              'unit':float(noise)*2.},
+                   zoom = {'blc':[center-zoom_range,center-zoom_range],'trc':[center+zoom_range, center+zoom_range]},
+                   out = filename+'_zoom.png')
+            find_casa_problems()
+    return peak, noise, scaling
+
+def plot_image_add(imagename, center, zoom_range, ext='.tt0', dozoom=False):
+    filename = imagename
+    imview(raster={'file':filename+'.residual'+ext,
+                   'colorwedge':True},
+           contour = {'file':filename+'.mask',
+               'levels':[1]},
+           out = filename+'.residual'+ext+'.png')
+    find_casa_problems()
+    if dozoom:
+        imview(raster={'file':filename+'.residual'+ext,
+               'colorwedge':True},
+        contour = {'file':filename+'.mask',
+                   'levels':[1]},
+        zoom = {'blc':[center-zoom_range,center-zoom_range],'trc':[center+zoom_range, center+zoom_range]},
+        out = filename+'.residual'+ext+'_zoom.png')
+        find_casa_problems()
+    return
+
+def check_mpicasa():
+    casa_log.post('Checking MPICASA')
+    with open(casa_log.logfile(), 'r') as f:
+        l = f.readlines()[-1]
+    if 'MPIClient' in l:
+        is_mpicasa = True
+    else:
+        is_mpicasa = False
+    return is_mpicasa
+
+def single_tclean(eMCP, s, num):
+    msinfo = eMCP['msinfo']
+    logger.info('Producing tclean images for {0}, field: {1}'.format(msinfo['msfile'], s))
+    emutils.makedir(images_dir+'{}'.format(s))
+    imagename = images_dir+'{0}/{1}_{0}_img{2:02d}'.format(s, msinfo['msfilename'], num)
+    prev_images = glob.glob(imagename+'*')
+    for prev_image in prev_images:
+        emutils.rmdir(prev_image)
+    cellsize = {'C':'0.008arcsec',
+                'L':'0.02arcsec',
+                'K':'0.002arcsec'
+               }
+    imgpar = eMCP['defaults']['first_images']
+    imsize = imgpar['imsize']
+    cell = cellsize[msinfo['band']]
+    niter = imgpar['niter']
+    gain = imgpar['gain']
+    uvtaper=imgpar['uvtaper']
+    uvrange=imgpar['uvrange']
+    restoringbeam=imgpar['restoringbeam']
+    deconvolver = imgpar['deconvolver']
+    nterms = imgpar['nterms']
+    scales = imgpar['scales']
+    weighting = imgpar['weighting']
+    robust = imgpar['robust']
+    usemask = 'auto-multithresh'
+    nsigma = imgpar['nsigma']
+    sidelobethreshold = imgpar['sidelobethreshold']
+    noisethreshold = imgpar['noisethreshold']
+    lownoisethreshold = imgpar['lownoisethreshold']
+    minbeamfrac = imgpar['minbeamfrac']
+    growiterations = imgpar['growiterations']
+    parallel = imgpar['parallel']
+    if parallel:
+        is_mpicasa = check_mpicasa()
+        if not is_mpicasa:
+            parallel = False
+            logger.warning('Changed "parallel" = False because '
+                           'this is not an MPICASA run')
+    logger.info('imsize = {0}, cell = {1}, niter = {2}'.format(
+                imsize, cell, niter))
+    logger.info('weighting = {0}, robust = {1}'.format(
+                weighting, robust))
+    logger.info('usemask = {0}, growiterations = {1}'.format(usemask,
+                                                             growiterations))
+    casatasks.tclean(vis=msinfo['msfile'], field=s, datacolumn='corrected',
+           imagename=imagename,
+           imsize=imsize, cell=cell, deconvolver=deconvolver,
+           gain=gain,
+           nterms=nterms,
+           scales=scales,
+           uvtaper=uvtaper, uvrange=uvrange,
+           restoringbeam=restoringbeam,
+           weighting=weighting,
+           robust=robust, niter=niter, usemask=usemask,
+           nsigma=nsigma,
+           sidelobethreshold=sidelobethreshold,
+           noisethreshold=noisethreshold,
+           lownoisethreshold=lownoisethreshold,
+           minbeamfrac=minbeamfrac,
+           growiterations=growiterations,
+           savemodel='none', parallel=parallel)
+    find_casa_problems()
+    if nterms > 1:
+        ext = '.tt0'
+    else:
+        ext = ''
+    peak, noise, scaling = plot_image(eMCP, imagename, center=int(imsize/2.0), ext=ext, dozoom=True)
+    zoom_range = eMCP['defaults']['first_images']['zoom_range_pix']
+    plot_image_add(imagename, center=int(imsize/2.0), zoom_range=zoom_range, ext=ext, dozoom=True)
+    eMCP['img_stats'][s] = [peak, noise, scaling]
+    return eMCP
+
+
+def run_first_images(eMCP):
+    msinfo = eMCP['msinfo']
+    logger.info(line0)
+    logger.info('Start run_first_images')
+    t0 = datetime.datetime.utcnow()
+    num = 0
+    eMCP['img_stats'] = {}
+    for s in msinfo['sources']['targets_phscals'].split(','):
+        eMCP = single_tclean(eMCP, s, num)
+    logger.info('End first_images')
+    msg = ''
+    eMCP = add_step_time('first_images', eMCP, msg, t0)
+    return eMCP
+
+def run_split_fields(eMCP):
+    msinfo = eMCP['msinfo']
+    msfile = msinfo['msfile']
+    logger.info(line0)
+    logger.info('Start split_fields')
+    t0 = datetime.datetime.utcnow()
+    split_fields_defaults = eMCP['defaults']['split_fields']
+    fields_to_split = split_fields_defaults['fields']
+    datacolumn = split_fields_defaults['datacolumn']
+    createmms = split_fields_defaults['createmms']
+    output_dir = split_fields_defaults['output_dir']
+    emutils.makedir(output_dir)
+    if fields_to_split in msinfo['sources'].keys():
+        fields_str = msinfo['sources'][fields_to_split]
+    elif fields_to_split == '':
+        logger.critical('No fields selected to split')
+        exit_pipeline(eMCP)
+    else:
+        fields_str = fields_to_split
+    fields = sorted(fields_str.split(','))
+    logger.info('Selected fields: {}'.format(fields))
+    for i, field in enumerate(fields):
+        logger.info('Processing field: {}'.format(field))
+        chanbin = split_fields_defaults['chanbin']
+        timebin = split_fields_defaults['timebin']
+        chanaverage = split_fields_defaults['chanaverage']
+        timeaverage = split_fields_defaults['timeaverage']
+        # If a list was provided, use corresponding value
+        if type(timebin) is list:
+            logger.info('timebin is a list: {}'.format(timebin))
+            timebin = timebin[i]
+            timeaverage = timeaverage[i]
+        if type(chanbin) is list:
+            logger.info('chanbin is a list: {}'.format(chanbin))
+            chanbin = chanbin[i]
+            chanaverage = chanaverage[i]
+        # Don't use channel average if it only 1 channel selected
+        if chanaverage == True and chanbin == 1:
+            chanaverage = False
+        # Define output name
+        msfile_name = '{0}_{1}.ms'.format(msinfo['run'], field)
+        outputmsfile = os.path.join(output_dir, msfile_name)
+        emutils.rmdir(outputmsfile)
+        emutils.rmdir(outputmsfile+'.flagversions')
+        logger.info('Input MS: {0}'.format(msfile))
+        logger.info('Output MS: {0}'.format(outputmsfile))
+        if chanaverage:
+            logger.info('chanbin={0}'.format(chanbin))
+        if timeaverage:
+            logger.info('timebin={0}'.format(timebin))
+        logger.info('Datacolumn: {0}'.format(datacolumn))
+        if createmms:
+            logger.info('Create MMS: {0}'.format(createmms))
+        casatasks.mstransform(vis=msfile, outputvis=outputmsfile, field=field,
+                    timeaverage=timeaverage, chanaverage=chanaverage,
+                    timebin=str(timebin), chanbin=chanbin,
+                    datacolumn=datacolumn, keepflags=True)
+        find_casa_problems()
+        flagtable_info = 'after_split'
+        current_time = datetime.datetime.utcnow()
+        casatasks.flagmanager(vis=outputmsfile, mode='save', versionname=flagtable_info,
+                comment='After splitting the source at {0}'.format(str(current_time)))
+        find_casa_problems()
+        if not os.path.exists(outputmsfile):
+            logger.critical('Could not split field')
+            exit_pipeline(eMCP)
+    logger.info('End split_fields')
+    msg = ''
+    eMCP = add_step_time('split_fields', eMCP, msg, t0)
+    return eMCP
+
+
+
+
+def shift_field_position(eMCP, msfile, shift):
+    field = shift['field']
+    new_pos = shift['new_position']
+    position_name = shift['new_field_name']
+    logger.info('Field {0} will be shifted to {1} on {2}'.format(field, position_name, new_pos))
+    msfile_split = '{0}_{1}'.format(msfile, position_name)
+    mssources = casatasks.vishead(msfile,mode='list',listitems='field')['field'][0]
+    if field not in mssources:
+        logger.critical('Requested field to shift: {} not in MS! Closing '.format(field))
+        exit_pipeline(eMCP)
+    emutils.rmdir(msfile_split)
+    # Split
+    logger.info('Splitting field: {}'.format(field))
+    casatasks.mstransform(msfile, outputvis=msfile_split, field=field, datacolumn='data')
+    find_casa_problems()
+    #FIXVIS
+    logger.info('Changing phase center to: {}'.format(new_pos))
+    casatasks.fixvis(vis=msfile_split, field=field, outputvis='', phasecenter=new_pos, datacolumn='data')
+    find_casa_problems()
+    # Change field name
+    tb.open(msfile_split+'/FIELD',nomodify=False)
+    st=tb.selectrows(0)
+    st.putcol('NAME', '{0}'.format(position_name))
+    st.done()
+    tb.close()
+    # Average individual field
+    chanbin = eMCP['defaults']['average']['chanbin']
+    timebin = eMCP['defaults']['average']['timebin']
+    if timebin == '1s':
+        timeaverage = False
+    else:
+        timeaverage = True
+    if chanbin == 1:
+        chanaverage = False
+    else:
+        chanaverage = True
+    datacolumn = eMCP['defaults']['average']['datacolumn']
+    scan = eMCP['defaults']['average']['scan']
+    antenna = eMCP['defaults']['average']['antenna']
+    timerange = eMCP['defaults']['average']['timerange']
+    emutils.rmdir(msfile_split+'_avg')
+    casatasks.mstransform(vis=msfile_split, outputvis=msfile_split+'_avg',
+                timeaverage=timeaverage, chanaverage=chanaverage,
+                timerange=timerange, scan=scan, antenna=antenna,
+                timebin=timebin,  chanbin=chanbin,
+                datacolumn=datacolumn, keepflags=True)
+    find_casa_problems()
+    if os.path.isdir(msfile_split+'_avg') == True:
+        emutils.rmdir(msfile_split)
+    # Concatenate again
+    s = msfile.split('.')
+    sn, se = s[:-1], s[-1]
+    msfile0 = '.'.join(sn)+'_avg.'+se
+    logger.info('Concatenating {0} into {1}'.format(msfile_split+'_avg',
+                                                    msfile0))
+    concat(vis= msfile_split+'_avg', concatvis= msfile0)
+    emutils.rmdir(msfile_split+'_avg')
+    logger.info('Updating listobs for MS: {}'.format(msfile0))
+    run_listobs(msfile0)
+    logger.warning('New field: {} in MS. Make sure you include it in the inputs file'.format(position_name))
+
+
+def read_shifts_file(shifts_file):
+    shifts_list = []
+    with open(shifts_file, 'r') as shifts_txt:
+        lines = shifts_txt.readlines()
+        for line in lines:
+            if line.strip() != '':
+                shift = {'field': line.split(',')[0].strip(),
+                         'new_field_name': line.split(',')[1].strip(),
+                         'new_position': line.split(',')[2].strip()}
+                shifts_list.append(shift)
+    return shifts_list
+
+
+def shift_all_positions(eMCP):
+    logger.info(line0)
+    msfile = eMCP['msinfo']['msfile']
+    logger.info('Running shift_all_pos')
+#    t0 = datetime.datetime.utcnow()
+    shifts_file = './shift_phasecenter.txt'
+    try:
+        shifts_list = read_shifts_file(shifts_file)
+        logger.info('Reading shifts from {0}'.format(shifts_file))
+    except:
+        logger.critical('Unable to open {0} with new position information'.format(shifts_file))
+        exit_pipeline(eMCP)
+    listobs_file = info_dir + msfile
+    emutils.mvdir(listobs_file + '.listobs.txt', listobs_file+'preshift_listobs.txt')
+    logger.info('Found {0} shifts to apply. {0} new fields will be added'.format(len(shifts_list)))
+    for shift in shifts_list:
+        shift_field_position(eMCP, msfile, shift)
+    logger.info('Finished shift_all_pos')
+
+#    msg = 'file={0}'.format(shifts_file)
+#    eMCP = add_step_time('shift_field_pos', eMCP, msg, t0)
+    return eMCP
+
+def list_of_steps():
+    pre_processing_steps = ['run_importfits', 'flag_aoflagger', 'flag_apriori',
+                            'flag_manual', 'average', 'plot_data',
+                            'save_flags']
+    calibration_steps = ['restore_flags', 'flag_manual_avg', 'init_models',
+                         'bandpass', 'initial_gaincal', 'fluxscale',
+                         'bandpass_final', 'gaincal_final', 'applycal_all',
+                         'flag_target', 'plot_corrected', 'first_images',
+                         'split_fields']
+    all_steps = pre_processing_steps + calibration_steps
+    return all_steps, pre_processing_steps, calibration_steps
+
+def eMCP_info_start_steps():
+    default_value = [0, 0, '']
+    all_steps = list_of_steps()[0]
+
+    steps = {}
+    steps['start_pipeline'] = default_value
+    for s in all_steps:
+        steps[s] = default_value
+    return steps
+
+
+#########  Search Lo dropout scans  #########
+
+def find_fields_scans(msfile):
+    msmd.open(msfile)
+    scans = msmd.scannumbers()
+    dict_scans = msmd.fieldsforscans(scans, True, asmap=True, obsid=0, arrayid=0)
+    msmd.done()
+    field_for_scan = np.array([dict_scans[str(scan)][0] for scan in scans])
+    return scans, field_for_scan
+
+def flag_Lo_dropouts(eMCP):
+    # Search for Lo dropouts
+    msinfo = eMCP['msinfo']
+    msfile = msinfo['msfile']
+    antennas = get_antennas(msfile)
+    msg_out = ''
+    if 'Lo' in antennas:
+        Lo_dropout_scans = eMCP['defaults']['flag_manual_avg']['Lo_dropout']
+        if Lo_dropout_scans == 'none':
+            eMCP['msinfo']['Lo_dropout_scans'] = 'none'
+        elif Lo_dropout_scans == '':
+            if msinfo['sources']['phscals'] != '':
+                logger.info('Searching for Lo dropout scans')
+                logger.info("To avoid this, set deafult Lo_dropout_scans = 'none' "
+                            "when rerun flag_manual_avg")
+                phscals = msinfo['sources']['phscals'].split(',')
+                Lo_drop_list = find_Lo_drops(msfile,
+                                             phscals, eMCP)
+                if Lo_drop_list == []:
+                    eMCP['msinfo']['Lo_dropout_scans'] = 'none'
+                else:
+                    eMCP['msinfo']['Lo_dropout_scans'] = ','.join(Lo_drop_list.astype('str'))
+                    logger.info('Flagging Lo dropout scans: '
+                            '{0}'.format(eMCP['msinfo']['Lo_dropout_scans']))
+                    casatasks.flagdata(vis=msfile, antenna='Lo',
+                             scan=eMCP['msinfo']['Lo_dropout_scans'],
+                             flagbackup=False)
+                    find_casa_problems()
+                msg_out = ' Searched Lo dropouts'
+        else:
+            logger.info('Lo_dropout_scans manually selected: {0}'.format(Lo_dropout_scans))
+            eMCP['msinfo']['Lo_dropout_scans'] = Lo_dropout_scans
+            logger.info('Now flagging')
+            casatasks.flagdata(vis=msfile, antenna='Lo',
+                     scan=eMCP['msinfo']['Lo_dropout_scans'], flagbackup=False)
+            find_casa_problems()
+    else:
+        eMCP['msinfo']['Lo_dropout_scans'] = 'none'
+    return eMCP, msg_out
+
+
+def find_Lo_amp_spw(msfile, phscal, phscal_scans, spw, eMCP):
+    amp_mean = np.ones_like(phscal_scans) * np.nan
+    amp_std = np.ones_like(phscal_scans) * np.nan
+    Lo_defaults = eMCP['defaults']['flag_manual_avg']
+    results_tmp = visstat(msfile, scan='',
+                          field = phscal,
+                          antenna='Lo&*',
+                          spw = str(spw + ':'+eMCP['msinfo']['innerchan']),
+                          datacolumn = Lo_defaults['Lo_datacolumn'],
+                          useflags = Lo_defaults['Lo_useflags'],
+                          correlation = 'RR,LL',
+                          timeaverage = True,
+                          timebin = '9999999s',
+                          timespan = '')
+    for key in results_tmp.keys():
+        scan = key.split(',')[1].split('=')[-1]
+        scan_idx = np.where(phscal_scans==int(scan))[0][0]
+        amp_mean[scan_idx] = results_tmp[key]['median']
+        amp_std[scan_idx] = results_tmp[key]['stddev']
+    return  amp_mean, amp_std
+
+def find_Lo_amp(msfile, phscal, phscal_scans, eMCP, spws):
+    amp_means = np.zeros((len(spws), len(phscal_scans)))
+    amp_stds = np.zeros((len(spws), len(phscal_scans)))
+    logger.info('Analysing {0} scans for phscal: {1}'.format(len(phscal_scans),
+                                                       phscal))
+    for i, spw in enumerate(spws):
+        logger.info('Processing spw: {}'.format(spw))
+        amp_means_i, amp_std_i = find_Lo_amp_spw(msfile, phscal, phscal_scans,
+                                                 spw, eMCP)
+        amp_means[i] = amp_means_i
+        amp_stds[i] = amp_std_i
+    amp_mean = np.average(amp_means, weights=1.0/amp_stds, axis=0)
+    amp_std = np.average(amp_stds, axis=0)
+    return amp_mean, amp_std
+
+def plot_Lo_drops(phscal_scans, amp_mean, lo_dropout_scans, phscal, eMCP):
+    msinfo = eMCP['msinfo']
+    drops = np.array([scan in lo_dropout_scans for scan in phscal_scans])
+    fig = plt.figure(figsize=(30,8))
+    ax1 = fig.add_subplot(111)
+
+    scans, field_for_scan = find_scans(msfile)
+    ax1.bar(scans-0.5, np.ones_like(scans)*np.max(amp_mean)*1.2, alpha=0.2,
+            color='0.5', width=1),
+
+    ax1.bar(phscal_scans-0.5, amp_mean, alpha=1.0,
+            color='0.5', width=1,
+            label='{0}'.format(phscal))
+    ax1.bar(phscal_scans[drops]-0.5, amp_mean[drops], alpha=1.0,
+            color='r', width=1,
+            label='{0} Lo dropouts'.format(phscal))
+
+    ax1.legend(loc=0)
+    ax1.xaxis.set_major_locator(MultipleLocator(5))
+    ax1.set_xlim(np.min(phscal_scans)-0.5, np.max(phscal_scans)+0.5)
+    ax1.set_ylim(0, np.max(amp_mean)*1.2)
+    ax1.set_xlabel('Scan number')
+    ax1.set_ylabel('Mean spw Lo raw amplitude')
+
+    plots_obs_dir = './weblog/plots/plots_flagstats/'
+    plot_file_Lo = plots_obs_dir+'{0}_Lo_dropout_scans{1}.png'.format(msinfo['msfilename'],
+                                                       phscal)
+    fig.savefig(plot_file_Lo, bbox_inches='tight')
+
+def calc_Lo_drops(amp_mean, phscal_scans, threshold=0.5):
+    # Sort amplitude values:
+    a = np.sort(amp_mean[~np.isnan(amp_mean)])
+    # Iterate to create two groups. Compute sum of std of both groups
+    # That sum will be minimum when the two groups are divided by the 
+    # amplitude intersecting the two real distributions
+    astd = np.array([0.0])
+    for i in range(1,len(a)):
+        astd=np.append(astd,np.std(a[:i])+np.std(a[i:]))
+
+    if astd[1:].min() > threshold*astd[1:].max():
+        logger.info('No evidence of bimodality. Lo_drop_scans will be empty')
+        lo_dropout_scans = []
+    else:
+        astd[0]=astd.max()
+        idxmin = np.argmin(astd)
+        separation_amp = a[idxmin]
+        drops = amp_mean<separation_amp
+        lo_dropout_scans = phscal_scans[drops]
+    return lo_dropout_scans
+
+def find_Lo_drops(msfile, phscals, eMCP):
+    spws = eMCP['defaults']['flag_manual_avg']['Lo_spws']
+    logger.info('Searching for possible Lo dropout scans on phscal scans')
+    lo_dropout_scans = np.array([], dtype='int')
+    scans, field_for_scan = find_fields_scans(msfile)
+    for phscal in phscals:
+        logger.info('Now searching for phasecal: {}'.format(phscal))
+        phscal_scans = scans[field_for_scan == phscal]
+        amp_mean, amp_std = find_Lo_amp(msfile, phscal, phscal_scans, eMCP,
+                                        spws)
+        threshold = eMCP['defaults']['flag_manual_avg']['Lo_threshold']
+        lo_dropout_scans_i = calc_Lo_drops(amp_mean, phscal_scans, threshold)
+        emplt.plot_Lo_drops(phscal_scans, scans, amp_mean,
+                            lo_dropout_scans_i, phscal, eMCP)
+        if len(lo_dropout_scans_i) > 0:
+            logger.info('Potential dropout scans: '
+                        '{0}'.format(','.join(lo_dropout_scans_i.astype('str'))))
+            min_scans = eMCP['defaults']['flag_manual_avg']['Lo_min_scans']
+            if min_scans == '':
+                min_scans = int(len(phscal_scans)*0.4)
+            if len(lo_dropout_scans_i) >= min_scans:
+                lo_dropout_scans = np.hstack([lo_dropout_scans, lo_dropout_scans_i])
+            else:
+                logger.info('Less than {0}/{1} dropout scans, not considered '
+                            'persistent drops'.format(min_scans,
+                                                      len(phscal_scans)))
+                lo_dropout_scans = []
+        else:
+            lo_dropout_scans = []
+    return lo_dropout_scans
+
+def remove_flagversion(msfile, versionname):
+#    flag_list = casatasks.flagmanager(vis=msfile, mode='list')
+    commands = {}
     commands['flagmanager'] = {
             'vis' :  msfile,
             'mode': 'delete',
@@ -4574,7 +5818,7 @@ def flag_statistics(eMCP, step):
     logger.info('mode="summary", action="calculate", antenna="*&*"'.format(msinfo['msfile']))
     pipeline_path = os.path.dirname(os.path.realpath(__file__))
     flag_statistics_script = os.path.join(pipeline_path, 'run_flagstatistics.py')
-    with open('stdout_err.log', 'a') as f:
+    with open('stdouterr.log', 'a') as f:
         subprocess.run([casa_command, '--nogui', '--logfile', 'casa_eMCP.log', '-c', 
                         flag_statistics_script, '-msfile', msfile, '-step', step],
                         stdout=f, stderr=subprocess.STDOUT) 
