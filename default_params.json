@@ -359,7 +359,7 @@
       "-auto-threshold"        : 2, 
       "-taper-gaussian"        : 0, 
       "-data-column"           : "CORRECTED_DATA", 
-      "-beam-fitting-size"     : 0.3,
+      "-beam-fitting-size"     : 0.5,
       "-save-source-list"      : ""
        } 
   },

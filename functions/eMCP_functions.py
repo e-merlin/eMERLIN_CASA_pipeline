@@ -1238,7 +1238,7 @@ def read_flag_database(logfile, t0, t1):
     from the starting time to the end time requested"""
     column_names = ['timestamp','antenna','status']
     data_all = np.genfromtxt(logfile, delimiter=',', dtype=None,
-                         names=column_names)
+                         names=column_names, encoding=None)
     # Filter by desired time range
     timestamps = np.array([dateutil.parser.parse(d) for d in data_all['timestamp']])
     on_timerange = (timestamps > t0) & (timestamps < t1)
@@ -1272,6 +1272,7 @@ def write_flags_antenna(data, antenna, t0, t1):
                  flag_command = casa_flagcommand(antenna, time_ini, time_end)
                  flag_commands.append(flag_command)
 
+    logger.debug(f"flag_commands: {flag_commands}")
     all_commands_ant = ''.join(flag_commands)
     return all_commands_ant
 
@@ -1301,7 +1302,14 @@ def search_observatory_flags(eMCP):
         logger.info('Observatory flags already present, '\
                     'will not overwrite file {}'.format(flagfile))
         logger.info('Applying observatory flags in {}'.format(flagfile))
-        casatasks.flagdata(vis=msfile, mode='list', inpfile=flagfile, flagbackup=False)
+        commands = {}
+        commands['flagdata'] = {
+                'vis' :  msfile,
+                'mode': 'list',
+                'inpfile': flagfile,
+                'flagbackup': False}
+        run_casa_command(commands, 'flagdata')
+#'#        casatasks.flagdata(vis=msfile, mode='list', inpfile=flagfile, flagbackup=False)
         find_casa_problems()
         finished_autoflag = True
     else:
@@ -1326,10 +1334,18 @@ def search_observatory_flags(eMCP):
             logger.info('Generating flags for this dataset')
             with open(flagfile, 'w') as f_file:
                 for ant in antennas:
+                    logger.debug(f"Antenna: {ant}")
                     all_commands_ant = write_flags_antenna(data, ant, t0, t1)
                     f_file.write(all_commands_ant)
+            commands = {}
+            commands['flagdata'] = {
+                    'vis' :  msfile,
+                    'mode': 'list',
+                    'inpfile': flagfile,
+                    'flagbackup': False}
+            run_casa_command(commands, 'flagdata')
             logger.info('Applying observatory flags in {}'.format(flagfile))
-            casatasks.flagdata(vis=msfile, mode='list', inpfile=flagfile, flagbackup=False)
+#'#            casatasks.flagdata(vis=msfile, mode='list', inpfile=flagfile, flagbackup=False)
             find_casa_problems()
             finished_autoflag = True
         else:
@@ -1449,12 +1465,15 @@ def flagdata1_apriori(eMCP):
     observatory_flags = eMCP['defaults']['flag_apriori']['observatory_flags']
     do_estimated_quack = eMCP['defaults']['flag_apriori']['do_estimated_quack']
     if observatory_flags:
+        logger.debug('Observatory_flags selected')
         finished_autoflag = search_observatory_flags(eMCP)
+        logger.debug(f"finished_autoflag: {finished_autoflag}")
         if not finished_autoflag and do_estimated_quack == 'auto':
             logger.warning('Observatory flags failed. Starting ad-hoc procedure')
             quack_estimating(eMCP)
             msg += 'Estimated quack. '
         else:
+            logger.warning('observatory.flags')
             msg += 'Observatory flags: observatory.flags. '
     else:
         logger.info('No obsevatory flagging selected')
@@ -1736,7 +1755,7 @@ def define_refant(eMCP):
             if refant0 != '' and default_refant != 'compute':
                 logger.warning('Selected reference antenna(s) {0} not in MS! User selection will be ignored'.format(refant0))
             # Finding best antennas for refant
-            logger.info('To avoid this, set a reference antenna in the inputs file.')
+            logger.info('To avoid this, set a reference antenna in the default parameters file.')
             refant = find_refant(msfile,
                                  field=eMCP['msinfo']['sources']['calsources'])
         else:
@@ -3814,41 +3833,6 @@ def gaincal_final_scan(eMCP, caltables):
 #'#                  xaxis='time', yaxis='amp', ymin=-1, ymax=-1, coloraxis='spw', symbolsize=5)
     logger.info('{0} amp plot: {1}'.format(caltable_name,caltableplot_amp))
     return eMCP, caltables
-
-def applycal_all(eMCP, caltables):
-    #logger.info('Start applycal_all')
-    t0 = datetime.datetime.utcnow()
-    run_applycal(eMCP, caltables, step='applycal_all', dotarget=True)
-    if eMCP['is_mixed_mode']:
-        spwmap_sp = eMCP['msinfo']['spwmap_sp']
-        run_applycal_narrow(eMCP, caltables, step='applycal_all', spwmap_sp=spwmap_sp, dotarget=True)
-    #logger.info('End applycal_all')
-    flag_statistics(eMCP, step='applycal_all')
-    # Run statwt if requested
-    if eMCP['defaults']['applycal_all']['run_statwt']:
-        casa_version = casalith.version()
-        if int(casa_version[0]) == 5:
-            if int(casa_version[1]) >= 4:
-                timebin = eMCP['defaults']['applycal_all']['statwt_timebin']
-        elif int(casa_version[0]) >=6:
-            timebin = eMCP['defaults']['applycal_all']['statwt_timebin']
-        else:
-            timebin = ''
-        msfile = eMCP['msinfo']['msfile']
-        logger.info('Running statwt on {}'.format(msfile))
-        logger.info('timebin: {}'.format(timebin))
-        casatasks.statwt(vis=msfile, timebin=timebin)
-        find_casa_problems()
-        if eMCP['is_mixed_mode']:
-            msfile_sp = eMCP['msinfo']['msfile_sp']
-            logger.info('Running statwt on narrow data {}'.format(msfile_sp))
-            casatasks.statwt(vis=msfile_sp, timebin=timebin)
-            find_casa_problems()
-    else:
-        logger.info('statwt not selected')
-    msg = ''
-    eMCP = add_step_time('applycal_all', eMCP, msg, t0)
-    return eMCP
 
 
 #def compile_statistics(msfile, tablename=''):

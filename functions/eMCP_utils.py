@@ -58,7 +58,7 @@ def get_logger(
         LOG_FORMAT     = '%(asctime)s | %(levelname)s | %(message)s',
         DATE_FORMAT    = '%Y-%m-%d %H:%M:%S',
         LOG_NAME       = 'logger',
-        LOG_LEVEL      = logging.DEBUG,
+        LOG_LEVEL      = logging.INFO,
         LOG_FILE_INFO  = 'eMCP.log'):
 
     log           = logging.getLogger(LOG_NAME)
