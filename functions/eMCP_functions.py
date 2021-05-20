@@ -11,12 +11,14 @@ import sys
 import copy
 #'#import getopt
 import datetime
-#import dateutil
+import dateutil
 from scipy.stats import mode
 #from scipy import stats
 import logging
 from astropy.coordinates import SkyCoord
 import astropy.units as u
+
+from astropy.io import fits
 
 #'#import configparser
 #'#from ast import literal_eval
@@ -4139,89 +4141,188 @@ def check_mpicasa():
         is_mpicasa = False
     return is_mpicasa
 
-def single_tclean(eMCP, s, num):
+#def single_tclean(eMCP, s, num):
+#    msinfo = eMCP['msinfo']
+#    logger.info('Producing tclean images for {0}, field: {1}'.format(msinfo['msfile'], s))
+#    emutils.makedir(images_dir+'{}'.format(s))
+#    imagename = images_dir+'{0}/{1}_{0}_img{2:02d}'.format(s, msinfo['msfilename'], num)
+#    prev_images = glob.glob(imagename+'*')
+#    for prev_image in prev_images:
+#        emutils.rmdir(prev_image)
+#    cellsize = {'C':'0.008arcsec',
+#                'L':'0.02arcsec',
+#                'K':'0.002arcsec'
+#               }
+#    imgpar = eMCP['defaults']['first_images']
+#    imsize = imgpar['imsize']
+#    cell = cellsize[msinfo['band']]
+#    niter = imgpar['niter']
+#    gain = imgpar['gain']
+#    uvtaper=imgpar['uvtaper']
+#    uvrange=imgpar['uvrange']
+#    restoringbeam=imgpar['restoringbeam']
+#    deconvolver = imgpar['deconvolver']
+#    nterms = imgpar['nterms']
+#    scales = imgpar['scales']
+#    weighting = imgpar['weighting']
+#    robust = imgpar['robust']
+#    usemask = 'auto-multithresh'
+#    nsigma = imgpar['nsigma']
+#    sidelobethreshold = imgpar['sidelobethreshold']
+#    noisethreshold = imgpar['noisethreshold']
+#    lownoisethreshold = imgpar['lownoisethreshold']
+#    minbeamfrac = imgpar['minbeamfrac']
+#    growiterations = imgpar['growiterations']
+#    parallel = imgpar['parallel']
+#    if parallel:
+#        is_mpicasa = check_mpicasa()
+#        if not is_mpicasa:
+#            parallel = False
+#            logger.warning('Changed "parallel" = False because '
+#                           'this is not an MPICASA run')
+#    logger.info('imsize = {0}, cell = {1}, niter = {2}'.format(
+#                imsize, cell, niter))
+#    logger.info('weighting = {0}, robust = {1}'.format(
+#                weighting, robust))
+#    logger.info('usemask = {0}, growiterations = {1}'.format(usemask,
+#                                                             growiterations))
+#    casatasks.tclean(vis=msinfo['msfile'], field=s, datacolumn='corrected',
+#           imagename=imagename,
+#           imsize=imsize, cell=cell, deconvolver=deconvolver,
+#           gain=gain,
+#           nterms=nterms,
+#           scales=scales,
+#           uvtaper=uvtaper, uvrange=uvrange,
+#           restoringbeam=restoringbeam,
+#           weighting=weighting,
+#           robust=robust, niter=niter, usemask=usemask,
+#           nsigma=nsigma,
+#           sidelobethreshold=sidelobethreshold,
+#           noisethreshold=noisethreshold,
+#           lownoisethreshold=lownoisethreshold,
+#           minbeamfrac=minbeamfrac,
+#           growiterations=growiterations,
+#           savemodel='none', parallel=parallel)
+#    find_casa_problems()
+#    if nterms > 1:
+#        ext = '.tt0'
+#    else:
+#        ext = ''
+#    peak, noise, scaling = plot_image(eMCP, imagename, center=int(imsize/2.0), ext=ext, dozoom=True)
+#    zoom_range = eMCP['defaults']['first_images']['zoom_range_pix']
+#    plot_image_add(imagename, center=int(imsize/2.0), zoom_range=zoom_range, ext=ext, dozoom=True)
+#    eMCP['img_stats'][s] = [peak, noise, scaling]
+#    return eMCP
+
+def write_wsclean_command(msfile, config_wsclean):
+    logger.debug('config_wsclean')
+    # Duplicate size if needed:
+    if type(config_wsclean['-size']) == int:
+        size_int = config_wsclean['-size']
+        config_wsclean['-size'] = '{0} {0}'.format(size_int)
+#    # Skip casa-mask if no mask specified
+#    if config_wsclean['-casa-mask'] == '':
+#        config_wsclean.pop('-casa-mask')
+    # Only keep keys starting with - that will be passed to wsclean
+    for key in config_wsclean.keys():
+        if key[0] != '-':
+            config_wsclean = drop_key(config_wsclean, key)
+    logger.debug(config_wsclean)
+    wsclean_params = ' '.join(['{0} {1}'.format(k,v)
+                                for (k,v) in config_wsclean.items()])
+    wsclean_command = '{0} {1} {2}'.format('wsclean',
+                                           wsclean_params,
+                                           msfile)
+    return wsclean_command
+
+def single_wsclean(eMCP, s, field_id):
     msinfo = eMCP['msinfo']
-    logger.info('Producing tclean images for {0}, field: {1}'.format(msinfo['msfile'], s))
-    emutils.makedir(images_dir+'{}'.format(s))
-    imagename = images_dir+'{0}/{1}_{0}_img{2:02d}'.format(s, msinfo['msfilename'], num)
+    msfile = msinfo['msfile']
+    # Check if wsclean is available:
+    wsclean_available = check_command('wsclean')
+    if not wsclean_available:
+        logger.critical('wsclean not available.')
+        logger.warning('Exiting pipeline.')
+        exit_pipeline(eMCP)
+    logger.info(f"Producing wsclean images for {msfile}, field: {s}")
+    emutils.makedir(os.path.join(images_dir,'{}'.format(s)))
+    num = 0
+    imagename = os.path.join(images_dir, s, f"{msinfo['msfilename']}_{s}_img{num:02d}")
+    logger.debug(f"Imagename: {imagename}")
     prev_images = glob.glob(imagename+'*')
     for prev_image in prev_images:
         emutils.rmdir(prev_image)
-    cellsize = {'C':'0.008arcsec',
-                'L':'0.02arcsec',
-                'K':'0.002arcsec'
+    config_wsclean = eMCP['defaults']['first_images']['wsclean']
+    config_wsclean['-name'] = imagename
+    config_wsclean['-field'] = field_id
+    # Set up cellsize:
+    cellsize = {'C':'0.008asec',
+                'L':'0.02asec',
+                'K':'0.002asec'
                }
-    imgpar = eMCP['defaults']['first_images']
-    imsize = imgpar['imsize']
-    cell = cellsize[msinfo['band']]
-    niter = imgpar['niter']
-    gain = imgpar['gain']
-    uvtaper=imgpar['uvtaper']
-    uvrange=imgpar['uvrange']
-    restoringbeam=imgpar['restoringbeam']
-    deconvolver = imgpar['deconvolver']
-    nterms = imgpar['nterms']
-    scales = imgpar['scales']
-    weighting = imgpar['weighting']
-    robust = imgpar['robust']
-    usemask = 'auto-multithresh'
-    nsigma = imgpar['nsigma']
-    sidelobethreshold = imgpar['sidelobethreshold']
-    noisethreshold = imgpar['noisethreshold']
-    lownoisethreshold = imgpar['lownoisethreshold']
-    minbeamfrac = imgpar['minbeamfrac']
-    growiterations = imgpar['growiterations']
-    parallel = imgpar['parallel']
-    if parallel:
-        is_mpicasa = check_mpicasa()
-        if not is_mpicasa:
-            parallel = False
-            logger.warning('Changed "parallel" = False because '
-                           'this is not an MPICASA run')
-    logger.info('imsize = {0}, cell = {1}, niter = {2}'.format(
-                imsize, cell, niter))
-    logger.info('weighting = {0}, robust = {1}'.format(
-                weighting, robust))
-    logger.info('usemask = {0}, growiterations = {1}'.format(usemask,
-                                                             growiterations))
-    casatasks.tclean(vis=msinfo['msfile'], field=s, datacolumn='corrected',
-           imagename=imagename,
-           imsize=imsize, cell=cell, deconvolver=deconvolver,
-           gain=gain,
-           nterms=nterms,
-           scales=scales,
-           uvtaper=uvtaper, uvrange=uvrange,
-           restoringbeam=restoringbeam,
-           weighting=weighting,
-           robust=robust, niter=niter, usemask=usemask,
-           nsigma=nsigma,
-           sidelobethreshold=sidelobethreshold,
-           noisethreshold=noisethreshold,
-           lownoisethreshold=lownoisethreshold,
-           minbeamfrac=minbeamfrac,
-           growiterations=growiterations,
-           savemodel='none', parallel=parallel)
-    find_casa_problems()
-    if nterms > 1:
-        ext = '.tt0'
-    else:
-        ext = ''
-    peak, noise, scaling = plot_image(eMCP, imagename, center=int(imsize/2.0), ext=ext, dozoom=True)
-    zoom_range = eMCP['defaults']['first_images']['zoom_range_pix']
-    plot_image_add(imagename, center=int(imsize/2.0), zoom_range=zoom_range, ext=ext, dozoom=True)
-    eMCP['img_stats'][s] = [peak, noise, scaling]
+    if config_wsclean['-scale'] == 'auto':
+        config_wsclean['-scale'] = cellsize[msinfo['band']]
+    logger.info(f"imsize = {config_wsclean['-size']}, scale = {config_wsclean['-scale']}, niter = {config_wsclean['-niter']}")
+    logger.info(f"weight = {config_wsclean['-weight']}")
+    wsclean_command = write_wsclean_command(msfile, config_wsclean)
+    logger.info(f'Full wsclean command:\n{wsclean_command}')
+    logger.info(f'{wsclean_command.split()}')
+  
+    with open('stdouterr.log', 'a') as f:
+        subprocess.run(wsclean_command.split(),
+                        stdout=f, stderr=subprocess.STDOUT) 
+
+#    if nterms > 1:
+#        ext = '.tt0'
+#    else:
+#        ext = ''
+    fitsfile = imagename + '-image.fits'
+    # Image statistics
+    imstats_img = get_image_stats(fitsfile)
+    imstats_res = get_image_stats(fitsfile.replace('-image', '-residual'))
+    scaling = np.min([0, -np.log(1.0*imstats_img['max']/imstats_res['rms'])+4])
+    eMCP['img_stats'][s] = [imstats_img['max'], imstats_res['rms'], scaling]
+    logger.debug(imstats_img['max'])
+    logger.debug(imstats_res['rms'])
+    logger.debug(scaling)
+    # Convert to png
+    emplt.fits2png(fitsfile, rms=imstats_res['rms'], scaling=scaling, contour=False)
+    emplt.fits2png(fitsfile, rms=imstats_res['rms'], scaling=scaling, zoom=True)
+    emplt.fits2png(fitsfile.replace('-image', '-residual'), scaling=scaling, rms=imstats_res['rms'], contour=False)
+    emplt.fits2png(fitsfile.replace('-image', '-residual'), scaling=scaling, rms=imstats_res['rms'], contour=False, zoom=True)
+
+#    peak, noise, scaling = plot_image(eMCP, imagename, center=int(imsize/2.0), ext=ext, dozoom=True)
+#    zoom_range = eMCP['defaults']['first_images']['zoom_range_pix']
+#    plot_image_add(imagename, center=int(imsize/2.0), zoom_range=zoom_range, ext=ext, dozoom=True)
+#'#    eMCP['img_stats'][s] = [peak, noise, scaling]
     return eMCP
 
+
+def get_image_stats(image_file):
+    logger.info(f"Getting statistics from {image_file}")
+    with fits.open(image_file) as hdu_list:
+        image_data = hdu_list[0].data
+    imstats = {}
+    imstats['min']    = np.min(image_data)
+    imstats['max']    = np.max(image_data)
+    imstats['mean']   = np.mean(image_data)
+    imstats['stdev']  = np.std(image_data)
+    imstats['rms']    = np.sqrt(np.mean(np.square(image_data)))
+    logger.info(f"Min: {imstats['min']}, Max: {imstats['max']}")
+    return imstats
 
 def run_first_images(eMCP):
     msinfo = eMCP['msinfo']
     logger.info(line0)
     logger.info('Start run_first_images')
     t0 = datetime.datetime.utcnow()
-    num = 0
+
     eMCP['img_stats'] = {}
+    field_names = np.array(emutils.read_keyword(msinfo['msfile'], 'NAME', subtable='FIELD'))
     for s in msinfo['sources']['targets_phscals'].split(','):
-        eMCP = single_tclean(eMCP, s, num)
+        field_id = np.argwhere(field_names == s)[0][0]
+#        eMCP = single_tclean(eMCP, s, num)
+        eMCP = single_wsclean(eMCP, s, field_id)
     logger.info('End first_images')
     msg = ''
     eMCP = add_step_time('first_images', eMCP, msg, t0)
@@ -5270,163 +5371,150 @@ def dfluxpy(freq,baseline):
     return vlaflux, merlinflux, resolved_percent, caution_res_pc, thisbl
 
 
-def plot_image(eMCP, imagename, center, ext='.tt0', dozoom=False):
-    imstat_residual = casatasks.imstat(imagename+'.residual'+ext)
-    find_casa_problems()
-    imstat_image = casatasks.imstat(imagename+'.image'+ext)
-    find_casa_problems()
-    noise = imstat_residual['rms'][0]
-    peak = imstat_image['max'][0]
-    scaling =  np.min([0, -np.log(1.0*peak/noise)+4])
-    #scaling = np.min([0.0, -int(np.log(1.0*peak/noise)+1)])
-    imgpar = eMCP['defaults']['first_images']
-    level0 = imgpar['level0']
-    levels = level0*np.sqrt(3**np.arange(20))
-    zoom_range = 150
-    for extension in ['image'+ext]:
-        filename = '{0}.{1}'.format(imagename, extension)
-        logger.info('Creating png for image: {0}'.format(filename))
-        logger.info('Peak: {0:5.2e} mJy, noise: {1:5.2e} mJy, ' \
-                    'scaling: {2:3.1f}'.format(peak*1000.,
-                                               noise*1000.,
-                                               scaling))
-        imview(raster={'file':filename,
-                       'scaling': float(scaling),
-                       'colorwedge':True},
-               contour = {'file':filename,
-                   'levels':list(levels),
-                   'base':0,
-                   'unit':float(noise)*2.},
-               out = filename+'.png')
-        find_casa_problems()
-        if dozoom:
-            imview(raster={'file':filename,
-                           'scaling': float(scaling),
-                           'colorwedge':True},
-                   contour = {'file':filename,
-                              'levels':list(levels),
-                              'base':0,
-                              'unit':float(noise)*2.},
-                   zoom = {'blc':[center-zoom_range,center-zoom_range],'trc':[center+zoom_range, center+zoom_range]},
-                   out = filename+'_zoom.png')
-            find_casa_problems()
-    return peak, noise, scaling
+#'#def plot_image(eMCP, imagename, center, ext='.tt0', dozoom=False):
+#'#    imstat_residual = casatasks.imstat(imagename+'.residual'+ext)
+#'#    find_casa_problems()
+#'#    imstat_image = casatasks.imstat(imagename+'.image'+ext)
+#'#    find_casa_problems()
+#'#    noise = imstat_residual['rms'][0]
+#'#    peak = imstat_image['max'][0]
+#'#    scaling =  np.min([0, -np.log(1.0*peak/noise)+4])
+#'#    #scaling = np.min([0.0, -int(np.log(1.0*peak/noise)+1)])
+#'#    imgpar = eMCP['defaults']['first_images']
+#'#    level0 = imgpar['level0']
+#'#    levels = level0*np.sqrt(3**np.arange(20))
+#'#    zoom_range = 150
+#'#    for extension in ['image'+ext]:
+#'#        filename = '{0}.{1}'.format(imagename, extension)
+#'#        logger.info('Creating png for image: {0}'.format(filename))
+#'#        logger.info('Peak: {0:5.2e} mJy, noise: {1:5.2e} mJy, ' \
+#'#                    'scaling: {2:3.1f}'.format(peak*1000.,
+#'#                                               noise*1000.,
+#'#                                               scaling))
+#'#        imview(raster={'file':filename,
+#'#                       'scaling': float(scaling),
+#'#                       'colorwedge':True},
+#'#               contour = {'file':filename,
+#'#                   'levels':list(levels),
+#'#                   'base':0,
+#'#                   'unit':float(noise)*2.},
+#'#               out = filename+'.png')
+#'#        find_casa_problems()
+#'#        if dozoom:
+#'#            imview(raster={'file':filename,
+#'#                           'scaling': float(scaling),
+#'#                           'colorwedge':True},
+#'#                   contour = {'file':filename,
+#'#                              'levels':list(levels),
+#'#                              'base':0,
+#'#                              'unit':float(noise)*2.},
+#'#                   zoom = {'blc':[center-zoom_range,center-zoom_range],'trc':[center+zoom_range, center+zoom_range]},
+#'#                   out = filename+'_zoom.png')
+#'#            find_casa_problems()
+#'#    return peak, noise, scaling
+#'#
+#'#def plot_image_add(imagename, center, zoom_range, ext='.tt0', dozoom=False):
+#'#    filename = imagename
+#'#    imview(raster={'file':filename+'.residual'+ext,
+#'#                   'colorwedge':True},
+#'#           contour = {'file':filename+'.mask',
+#'#               'levels':[1]},
+#'#           out = filename+'.residual'+ext+'.png')
+#'#    find_casa_problems()
+#'#    if dozoom:
+#'#        imview(raster={'file':filename+'.residual'+ext,
+#'#               'colorwedge':True},
+#'#        contour = {'file':filename+'.mask',
+#'#                   'levels':[1]},
+#'#        zoom = {'blc':[center-zoom_range,center-zoom_range],'trc':[center+zoom_range, center+zoom_range]},
+#'#        out = filename+'.residual'+ext+'_zoom.png')
+#'#        find_casa_problems()
+#'#    return
 
-def plot_image_add(imagename, center, zoom_range, ext='.tt0', dozoom=False):
-    filename = imagename
-    imview(raster={'file':filename+'.residual'+ext,
-                   'colorwedge':True},
-           contour = {'file':filename+'.mask',
-               'levels':[1]},
-           out = filename+'.residual'+ext+'.png')
-    find_casa_problems()
-    if dozoom:
-        imview(raster={'file':filename+'.residual'+ext,
-               'colorwedge':True},
-        contour = {'file':filename+'.mask',
-                   'levels':[1]},
-        zoom = {'blc':[center-zoom_range,center-zoom_range],'trc':[center+zoom_range, center+zoom_range]},
-        out = filename+'.residual'+ext+'_zoom.png')
-        find_casa_problems()
-    return
+#'#def check_mpicasa():
+#'#    casa_log.post('Checking MPICASA')
+#'#    with open(casa_log.logfile(), 'r') as f:
+#'#        l = f.readlines()[-1]
+#'#    if 'MPIClient' in l:
+#'#        is_mpicasa = True
+#'#    else:
+#'#        is_mpicasa = False
+#'#    return is_mpicasa
 
-def check_mpicasa():
-    casa_log.post('Checking MPICASA')
-    with open(casa_log.logfile(), 'r') as f:
-        l = f.readlines()[-1]
-    if 'MPIClient' in l:
-        is_mpicasa = True
-    else:
-        is_mpicasa = False
-    return is_mpicasa
+#'#def single_tclean(eMCP, s, num):
+#'#    msinfo = eMCP['msinfo']
+#'#    logger.info('Producing tclean images for {0}, field: {1}'.format(msinfo['msfile'], s))
+#'#    emutils.makedir(images_dir+'{}'.format(s))
+#'#    imagename = images_dir+'{0}/{1}_{0}_img{2:02d}'.format(s, msinfo['msfilename'], num)
+#'#    prev_images = glob.glob(imagename+'*')
+#'#    for prev_image in prev_images:
+#'#        emutils.rmdir(prev_image)
+#'#    cellsize = {'C':'0.008arcsec',
+#'#                'L':'0.02arcsec',
+#'#                'K':'0.002arcsec'
+#'#               }
+#'#    imgpar = eMCP['defaults']['first_images']
+#'#    imsize = imgpar['imsize']
+#'#    cell = cellsize[msinfo['band']]
+#'#    niter = imgpar['niter']
+#'#    gain = imgpar['gain']
+#'#    uvtaper=imgpar['uvtaper']
+#'#    uvrange=imgpar['uvrange']
+#'#    restoringbeam=imgpar['restoringbeam']
+#'#    deconvolver = imgpar['deconvolver']
+#'#    nterms = imgpar['nterms']
+#'#    scales = imgpar['scales']
+#'#    weighting = imgpar['weighting']
+#'#    robust = imgpar['robust']
+#'#    usemask = 'auto-multithresh'
+#'#    nsigma = imgpar['nsigma']
+#'#    sidelobethreshold = imgpar['sidelobethreshold']
+#'#    noisethreshold = imgpar['noisethreshold']
+#'#    lownoisethreshold = imgpar['lownoisethreshold']
+#'#    minbeamfrac = imgpar['minbeamfrac']
+#'#    growiterations = imgpar['growiterations']
+#'#    parallel = imgpar['parallel']
+#'#    if parallel:
+#'#        is_mpicasa = check_mpicasa()
+#'#        if not is_mpicasa:
+#'#            parallel = False
+#'#            logger.warning('Changed "parallel" = False because '
+#'#                           'this is not an MPICASA run')
+#'#    logger.info('imsize = {0}, cell = {1}, niter = {2}'.format(
+#'#                imsize, cell, niter))
+#'#    logger.info('weighting = {0}, robust = {1}'.format(
+#'#                weighting, robust))
+#'#    logger.info('usemask = {0}, growiterations = {1}'.format(usemask,
+#'#                                                             growiterations))
+#'#    casatasks.tclean(vis=msinfo['msfile'], field=s, datacolumn='corrected',
+#'#           imagename=imagename,
+#'#           imsize=imsize, cell=cell, deconvolver=deconvolver,
+#'#           gain=gain,
+#'#           nterms=nterms,
+#'#           scales=scales,
+#'#           uvtaper=uvtaper, uvrange=uvrange,
+#'#           restoringbeam=restoringbeam,
+#'#           weighting=weighting,
+#'#           robust=robust, niter=niter, usemask=usemask,
+#'#           nsigma=nsigma,
+#'#           sidelobethreshold=sidelobethreshold,
+#'#           noisethreshold=noisethreshold,
+#'#           lownoisethreshold=lownoisethreshold,
+#'#           minbeamfrac=minbeamfrac,
+#'#           growiterations=growiterations,
+#'#           savemodel='none', parallel=parallel)
+#'#    find_casa_problems()
+#'#    if nterms > 1:
+#'#        ext = '.tt0'
+#'#    else:
+#'#        ext = ''
+#'#    peak, noise, scaling = plot_image(eMCP, imagename, center=int(imsize/2.0), ext=ext, dozoom=True)
+#'#    zoom_range = eMCP['defaults']['first_images']['zoom_range_pix']
+#'#    plot_image_add(imagename, center=int(imsize/2.0), zoom_range=zoom_range, ext=ext, dozoom=True)
+#'#    eMCP['img_stats'][s] = [peak, noise, scaling]
+#'#    return eMCP
+#'#
 
-def single_tclean(eMCP, s, num):
-    msinfo = eMCP['msinfo']
-    logger.info('Producing tclean images for {0}, field: {1}'.format(msinfo['msfile'], s))
-    emutils.makedir(images_dir+'{}'.format(s))
-    imagename = images_dir+'{0}/{1}_{0}_img{2:02d}'.format(s, msinfo['msfilename'], num)
-    prev_images = glob.glob(imagename+'*')
-    for prev_image in prev_images:
-        emutils.rmdir(prev_image)
-    cellsize = {'C':'0.008arcsec',
-                'L':'0.02arcsec',
-                'K':'0.002arcsec'
-               }
-    imgpar = eMCP['defaults']['first_images']
-    imsize = imgpar['imsize']
-    cell = cellsize[msinfo['band']]
-    niter = imgpar['niter']
-    gain = imgpar['gain']
-    uvtaper=imgpar['uvtaper']
-    uvrange=imgpar['uvrange']
-    restoringbeam=imgpar['restoringbeam']
-    deconvolver = imgpar['deconvolver']
-    nterms = imgpar['nterms']
-    scales = imgpar['scales']
-    weighting = imgpar['weighting']
-    robust = imgpar['robust']
-    usemask = 'auto-multithresh'
-    nsigma = imgpar['nsigma']
-    sidelobethreshold = imgpar['sidelobethreshold']
-    noisethreshold = imgpar['noisethreshold']
-    lownoisethreshold = imgpar['lownoisethreshold']
-    minbeamfrac = imgpar['minbeamfrac']
-    growiterations = imgpar['growiterations']
-    parallel = imgpar['parallel']
-    if parallel:
-        is_mpicasa = check_mpicasa()
-        if not is_mpicasa:
-            parallel = False
-            logger.warning('Changed "parallel" = False because '
-                           'this is not an MPICASA run')
-    logger.info('imsize = {0}, cell = {1}, niter = {2}'.format(
-                imsize, cell, niter))
-    logger.info('weighting = {0}, robust = {1}'.format(
-                weighting, robust))
-    logger.info('usemask = {0}, growiterations = {1}'.format(usemask,
-                                                             growiterations))
-    casatasks.tclean(vis=msinfo['msfile'], field=s, datacolumn='corrected',
-           imagename=imagename,
-           imsize=imsize, cell=cell, deconvolver=deconvolver,
-           gain=gain,
-           nterms=nterms,
-           scales=scales,
-           uvtaper=uvtaper, uvrange=uvrange,
-           restoringbeam=restoringbeam,
-           weighting=weighting,
-           robust=robust, niter=niter, usemask=usemask,
-           nsigma=nsigma,
-           sidelobethreshold=sidelobethreshold,
-           noisethreshold=noisethreshold,
-           lownoisethreshold=lownoisethreshold,
-           minbeamfrac=minbeamfrac,
-           growiterations=growiterations,
-           savemodel='none', parallel=parallel)
-    find_casa_problems()
-    if nterms > 1:
-        ext = '.tt0'
-    else:
-        ext = ''
-    peak, noise, scaling = plot_image(eMCP, imagename, center=int(imsize/2.0), ext=ext, dozoom=True)
-    zoom_range = eMCP['defaults']['first_images']['zoom_range_pix']
-    plot_image_add(imagename, center=int(imsize/2.0), zoom_range=zoom_range, ext=ext, dozoom=True)
-    eMCP['img_stats'][s] = [peak, noise, scaling]
-    return eMCP
-
-
-def run_first_images(eMCP):
-    msinfo = eMCP['msinfo']
-    logger.info(line0)
-    logger.info('Start run_first_images')
-    t0 = datetime.datetime.utcnow()
-    num = 0
-    eMCP['img_stats'] = {}
-    for s in msinfo['sources']['targets_phscals'].split(','):
-        eMCP = single_tclean(eMCP, s, num)
-    logger.info('End first_images')
-    msg = ''
-    eMCP = add_step_time('first_images', eMCP, msg, t0)
-    return eMCP
 
 def run_split_fields(eMCP):
     msinfo = eMCP['msinfo']

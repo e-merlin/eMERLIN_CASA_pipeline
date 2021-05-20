@@ -21,7 +21,7 @@ from functions import eMCP_plots as emplt
 #import casadef
 #import casalith
 
-current_version = 'v2.0.15'
+current_version = 'v2.0.18'
 
 # Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
 #pipeline_filename = sys.argv[sys.argv.index('-c') + 1]
@@ -230,9 +230,9 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
     if eMCP['input_steps']['plot_corrected'] > 0:
         eMCP = emplt.make_4plots(eMCP, datacolumn='corrected')
 
-#    ### First images ###
-#    if eMCP['input_steps']['first_images'] > 0:
-#        eMCP = em.run_first_images(eMCP)
+    ### First images ###
+    if eMCP['input_steps']['first_images'] > 0:
+        eMCP = em.run_first_images(eMCP)
 #
 #    ### Split fields ###
 #    if eMCP['input_steps']['split_fields'] > 0:

@@ -8,6 +8,10 @@ import matplotlib.dates as mdates
 plt.ioff()
 
 from astropy.time import Time
+from astropy.io import fits
+from astropy.wcs import WCS
+
+import aplpy
 
 from matplotlib.ticker import MultipleLocator, MaxNLocator
 from matplotlib.ticker import ScalarFormatter
@@ -1064,4 +1068,135 @@ def plot_caltable(caltable, filename, gaintype='G', calmode=''):
     print(f"Saving {filename}")
     fig.savefig(filename, bbox_inches='tight')
 
+import matplotlib
+cdict = {'red':  ((0.00, 1.00, 1.00),
+                  (0.20, 0.00, 0.00),
+                  (0.40, 0.00, 0.00),
+                  (0.50, 0.40, 0.40),
+                  (0.60, 0.80, 0.80),
+                  (0.80, 1.00, 1.00),
+                  (1.00, 0.95, 0.95)),
+         'green':((0.00, 1.00, 1.00),
+                  (0.20, 0.50, 0.50),
+                  (0.40, 0.85, 0.85),
+                  (0.50, 0.80, 0.80),
+                  (0.60, 0.95, 0.95),
+                  (0.80, 0.65, 0.65),
+                  (1.00, 0.00, 0.00)),
+         'blue': ((0.00, 1.00, 1.00),
+                  (0.20, 0.95, 0.95),
+                  (0.40, 0.20, 0.20),
+                  (0.50, 0.40, 0.40),
+                  (0.60, 0.15, 0.15),
+                  (0.80, 0.00, 0.00),
+                  (1.00, 0.00, 0.00))}
 
+my_cmap = matplotlib.colors.LinearSegmentedColormap('my_colormap',cdict,256)
+
+import cmasher as cmr
+
+
+def fits2png(fits_name, rms, scaling, plot_title=None, cmap_name='viridis', colorbar=True, contour=True, zoom=False):
+    """Make a PNG plot out of a FITS file
+    
+    Args:
+        fits_name (str): path of fits file
+        plot_title (str): plot title, default is name of the fits file
+        cmap_name (str): name of colormap, default is viridis
+        colorbar (bool): include colorbar, default is True
+        contour (bool): include contour, default is True
+    """
+    # This is a trick because aplpy cannot deal with extra dimensions in fits produced by wsclean
+    fits_name_tmp = fits_name + '_tmp'
+    hdu = fits.open(fits_name)[0]
+    wcs_celestial = WCS(hdu.header).celestial
+    img_tmp = fits.PrimaryHDU(hdu.data[0,0]*1000., header=wcs_celestial.to_header())
+    img_tmp.header['BUNIT'] = hdu.header['BUNIT']
+    img_tmp.header['BMAJ'] = hdu.header['BMAJ']
+    img_tmp.header['BMIN'] = hdu.header['BMIN']
+    img_tmp.header['BPA'] = hdu.header['BPA']
+    img_tmp.writeto(fits_name_tmp, overwrite=True)
+
+    f = aplpy.FITSFigure(fits_name_tmp, figsize=(10, 8))
+    if zoom:
+        x_center = hdu.header['CRVAL1']
+        y_center = hdu.header['CRVAL2']
+        new_size_asec = hdu.data.shape[-1]*hdu.header['CDELT2']*0.25 # 25% of total image
+        f.recenter(x_center, y_center, width=new_size_asec, height=new_size_asec)
+        ext = '_zoom'
+    else:
+        ext = ''
+    if plot_title == None:
+        plot_title = fits_name.replace('.fits', '')
+    plt.title(plot_title)
+    vmin = hdu.data.min()*1000
+    vmax = hdu.data.max()*1000.
+#    vmax = np.min([20*rms, vmax])
+#    rms = np.sqrt(np.mean(np.square(hdu.data)))
+#    logger.debug(f'rms: {rms}')
+#    f.show_colorscale(cmap=cmap_name, vmin=-1*rms, vmax=vmax, stretch='log', vmid=-5.1*rms)
+#    f.show_colorscale(cmap=cmap_name, stretch='log',vmin=vmin, vmid=vmin - (vmax - vmin) / 30. ) 
+#    f.show_colorscale(cmap=cmap_name, vmax=vmax)
+    f.show_colorscale(cmap=plt.get_cmap('cmr.rainforest'), vmin=np.max([vmin, -2*rms*1000]), vmax=np.min([vmax, 20*rms*1000]))
+    f.show_colorscale(cmap=cmr.get_sub_cmap('cmr.rainforest', 0.3, 0.85), vmin=np.max([vmin, -2*rms*1000]), vmax=np.min([vmax, 20*rms*1000]))
+#    f.show_colorscale(cmap=my_cmap, vmin=vmin, vmax=vmax, stretch='log', vmid=1.1*vmin)
+    f.ticks.set_color('k')
+    if colorbar:
+        f.add_colorbar()
+        f.colorbar.set_axis_label_text('mJy')
+    if 'BMAJ' in fits.open(fits_name_tmp)[0].header:
+        f.add_beam()
+        f.beam.set_facecolor('0.5')
+        f.beam.set_edgecolor('k')
+        f.beam.set_linewidth(1.5)
+        f.beam.set_alpha(0.5)
+    if contour:
+        levels = 3.*rms*1000.*np.sqrt(3)**np.arange(1,25, 1)
+        logger.debug(f"levels: {levels*1000}")
+        f.show_contour(levels=levels, alpha=0.4)
+    else:
+        levels = 3.*rms*1000.*np.sqrt(3)**np.arange(1,3, 1)
+        logger.debug(f"levels: {levels*1000}")
+        f.show_contour(levels=levels, alpha=0.4)
+    output_name = fits_name.replace('.fits', ext+'.png')
+#    logger.info(f'Converting to png fits file {fits_name}')
+    plt.savefig(output_name, dpi=200, bbox_inches='tight')
+    emutils.rmfile(fits_name_tmp)
+
+
+
+
+
+#from astropy.wcs import WCS
+#with fits.open(image_file) as hdu_list:
+#    w = WCS(hdu_list[0].header)
+#    w_celestial_axes = w.celestial
+#    hdu_list[0].header.update(w_celestial_axes.to_header())
+#    hdu_list.writeto('new_img.fits')
+#    
+#
+#    hdu = fits.open(image_file)[0]
+#    hdu.data = hdu.data[0,0]
+#    wcs = WCS(hdu.header)
+#    wcs2 = wcs.celestial
+#    hdu.header.update(wcs2.to_header())
+#    hdu.writeto('new_img.fits', overwrite=True)
+#
+#from astropy.nddata import Cutout2D
+#
+#hdu = fits.open(image_file)[0]
+#wcs = WCS(hdu.header)
+#wcs2 = wcs.celestial
+#cutout = Cutout2D(hdu.data[0][0], wcs=wcs2)
+#hdu.data = cutout.data
+#hdu.header.update(cutout.wcs.to_header())
+#hdu.writeto('new_img.fits', overwrite=True)
+#
+#
+#WCS(fits.open('new_img.fits')[0].header)
+#
+#
+#ax = plt.subplot(projection=wcs, slices=('x', 'y', 0, 0))
+#ax.imshow(image_data[0,0,:,:])
+#plt.show()
+#
