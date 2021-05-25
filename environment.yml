@@ -14,6 +14,7 @@ dependencies:
   - python=3.6
   - python-casacore
   - scipy
+  - cmasher
 #  - wsclean
 #  - pip
 #  - pip:

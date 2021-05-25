@@ -558,6 +558,20 @@ def weblog_images(eMCP):
     weblog_foot(wlog)
     wlog.close()
 
+def write_img_zoom(img):
+    my_string =  """
+    <td>
+    <div class="imageBox">
+      <div class="imageInn">
+        <img src="{0}" alt="Image" style="max-width:600px">
+      </div>
+      <div class="hoverImg">
+        <img src="{1}" alt="Zoom" style="max-width:800px">
+      </div>
+    </div>
+    </td>\n""".format(img, img.replace('.png', '_zoom.png'))
+    return my_string
+
 def show_image(eMCP, wlog, i):
     msinfo = eMCP['msinfo']
     num = 0
@@ -585,20 +599,18 @@ def show_image(eMCP, wlog, i):
     wlog.write('<table class="table1" bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:70%">\n')
     wlog.write('<tr><td><b>{0}</b> (Target) ' \
                'Peak: {1:3.3f} mJy ' \
-               '(rms: {2:3.3f} mJy/b)</td><td>Target zoom</td>\n'.format(target,
+               '(rms: {2:3.3f} mJy/b)</td><td>Target residual</td>\n'.format(target,
                                                                  peak_target*1000.,
                                                                  noise_target*1000.))
     wlog.write('<td><b>{0}</b> (Phasecal) ' \
                'Peak: {1:5.1f} mJy ' \
-               '(rms: {2:5.3f} mJy/b)</td><td>Phasecal zoom</td></tr>\n'.format(phscal,
+               '(rms: {2:5.3f} mJy/b)</td><td>Phasecal residual</td></tr>\n<tr>\n'.format(phscal,
                                                                peak_phscal*1000.,
                                                                noise_phscal*1000.))
-    wlog.write('<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(img_target+'-image'+ext+'.png'))
-#    wlog.write('<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>\n'.format(img_target+'-residual'+ext+'.png'))
-    wlog.write('<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(img_target+'-image'+ext+'_zoom.png'))
-    wlog.write('<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(img_phscal+'-image'+ext+'.png'))
-    wlog.write('<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(img_phscal+'-image'+ext+'_zoom.png'))
-#    wlog.write('<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>\n'.format(img_target+'-residual'+ext+'_zoom.png'))
+    wlog.write(write_img_zoom(f'.{img_target}-image{ext}.png'))
+    wlog.write(write_img_zoom(f'.{img_target}-residual{ext}.png'))
+    wlog.write(write_img_zoom(f'.{img_phscal}-image{ext}.png'))
+    wlog.write(write_img_zoom(f'.{img_phscal}-residual{ext}.png'))
     wlog.write('</tr>')
 #    wlog.write('<tr><td><b>{0}</b> (Phasecal) ' \
 #               'Peak: {1:5.1f} mJy ' \

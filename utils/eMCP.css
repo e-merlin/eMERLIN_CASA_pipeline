@@ -34,3 +34,20 @@ table.table1 td{
         left: 20px;
 }
 
+
+.imageBox {
+  position: relative;
+  float: left;
+}
+
+.imageBox .hoverImg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: none;
+   z-index: 10;
+}
+
+.imageBox:hover .hoverImg {
+  display: block;
+}
