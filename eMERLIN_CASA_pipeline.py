@@ -1,18 +1,14 @@
 # Dependencies
-import os, sys, math
-import numpy as np
+import os, sys
 #'#import pickle
-import getopt
 #'#import logging
-import collections
 import json
 import argparse
 #'#import time
 
-from functions import eMCP_functions as em
-from functions import eMCP_utils as emutils
-from functions import eMCP_weblog as emwlog
-from functions import eMCP_plots as emplt
+from src.eMCP.functions import eMCP_functions as em
+from src.eMCP.utils import eMCP_utils as emutils
+from src.eMCP.plots import eMCP_plots as emplt
 
 # CASA imports
 #from taskinit import *

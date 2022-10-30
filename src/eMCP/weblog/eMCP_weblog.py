@@ -1,11 +1,9 @@
 import os
 import numpy as np
 import glob
-import pickle
 #'#import collections
 import datetime
-
-from functions import eMCP_utils as emutils
+from ..utils import eMCP_utils as emutils
 
 ## CASA imports
 #from taskinit import *
