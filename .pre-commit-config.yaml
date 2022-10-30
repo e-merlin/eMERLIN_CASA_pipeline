@@ -1,0 +1,33 @@
+repos:
+- repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
+  rev: v2.3.0
+  hooks:
+  - id: pretty-format-yaml
+    args: [--autofix, --indent, '2']
+  - id: pretty-format-toml
+    args: [--autofix]
+
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v4.2.0
+  hooks:
+  - id: check-yaml
+  - id: end-of-file-fixer
+  - id: trailing-whitespace
+  - id: requirements-txt-fixer
+#-   repo: https://github.com/psf/black
+#    rev: 22.3.0
+#    hooks:
+#    id: black
+
+- repo: https://github.com/pre-commit/mirrors-yapf
+  rev: v0.32.0
+  hooks:
+  - id: yapf
+    additional_dependencies: [toml]
+
+- repo: https://github.com/igorshubovych/markdownlint-cli
+  rev: v0.31.1
+  hooks:
+  - id: markdownlint-fix
+    entry: markdownlint -f '**/*.md' --disable MD001 MD013 MD025 MD029 MD036 MD046 MD033 MD040 MD041 MD048
+        # args: [--disable MD013 MD036]

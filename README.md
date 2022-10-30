@@ -1,37 +1,42 @@
-1. [ Description ](#description)
-1. [ Dependencies ](#dependencies)
-1. [ Download ](#download)
-1. [ Quick start ](#quickstart)
-1. [ Usage ](#usage)
-1. [ Additional information ](#information)
-1. [ FAQ ](#faq)
-
-
+1. [Description](#description)
+1. [Dependencies](#dependencies)
+1. [Download](#download)
+1. [Quick start](#quickstart)
+1. [Usage](#usage)
+1. [Additional information](#information)
+1. [FAQ](#faq)
 
 <a name="description"></a>
+
 ## Description ##
 
 The e-MERLIN CASA Pipeline (eMCP) is a python pipeline working on top of [CASA](https://casa.nrao.edu/) to process and calibrate interferometric data from the [e-MERLIN](http://www.e-merlin.ac.uk/) array. Access to data information, statistics and assessment plots on calibration tables and visibilities can be accessed by the pipeline weblog, which is updated in real time as the pipeline job progresses. The output is calibrated data and preliminary lookup images of the relevant fields. It can calibrate mixed mode data that includes narrow-band high spectral resolution spectral windows for spectral lines, and also special observing modes as pseudo-wideband observations. Currently no polarization calibration is performed.
 
 <a name="dependencies"></a>
+
 ## Dependencies ##
-- CASA v5.5+ (see https://casa.nrao.edu/)
-- aoflagger v2.9+ (see https://sourceforge.net/projects/aoflagger/), only needed to calibrate L-band data.
+
+- CASA v5.5+ (see <https://casa.nrao.edu/>)
+- aoflagger v2.9+ (see <https://sourceforge.net/projects/aoflagger/>), only needed to calibrate L-band data.
 
 <a name="download"></a>
+
 ## Download ##
-If you have git installed, you can get the pipeline using:  
+
+If you have git installed, you can get the pipeline using:
 `git clone https://github.com/e-merlin/eMERLIN_CASA_pipeline.git`
 
 If you don't have git, you can download and unzip the files from [here](https://github.com/e-merlin/eMERLIN_CASA_pipeline/archive/master.zip).
 
 To install aoflagger check out either A. Offringa's websites:
-- aoflagger: https://sourceforge.net/projects/aoflagger/
-- wsclean: https://sourceforge.net/projects/wsclean/  (not required for running the pipeline)
 
-or (recommended) use the handy anaconda scripts to instantly install dependcies within the conda environment. To do this follow the instructions in this repo.: https://github.com/jradcliffe5/radio_conda_recipes
+- aoflagger: <https://sourceforge.net/projects/aoflagger/>
+- wsclean: <https://sourceforge.net/projects/wsclean/>  (not required for running the pipeline)
+
+or (recommended) use the handy anaconda scripts to instantly install dependcies within the conda environment. To do this follow the instructions in this repo.: <https://github.com/jradcliffe5/radio_conda_recipes>
 
 <a name="quickstart"></a>
+
 ## Quick start ##
 
 If you have received calibrated data from the observatory and you want to refine the calibration, you can:
@@ -42,12 +47,14 @@ If you have received calibrated data from the observatory and you want to refine
 `casa -c eMERLIN_CASA_pipeline/eMERLIN_CASA_pipeline.py -r calibration`
 
 <a name="usage"></a>
+
 ## Usage ##
+
 Normal pipeline execution. When you have in your working directory the file `inputs.ini` and you have extracted the pipeline:
 
 `casa -c /path/to/pipeline/eMERLIN_CASA_pipeline.py`
 
-To run the parallelized version using MPI in CASA you can use:  
+To run the parallelized version using MPI in CASA you can use:
 
 `mpicasa -n <num_cores> casa -c /path/to/pipeline/eMERLIN_CASA_pipeline.py`
 
@@ -57,25 +64,25 @@ Names in capital need to be set by the user:
 
 ```
   -h, --help                     show this help message and exit
-  
-  
+
+
   -i INPUTS_FILE
   --inputs INPUTS_FILE
                                  Inputs file to use. Default is inputs.ini
-                                 
-                                 
+
+
   -r          RUN_STEPS [RUN_STEPS ...]
   --run-steps RUN_STEPS [RUN_STEPS ...]
                                  Whitespace separated list of steps to run. Apart from
                                  individual steps, it also accepts "all",
                                  "pre_processing" and "calibration"
-                                 
-                                 
+
+
   -s           SKIP_STEPS [SKIP_STEPS ...]
   --skip-steps SKIP_STEPS [SKIP_STEPS ...]
                                  Whispace separated list of steps to skip
-                                 
-                                 
+
+
   -l
   --list-steps                   Show list of available steps and exit
 
@@ -94,7 +101,7 @@ pre_processing
     average
     plot_data
     save_flags
-    
+
 calibration
     restore_flags
     flag_manual_avg
@@ -113,7 +120,7 @@ calibration
 ```
 
 Selection options are any combination of: a list of any individual step names, `pre_processing`, `calibration` or `all`
-  
+
 **Examples of step selection**
 
 You need to specify which steps of the pipeline to run. Some example on how to choose steps:
@@ -151,15 +158,15 @@ eMCP = run_pipeline(run_steps=['calibration'])
 
 Function `run_pipeline` parameters and defaults are: `run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[])`. Variables run_steps and skip_steps are python lists of steps as explained above.
 
-
 <a name="information"></a>
+
 ## Additional information ##
 
 - [Documentation [online]](documentation/docs.md)
 - [Wiki pages](https://github.com/e-merlin/eMERLIN_CASA_pipeline/wiki)
 
-
 <a name="faq"></a>
+
 ## FAQ ##
 
 **How do I open the weblog?**
@@ -210,6 +217,7 @@ mode='quack' field='1258-2219,1309-2322' quackinterval=24.
 ```
 
 Example from the CASA docs:
+
 ```
 scan='1~3' mode='manual'
 # this line will be ignored

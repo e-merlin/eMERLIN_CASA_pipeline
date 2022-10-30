@@ -2,9 +2,11 @@ import os
 import pickle
 import argparse
 
+
 def save_obj(obj, name):
     with open(name, 'wb') as f:
         pickle.dump(obj, f)
+
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -13,14 +15,19 @@ def get_args():
     args = parser.parse_args()
     return args
 
+
 def run_flagstats(msfile, step):
-    flag_stats = flagdata(vis=msfile, mode='summary',
-                          action='calculate', display='none', antenna='*&*',
+    flag_stats = flagdata(vis=msfile,
+                          mode='summary',
+                          action='calculate',
+                          display='none',
+                          antenna='*&*',
                           flagbackup=False)
-    outfile = os.path.join(weblog_dir, 'plots/plots_flagstats/flagstats_{}.pkl'.format(step))
+    outfile = os.path.join(
+        weblog_dir, 'plots/plots_flagstats/flagstats_{}.pkl'.format(step))
     save_obj(flag_stats, outfile)
+
 
 weblog_dir = './weblog/'
 args = get_args()
 run_flagstats(args.msfile, args.step)
-

@@ -1,5 +1,5 @@
 # Dependencies
-import os,sys,math
+import os, sys, math
 import numpy as np
 #'#import pickle
 import getopt
@@ -13,7 +13,6 @@ from functions import eMCP_functions as em
 from functions import eMCP_utils as emutils
 from functions import eMCP_weblog as emwlog
 from functions import eMCP_plots as emplt
-
 
 # CASA imports
 #from taskinit import *
@@ -67,7 +66,6 @@ casalog_name = 'casa_eMCP.log'
 #'#    return collections.OrderedDict(new_pairs)
 
 
-
 def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
     #Create directory structure
     pipeline_path = os.path.dirname(os.path.realpath(__file__))
@@ -79,22 +77,22 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
 
     # Get git info about pipeline version
     branch, short_commit = emutils.get_pipeline_version(pipeline_path)
-#    try:
-#        branch, short_commit = emutils.get_pipeline_version(pipeline_path)
-#    except:
-#        branch, short_commit = 'unknown', 'unknown'
+    #    try:
+    #        branch, short_commit = emutils.get_pipeline_version(pipeline_path)
+    #    except:
+    #        branch, short_commit = 'unknown', 'unknown'
     pipeline_version = current_version
 
     logger.info('Starting pipeline')
     logger.info('Running pipeline from:')
     logger.info('{}'.format(pipeline_path))
-#'#    logger.info('CASA version: {}'.format(casalith.version_string()))
+    #'#    logger.info('CASA version: {}'.format(casalith.version_string()))
     logger.info('Pipeline version: {}'.format(pipeline_version))
     logger.info('Using github branch: {}'.format(branch))
     logger.info('github last commit: {}'.format(short_commit))
     logger.info('This log uses UTC times')
     eMCP['pipeline_path'] = pipeline_path
-#'#    eMCP['casa_version'] = casalith.version_string()
+    #'#    eMCP['casa_version'] = casalith.version_string()
     emutils.check_pipeline_conflict(eMCP, pipeline_version)
     eMCP['pipeline_version'] = pipeline_version
     emutils.save_obj(eMCP, info_dir + 'eMCP_info.pkl')
@@ -105,8 +103,8 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
     else:
         defaults_file = os.path.join(pipeline_path, 'default_params.json')
     logger.info('Loading default parameters from {0}:'.format(defaults_file))
-    eMCP['defaults'] = json.loads(open(defaults_file).read())#,
-#                                  object_pairs_hook=deunicodify_hook)
+    eMCP['defaults'] = json.loads(open(defaults_file).read())  #,
+    #                                  object_pairs_hook=deunicodify_hook)
 
     # Inputs
     if os.path.exists(inputs_file):
@@ -119,10 +117,10 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
     # Steps to run:
     eMCP['input_steps'] = emutils.find_run_steps(eMCP, run_steps, skip_steps)
 
-#    # Update casa-data if requested
-#    if eMCP['defaults']['global']['update_casa-data']:
-#        logger.info('Updating casa-data')
-#        os.system('update-data')
+    #    # Update casa-data if requested
+    #    if eMCP['defaults']['global']['update_casa-data']:
+    #        logger.info('Updating casa-data')
+    #        os.system('update-data')
 
     ##################################
     ###  LOAD AND PREPROCESS DATA  ###
@@ -132,14 +130,14 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
     if eMCP['input_steps']['run_importfits'] > 0:
         eMCP = em.import_eMERLIN_fitsIDI(eMCP)
 
-    if os.path.isdir('./'+inputs['inbase']+'.ms') == True:
-        msfile = inputs['inbase']+'.ms'
+    if os.path.isdir('./' + inputs['inbase'] + '.ms') == True:
+        msfile = inputs['inbase'] + '.ms'
         eMCP, msinfo, msfile = em.get_msinfo(eMCP, msfile)
         em.plot_elev_uvcov(eMCP)
 
     ### check for parallelisation
-    if os.path.isdir('./'+inputs['inbase']+'.mms') == True:
-        msfile = inputs['inbase']+'.mms'
+    if os.path.isdir('./' + inputs['inbase'] + '.mms') == True:
+        msfile = inputs['inbase'] + '.mms'
         eMCP, msinfo, msfile = em.get_msinfo(eMCP, msfile)
         em.plot_elev_uvcov(eMCP)
 
@@ -160,12 +158,12 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
         eMCP = em.run_average(eMCP)
 
     # Check if averaged data already generated
-    if os.path.isdir('./'+inputs['inbase']+'_avg.mms') == True:
-        msfile = './'+inputs['inbase']+'_avg.mms'
+    if os.path.isdir('./' + inputs['inbase'] + '_avg.mms') == True:
+        msfile = './' + inputs['inbase'] + '_avg.mms'
         eMCP, msinfo, msfile = em.get_msinfo(eMCP, msfile)
         em.plot_elev_uvcov(eMCP)
-    elif os.path.isdir('./'+inputs['inbase']+'_avg.ms') == True:
-        msfile = './'+inputs['inbase']+'_avg.ms'
+    elif os.path.isdir('./' + inputs['inbase'] + '_avg.ms') == True:
+        msfile = './' + inputs['inbase'] + '_avg.ms'
         eMCP, msinfo, msfile = em.get_msinfo(eMCP, msfile)
         em.plot_elev_uvcov(eMCP)
 
@@ -233,6 +231,8 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
     ### First images ###
     if eMCP['input_steps']['first_images'] > 0:
         eMCP = em.run_first_images(eMCP)
+
+
 #
 #    ### Split fields ###
 #    if eMCP['input_steps']['split_fields'] > 0:
@@ -256,15 +256,19 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
 
     return eMCP
 
+
 def get_args():
     '''This function parses and returns arguments passed in'''
     # Assign description to the help doc
     description = 'e-MERLIN CASA pipeline. Visit: https://github.com/e-merlin/eMERLIN_CASA_pipeline'
     usage = 'casa -c eMERLIN_CASA_pipeline/eMERLIN_CASA_pipeline.py -r [steps]'
     epilog = 'Select "-r calibration" to run only the calibration part (recommended)'
-    parser = argparse.ArgumentParser(description=description, usage=usage,
+    parser = argparse.ArgumentParser(description=description,
+                                     usage=usage,
                                      epilog=epilog)
-    parser.add_argument('-i','--inputs', dest='inputs_file',
+    parser.add_argument('-i',
+                        '--inputs',
+                        dest='inputs_file',
                         help='Inputs file to use. Default is inputs.ini',
                         default='./inputs.ini')
     parser.add_argument('-r', '--run-steps', dest='run_steps',
@@ -273,11 +277,16 @@ def get_args():
                         'Apart from individual steps, it also accepts "all", '\
                         '"pre_processing" and "calibration"',
                         default=[])
-    parser.add_argument('-s', '--skip-steps', dest='skip_steps',
-                        type=str, nargs='+',
+    parser.add_argument('-s',
+                        '--skip-steps',
+                        dest='skip_steps',
+                        type=str,
+                        nargs='+',
                         help='Whispace separated list of steps to skip',
                         default=[])
-    parser.add_argument('-l', '--list-steps', dest='list_steps',
+    parser.add_argument('-l',
+                        '--list-steps',
+                        dest='list_steps',
                         action='store_true',
                         help='Show list of available steps and exit')
     parser.add_argument('-c', help='Ignore, needed for casa')
@@ -292,10 +301,9 @@ if __name__ == '__main__':
     else:
         # Setup logger
         logger = emutils.get_logger()
-        run_pipeline(inputs_file = args.inputs_file,
-                     run_steps = args.run_steps,
-                     skip_steps = args.skip_steps)
-
+        run_pipeline(inputs_file=args.inputs_file,
+                     run_steps=args.run_steps,
+                     skip_steps=args.skip_steps)
 
 #'## This is needed to allow executions from within a running CASA instance
 #'#if 'run_in_casa' in globals():

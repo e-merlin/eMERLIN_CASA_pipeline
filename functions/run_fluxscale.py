@@ -2,9 +2,11 @@ import os
 import pickle
 import argparse
 
+
 def save_obj(obj, name):
     with open(name, 'wb') as f:
         pickle.dump(obj, f)
+
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -18,18 +20,19 @@ def get_args():
     args = parser.parse_args()
     return args
 
+
 def run_fluxscale(args):
-    calfluxes = fluxscale(vis       = args.vis,
-                          reference = args.reference,
-                          transfer  = args.transfer, 
-                          antenna   = args.antenna, 
-                          caltable  = args.caltable, 
-                          fluxtable = args.fluxtable, 
-                          listfile  = args.listfile) 
+    calfluxes = fluxscale(vis=args.vis,
+                          reference=args.reference,
+                          transfer=args.transfer,
+                          antenna=args.antenna,
+                          caltable=args.caltable,
+                          fluxtable=args.fluxtable,
+                          listfile=args.listfile)
     outfile = os.path.join(weblog_dir, 'calib/calfluxes.pkl')
     save_obj(calfluxes, outfile)
+
 
 weblog_dir = './weblog/'
 args = get_args()
 run_fluxscale(args)
-

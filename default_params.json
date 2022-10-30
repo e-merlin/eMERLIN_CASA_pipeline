@@ -349,19 +349,19 @@
   },
   "first_images": {
     "wsclean":{
-      "-size"                  : 1024, 
-      "-scale"                 : "auto", 
-      "-gain"                  : 0.05, 
-      "-mgain"                 : 0.65, 
-      "-weight"                : "briggs 0.5", 
-      "-niter"                 : 10000, 
-      "-auto-mask"             : 5, 
-      "-auto-threshold"        : 2, 
-      "-taper-gaussian"        : 0, 
-      "-data-column"           : "CORRECTED_DATA", 
+      "-size"                  : 1024,
+      "-scale"                 : "auto",
+      "-gain"                  : 0.05,
+      "-mgain"                 : 0.65,
+      "-weight"                : "briggs 0.5",
+      "-niter"                 : 10000,
+      "-auto-mask"             : 5,
+      "-auto-threshold"        : 2,
+      "-taper-gaussian"        : 0,
+      "-data-column"           : "CORRECTED_DATA",
       "-beam-fitting-size"     : 0.5,
       "-save-source-list"      : ""
-       } 
+       }
   },
   "split_fields": {
     "fields"                 : "targets",
