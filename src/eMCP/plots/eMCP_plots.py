@@ -7,6 +7,7 @@ import matplotlib.dates as mdates
 from astropy.time import Time
 from astropy.io import fits
 from astropy.wcs import WCS
+from astropy.constants import c as light_speed
 
 import aplpy
 
@@ -372,50 +373,67 @@ def single_uvplt_model(msinfo, field, plots_data_dir):
     gridcols = 1
     # Amp
 
+    plotms(vis=msfile,
+           xaxis='UVwave',
+           yaxis='amp',
+           title='Model Amplitude vs UVWave {0} (color=spw)'.format(field),
+           gridrows=gridrows,
+           gridcols=gridcols,
+           rowindex=0,
+           colindex=0,
+           plotindex=0,
+           xdatacolumn=datacolumn,
+           ydatacolumn=datacolumn,
+           correlation='RR,LL',
+           antenna='*&*',
+           field=field,
+           averagedata=True,
+           avgtime=avgtime,
+           avgchannel=str(int(nchan / 16)),
+           xselfscale=True,
+           xsharedaxis=True,
+           coloraxis='spw',
+           plotfile=plot_file_a,
+           expformat='png',
+           customsymbol=True,
+           symbolshape='circle',
+           symbolsize=4,
+           clearplots=True,
+           overwrite=True,
+           showgui=showgui)
     em.find_casa_problems()
 
-    #'#    plotms(vis=msfile, xaxis='UVwave', yaxis='amp', title='Model Amplitude vs UVWave {0} (color=spw)'.format(field),
-    #'#    gridrows=gridrows, gridcols=gridcols, rowindex=0, colindex=0, plotindex=0,
-    #'#    xdatacolumn=datacolumn, ydatacolumn=datacolumn,correlation = 'RR,LL',
-    #'#    antenna='*&*', field=field,
-    #'#    averagedata = True, avgtime=avgtime, avgchannel = str(int(nchan/16)),
-    #'#    xselfscale = True, xsharedaxis = True, coloraxis   = 'spw',
-    #'#    plotfile = '', expformat = 'png', customsymbol = True, symbolshape = 'circle',
-    #'#    symbolsize=4, clearplots=True, overwrite=True, showgui=showgui)
-    #'#
-    # Phase
-    commands = {}
-    commands['plotms'] = {
-        'vis': msfile,
-        'xaxis': 'UVwave',
-        'yaxis': 'phase',
-        'title': f"Phase vs UVWave {field} (color=spw)",
-        'gridrows': gridrows,
-        'gridcols': gridcols,
-        #            'rowindex':0, 'colindex':0, 'plotindex':0,
-        'xdatacolumn': datacolumn,
-        'ydatacolumn': datacolumn,
-        'correlation': 'RR,LL',
-        'antenna': '*&*',
-        'field': field,
-        'averagedata': True,
-        'avgchannel': str(nchan),
-        'avgtime': avgtime,
-        'xselfscale': True,
-        'xsharedaxis': True,
-        'coloraxis': 'spw',
-        'plotrange': [-1, -1, -180, 180],
-        'plotfile': plot_file_p,
-        'expformat': 'png',
-        'customsymbol': True,
-        'symbolshape': 'circle',
-        'width': 700,
-        'height': 573,
-        'symbolsize': 4,
-        'clearplots': True,
-        'overwrite': True,
-        'showgui': showgui
-    }
+    plotms(vis=msfile,
+           xaxis='UVwave',
+           yaxis='phase',
+           title='Model Phase vs UVWave {0} (color=spw)'.format(field),
+           gridrows=gridrows,
+           gridcols=gridcols,
+           rowindex=0,
+           colindex=1,
+           plotindex=1,
+           xdatacolumn=datacolumn,
+           ydatacolumn=datacolumn,
+           correlation='RR,LL',
+           antenna='*&*',
+           field=field,
+           averagedata=True,
+           avgtime=avgtime,
+           avgchannel=str(nchan),
+           xselfscale=True,
+           xsharedaxis=True,
+           coloraxis='spw',
+           plotrange=[-1, -1, -180, 180],
+           plotfile=plot_file_p,
+           expformat='png',
+           customsymbol=True,
+           symbolshape='circle',
+           width=1200,
+           height=573,
+           symbolsize=4,
+           clearplots=False,
+           overwrite=True,
+           showgui=showgui)
     em.find_casa_problems()
 
 
@@ -454,7 +472,7 @@ def make_uvcov(msfile, msinfo):
                                     'CHAN_FREQ',
                                     subtable='SPECTRAL_WINDOW').max()
     #'#    msmd.open(msfile)
-    c = 299792458.
+    c = light_speed.value
     #'#    max_freq = np.max(np.array([msmd.chanfreqs(spw) for spw in
     #'#                                msmd.datadescids()]))
     max_uvdist = 217000.0 / c * max_freq  # For 217 km baseline
@@ -470,31 +488,29 @@ def make_uvcov(msfile, msinfo):
             logger.info('{0}'.format(f))
             avgtime = '32'
             nchan = msinfo['nchan']
-            commands = {}
-            commands['plotms'] = {
-                'vis': msfile,
-                'xaxis': 'Uwave',
-                'yaxis': 'Vwave',
-                'field': f,
-                'title': f,
-                'correlation': 'RR',
-                'spw': '',
-                'coloraxis': 'spw',
-                'width': 900,
-                'symbolsize': 1,
-                'plotrange':
-                [-max_uvdist, +max_uvdist, -max_uvdist, +max_uvdist],
-                'averagedata': True,
-                'avgtime': avgtime,
-                'avgchannel': str(int(nchan / 8)),
-                'plotfile': plot_file,
-                'expformat': 'png',
-                'customsymbol': True,
-                'symbolshape': 'circle',
-                'overwrite': True,
-                'showlegend': True,
-                'showgui': False
-            }
+            plotms(
+                vis=msfile,
+                xaxis='Uwave',
+                yaxis='Vwave',
+                field=f,
+                title=f,
+                correlation='RR',
+                spw='',
+                coloraxis='spw',
+                width=900,
+                height=900,
+                symbolsize=1,
+                plotrange=[-max_uvdist, +max_uvdist, -max_uvdist, +max_uvdist],
+                averagedata=True,
+                avgtime=avgtime,
+                avgchannel=str(int(nchan / 8)),
+                plotfile=plot_file,
+                expformat='png',
+                customsymbol=True,
+                symbolshape='circle',
+                overwrite=True,
+                showlegend=False,
+                showgui=False)
             em.find_casa_problems()
 
         else:
@@ -511,28 +527,24 @@ def make_elevation(msfile, msinfo):
     logger.info('{}'.format(plot_file))
     avgtime = '16'
     showgui = False
-    commands = {}
-    commands['plotms'] = {
-        'vis': msfile,
-        'xaxis': 'time',
-        'yaxis': 'elevation',
-        'correlation': 'RR',
-        'spw': '',
-        'coloraxis': 'field',
-        'width': 900,
-        'symbolsize': 5,
-        'plotrange': [-1, -1, 0, 90],
-        'averagedata': True,
-        'avgtime': avgtime,
-        'plotfile': plot_file,
-        'expformat': 'png',
-        'customsymbol': True,
-        'symbolshape': 'circle',
-        'overwrite': True,
-        'showlegend': True,
-        'showgui': showgui
-    }
-    em.run_casa_command(commands, 'plotms')
+    plotms(vis=msfile,
+           xaxis='time',
+           yaxis='elevation',
+           correlation='RR',
+           spw='',
+           coloraxis='field',
+           width=900,
+           symbolsize=5,
+           plotrange=[-1, -1, 0, 90],
+           averagedata=True,
+           avgtime=avgtime,
+           plotfile=plot_file,
+           expformat='png',
+           customsymbol=True,
+           symbolshape='circle',
+           overwrite=True,
+           showlegend=True,
+           showgui=showgui)
     em.find_casa_problems()
 
 
@@ -1210,38 +1222,3 @@ def fits2png(fits_name,
     #    logger.info(f'Converting to png fits file {fits_name}')
     plt.savefig(output_name, dpi=200, bbox_inches='tight')
     emutils.rmfile(fits_name_tmp)
-
-
-#from astropy.wcs import WCS
-#with fits.open(image_file) as hdu_list:
-#    w = WCS(hdu_list[0].header)
-#    w_celestial_axes = w.celestial
-#    hdu_list[0].header.update(w_celestial_axes.to_header())
-#    hdu_list.writeto('new_img.fits')
-#
-#
-#    hdu = fits.open(image_file)[0]
-#    hdu.data = hdu.data[0,0]
-#    wcs = WCS(hdu.header)
-#    wcs2 = wcs.celestial
-#    hdu.header.update(wcs2.to_header())
-#    hdu.writeto('new_img.fits', overwrite=True)
-#
-#from astropy.nddata import Cutout2D
-#
-#hdu = fits.open(image_file)[0]
-#wcs = WCS(hdu.header)
-#wcs2 = wcs.celestial
-#cutout = Cutout2D(hdu.data[0][0], wcs=wcs2)
-#hdu.data = cutout.data
-#hdu.header.update(cutout.wcs.to_header())
-#hdu.writeto('new_img.fits', overwrite=True)
-#
-#
-#WCS(fits.open('new_img.fits')[0].header)
-#
-#
-#ax = plt.subplot(projection=wcs, slices=('x', 'y', 0, 0))
-#ax.imshow(image_data[0,0,:,:])
-#plt.show()
-#
