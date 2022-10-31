@@ -1,65 +1,18 @@
 # Dependencies
-import os, sys
-#'#import pickle
-#'#import logging
+import os
+import sys
 import json
 import argparse
-#'#import time
 
 from src.eMCP.functions import eMCP_functions as em
 from src.eMCP.utils import eMCP_utils as emutils
 from src.eMCP.plots import eMCP_plots as emplt
 
-# CASA imports
-#from taskinit import *
-#from tasks import *
-#import casadef
-#import casalith
-
 current_version = 'v2.0.20'
 
-# Find path of pipeline to find external files (like aoflagger strategies or emerlin-2.gif)
-#pipeline_filename = sys.argv[sys.argv.index('-c') + 1]
 pipeline_filename = sys.argv[0]
-#'#pipeline_path = os.path.abspath(os.path.dirname(pipeline_filename))
-#'#try:
-#'#    pipeline_filename = sys.argv[sys.argv.index('-c') + 1]
-#'#    pipeline_path = os.path.abspath(os.path.dirname(pipeline_filename))
-#'#except:
-#'#    pass
 
-#'#if pipeline_path[-1] != '/':
-#'#    pipeline_path = pipeline_path + '/'
-#'#sys.path.append(pipeline_path)
-#'#
-#'#import functions.eMCP_functions as em
-#'#import functions.eMCP_weblog as emwlog
-#'#import functions.eMCP_plots as emplt
-
-#'#casalog.setlogfile('casa_eMCP.log')
 casalog_name = 'casa_eMCP.log'
-
-#'## Functions
-#'## Save and load dictionaries
-#'#def save_obj(obj, name):
-#'#    with open(name, 'wb') as f:
-#'#        pickle.dump(obj, f)
-#'#
-#'#def load_obj(name):
-#'#    with open(name, 'rb') as f:
-#'#        return pickle.load(f)
-
-#'#def deunicodify_hook(pairs):
-#'#    # Solves the problem of using unicode in python 2 when strings are needed
-#'#    # and uses ordered dict
-#'#    new_pairs = []
-#'#    for key, value in pairs:
-#'#        if isinstance(value, unicode):
-#'#            value = value.encode('utf-8')
-#'#        if isinstance(key, unicode):
-#'#            key = key.encode('utf-8')
-#'#        new_pairs.append((key, value))
-#'#    return collections.OrderedDict(new_pairs)
 
 
 def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
@@ -300,27 +253,3 @@ if __name__ == '__main__':
         run_pipeline(inputs_file=args.inputs_file,
                      run_steps=args.run_steps,
                      skip_steps=args.skip_steps)
-
-#'## This is needed to allow executions from within a running CASA instance
-#'#if 'run_in_casa' in globals():
-#'#    if run_in_casa == True:
-#'#        # Running the pipeline from inside CASA
-#'#        print('Pipeline initialized. To run the pipeline within CASA use:')
-#'#        print("eMCP = run_pipeline(run_steps=['calibration']")
-#'#        # Setup logger
-#'#        logger = get_logger(run_in_casa=run_in_casa)
-#'#    else:
-#'#        print('You need to set run_in_casa = True')
-#'#else:
-#'#    run_in_casa = False
-#'#    # Run from terminal
-#'#    args = get_args()
-#'#    if args.list_steps:
-#'#        list_steps()
-#'#    else:
-#'#        # Setup logger
-#'#        logger = get_logger(run_in_casa=run_in_casa)
-#'#        run_pipeline(inputs_file = args.inputs_file,
-#'#                     run_steps = args.run_steps,
-#'#                     skip_steps = args.skip_steps)
-#'#

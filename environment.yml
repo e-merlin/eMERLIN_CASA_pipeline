@@ -4,7 +4,6 @@ channels:
 - conda-forge
 - defaults
 dependencies:
-- aoflagger
 - casacore
 - python=3.8
 - numpy=1.23

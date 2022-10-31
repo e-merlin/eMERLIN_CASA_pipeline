@@ -17,6 +17,7 @@ import logging
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 import casacore
+import matplotlib.pyplot as plt
 
 from astropy.io import fits
 
@@ -30,11 +31,11 @@ from casatasks import mstransform, applycal, gaincal, flagmanager, flagdata, con
     setjy, importfitsidi, listobs, vishead, visstat, fixvis, statwt, fluxscale, immath,\
     imstat, fringefit, smoothcal, bandpass, delmod, clearcal, initweights, ft
 
-from casatools import table
-
+from casatools import table, msmetadata
 from casaviewer import imview
 
 tb = table()
+msmd = msmetadata()
 
 # Logging
 logger = logging.getLogger('logger')
@@ -232,9 +233,6 @@ def check_band(msfile):
     # Take first frequency in the MS
     freq = emutils.read_keyword(
         msfile, 'CHAN_FREQ', subtable='SPECTRAL_WINDOW').mean() / 1e9
-    #    msmd.open(msfile)
-    #    freq = msmd.chanfreqs(0)[0]/1e9
-    #    msmd.done()
     band = ''
     if (freq > 1.2) and (freq < 1.7):
         band = 'L'
@@ -259,15 +257,6 @@ def get_baselines(msfile):
         f'{pair[0]}-{pair[1]}' for pair in itertools.combinations(antennas, 2)
     ]
     logger.debug(f'Baselines in {msfile}; {baselines}')
-    #'#    msmd.open(msfile)
-    #'#    antennas0 = msmd.antennanames()
-    #'#    baselines0 = msmd.baselines()
-    #'#    msmd.close()
-    #'#    baselines = []
-    #'#    for i, a in enumerate(antennas0):
-    #'#        for j, b in enumerate(antennas0):
-    #'#            if j > i:
-    #'#                baselines.append('{0}-{1}'.format(a, b))
     return np.array(baselines)
 
 
@@ -324,9 +313,6 @@ def get_antennas(msfile):
     # Output example: ['Mk2', 'Pi', 'Da', 'Kn', 'De', 'Cm']
     # Antenna list
     antennas = emutils.read_keyword(msfile, 'NAME', subtable='ANTENNA')
-    #'#    msmd.open(msfile)
-    #'#    antennas = msmd.antennanames()
-    #'#    msmd.close()
     nice_order = ['Lo', 'Mk2', 'Pi', 'Da', 'Kn', 'De', 'Cm']
     antennas_sorted = [a for a in nice_order if a in antennas]
     external = [a for a in antennas if a not in antennas_sorted]
@@ -343,17 +329,6 @@ def get_obstime(msfile):
     t_ini = mjdtodate(times.min() / 60. / 60. / 24.)
     t_end = mjdtodate(times.max() / 60. / 60. / 24.)
     logger.debug(f'Ini and end times: {t_ini}, {t_end}')
-    #'#    ms = myms()
-    #'#    ms.open(msfile)
-    #'#    t = ms.getdata('TIME')['time']
-    #'#    t_ini = mjdtodate(np.min(t)/60./60./24.)
-    #'#    t_end = mjdtodate(np.max(t)/60./60./24.)
-    #'#    ms.close()
-    #'#    # This method fails when working with pseudo wideband data
-    #'#    #msmd.open(msfile)
-    #'#    #t_ini = mjdtodate(msmd.timerangeforobs(0)['begin']['m0']['value'])
-    #'#    #t_end = mjdtodate(msmd.timerangeforobs(0)['end']['m0']['value'])
-    #'#    #msmd.done()
     return t_ini, t_end
 
 
@@ -370,13 +345,6 @@ def get_obsfreq(msfile):
     nchan = emutils.read_keyword(msfile,
                                  'CHAN_FREQ',
                                  subtable='SPECTRAL_WINDOW').shape[1]
-    #'#    msmd.open(msfile)
-    #'#    nspw = msmd.nspw()
-    #'#    freq_ini = msmd.chanfreqs(0)[0]/1e9
-    #'#    freq_end = msmd.chanfreqs(nspw-1)[-1]/1e9
-    #'#    chan_res = msmd.chanwidths(0)[0]/1e9
-    #'#    nchan = len(msmd.chanwidths(0))
-    #'#    msmd.done()
     logger.debug(
         f'freq_ini, freq_end, chan_res, nchan: {freq_ini}, {freq_end}, {chan_res}, {nchan}'
     )
@@ -387,9 +355,6 @@ def find_mssources(msfile):
     # Output example: '1107-1226,1109-1235,1118-1232,1331+305,1407+284'
     fieldnames = emutils.read_keyword(msfile, 'NAME', subtable='FIELD')
     mssources = ','.join(np.sort(fieldnames))
-    #'#    #mssources = ','.join(casatasks.vishead(msfile,mode='list',listitems='field')['field'][0])
-    #'#    msmd.open(msfile)
-    #'#    msmd.done()
     logger.debug('Sources in MS {0}: {1}'.format(msfile, mssources))
     return mssources
 
@@ -1336,9 +1301,6 @@ def flagdata1_apriori(eMCP):
     nchan = emutils.read_keyword(msfile,
                                  'CHAN_FREQ',
                                  subtable='SPECTRAL_WINDOW').shape[1]
-    #'#    msmd.open(msfile)
-    #'#    nchan = len(msmd.chanwidths(0))
-    #'#    msmd.done()
     msg = ''
     # Remove pure zeros
     logger.info('Flagging zeros')
@@ -5701,7 +5663,6 @@ def flag_statistics(eMCP, step):
     find_casa_problems()
     outfile = weblog_dir + 'plots/plots_flagstats/flagstats_{}.pkl'.format(
         step)
-    #'#    save_obj(flag_stats, outfile)
     logger.info('flagstats file saved to: {}'.format(outfile))
     logger.info('Flag statistics ready. Now plotting.')
     flag_stats = load_obj(outfile)
