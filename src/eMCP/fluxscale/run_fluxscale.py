@@ -1,6 +1,5 @@
 import os
 import pickle
-import argparse
 from casatasks import fluxscale
 
 weblog_dir = './weblog/'
