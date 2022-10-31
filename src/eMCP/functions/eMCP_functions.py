@@ -18,6 +18,7 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 import casacore
 import matplotlib.pyplot as plt
+import configparser
 
 from astropy.io import fits
 
@@ -3720,27 +3721,6 @@ def compile_delays(tablename, outname):
     logger.info('Delay statistics saved to: {0}'.format(outname))
 
 
-#def monitoring(msfile, msinfo, caltables, previous_cal):
-#    # This is intented to run on a single-source file for daily monitoring on
-#    # unaveraged data
-#    logger.info('Starting monitoring')
-#    band = check_band(msfile)
-#    if band == 'L':
-#        hanning(inputvis=msfile,deloriginal=True)
-#
-#    flagdata1_apriori(msfile=msfile, msinfo=msinfo, do_quack=True)
-#
-#    flagdata_tfcrop_bright(msfile=msfile, sources=msinfo['sources'])
-#    caltables = solve_delays(msfile=msfile, caltables=caltables,
-#                   previous_cal=[], calsources=msinfo['sources']['calsources'],
-#                             solint='60s')
-#    run_applycal(msfile=msfile, caltables=caltables, sources=msinfo['sources'],
-#                    previous_cal=['delay.K1'],
-#                    previous_cal_targets=['delay.K1'])
-#    compile_statistics(msfile, tablename=caltables['delay.K1']['table'])
-#    return caltables
-
-
 def calc_eMfactor(msfile, field='1331+305'):
     logger.info('Computing eMfactor')
     if field not in ['1331+305', '1331+3030', 'J1331+305', 'J1331+3030']:
@@ -4680,15 +4660,13 @@ def bandpass_final(eMCP, caltables):
                         bptableplot_phs,
                         gaintype='B',
                         calmode='p')
-    #'#    emplt.plot_caltable(msinfo, caltables[caltable_name], bptableplot_phs, title='Bandpass phase',
-    #'#                  xaxis='freq', yaxis='phase', ymin=-180, ymax=180, coloraxis='corr', symbolsize=5)
+
     logger.info('Bandpass_final BP phase plot: {0}'.format(bptableplot_phs))
     emplt.plot_caltable(caltables[caltable_name]['table'],
                         bptableplot_amp,
                         gaintype='B',
                         calmode='ap')
-    #'#    emplt.plot_caltable(msinfo, caltables[caltable_name], bptableplot_amp, title='Bandpass amp',
-    #'#                  xaxis='freq', yaxis='amp', ymin=-1, ymax=-1, coloraxis='corr', symbolsize=5)
+
     logger.info(
         'Bandpass_final BP amplitude plot: {0}'.format(bptableplot_amp))
     logger.info('End bandpass_final')
@@ -4718,13 +4696,7 @@ def gaincal_final(eMCP, caltables):
     eMCP, caltables = gaincal_final_scan(eMCP, caltables)
 
     if eMCP['is_mixed_mode']:
-        #eMCP, caltables = gaincal_narrow(eMCP, caltables, doplots=False)
-        #run_applycal(eMCP, caltables, step = 'initial_gaincal')
         eMCP, caltables = gaincal_narrow(eMCP, caltables)
-    #    # Flagging
-    #    if eMCP['defaults']['bandpass']['run_flag']:
-    #        eMCP = flagdata_tfcrop(eMCP, defaults='bandpass')
-
     # Apply calibration if requested:
     if eMCP['input_steps']['gaincal_final'] == 2:
         run_applycal(eMCP, caltables, step='gaincal_final')
@@ -5566,7 +5538,7 @@ def plot_Lo_drops(phscal_scans, amp_mean, lo_dropout_scans, phscal, eMCP):
             label='{0} Lo dropouts'.format(phscal))
 
     ax1.legend(loc=0)
-    ax1.xaxis.set_major_locator(MultipleLocator(5))
+    ax1.xaxis.set_major_locator(plt.MultipleLocator(5))
     ax1.set_xlim(np.min(phscal_scans) - 0.5, np.max(phscal_scans) + 0.5)
     ax1.set_ylim(0, np.max(amp_mean) * 1.2)
     ax1.set_xlabel('Scan number')
