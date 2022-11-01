@@ -47,12 +47,12 @@ jobs:
       run: python3 -m build
     - name: Build bdist package
       run: python3 setup.py bdist_wheel
-    - name: Install snow
+    - name: Install emerlin-casa-pipeline-artifacts
       run: pip install dist/*.tar.gz
     - name: Upload artifacts
       uses: actions/upload-artifact@v3
       with:
-        name: snow-artifacts
+        name: emerlin-casa-pipeline-artifacts
         path: dist/*
     - name: Run commands to test that everything is OK
       run: |
@@ -81,9 +81,9 @@ jobs:
     - uses: actions/download-artifact@v3
       id: download
       with:
-        name: snow-artifacts
+        name: emerlin-casa-pipeline-artifacts
         path: dist/
-    - name: Install snow from artifacts
+    - name: Install emerlin-casa-pipeline from artifacts
       run: pip3 install dist/*.tar.gz
     #- name: Test with pytest and pycov
     #  run: pytest --cov=csromer --cov-report xml:coverage.xml --cov-report term-missing tests/ -W "ignore" -v

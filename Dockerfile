@@ -40,6 +40,6 @@ RUN pip3 --version
 RUN python3 -m pip install --upgrade pip
 RUN python3 -m pip install mpi4py --no-cache-dir
 RUN echo "Hello from eMERLIN CASA pipeline base image"
-LABEL org.opencontainers.image.source="https://github.com/e-merlin/eMERLIN_CASA_pipeline"
+LABEL org.opencontainers.image.source="https://github.com/miguelcarcamov/emerlin_casa_pipeline"
 LABEL org.opencontainers.image.description="Container image for eMERLIN CASA pipeline"
 LABEL org.opencontainers.image.licenses=GPL3

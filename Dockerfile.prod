@@ -3,8 +3,8 @@ FROM ghcr.io/miguelcarcamov/snow:base
 RUN python3 --version
 RUN pip3 --version
 RUN echo "Installing eMERLIN CASA pipeline"
-RUN pip3 install git+https://github.com/miguelcarcamov/snow.git
+RUN pip3 install git+https://github.com/miguelcarcamov/emerlin_casa_pipeline.git
 RUN echo "Hello from eMERLIN CASA pipeline production image"
-LABEL org.opencontainers.image.source="https://github.com/e-merlin/eMERLIN_CASA_pipeline"
+LABEL org.opencontainers.image.source="https://github.com/miguelcarcamov/emerlin_casa_pipeline"
 LABEL org.opencontainers.image.description="Container image for eMERLIN CASA pipeline"
 LABEL org.opencontainers.image.licenses=GPL3

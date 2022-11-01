@@ -3,7 +3,7 @@ requires = ["setuptools>=62.6.0", "setuptools-scm", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "snow"
+name = "eMCP"
 authors = [
     {name = "Miguel Cárcamo", email = "miguel.carcamo@manchester.ac.uk"},
 ]
