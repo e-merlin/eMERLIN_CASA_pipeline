@@ -5,6 +5,7 @@ channels:
 - defaults
 dependencies:
 - casacore
+- openmpi
 - python=3.8
 - numpy=1.23
 - pip
