@@ -1,0 +1,95 @@
+name: build
+
+on:
+  push:
+    branches: [casa6]
+  pull_request:
+    branches:
+    - master
+
+env:
+  REGISTRY: ghcr.io
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3.0.2
+    - uses: ptxmac/yapf-action@master
+      with:
+        args: --recursive --verbose
+
+  build:
+    runs-on: ubuntu-latest
+    needs: lint
+    container:
+      image: ghcr.io/${{ github.repository }}:base
+      credentials:
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.REGISTRY_TOKEN }}
+    steps:
+    - uses: actions/checkout@v3.0.2
+      with:
+        fetch-depth: 0
+        set-safe-directory: true
+    - name: Force directory safe
+      run: |
+        git config --global --add safe.directory "$GITHUB_WORKSPACE"
+    - name: Install dependencies
+      run: |
+        python3 -m pip install --upgrade pip wheel setuptools setuptools-scm
+        python3 -m pip install virtualenv
+        python3 -m pip install build
+    - name: Build package
+      run: python3 -m build
+    - name: Build bdist package
+      run: python3 setup.py bdist_wheel
+    - name: Install snow
+      run: pip install dist/*.tar.gz
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: snow-artifacts
+        path: dist/*
+    - name: Run commands to test that everything is OK
+      run: |
+        pip3 freeze | grep "eMCP"
+        python3 -c "import eMCP"
+  test:
+    runs-on: ubuntu-latest
+    needs: build
+    container:
+      image: ghcr.io/${{ github.repository }}:base
+      credentials:
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.REGISTRY_TOKEN }}
+    steps:
+    - uses: actions/checkout@v3.0.2
+      with:
+        fetch-depth: 0
+        set-safe-directory: true
+    - name: Force directory safe
+      run: |
+        git config --global --add safe.directory "$GITHUB_WORKSPACE"
+    #- name: Install pytest and pycov
+    #  run: |
+    #    pip3 install pytest
+    #    pip3 install pytest-cov
+    - uses: actions/download-artifact@v3
+      id: download
+      with:
+        name: snow-artifacts
+        path: dist/
+    - name: Install snow from artifacts
+      run: pip3 install dist/*.tar.gz
+    #- name: Test with pytest and pycov
+    #  run: pytest --cov=csromer --cov-report xml:coverage.xml --cov-report term-missing tests/ -W "ignore" -v
+    #- uses: codecov/codecov-action@v2
+    #  with:
+    #    token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
+    #    files: ./coverage.xml
+    #    fail_ci_if_error: true # optional (default = false)
+    #    verbose: true # optional (default = false)

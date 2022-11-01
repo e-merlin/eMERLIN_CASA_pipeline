@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=62.6.0", "setuptools-scm", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "snow"
+authors = [
+    {name = "Miguel Cárcamo", email = "miguel.carcamo@manchester.ac.uk"},
+]
+maintainers = [
+    {name = "Miguel Cárcamo", email = "miguel.carcamo@manchester.ac.uk"},
+]
+description = "CASA eMERLIN pipeline to calibrate data from the e-MERLIN array."
+readme = "README.md"
+license = {text = "GNU GPL"}
+requires-python = ">=3.8, <=3.8.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent"
+]
+dynamic = ["version", "dependencies"]
+
+[project.urls]
+Source = "https://github.com/e-merlin/eMERLIN_CASA_pipeline"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["eMCP*"]
+namespaces = false
+
+[tool.setuptools_scm]
+write_to = "src/eMCP/_version.py"
