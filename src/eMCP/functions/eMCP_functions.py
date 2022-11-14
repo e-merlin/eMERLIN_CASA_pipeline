@@ -18,6 +18,7 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 import casacore
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MultipleLocator
 import configparser
 
 from astropy.io import fits
@@ -3509,7 +3510,8 @@ def write_wsclean_command(msfile, config_wsclean):
 # Only keep keys starting with - that will be passed to wsclean
     for key in config_wsclean.keys():
         if key[0] != '-':
-            config_wsclean = drop_key(config_wsclean, key)
+            config_wsclean = config_wsclean.pop(key)
+
     logger.debug(config_wsclean)
     wsclean_params = ' '.join(
         ['{0} {1}'.format(k, v) for (k, v) in config_wsclean.items()])
