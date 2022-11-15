@@ -189,8 +189,7 @@ def add_step_time(step, eMCP, msg, t0, doweblog=True):
 
 def check_pipeline_conflict(eMCP, pipeline_version):
     try:
-        eMCP['pipeline_version']
-        if ((~new_run) and (eMCP['pipeline_version'] != pipeline_version)):
+        if eMCP['pipeline_version'] != pipeline_version:
             logger.warning(
                 'The log shows that different versions of the pipeline'
                 ' has been executed. Please verify versions')
@@ -3342,13 +3341,14 @@ def dfluxpy(freq, baseline):
     # DMF
     ########
 
-    # Reworked to use the 1999 VLA flux formula, and a 2nd formula to give a continuous estimate of the resolved fraction,
+    # Reworked to use the 1999 VLA flux formula, and a 2nd formula to give a continuous
+    # estimate of the resolved fraction,
     # by Ian Stewart, JBO, 8 Aug 2007.
     # Minor changes by amsr, 8 Aug 2007
 
     lowest_freq = 300.0
     highest_freq = 50000.0
-    if (freq < lowest_freq or freq > highest_freq):
+    if freq < lowest_freq or freq > highest_freq:
         print(
             "Frequency must be between $lowest_freq and $highest_freq MHz. \n")
 
