@@ -3949,13 +3949,14 @@ def find_Lo_amp(msfile, phscal, phscal_scans, eMCP, spws):
     return amp_mean, amp_std
 
 
-def plot_Lo_drops(phscal_scans, amp_mean, lo_dropout_scans, phscal, eMCP):
+def plot_Lo_drops(msfile, phscal_scans, amp_mean, lo_dropout_scans, phscal,
+                  eMCP):
     msinfo = eMCP['msinfo']
     drops = np.array([scan in lo_dropout_scans for scan in phscal_scans])
     fig = plt.figure(figsize=(30, 8))
     ax1 = fig.add_subplot(111)
 
-    scans, field_for_scan = find_scans(msfile)
+    scans, field_for_scan = find_fields_scans(msfile)
     ax1.bar(scans - 0.5,
             np.ones_like(scans) * np.max(amp_mean) * 1.2,
             alpha=0.2,
@@ -4421,8 +4422,8 @@ def find_Lo_drops(msfile, phscals, eMCP):
                                         spws)
         threshold = eMCP['defaults']['flag_manual_avg']['Lo_threshold']
         lo_dropout_scans_i = calc_Lo_drops(amp_mean, phscal_scans, threshold)
-        emplt.plot_Lo_drops(phscal_scans, scans, amp_mean, lo_dropout_scans_i,
-                            phscal, eMCP)
+        emplt.plot_Lo_drops(msfile, phscal_scans, scans, amp_mean,
+                            lo_dropout_scans_i, phscal, eMCP)
         if len(lo_dropout_scans_i) > 0:
             logger.info('Potential dropout scans: '
                         '{0}'.format(','.join(
