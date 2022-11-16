@@ -205,7 +205,7 @@ def eMCP_info_start_steps():
 def check_pipeline_conflict(eMCP, pipeline_version):
     try:
         eMCP['pipeline_version']
-        if ((~new_run) and (eMCP['pipeline_version'] != pipeline_version)):
+        if eMCP['pipeline_version'] != pipeline_version:
             logger.warning(
                 'The log shows that different versions of the pipeline'
                 ' has been executed. Please verify versions')
@@ -222,11 +222,8 @@ def read_inputs(inputs_file):
 
 
 def exit_pipeline(eMCP=''):
-    os.system('cp eMCP.log {}eMCP.log.txt'.format(info_dir))
-    os.system('cp casa_eMCP.log {}casa_eMCP.log.txt'.format(info_dir))
     if eMCP != '':
         logger.info('Something went wrong. Producing weblog before quiting')
-        emwlog.start_weblog(eMCP)
     logger.info('Now quiting')
     sys.exit()
 
