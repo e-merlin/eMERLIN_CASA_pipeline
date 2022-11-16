@@ -4,9 +4,9 @@ import sys
 import json
 import argparse
 
-from src.eMCP.functions import eMCP_functions as em
-from src.eMCP.utils import eMCP_utils as emutils
-from src.eMCP.plots import eMCP_plots as emplt
+from eMCP.functions import eMCP_functions as em
+from eMCP.utils import eMCP_utils as emutils
+from eMCP.plots import eMCP_plots as emplt
 
 current_version = 'v2.0.20'
 
