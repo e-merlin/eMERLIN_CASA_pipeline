@@ -1,4 +1,4 @@
-FROM ghcr.io/miguelcarcamov/snow:base
+FROM ghcr.io/miguelcarcamov/emerlin_casa_pipeline:base
 
 RUN python3 --version
 RUN pip3 --version
