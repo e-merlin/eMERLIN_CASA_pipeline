@@ -5,6 +5,7 @@ import configparser
 import time
 import shutil
 import casacore.tables
+import eMCP
 
 import logging
 
@@ -157,13 +158,8 @@ def list_steps():
     sys.exit()
 
 
-def get_pipeline_version(pipeline_path):
-    headfile = os.path.join(pipeline_path, '.git/HEAD')
-    branch = open(headfile, 'r').readlines()[0].strip().split('/')[-1]
-    commitfile = os.path.join(pipeline_path, '.git/refs/heads/', branch)
-    commit = open(commitfile, 'r').readlines()[0].strip()
-    short_commit = commit[:7]
-    return branch, short_commit
+def get_pipeline_version():
+    return eMCP.__version__
 
 
 def start_eMCP_dict(info_dir):

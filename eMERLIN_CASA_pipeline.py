@@ -25,7 +25,7 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
     eMCP = emutils.start_eMCP_dict(info_dir)
 
     # Get git info about pipeline version
-    branch, short_commit = emutils.get_pipeline_version(pipeline_path)
+    installed_version = emutils.get_pipeline_version()
     #    try:
     #        branch, short_commit = emutils.get_pipeline_version(pipeline_path)
     #    except:
@@ -37,8 +37,7 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
     logger.info('{}'.format(pipeline_path))
     #'#    logger.info('CASA version: {}'.format(casalith.version_string()))
     logger.info('Pipeline version: {}'.format(pipeline_version))
-    logger.info('Using github branch: {}'.format(branch))
-    logger.info('github last commit: {}'.format(short_commit))
+    logger.info('Pipeline installed version: {}'.format(installed_version))
     logger.info('This log uses UTC times')
     eMCP['pipeline_path'] = pipeline_path
     #'#    eMCP['casa_version'] = casalith.version_string()
