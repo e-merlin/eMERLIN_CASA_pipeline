@@ -23,6 +23,11 @@ dynamic = ["version", "dependencies"]
 [project.urls]
 Source = "https://github.com/e-merlin/eMERLIN_CASA_pipeline"
 
+[tool.setuptools.package-data]
+"eMCP.aoflagger_strategies.default" = ["*.lua", "*.rfis"]
+"eMCP.aoflagger_strategies.other" = ["*.lua", "*.rfis"]
+"eMCP.calibrator_models" = ["*.dat", "*.f0", "*.f0_TSM0", "*.lock", "*.info"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["eMCP*"]
