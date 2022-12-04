@@ -970,8 +970,8 @@ def run_aoflagger_fields(eMCP):
         # If nothing is found, just use the default strategy
         aoflagger_strategies_path = emutils.get_project_root(
         ) / "aoflagger_strategies"
-        aoflagger_strategies_user = aoflagger_strategies_path / "user"
-        aoflagger_strategies_default = aoflagger_strategies_path / "default"
+        aoflagger_strategies_user = aoflagger_strategies_path / "user/"
+        aoflagger_strategies_default = aoflagger_strategies_path / "default/"
         if aoflagger_strategies_user.exists():
             ao_strategy = str(aoflagger_strategies_user) + "{0}.lua".format(
                 field)
