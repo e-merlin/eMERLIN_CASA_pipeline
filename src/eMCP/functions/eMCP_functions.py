@@ -16,7 +16,7 @@ from scipy.stats import mode
 import logging
 from astropy.coordinates import SkyCoord
 import astropy.units as u
-import casacore
+from casacore import tables as casacore_tables
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator
 import configparser
@@ -603,7 +603,7 @@ def remove_missing_scans(caltable, scans2flag):
     index_missing_rows = np.where(antenna1_Lo * missing_rows)[0]
     logger.info('Removing Lo solutions for dropout scans from {0}: {1}'.format(
         caltable, scans2flag))
-    with casacore.tables.table(caltable, ack=False,
+    with casacore_tables.table(caltable, ack=False,
                                readonly=False) as maintable:
         maintable.removerows(index_missing_rows)
 
