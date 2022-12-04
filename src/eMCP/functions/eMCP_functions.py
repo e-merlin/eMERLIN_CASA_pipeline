@@ -140,27 +140,10 @@ def exit_pipeline(eMCP=''):
 
 def find_casa_problems():
     logger.debug('Checking casa_log for problems')
-    filename = 'casa_eMCP.log'
-    with open(filename, 'r') as f:
-        lines = f.readlines()
-    string_to_match = '##### Begin Task: '
-    matching_lines = np.argwhere([string_to_match in l for l in lines])
-    if len(matching_lines) != 0:
-        last_line = matching_lines[-1][0]
-    else:
-        last_line = 0
-    logger.debug(last_line)
-    if any(['SEVERE' in line for line in lines[last_line:]]):
-        problems = True
-    else:
-        problems = False
-    logger.debug('Problems {}'.format(problems))
-    if problems:
-        logger.critical('CASA LOG SEVERE found in casa_eMCP.log')
-        for line in lines[last_line:]:
-            if 'SEVERE' in line:
-                logger.critical('{}'.format(line.strip()))
-        exit_pipeline(eMCP='')
+    # Here we need to make a list with all the casa log files
+    # Then check the file that has the most recent date and
+    # check for SEVERE words.
+    pass
 
 
 # Functions to save and load dictionaries
