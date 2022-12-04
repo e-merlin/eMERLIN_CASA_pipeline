@@ -968,25 +968,28 @@ def run_aoflagger_fields(eMCP):
         # (for typical sources, etc).
         # If not, check for default strategies for this field
         # If nothing is found, just use the default strategy
+        ao_strategy = ""
         aoflagger_strategies_path = emutils.get_project_root(
         ) / "aoflagger_strategies"
-        aoflagger_strategies_user = aoflagger_strategies_path / "user/"
-        aoflagger_strategies_default = aoflagger_strategies_path / "default/"
+        aoflagger_strategies_user = aoflagger_strategies_path / "user"
+        aoflagger_strategies_default = aoflagger_strategies_path / "default"
         if aoflagger_strategies_user.exists():
-            ao_strategy = str(aoflagger_strategies_user) + "{0}.lua".format(
+            ao_strategy_path = aoflagger_strategies_user / "{0}.lua".format(
                 field)
         elif aoflagger_strategies_default.exists():
-            ao_strategy = str(aoflagger_strategies_default) + "{0}.lua".format(
+            ao_strategy_path = aoflagger_strategies_default / "{0}.lua".format(
                 field)
         else:
-            ao_strategy = str(aoflagger_strategies_default) + "{0}.lua".format(
+            ao_strategy_path = aoflagger_strategies_default / "{0}.lua".format(
                 'default_faint')
 
-        path_ao_strategy_file = Path(ao_strategy)
-        if not path_ao_strategy_file.is_file():
-            logger.critical("Strategy file {0} not found".format(ao_strategy))
-            raise FileNotFoundError(
-                "Strategy file {0} not found".format(ao_strategy))
+        if not ao_strategy_path.is_file():
+            logger.critical("Strategy file {0} not found".format(
+                str(ao_strategy_path)))
+            raise FileNotFoundError("Strategy file {0} not found".format(
+                str(ao_strategy_path)))
+        else:
+            ao_strategy = str(ao_strategy_path)
 
         logger.info(
             'Running AOFLagger for field {0} ({1}) using strategy {2}'.format(
