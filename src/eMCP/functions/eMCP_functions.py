@@ -20,6 +20,7 @@ import casacore
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator
 import configparser
+from pathlib import Path
 
 from astropy.io import fits
 
@@ -140,9 +141,9 @@ def exit_pipeline(eMCP=''):
 
 def find_casa_problems():
     logger.debug('Checking casa_log for problems')
-    # Here we need to make a list with all the casa log files
-    # Then check the file that has the most recent date and
-    # check for SEVERE words.
+    # TODO: Here we need to make a list with all the casa log files
+    # TODO: Then check the file that has the most recent date and
+    # TODO: check for SEVERE words.
     pass
 
 
@@ -934,9 +935,9 @@ def run_aoflagger_fields(eMCP):
 
     logger.info('Start run_aoflagger_fields')
     t0 = datetime.datetime.utcnow()
-    if separate_bands == True:
+    if separate_bands:
         logger.info('Bands will be processed separately.')
-    elif separate_bands == False:
+    elif not separate_bands:
         logger.info('Bands will be processed all together.')
     else:
         logger.warning('separate_bands can only be True or False')
@@ -966,39 +967,45 @@ def run_aoflagger_fields(eMCP):
         # (for typical sources, etc).
         # If not, check for default strategies for this field
         # If nothing is found, just use the default strategy
-        if os.path.isfile('./aoflagger_strategies/user/{0}.lua'.format(field)):
-            aostrategy = './aoflagger_strategies/user/{0}.lua'.format(field)
-        elif os.path.isfile(
-                os.path.join(
-                    pipeline_path, 'aoflagger_strategies/default/{0}.lua'.
-                    format(field)) == True):
-            aostrategy = os.path.join(
-                pipeline_path,
-                'aoflagger_strategies/default/{0}.lua'.format(field))
+        aoflagger_strategies_path = emutils.get_project_root(
+        ) / "aoflagger_strategies"
+        aoflagger_strategies_user = aoflagger_strategies_path / "user"
+        aoflagger_strategies_default = aoflagger_strategies_path / "default"
+        if aoflagger_strategies_user.exists():
+            ao_strategy = str(aoflagger_strategies_user) + "{0}.lua".format(
+                field)
+        elif aoflagger_strategies_default.exists():
+            ao_strategy = str(aoflagger_strategies_default) + "{0}.lua".format(
+                field)
         else:
-            aostrategy = os.path.join(
-                pipeline_path,
-                'aoflagger_strategies/default/{0}.lua'.format('default_faint'))
+            ao_strategy = str(aoflagger_strategies_default) + "{0}.lua".format(
+                'default_faint')
+
+        path_ao_strategy_file = Path(ao_strategy)
+        if not path_ao_strategy_file.is_file():
+            logger.critical("Strategy file {0} not found".format(ao_strategy))
+            raise FileNotFoundError(
+                "Strategy file {0} not found".format(ao_strategy))
+
         logger.info(
             'Running AOFLagger for field {0} ({1}) using strategy {2}'.format(
-                field, fields_num[field], aostrategy))
+                field, fields_num[field], ao_strategy))
         if separate_bands:
             num_spw = len(
                 vishead(msfile, mode='list',
                         listitems=['spw_name'])['spw_name'][0])
             for b in range(num_spw):
                 logger.info('Processing source {0}, band {1}'.format(field, b))
-                flagcommand = 'aoflagger -fields {2} -bands {3} -strategy {0} {1}'.format(
-                    aostrategy, msfile, fields_num[field], b)
-                #os.system(flagcommand+' | tee -a pre-cal_flag_stats.txt')
-                os.system(flagcommand)
-            logger.info('Last AOFlagger command: {}'.format(flagcommand))
+                flag_command = 'aoflagger -fields {2} -bands {3} -strategy {0} {1}'.format(
+                    ao_strategy, msfile, fields_num[field], b)
+                os.system(flag_command)
+                logger.info('Last AOFlagger command: {}'.format(flag_command))
         else:
             logger.info('Processing source {0}, all bands'.format(field))
-            flagcommand = 'aoflagger -fields {2} -strategy {0} {1}'.format(
-                aostrategy, msfile, fields_num[field])
-            os.system(flagcommand + ' | tee -a pre-cal_flag_stats.txt')
-            logger.info('Last AOFlagger command: {}'.format(flagcommand))
+            flag_command = 'aoflagger -fields {2} -strategy {0} {1}'.format(
+                ao_strategy, msfile, fields_num[field])
+            os.system(flag_command + ' | tee -a pre-cal_flag_stats.txt')
+            logger.info('Last AOFlagger command: {}'.format(flag_command))
 
     flag_statistics(eMCP, step='flag_aoflagger')
     logger.info('End flag_aoflagger')
@@ -1779,26 +1786,25 @@ def load_3C286_model(eMCP):
     fluxcal = eMCP['msinfo']['sources']['fluxcal']
     msfile = eMCP['msinfo']['msfile']
     init_models = eMCP['defaults']['init_models']
-    models_path = os.path.join(eMCP['pipeline_path'],
-                               init_models['calibrator_models'])
+    models_path = emutils.get_project_root() / "calibrator_models"
     # Check dataset frequency:
     band = check_band(msfile)
     if band == 'C':
-        model_3C286 = models_path + '3C286_C.clean.model.tt0'
+        model_file_path = models_path / '3C286_C.clean.model.tt0'
         logger.info('Dataset is band C. Using C band model of 3C286')
     elif band == 'L':
-        model_3C286 = models_path + '1331+305.clean.model.tt0'
+        model_file_path = models_path / '1331+305.clean.model.tt0'
         logger.info('Dataset is band L. Using L band model of 3C286')
     else:
         logger.warning('No 3C286 model available!')
-        model_3C286 = ''
+        model_file_path = ""
+    model_file_path = str(model_file_path)
     logger.info('Initializing model for 3C286')
-    logger.info('Model {0}'.format('./' +
-                                   '/'.join(model_3C286.split('/')[-2:])))
+    logger.info('Model {0}'.format(model_file_path))
 
     setjy(vis=msfile,
           field=fluxcal,
-          model=model_3C286,
+          model=model_file_path,
           scalebychan=True,
           usescratch=True)
     find_casa_problems()
@@ -1808,7 +1814,7 @@ def load_3C286_model(eMCP):
 
         setjy(vis=msfile_sp,
               field=fluxcal,
-              model=model_3C286,
+              model=model_file_path,
               scalebychan=True,
               usescratch=True)
         find_casa_problems()

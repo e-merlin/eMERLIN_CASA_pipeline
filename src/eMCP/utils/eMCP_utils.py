@@ -9,10 +9,15 @@ import eMCP
 
 import logging
 
+from pathlib import Path
+
 logger = logging.getLogger('logger')
 
 
-# Utility functions
+def get_project_root() -> Path:
+    return Path(__file__).parent.parent
+
+
 def makedir(pathdir):
     try:
         os.mkdir(pathdir)
@@ -121,14 +126,14 @@ def prt_dict(d, pre=''):
             subdict.append(key)
         else:
             print('{0:20s}: {1}'.format(pre + key, d[key]))
-    if subdict != []:
+    if subdict:
         for key_inner in subdict:
             print(pre + key_inner)
             prt_dict(d[key_inner], pre=pre + '   ')
 
 
 def prt_dict_tofile(d, tofilename=None, addfile='', pre=' '):
-    if tofilename != None:
+    if tofilename is not None:
         f = open(tofilename, 'w')
     else:
         f = addfile
@@ -138,7 +143,7 @@ def prt_dict_tofile(d, tofilename=None, addfile='', pre=' '):
             subdict.append(key)
         else:
             f.write('{0:20s}: {1}\n'.format(pre + key, d[key]))
-    if subdict != []:
+    if subdict:
         for key_inner in subdict:
             f.write('{}\n'.format(pre + key_inner))
             prt_dict_tofile(d[key_inner], addfile=f, pre=pre + pre)
@@ -164,12 +169,10 @@ def get_pipeline_version():
 
 def start_eMCP_dict(info_dir):
     try:
-        eMCP = load_obj(info_dir + 'eMCP_info.pkl')
+        eMCP_obj = load_obj(info_dir + 'eMCP_info.pkl')
     except:
-        eMCP = {}
-        eMCP['steps'] = eMCP_info_start_steps()
-        eMCP['img_stats'] = {}
-    return eMCP
+        eMCP_obj = {'steps': eMCP_info_start_steps(), 'img_stats': {}}
+    return eMCP_obj
 
 
 def list_of_steps():
@@ -198,15 +201,14 @@ def eMCP_info_start_steps():
     return steps
 
 
-def check_pipeline_conflict(eMCP, pipeline_version):
+def check_pipeline_conflict(eMCP_dict, pipeline_version):
     try:
-        eMCP['pipeline_version']
-        if eMCP['pipeline_version'] != pipeline_version:
+        if eMCP_dict['pipeline_version'] != pipeline_version:
             logger.warning(
                 'The log shows that different versions of the pipeline'
                 ' has been executed. Please verify versions')
             logger.warning('Previous version: {0}. Current version {1}'.format(
-                eMCP['pipeline_version'], pipeline_version))
+                eMCP_dict['pipeline_version'], pipeline_version))
     except:
         pass
 
@@ -248,13 +250,13 @@ def find_run_steps(eMCP, run_steps, skip_steps=[]):
 
     # Check if all are valid steps:
     wrong_steps = [s for s in step_list if s not in all_steps]
-    if wrong_steps != []:
+    if wrong_steps:
         ws = ', '.join(wrong_steps)
         logger.critical('Not available step(s) to run: {0}'.format(ws))
         exit_pipeline(eMCP='')
 
     wrong_steps = [s for s in skip_steps if s not in all_steps]
-    if wrong_steps != []:
+    if wrong_steps:
         ws = ', '.join(wrong_steps)
         logger.critical('Not available step(s) to skip: {0}'.format(ws))
         exit_pipeline(eMCP='')
@@ -286,7 +288,7 @@ def find_run_steps(eMCP, run_steps, skip_steps=[]):
 
 def read_keyword(infile, column, subtable=None):
     with casacore.tables.table(infile, ack=False) as maintable:
-        if subtable != None:
+        if subtable is not None:
             tb = casacore.tables.table(maintable.getkeyword(subtable),
                                        ack=False)
             maintable.close()
