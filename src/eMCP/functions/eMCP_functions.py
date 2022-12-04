@@ -557,7 +557,7 @@ def get_msinfo(eMCP, msfile, doprint=False):
         msinfo['sources']['mssources']))
     logger.info('> Number of spw: {0}'.format(msinfo['num_spw']))
     logger.info('> Channels per spw: {0}'.format(msinfo['nchan']))
-    logger.info('> Itegration time {0:3.1f}s'.format(msinfo['int_time']))
+    logger.info('> Integration time {0:3.1f}s'.format(msinfo['int_time']))
     if doprint:
         emutils.prt_dict(msinfo)
     eMCP['msinfo'] = msinfo
