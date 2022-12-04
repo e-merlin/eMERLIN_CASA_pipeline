@@ -31,7 +31,7 @@ from ..fluxscale import run_fluxscale
 from ..flagstatistics import run_flagstats
 
 from casatasks import mstransform, applycal, gaincal, flagmanager, flagdata, concat,\
-    setjy, importfitsidi, listobs, vishead, visstat, phaseshift, statwt, fluxscale, immath,\
+    setjy, importfitsidi, listobs, vishead, visstat, fixvis, phaseshift, statwt, fluxscale, immath,\
     imstat, fringefit, smoothcal, bandpass, delmod, clearcal, initweights, ft
 
 from casatools import table, msmetadata
@@ -823,7 +823,7 @@ def import_eMERLIN_fitsIDI(eMCP):
     msfile = eMCP['inputs']['inbase'] + ext_ms[do_ms2mms]
     logger.info('Start phase shift')
     #    t0 = datetime.datetime.utcnow()
-    phaseshift(vis=msfile1, outputvis=msfile)
+    fixvis(vis=msfile1, outputvis=msfile, reuse=False)
     find_casa_problems()
     logger.info('Fixed {0} into {1}'.format(msfile1, msfile))
     run_listobs(msfile)
@@ -836,7 +836,7 @@ def import_eMERLIN_fitsIDI(eMCP):
     if is_mixed_mode:
         msfile_sp = get_msfile_sp(eMCP)
         logger.info('Running phaseshift on spectral line data')
-        phaseshift(vis=msfile1_sp, outputvis=msfile_sp)
+        fixvis(vis=msfile1_sp, outputvis=msfile_sp, reuse=False)
         find_casa_problems()
         logger.info('Fixed {0} into {1}'.format(msfile1_sp, msfile_sp))
         run_listobs(msfile_sp)
