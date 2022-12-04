@@ -131,7 +131,6 @@ def find_run_steps(eMCP, run_steps, skip_steps=[]):
 
 def exit_pipeline(eMCP=''):
     os.system('cp eMCP.log {}eMCP.log.txt'.format(info_dir))
-    os.system('cp casa_eMCP.log {}casa_eMCP.log.txt'.format(info_dir))
     if eMCP != '':
         logger.info('Something went wrong. Producing weblog before quiting')
         emwlog.start_weblog(eMCP)
@@ -165,7 +164,6 @@ def add_step_time(step, eMCP, msg, t0, doweblog=True):
     eMCP['steps'][step] = [timestamp, delta_t_min, msg]
     save_obj(eMCP, info_dir + 'eMCP_info.pkl')
     os.system('cp eMCP.log {}eMCP.log.txt'.format(info_dir))
-    os.system('cp casa_eMCP.log {}casa_eMCP.log.txt'.format(info_dir))
     if doweblog:
         emwlog.start_weblog(eMCP)
     return eMCP
@@ -1932,39 +1930,16 @@ def initialize_cal_dict(eMCP):
 def read_gaincal_solutions():
     """ Compile solution statistics from the CASA log
         Needs to be executed right after gaincal """
-    #'#    casalog_file = casa_log.logfile()
-    casalog_file = 'casa_eMCP.log'
-    with open(casalog_file, 'r') as f:
-        last_lines = f.readlines()[-40:]
-    logger.info('CASA log: {}'.format(casalog_file))
-    logger.debug(last_lines)
-    regex = re.compile(r'[ \t] Spw [0-9]{1,2}: ')
-    selected_lines = list(filter(regex.search, last_lines))
-    logger.debug(selected_lines)
-    if len(selected_lines) == 0:
-        logger.warning('No solutions found!')
-    else:
-        for line in selected_lines:
-            logger.info(line.split('\t')[-1].strip())
+    # TODO: read casa logs to find solution statistics
+    pass
 
 
 def read_applycal_flags():
     """ Compile flag statistics from the CASA log
         Needs to be executed right after applycal """
     #'#    casalog_file = casa_log.logfile()
-    casalog_file = 'casa_eMCP.log'
-    with open(casalog_file, 'r') as f:
-        last_lines = f.readlines()[-40:]
-    logger.debug('CASA log: {}'.format(casalog_file))
-    logger.debug(last_lines)
-    regex = re.compile(r' Jones: In: ')
-    selected_lines = list(filter(regex.search, last_lines))
-    logger.debug(selected_lines)
-    if len(selected_lines) == 0:
-        logger.warning('No applycal flags found!')
-    else:
-        for line in selected_lines:
-            logger.info(line.split('\t')[-1].strip())
+    # TODO: read casa logs to find flag statistics
+    pass
 
 
 def run_gaincal(msfile, caltables, caltable_name):

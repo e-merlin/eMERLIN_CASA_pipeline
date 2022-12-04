@@ -455,10 +455,10 @@ def weblog_pipelineinfo(eMCP):
                    info_link + 'eMCP.log.txt',
                    'Pipeline log',
                    text='eMCP.log')
-    write_link_txt(wlog,
-                   info_link + 'casa_eMCP.log.txt',
-                   'CASA log',
-                   text='casa_eMCP.log')
+    # write_link_txt(wlog,
+    #               info_link + 'casa_eMCP.log.txt',
+    #               'CASA log',
+    #               text='casa_eMCP.log')
     # eMCP_info dictionary as text
     emutils.prt_dict_tofile(eMCP,
                             tofilename=info_dir + 'eMCP_info.txt',
