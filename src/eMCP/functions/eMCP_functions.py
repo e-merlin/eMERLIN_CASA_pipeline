@@ -2310,12 +2310,7 @@ def run_applycal(eMCP, caltables, step, insources=''):
     logger.info('End applycal')
 
 
-def run_applycal_narrow(eMCP,
-                        caltables,
-                        step,
-                        spwmap_sp,
-                        dotarget=False,
-                        insources=''):
+def run_applycal_narrow(eMCP, caltables, step, spwmap_sp, insources=''):
     logger.info(line0)
     logger.info('Start applycal')
     logger.info('Applying narrow band calibration up to step: {}'.format(step))
@@ -4322,14 +4317,13 @@ def gaincal_final_scan(eMCP, caltables):
 
 def applycal_all(eMCP, caltables):
     t0 = datetime.datetime.utcnow()
-    run_applycal(eMCP, caltables, step='applycal_all', dotarget=True)
+    run_applycal(eMCP, caltables, step='applycal_all')
     if eMCP['is_mixed_mode']:
         spwmap_sp = eMCP['msinfo']['spwmap_sp']
         run_applycal_narrow(eMCP,
                             caltables,
                             step='applycal_all',
-                            spwmap_sp=spwmap_sp,
-                            dotarget=True)
+                            spwmap_sp=spwmap_sp)
 
     flag_statistics(eMCP, step='applycal_all')
     # Run statwt if requested
