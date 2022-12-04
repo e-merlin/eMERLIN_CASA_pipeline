@@ -381,8 +381,9 @@ def get_directions(msfile):
     phase_dir = emutils.read_keyword(msfile, 'PHASE_DIR', 'FIELD')
     for i, field in enumerate(field_names):
         ra = phase_dir[i][0][0] * u.rad
-        de = phase_dir[i][0][1] * u.rad
-        directions[field] = SkyCoord(ra, de, frame='icrs')
+        dec = phase_dir[i][0][1] * u.rad
+        # TODO: Frame need to be read from Measurement Set
+        directions[field] = SkyCoord(ra, dec, frame='icrs')
     return directions
 
 
@@ -1056,28 +1057,24 @@ def find_quacktime(msinfo, s1, s2):
         return 0
     else:
         try:
-            print(separations)
-            print(s1)
-            print(s2)
-            raise ValueError
-            separation = float('{0:5.2f}'.format(separations[s1 + '-' + s2]))
+            separation = separations[s1 + '-' + s2]
         except KeyError:
             try:
-                separation = float('{0:5.2f}'.format(separations[s2 + '-' +
-                                                                 s1]))
+                separation = separations[s2 + '-' + s1]
             except:
                 separation = 0.0
-    if separation < 1.0:
-        quacktime = 20.
-    elif 1.0 <= separation < 2.0:
-        quacktime = 25.
-    elif 2.0 <= separation < 3.5:
-        quacktime = 30.
-    elif separation >= 3.5:
-        quacktime = 35.
+
+    if separation < 1.0 * u.deg:
+        quack_time = 20.
+    elif 1.0 * u.deg <= separation < 2.0 * u.deg:
+        quack_time = 25.
+    elif 2.0 * u.deg <= separation < 3.5 * u.deg:
+        quack_time = 30.
+    elif separation >= 3.5 * u.deg:
+        quack_time = 35.
     else:
-        quacktime = 0
-    return quacktime
+        quack_time = 0
+    return quack_time
 
 
 def quack_estimating(eMCP):
