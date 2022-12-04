@@ -1030,7 +1030,7 @@ def check_aoflagger_version():
     logger.info('Checking AOflagger version')
     from subprocess import Popen, PIPE
     try:
-        process = Popen(['aoflagger'], stdout=PIPE)
+        process = Popen(['aoflagger --version'], stdout=PIPE)
         (output, err) = process.communicate()
         exit_code = process.wait()
         version = output.split()[1]
