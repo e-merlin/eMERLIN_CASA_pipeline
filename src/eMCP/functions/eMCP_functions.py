@@ -983,20 +983,19 @@ def run_aoflagger_fields(eMCP):
         # (for typical sources, etc).
         # If not, check for default strategies for this field
         # If nothing is found, just use the default strategy
-        if os.path.isfile(
-                './aoflagger_strategies/user/{0}.rfis'.format(field)):
-            aostrategy = './aoflagger_strategies/user/{0}.rfis'.format(field)
+        if os.path.isfile('./aoflagger_strategies/user/{0}.lua'.format(field)):
+            aostrategy = './aoflagger_strategies/user/{0}.lua'.format(field)
         elif os.path.isfile(
                 os.path.join(
-                    pipeline_path, 'aoflagger_strategies/default/{0}.rfis'.
+                    pipeline_path, 'aoflagger_strategies/default/{0}.lua'.
                     format(field)) == True):
             aostrategy = os.path.join(
                 pipeline_path,
-                'aoflagger_strategies/default/{0}.rfis'.format(field))
+                'aoflagger_strategies/default/{0}.lua'.format(field))
         else:
             aostrategy = os.path.join(
-                pipeline_path, 'aoflagger_strategies/default/{0}.rfis'.format(
-                    'default_faint'))
+                pipeline_path,
+                'aoflagger_strategies/default/{0}.lua'.format('default_faint'))
         logger.info(
             'Running AOFLagger for field {0} ({1}) using strategy {2}'.format(
                 field, fields_num[field], aostrategy))
