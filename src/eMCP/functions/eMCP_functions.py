@@ -973,23 +973,20 @@ def run_aoflagger_fields(eMCP):
         ) / "aoflagger_strategies"
         aoflagger_strategies_user = aoflagger_strategies_path / "user"
         aoflagger_strategies_default = aoflagger_strategies_path / "default"
-        if aoflagger_strategies_user.exists():
-            ao_strategy_path = aoflagger_strategies_user / "{0}.lua".format(
-                field)
-        elif aoflagger_strategies_default.exists():
-            ao_strategy_path = aoflagger_strategies_default / "{0}.lua".format(
-                field)
-        else:
-            ao_strategy_path = aoflagger_strategies_default / "{0}.lua".format(
-                'default_faint')
 
-        if not ao_strategy_path.is_file():
-            logger.critical("Strategy file {0} not found".format(
-                str(ao_strategy_path)))
-            raise FileNotFoundError("Strategy file {0} not found".format(
-                str(ao_strategy_path)))
+        ao_strategy_path_user = aoflagger_strategies_user / "{0}.lua".format(
+            field)
+        ao_strategy_path_default = aoflagger_strategies_default / "{0}.lua".format(
+            field)
+        ao_strategy_path_default_faint = aoflagger_strategies_default / "{0}.lua".format(
+            'default_faint')
+
+        if ao_strategy_path_user.is_file():
+            ao_strategy = str(ao_strategy_path_user)
+        elif ao_strategy_path_default.is_file():
+            ao_strategy = str(ao_strategy_path_default)
         else:
-            ao_strategy = str(ao_strategy_path)
+            ao_strategy = str(ao_strategy_path_default_faint)
 
         logger.info(
             'Running AOFLagger for field {0} ({1}) using strategy {2}'.format(
