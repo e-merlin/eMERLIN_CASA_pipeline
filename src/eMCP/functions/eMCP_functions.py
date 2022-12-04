@@ -189,6 +189,7 @@ def update_mixed_mode(eMCP):
     logger.debug('default_mixed_mode = {0}'.format(default_mixed_mode))
 
     msfile_sp = get_msfile_sp(eMCP)
+    is_mixed_mode = False
     if default_mixed_mode == 'auto':
         if os.path.isdir(msfile_sp):
             logger.info('Found mixed mode file {0}'.format(msfile_sp))
@@ -242,7 +243,7 @@ def get_baselines(msfile):
 
 def get_dates(d):
     t_mjd = d['axis_info']['time_axis']['MJDseconds'] / 60. / 60. / 24.
-    t = np.array([mjdtodate(timei) for timei in t_mjd])
+    t = np.array([mjdtodate(i) for i in t_mjd])
     return t_mjd, t
 
 
@@ -521,7 +522,7 @@ def get_msinfo(eMCP, msfile, doprint=False):
     msinfo['sources']['source_timerange_mjd'] = find_source_timerange(
         msinfo['msfile'])
     msinfo['antennas'] = get_antennas(msfile)
-    msinfo['band'] = check_band(msfile)
+    msinfo['band'] = check_band(eMCP, msfile)
     msinfo['baselines'] = get_baselines(msfile)
     #    msinfo['num_spw'] = len(casatasks.vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
     msinfo['num_spw'] = len(
@@ -618,7 +619,7 @@ def decide_hanning(import_eM, msfile):
     run_hanning = import_eM['run_hanning']
     if run_hanning == 'auto':
         logger.debug('run_hanning = "auto" means check if data are L band.')
-        band = check_band(msfile)
+        band = check_band(import_eM, msfile)
         if band == 'L':
             logger.info('L band dataset. Hanning smoothing will be executed.')
             apply_hanning = True
@@ -1788,7 +1789,7 @@ def load_3C286_model(eMCP):
     init_models = eMCP['defaults']['init_models']
     models_path = emutils.get_project_root() / "calibrator_models"
     # Check dataset frequency:
-    band = check_band(msfile)
+    band = check_band(eMCP, msfile)
     if band == 'C':
         model_file_path = models_path / '3C286_C.clean.model.tt0'
         logger.info('Dataset is band C. Using C band model of 3C286')
