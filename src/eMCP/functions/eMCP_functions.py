@@ -31,7 +31,7 @@ from ..fluxscale import run_fluxscale
 from ..flagstatistics import run_flagstats
 
 from casatasks import mstransform, applycal, gaincal, flagmanager, flagdata, concat,\
-    setjy, importfitsidi, listobs, vishead, visstat, fixvis, statwt, fluxscale, immath,\
+    setjy, importfitsidi, listobs, vishead, visstat, phaseshift, statwt, fluxscale, immath,\
     imstat, fringefit, smoothcal, bandpass, delmod, clearcal, initweights, ft
 
 from casatools import table, msmetadata
@@ -819,11 +819,11 @@ def import_eMERLIN_fitsIDI(eMCP):
     eMCP, msinfo, msfile = get_msinfo(eMCP, msfile)
     #    eMCP = add_step_time('mstransform', eMCP, msg, t0, doweblog=True)
 
-    # FIXVIS
+    # Phase shift
     msfile = eMCP['inputs']['inbase'] + ext_ms[do_ms2mms]
-    logger.info('Start FIXVIS')
+    logger.info('Start phase shift')
     #    t0 = datetime.datetime.utcnow()
-    fixvis(vis=msfile1, outputvis=msfile, reuse=False)
+    phaseshift(vis=msfile1, outputvis=msfile)
     find_casa_problems()
     logger.info('Fixed {0} into {1}'.format(msfile1, msfile))
     run_listobs(msfile)
@@ -835,17 +835,18 @@ def import_eMERLIN_fitsIDI(eMCP):
         exit_pipeline(eMCP)
     if is_mixed_mode:
         msfile_sp = get_msfile_sp(eMCP)
-        logger.info('Running FIXVIS on spectral line data')
-        fixvis(vis=msfile1_sp, outputvis=msfile_sp, reuse=False)
+        logger.info('Running phaseshift on spectral line data')
+        phaseshift(vis=msfile1_sp, outputvis=msfile_sp)
         find_casa_problems()
         logger.info('Fixed {0} into {1}'.format(msfile1_sp, msfile_sp))
         run_listobs(msfile_sp)
         if os.path.isdir(msfile_sp) == True:
             emutils.rmdir(msfile1_sp)
         else:
-            logger.critical('Problem generating FIXVIS ms. Stopping pipeline')
+            logger.critical(
+                'Problem generating phase shifted ms. Stopping pipeline')
             exit_pipeline(eMCP)
-    logger.info('Finished FIXVIS')
+    logger.info('Finished phaseshift')
     msg = ''
     logger.info('End run_importfits')
     eMCP, msinfo, msfile = get_msinfo(eMCP, msfile)
@@ -3688,13 +3689,12 @@ def shift_field_position(eMCP, msfile, shift):
     logger.info('Splitting field: {}'.format(field))
     mstransform(msfile, outputvis=msfile_split, field=field, datacolumn='data')
     find_casa_problems()
-    #FIXVIS
     logger.info('Changing phase center to: {}'.format(new_pos))
-    fixvis(vis=msfile_split,
-           field=field,
-           outputvis='',
-           phasecenter=new_pos,
-           datacolumn='data')
+    phaseshift(vis=msfile_split,
+               field=field,
+               outputvis=msfile_split,
+               phasecenter=new_pos,
+               datacolumn='data')
     find_casa_problems()
     # Change field name
     tb.open(msfile_split + '/FIELD', nomodify=False)
