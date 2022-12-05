@@ -273,7 +273,7 @@ def single_uvplt(msinfo, field, plots_data_dir):
     avgtime = '16'
     showgui = False
     gridrows = 1
-    gridcols = 1
+    gridcols = 2
     # Amp
 
     plotms(vis=msfile,
@@ -353,7 +353,7 @@ def single_uvplt_model(msinfo, field, plots_data_dir):
     avgtime = '600'
     showgui = False
     gridrows = 1
-    gridcols = 1
+    gridcols = 2
     # Amp
 
     plotms(vis=msfile,
