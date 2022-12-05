@@ -94,7 +94,7 @@ def get_logger(LOG_FORMAT='%(asctime)s | %(levelname)s | %(message)s',
     return log
 
 
-def create_dir_structure(pipeline_path):
+def create_dir_structure():
     # Paths to use
     weblog_dir = './weblog/'
     info_dir = './weblog/info/'
@@ -102,6 +102,8 @@ def create_dir_structure(pipeline_path):
     plots_dir = './weblog/plots/'
     logs_dir = './logs/'
     images_dir = './weblog/images/'
+    utils_path = Path(__file__).parent
+    utils_path_str = str(utils_path)
 
     ## Create directory structure ##
     makedir(weblog_dir)
@@ -111,11 +113,9 @@ def create_dir_structure(pipeline_path):
     makedir(images_dir)
     makedir(logs_dir)
     makedir(plots_dir + 'caltables')
-    os.system('cp -p {0}/utils/emerlin-2.gif {1}'.format(
-        pipeline_path, weblog_dir))
-    os.system('cp -p {0}/utils/eMCP.css {1}'.format(pipeline_path, weblog_dir))
-    os.system('cp -p {0}/utils/eMCP_logo.png {1}'.format(
-        pipeline_path, weblog_dir))
+    os.system('cp -p {0}/emerlin-2.gif {1}'.format(utils_path, weblog_dir))
+    os.system('cp -p {0}/eMCP.css {1}'.format(utils_path, weblog_dir))
+    os.system('cp -p {0}/eMCP_logo.png {1}'.format(utils_path, weblog_dir))
     return calib_dir, info_dir
 
 

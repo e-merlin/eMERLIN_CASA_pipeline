@@ -19,7 +19,7 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
     #Create directory structure
     pipeline_path = os.path.dirname(os.path.realpath(__file__))
     logger.info(f'Executing pipeline in: {pipeline_path}')
-    calib_dir, info_dir = emutils.create_dir_structure(pipeline_path)
+    calib_dir, info_dir = emutils.create_dir_structure()
 
     # Initialize eMCP dictionary, or continue with previous pipeline configuration if possible:
     eMCP = emutils.start_eMCP_dict(info_dir)
