@@ -971,7 +971,7 @@ def run_aoflagger_fields(eMCP):
         ao_strategy = ""
         aoflagger_strategies_path = emutils.get_project_root(
         ) / "aoflagger_strategies"
-        aoflagger_strategies_user = aoflagger_strategies_path / "user"
+        aoflagger_strategies_user = Path("./") / "user"
         aoflagger_strategies_default = aoflagger_strategies_path / "default"
 
         ao_strategy_path_user = aoflagger_strategies_user / "{0}.lua".format(
