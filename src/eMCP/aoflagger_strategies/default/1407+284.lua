@@ -24,7 +24,7 @@ function execute(input)
   -- How to flag complex values, options are: phase, amplitude, real, imaginary, complex
   -- May have multiple values to perform detection multiple times
   local flag_representations = { "amplitude" }
-  local iteration_count = 10  -- how many iterations to perform?
+  local iteration_count = 13  -- how many iterations to perform?
   local threshold_factor_step = 2.0 -- How much to increase the sensitivity each iteration?
   -- If the following variable is true, the strategy will consider existing flags
   -- as bad data. It will exclude flagged data from detection, and make sure that any existing
