@@ -981,20 +981,19 @@ def run_aoflagger_fields(eMCP):
         ao_strategy_path_default_faint = aoflagger_strategies_default / "{0}.lua".format(
             'default_faint')
 
+        logger.info('Looking for file {0}'.format(str(ao_strategy_path_user)))
         if ao_strategy_path_user.is_file():
-            logger.info('Looking for path {0}'.format(
-                str(ao_strategy_path_user)))
             ao_strategy = str(ao_strategy_path_user)
         elif ao_strategy_path_default.is_file():
-            logger.info('Path {0} not found'.format(
+            logger.info('File {0} not found'.format(
                 str(ao_strategy_path_user)))
-            logger.info('Looking for path {0}'.format(
+            logger.info('Looking for file {0}'.format(
                 str(ao_strategy_path_default)))
             ao_strategy = str(ao_strategy_path_default)
         else:
-            logger.info('Path {0} not found'.format(
-                str(ao_strategy_path_default)))
-            logger.info('Looking for path {0}'.format(
+            logger.info('Files {0} and {1} not found'.format(
+                str(ao_strategy_path_user), str(ao_strategy_path_default)))
+            logger.info('Looking for file {0}'.format(
                 str(ao_strategy_path_default_faint)))
             ao_strategy = str(ao_strategy_path_default_faint)
 
