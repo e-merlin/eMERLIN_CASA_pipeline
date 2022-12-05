@@ -32,7 +32,7 @@ from ..flagstatistics import run_flagstats
 
 from casatasks import mstransform, applycal, gaincal, flagmanager, flagdata, concat,\
     setjy, importfitsidi, listobs, vishead, visstat, fixvis, phaseshift, statwt, fluxscale, immath,\
-    imstat, fringefit, smoothcal, bandpass, delmod, clearcal, initweights, ft
+    imstat, fringefit, smoothcal, bandpass, delmod, clearcal, initweights, ft, tclean
 
 from casatools import table, msmetadata
 from casaviewer import imview
@@ -3478,6 +3478,89 @@ def write_wsclean_command(msfile, config_wsclean):
         ['{0} {1}'.format(k, v) for (k, v) in config_wsclean.items()])
     wsclean_command = '{0} {1} {2}'.format('wsclean', wsclean_params, msfile)
     return wsclean_command
+
+
+def single_tclean(eMCP, s, num):
+    msinfo = eMCP['msinfo']
+    logger.info('Producing tclean images for {0}, field: {1}'.format(
+        msinfo['msfile'], s))
+    emutils.makedir(images_dir + '{}'.format(s))
+    imagename = images_dir + '{0}/{1}_{0}_img{2:02d}'.format(
+        s, msinfo['msfilename'], num)
+    prev_images = glob.glob(imagename + '*')
+    for prev_image in prev_images:
+        emutils.rmdir(prev_image)
+    cellsize = {'C': '0.008arcsec', 'L': '0.02arcsec', 'K': '0.002arcsec'}
+    imgpar = eMCP['defaults']['first_images']
+    imsize = imgpar['imsize']
+    cell = cellsize[msinfo['band']]
+    niter = imgpar['niter']
+    gain = imgpar['gain']
+    uvtaper = imgpar['uvtaper']
+    uvrange = imgpar['uvrange']
+    restoringbeam = imgpar['restoringbeam']
+    deconvolver = imgpar['deconvolver']
+    nterms = imgpar['nterms']
+    scales = imgpar['scales']
+    weighting = imgpar['weighting']
+    robust = imgpar['robust']
+    usemask = 'auto-multithresh'
+    nsigma = imgpar['nsigma']
+    sidelobethreshold = imgpar['sidelobethreshold']
+    noisethreshold = imgpar['noisethreshold']
+    lownoisethreshold = imgpar['lownoisethreshold']
+    minbeamfrac = imgpar['minbeamfrac']
+    growiterations = imgpar['growiterations']
+    parallel = False
+
+    logger.info('imsize = {0}, cell = {1}, niter = {2}'.format(
+        imsize, cell, niter))
+    logger.info('weighting = {0}, robust = {1}'.format(weighting, robust))
+    logger.info('usemask = {0}, growiterations = {1}'.format(
+        usemask, growiterations))
+    tclean(vis=msinfo['msfile'],
+           field=s,
+           datacolumn='corrected',
+           imagename=imagename,
+           imsize=imsize,
+           cell=cell,
+           deconvolver=deconvolver,
+           gain=gain,
+           nterms=nterms,
+           scales=scales,
+           uvtaper=uvtaper,
+           uvrange=uvrange,
+           restoringbeam=restoringbeam,
+           weighting=weighting,
+           robust=robust,
+           niter=niter,
+           usemask=usemask,
+           nsigma=nsigma,
+           sidelobethreshold=sidelobethreshold,
+           noisethreshold=noisethreshold,
+           lownoisethreshold=lownoisethreshold,
+           minbeamfrac=minbeamfrac,
+           growiterations=growiterations,
+           savemodel='none',
+           parallel=parallel)
+    find_casa_problems()
+    if nterms > 1:
+        ext = '.tt0'
+    else:
+        ext = ''
+    peak, noise, scaling = plot_image(eMCP,
+                                      imagename,
+                                      center=int(imsize / 2.0),
+                                      ext=ext,
+                                      dozoom=True)
+    zoom_range = eMCP['defaults']['first_images']['zoom_range_pix']
+    plot_image_add(imagename,
+                   center=int(imsize / 2.0),
+                   zoom_range=zoom_range,
+                   ext=ext,
+                   dozoom=True)
+    eMCP['img_stats'][s] = [peak, noise, scaling]
+    return eMCP
 
 
 def single_wsclean(eMCP, s, field_id):
