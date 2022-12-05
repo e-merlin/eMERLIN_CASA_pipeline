@@ -3481,6 +3481,7 @@ def write_wsclean_command(msfile, config_wsclean):
 
 
 def single_wsclean(eMCP, s, field_id):
+    # TODO: Here we should call either wsclean or tclean
     msinfo = eMCP['msinfo']
     msfile = msinfo['msfile']
     # Check if wsclean is available:
