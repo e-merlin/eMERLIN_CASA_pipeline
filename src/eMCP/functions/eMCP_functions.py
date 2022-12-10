@@ -3330,7 +3330,7 @@ def dfluxpy(freq, baseline):
 
     log10f = (math.log(freq) / 2.3025851) - 3.0
     # Why the -3? Because freq has to be GHz for the formula to work.
-    log_flux = A + B * log10f + C * log10f * log10f + D * log10f * log10f * log10f
+    log_flux = A + B * log10f + C * log10f**2 + D * log10f**3
     vlaflux = math.pow(10.0, log_flux)
 
     # The VLA flux must now be corrected to account for the higher resolving power of merlin.
@@ -3373,7 +3373,7 @@ def dfluxpy(freq, baseline):
     bl_length = baseline
 
     frac = (freq / ref_freq) * (bl_length / ref_bl_length)
-    rho = frac * frac * ref_rho
+    rho = frac**2 * ref_rho
     merlinflux = vlaflux / (1.0 + rho)
 
     # Another useful quantity is the resolved percentage:
