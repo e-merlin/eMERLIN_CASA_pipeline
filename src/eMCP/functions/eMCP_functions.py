@@ -5,7 +5,6 @@ import numpy as np
 import socket
 import pickle
 import glob
-import re
 import itertools
 import sys
 import copy
@@ -73,8 +72,10 @@ def read_inputs(inputs_file):
 
 
 def find_run_steps(eMCP, run_steps, skip_steps=[]):
-    if run_steps == '': run_steps = []
-    if skip_steps == '': skip_steps = []
+    if run_steps == '':
+        run_steps = []
+    if skip_steps == '':
+        skip_steps = []
     logger.info('Step selection')
     logger.info('run_steps : {}'.format(run_steps))
     logger.info('skip_steps: {}'.format(skip_steps))
@@ -434,7 +435,7 @@ def find_wide_narrow(spw_sp, cent_chan_sp, msfile):
         freq_end = chan[-1]
         logger.debug('Wide sp {0}: {1:5.3f} {2:5.3f}'.format(
             spw, freq_ini / 1e9, freq_end / 1e9))
-        if cent_chan_sp > freq_ini and cent_chan_sp <= freq_end:
+        if freq_ini < cent_chan_sp <= freq_end:
             main_spw.append(spw)
     logger.debug('Corresponding wide spw {0}'.format(main_spw))
     msmd.done()
@@ -479,7 +480,7 @@ def get_spwmap_sp(msfile, msfile_sp):
 
 
 def find_spwmap_sp(eMCP, msfile, msfile_sp):
-    if eMCP['defaults']['import_eM']['spwmap_sp'] == []:
+    if not eMCP['defaults']['import_eM']['spwmap_sp']:
         spwmap_sp = get_spwmap_sp(msfile, msfile_sp)
     else:
         spwmap_sp = eMCP['defaults']['import_eM']['spwmap_sp']
@@ -603,8 +604,8 @@ def remove_missing_scans(caltable, scans2flag):
     logger.info('Removing Lo solutions for dropout scans from {0}: {1}'.format(
         caltable, scans2flag))
     with casacore_tables.table(caltable, ack=False,
-                               readonly=False) as maintable:
-        maintable.removerows(index_missing_rows)
+                               readonly=False) as main_table:
+        main_table.removerows(index_missing_rows)
 
 
 def run_listobs(msfile):
@@ -757,7 +758,7 @@ def import_eMERLIN_fitsIDI(eMCP):
     logger.info('Start mstransform')
     t0 = datetime.datetime.utcnow()
     emutils.rmdir(msfile1)
-    if import_eM['fix_repeated_sources'] == True:
+    if import_eM['fix_repeated_sources']:
         fix_repeated_sources(msfile0, msfile1, datacolumn, antenna,
                              str(spw_separation[0]), timeaverage, timebin,
                              chanaverage, chanbin, usewtspectrum, do_hanning,
@@ -783,7 +784,7 @@ def import_eMERLIN_fitsIDI(eMCP):
         msfile1_sp = msfile_name + '_transformed_sp' + ext_ms[do_ms2mms]
         logger.info('Running mstransform on spectral line data')
         emutils.rmdir(msfile1_sp)
-        if import_eM['fix_repeated_sources'] == True:
+        if import_eM['fix_repeated_sources']:
             fix_repeated_sources(msfile0, msfile1_sp, datacolumn, antenna,
                                  str(spw_separation[1]), timeaverage, timebin,
                                  chanaverage, chanbin, usewtspectrum,
@@ -801,7 +802,7 @@ def import_eMERLIN_fitsIDI(eMCP):
                         createmms=do_ms2mms)
             find_casa_problems()
         logger.info('Transformed: {0} into {1}'.format(msfile0, msfile1_sp))
-    if os.path.isdir(msfile1) == True:
+    if os.path.isdir(msfile1):
         emutils.rmdir(msfile0)
     else:
         logger.critical('Problem generating {}. Stopping ' \
@@ -827,7 +828,7 @@ def import_eMERLIN_fitsIDI(eMCP):
     find_casa_problems()
     logger.info('Fixed {0} into {1}'.format(msfile1, msfile))
     run_listobs(msfile)
-    if os.path.isdir(msfile) == True:
+    if os.path.isdir(msfile):
         emutils.rmdir(msfile1)
     else:
         logger.critical('Problem generating {}. Stopping ' \
@@ -840,7 +841,7 @@ def import_eMERLIN_fitsIDI(eMCP):
         find_casa_problems()
         logger.info('Fixed {0} into {1}'.format(msfile1_sp, msfile_sp))
         run_listobs(msfile_sp)
-        if os.path.isdir(msfile_sp) == True:
+        if os.path.isdir(msfile_sp):
             emutils.rmdir(msfile1_sp)
         else:
             logger.critical(
@@ -1393,7 +1394,7 @@ def flagdata_manual(eMCP, run_name='flag_manual'):
         inpfile = ''
     logger.info('Start {}'.format(run_name))
     t0 = datetime.datetime.utcnow()
-    if os.path.isfile(inpfile) == True:
+    if os.path.isfile(inpfile):
         logger.info('Applying manual flags from file: {0}'.format(inpfile))
         are_there_flags = log_manual_flags(inpfile)
         if are_there_flags:
