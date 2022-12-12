@@ -3376,9 +3376,9 @@ def dfluxpy(freq, baseline):
     #    rho(f,L) = (-----------)   * rho_ref .
     #               (f_ref*L_ref)
     #
-    # The reference value of rho is fixed at 0.04 for the MK-TA baseline at 5 GHz (Peter Thomasson).
+    # The reference value of rho is fixed at 0.04 for the Mk-Pi baseline at 5 GHz (Peter Thomasson).
 
-    ref_bl_length = 11236.79  # MK-TA separation in metres.
+    ref_bl_length = 11236.79  # Mk-Pi separation in metres.
     ref_freq = 5000.0 * u.MHz
     ref_rho = 0.04
     this_bl = "this baseline (Mk-Ta)"
