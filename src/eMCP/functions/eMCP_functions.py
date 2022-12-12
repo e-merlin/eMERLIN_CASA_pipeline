@@ -3342,7 +3342,7 @@ def dfluxpy(freq, baseline):
     log10_vla_flux = 0.0
 
     for i, coefficient in enumerate(coefficients):
-        log10_vla_flux += coefficient * np.log10(freq)**i
+        log10_vla_flux += coefficient * np.log10(freq.to(u.GHz))**i
 
     vla_flux = 10.0**log10_vla_flux
 
