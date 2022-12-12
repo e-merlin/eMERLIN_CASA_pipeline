@@ -33,7 +33,7 @@ from casatasks import mstransform, applycal, gaincal, flagmanager, flagdata, con
     setjy, importfitsidi, listobs, vishead, visstat, fixvis, phaseshift, statwt, fluxscale, immath,\
     imstat, fringefit, smoothcal, bandpass, delmod, clearcal, initweights, ft, tclean
 
-from casatools import table, msmetadata
+from casatools import table, msmetadata, ctsys
 from casaviewer import imview
 
 tb = table()
@@ -3284,11 +3284,12 @@ def calc_eMfactor(msfile, field='1331+305'):
     n = np.argmin(uvdist_nonzero)
 
     tb.open(msfile + '/SPECTRAL_WINDOW')
-    chan_freq = tb.getcol('CHAN_FREQ')
+    chan_freq = tb.getcol('CHAN_FREQ') * u.Hz
     tb.close()
 
     shortest_baseline = uvdist_nonzero[n]  # Shortest baseline in m
-    center_freq = np.mean(chan_freq) / 1e6  # Center frequency in MHz
+    center_freq = (np.min(chan_freq) + np.max(chan_freq)) / 2.
+    # center_freq = np.mean(chan_freq) / 1e6  # Center frequency in MHz
     dfluxpy_output = dfluxpy(center_freq, shortest_baseline)
     eMfactor = dfluxpy_output[1] / dfluxpy_output[0]
     logger.info(
@@ -3299,8 +3300,21 @@ def calc_eMfactor(msfile, field='1331+305'):
     return eMfactor
 
 
+def get_coefficients_from_table(source="", epoch="2017"):
+    coefficients_table = ctsys.resolve(
+        "nrao/VLA/standards/") + "PerleyButler2017Coeffs"
+    tb.open(coefficients_table)
+    _query_table = tb.taql("select * from " + coefficients_table +
+                           " where Epoch=" + epoch)
+    coefficients = _query_table.getcol(source + "_coeffs").flatten()
+    coefficients_errs = _query_table.getcol(source + "_coefferrs").flatten()
+    if coefficients.size == 0 or coefficients_errs.size == 0:
+        raise ValueError("The selected epoch does not have any data")
+    tb.close()
+    return coefficients, coefficients_errs
+
+
 def dfluxpy(freq, baseline):
-    import math
     #######
     # Python version of 3C286 flux calculation program (original author unknown)
     # ..............................
@@ -3317,22 +3331,20 @@ def dfluxpy(freq, baseline):
     # by Ian Stewart, JBO, 8 Aug 2007.
     # Minor changes by amsr, 8 Aug 2007
 
-    lowest_freq = 300.0
-    highest_freq = 50000.0
+    lowest_freq = 300.0 * u.MHz
+    highest_freq = 50000.0 * u.MHz
     if freq < lowest_freq or freq > highest_freq:
         print(
             "Frequency must be between $lowest_freq and $highest_freq MHz. \n")
 
-    # Perley & Butler 2012 values
-    A = 1.2515
-    B = -0.4605
-    C = -0.1715
-    D = 0.0336
+    coefficients, coefficients_errs = get_coefficients_from_table(
+        "3C286", "2012")
+    log10_vla_flux = 0.0
 
-    log10f = (math.log(freq) / 2.3025851) - 3.0
-    # Why the -3? Because freq has to be GHz for the formula to work.
-    log_flux = A + B * log10f + C * log10f**2 + D * log10f**3
-    vlaflux = math.pow(10.0, log_flux)
+    for i, coefficient in enumerate(coefficients):
+        log10_vla_flux += coefficient * np.log10(freq)**i
+
+    vla_flux = 10.0**log10_vla_flux
 
     # The VLA flux must now be corrected to account for the higher resolving power of merlin.
     # The formula used was obtained with the help of Peter Thomasson. If we assume that 3C286 is represented
@@ -3367,21 +3379,21 @@ def dfluxpy(freq, baseline):
     # The reference value of rho is fixed at 0.04 for the MK-TA baseline at 5 GHz (Peter Thomasson).
 
     ref_bl_length = 11236.79  # MK-TA separation in metres.
-    ref_freq = 5000.0
+    ref_freq = 5000.0 * u.MHz
     ref_rho = 0.04
-    thisbl = "this baseline (Mk-Ta)"
+    this_bl = "this baseline (Mk-Ta)"
 
     bl_length = baseline
 
-    frac = (freq / ref_freq) * (bl_length / ref_bl_length)
+    frac = (freq / ref_freq).value * (bl_length / ref_bl_length)
     rho = frac**2 * ref_rho
-    merlinflux = vlaflux / (1.0 + rho)
+    e_merlin_flux = vla_flux / (1.0 + rho)
 
     # Another useful quantity is the resolved percentage:
     resolved_percent = 100.0 * rho / (1.0 + rho)
     caution_res_pc = 10.0
 
-    return vlaflux, merlinflux, resolved_percent, caution_res_pc, thisbl
+    return vla_flux, e_merlin_flux, resolved_percent, caution_res_pc, this_bl
 
 
 def plot_image(eMCP, imagename, center, ext='.tt0', dozoom=False):
