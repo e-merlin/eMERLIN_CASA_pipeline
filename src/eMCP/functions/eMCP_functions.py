@@ -3295,7 +3295,8 @@ def calc_eMfactor(msfile, field='1331+305'):
     logger.info(
         'Shortest projected baseline: {0} [{1}] - {2} [{3}] {4:10.2f}m'.format(
             anten[a1[n]], a1[n], anten[a2[n]], a2[n], uvdist_nonzero[n]))
-    logger.info('Central frequency of the MS: {0} MHz'.format(center_freq))
+    logger.info('Central frequency of the MS: {0}'.format(center_freq.to(
+        u.MHz)))
     logger.info('eMfactor: {0:6.4f}'.format(eMfactor))
     return eMfactor
 
@@ -3395,6 +3396,8 @@ def dfluxpy(freq, baseline):
     # Another useful quantity is the resolved percentage:
     resolved_percent = 100.0 * rho / (1.0 + rho)
     caution_res_pc = 10.0
+
+    logger.info("eMERLIN Flux: {0:0.3f}".format(e_merlin_flux * u.Jy))
 
     return vla_flux, e_merlin_flux, resolved_percent, caution_res_pc, this_bl
 
