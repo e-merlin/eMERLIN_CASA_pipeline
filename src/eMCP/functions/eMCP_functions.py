@@ -3340,11 +3340,14 @@ def dfluxpy(freq, baseline):
     coefficients, coefficients_errs = get_coefficients_from_table(
         "3C286", "2012")
     log10_vla_flux = 0.0
+    log10_vla_frequency = np.log10(freq.to(u.GHz).value)
 
     for i, coefficient in enumerate(coefficients):
-        log10_vla_flux += coefficient * np.log10(freq.to(u.GHz))**i
+        log10_vla_flux += coefficient * log10_vla_frequency**i
 
     vla_flux = 10.0**log10_vla_flux
+
+    logger.info("VLA Flux: {0:0.3f}".format(vla_flux * u.Jy))
 
     # The VLA flux must now be corrected to account for the higher resolving power of merlin.
     # The formula used was obtained with the help of Peter Thomasson. If we assume that 3C286 is represented
