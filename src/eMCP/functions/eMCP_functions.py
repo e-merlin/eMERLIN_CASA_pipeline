@@ -3389,7 +3389,7 @@ def dfluxpy(freq, baseline):
 
     bl_length = baseline
 
-    frac = (freq / ref_freq).value * (bl_length / ref_bl_length)
+    frac = (freq.to(u.MHz) / ref_freq).value * (bl_length / ref_bl_length)
     rho = frac**2 * ref_rho
     e_merlin_flux = vla_flux / (1.0 + rho)
 
