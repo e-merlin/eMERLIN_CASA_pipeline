@@ -4,13 +4,13 @@ site_author: 'Javier Moldón'
 repo_url:
 
 nav:
-    - Home: index.md
-    - Pipeline description: description.md
-    - Installation: installation.md
-    - Configuration: configuration.md
-    - Data products: products.md
-    - Execution examples: examples.md
-    - Acknowledgements: acknowledgements.md
+    - Home: src/index.md
+    - Pipeline description: src/description.md
+    - Installation: src/installation.md
+    - Configuration: src/configuration.md
+    - Data products: src/products.md
+    - Execution examples: src/examples.md
+    - Acknowledgements: src/acknowledgements.md
 
 theme:
     name: readthedocs
