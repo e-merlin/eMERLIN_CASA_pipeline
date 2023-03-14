@@ -9,7 +9,7 @@ dependencies:
 - mpi4py
 - aoflagger
 - python=3.8
-- numpy=1.23
+- numpy
 - pip
 - pip:
   - almatasks==1.5.2
