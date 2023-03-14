@@ -4,7 +4,7 @@ site_author: 'Javier Moldón'
 repo_url:
 
 nav:
-    - Home: src/index.md
+    - Home: index.md
     - Pipeline description: src/description.md
     - Installation: src/installation.md
     - Configuration: src/configuration.md
