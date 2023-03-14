@@ -1,14 +1,17 @@
 # e-MERLIN CASA pipeline
+
 ### Documentation for v1.0
 
 ---
+
 # Table of contents
+
 - [1. Minimal execution of the pipeline](#1-minimal-execution-of-the-pipeline)
 - [2. How to reduce e-MERLIN data](#2-how-to-reduce-e-merlin-data)
 - [3. Inputs](#3-inputs)
 - [4. Procedures](#4-procedures)
-     - [4.1 Pre-processing data](#41-pre-processing)
-     - [4.2 Calibration](#42-calibration)
+  - [4.1 Pre-processing data](#41-pre-processing)
+  - [4.2 Calibration](#42-calibration)
 - [5. Support variables](#5-support-functions-and-variables)
 
 <!---
@@ -42,6 +45,7 @@ You are ready to execute the pipeline. If `casa` points to casa 5.4 version:
 # 2. How to reduce e-MERLIN data
 
 ### Data preparation
+
 - Download the pipeline (it can be in any location).
 - Download the fits-IDI files from the observatory (they can be in any unique location).
 - Create the working path where you will work, and copy the `inputs.txt` to your working path.
@@ -54,6 +58,7 @@ You are ready to execute the pipeline. If `casa` points to casa 5.4 version:
 - If `average = 1` a new MS will be produced with name `<inbase>_avg.ms`.
 
 ### Data calibration
+
 - You may want to include additional manual flags in `./inputfg_avg.flags`
 - Run all the calibration steps by setting them to 1. You may prefer to run each of them one by one and check the output plots.
 - It is a good practice to redo the calibration once you are happy with your flags and parameters.
@@ -62,7 +67,6 @@ You are ready to execute the pipeline. If `casa` points to casa 5.4 version:
 ### Spectral line data
 
 Mixed mode observations contain at least two spectral configurations: the normal continuum data and high-resolution narrow-band data. For simplicity, both modes are splitted in two measurement sets: `<inbase>.ms` and `<inbase>_sp.ms`. Narrow-band data will be processed in parallel to the continuum data. Calibration tables for phase offsets and narrow-band bandpass tables will be included in the weblog, but no visibility plots or cleaned images will be produced.
-
 
 ---
 
@@ -75,43 +79,49 @@ In the inputs.txt file there are two types of inputs: the **user inputs** and th
 ```
 fits_path  [str]
 ```
-Path to the location of the fits files. Can be an absolute or relative path. A single directory must be specified. All fits and FITS files from that directory are considered.
 
+Path to the location of the fits files. Can be an absolute or relative path. A single directory must be specified. All fits and FITS files from that directory are considered.
 
 ```
 inbase     [str]
 ```
+
 Project name. It will be used to give names to the MS, plots and tables.
 
 ```
 targets    [str]
 ```
-Names of sources as they appear in the MS to be used as targets. Can be a comma-separated string. If more than one target is selected, the corresponding phase calibrator has to keep the same order.
 
+Names of sources as they appear in the MS to be used as targets. Can be a comma-separated string. If more than one target is selected, the corresponding phase calibrator has to keep the same order.
 
 ```
 phscals    [str]
 ```
+
 Names of sources as they appear in the MS to be used as calibrators. Can be a comma-separated string. If more than one phase calibrator is selected, the order needs to match the targets. If the same phase calibrator is used for different targets, just repeat the name as many times as needed.
 
 ```
 fluxcal    [str]
 ```
+
 Name of source as it appears in the MS to be used as flux calibrator. Only one source accepted. 1331+305 expected. If a different source is selected you will need to set its flux density and spectral index in the `default_params.json` file.
 
 ```
 bpcal      [str]
 ```
+
 Names of sources as they appear in the MS to be used as calibrators. Can be a comma-separated string.
 
 ```
 ptcal      [str]
 ```
+
 Point-like calibrator. Names of sources as they appear in the MS to be included in calibration steps, but not used to calibrate other sources by now. For the moment, consider it for check sources.
 
 ```
 refant     [str]
 ```
+
 Antenna name to be used as reference antenna. Can accept a comma-separated string with a list of antennas in order of priority. If empty, the pipeline will try to search for the most suitable antennas.
 
 **Note on the format**: For `[str]` inputs, the use of single quotes is not required. Most inputs accept a list of values in the format of a comma-separated string. Examples: `target = '1111+2222'` or `target = 1111+2222`. For multiple inputs: `phscals = '1111+2222,3333+4444,5555+6666'` is accepted.
@@ -130,16 +140,16 @@ Additionally, steps that produce calibration tables can be set to also apply the
 
 All the parameters used by the pipeline are controlled by the file `default_param.json` that will be loaded as a python dictionary. That file can be either at your working directory, or the one in the directory `eMERLIN_CASA_pipeline` will be used.
 
-The parameters are divided in sections according to which pipeline steps they are controlling. Some parameters control or select what needs to be run, but in most cases a parameter translates directly to the CASA parameter that will be used. For example the parameter `defaults['gaincal_final']['ap_solint']`` will set the solution interval for the `ap` calibration in the step `gaincal_final`.
+The parameters are divided in sections according to which pipeline steps they are controlling. Some parameters control or select what needs to be run, but in most cases a parameter translates directly to the CASA parameter that will be used. For example the parameter `defaults['gaincal_final']['ap_solint']`` will set the solution interval for the`ap` calibration in the step `gaincal_final`.
 
 ---
 
 # 4. Procedures
 
-
 ## 4.1 Pre-processing
 
 ### 4.1.1 run_importfitsidi
+
 Merge fits-IDI files in `fits_path` to form an MS named `inbase.ms`
 
 First, `inbase.ms` and any other temporary file is removed if present (`inbase` is the name of your project, which is set in inputs file inputs.txt). All files ending in .fits or .FITS in the folder `fits_path` are considered for importing and will be merged. The logger shows which files have been found. Several CASA tasks are executed: `importfitsidi` is executed with `constobsid=True, scanreindexgap_s=15.0`.
@@ -148,12 +158,11 @@ Then `mstransform` will be executed with different purposes: remove the auto-cor
 
 Finally `fixvis` is run with option `reuse=False` to fix any possible mismatch with the UVW values in the visibilities.
 
-
-
 ---
-### 4.1.2 flag_aoflagger
-Uses aoflagger to autoflag data using predefined strategies
 
+### 4.1.2 flag_aoflagger
+
+Uses aoflagger to autoflag data using predefined strategies
 
 It runs [aoflagger](https://sourceforge.net/p/aoflagger/wiki/Home/) on all the fields in the MS. aoflagger v2.9+ required. The aoflagger strategies are selected by field following this criteria: (1) First, check if the user has a new strategy for this field in the local folder ./aoflagger_strategies/user/, the strategy needs to match: `<field>.rfis`. (2) If not, check if the user has produced a new strategy for this field in the pipeline folder. So will search for `pipeline_path+'aoflagger_strategies/default/<field>.rfis`, (3) If nothing is found, just use the default strategy. For example for field 1234+5678 the prioritization for searching strategies is:
 
@@ -163,24 +172,26 @@ It runs [aoflagger](https://sourceforge.net/p/aoflagger/wiki/Home/) on all the f
 
 By default this task will flag all the spw for each field in one go. That means that it will try to read data from all the spw for each field at the same time. If your data set is too large (compared to the available memory) it is recommended to change the default option so each spw is load one by one, with the overhead of restarting aoflagger once per spw (and per source).
 
-
 ---
+
 ### 4.1.3 flag_apriori
+
 Applies a-priori standard flags.
 
 Different flags are applied to the data:
 
- - Lo&Mk2 for all sources.
- - Edge channels for all sources, all spw, defined as spw='*:0~(nchan/128-1);(nchan-nchan/128)~(nchan-1)'.
- - Edge of the whole band: first 5% of the channels of the first spw, and last 5% of the channels of the last spw.
- - Quack 4 seconds on all sources in the MS.
- - It will try to find observatory flags (to be writen in `inputsfg.flags`). If not possible will produce the following ad-hoc quack commands:
- - Quack for 5 minutes for 1331+305, 1407+284, 0319+415 if they are present in the MS (no need to include in inputs file.
- - Quack n seconds for all targets and phasecals. The number of seconds depend on the target-phasecal separation in degrees. 20s for separation < 1deg, 25s for 1.0 <= separation < 2.0, 30s for 2.0 <= separation < 3.5, 35s for separation >= 3.5.
- 
+- Lo&Mk2 for all sources.
+- Edge channels for all sources, all spw, defined as spw='*:0~(nchan/128-1);(nchan-nchan/128)~(nchan-1)'.
+- Edge of the whole band: first 5% of the channels of the first spw, and last 5% of the channels of the last spw.
+- Quack 4 seconds on all sources in the MS.
+- It will try to find observatory flags (to be writen in `inputsfg.flags`). If not possible will produce the following ad-hoc quack commands:
+- Quack for 5 minutes for 1331+305, 1407+284, 0319+415 if they are present in the MS (no need to include in inputs file.
+- Quack n seconds for all targets and phasecals. The number of seconds depend on the target-phasecal separation in degrees. 20s for separation < 1deg, 25s for 1.0 <= separation < 2.0, 30s for 2.0 <= separation < 3.5, 35s for separation >= 3.5.
 
 ---
+
 ### 4.1.4 flag_manual
+
 Applies flags from an external file with a list of flag commands the unaveraged dataset. It needs file `./inputfg.flags` to be located in the current directory.
 
 Simply runs `flagdata(vis='inbase.ms', mode='list', inpfile="inputfg.flags")`. This is run on the original, unaveraged, dataset `inbase.ms`. To apply manual flags to an averaged dataset see `flag_2b_manual` below.
@@ -196,10 +207,12 @@ mode='quack' field='1258-2219,1309-2322' quackinterval=24.
 ```
 
 ---
+
 ### 4.1.5 average
+
 Split dataset and average to reduce data volume.
 
-It will create a new MS `inbase_avg.ms` (or inbase_avg.mms if working with mms files). It will remove previous inbase_avg.ms file if it exists. Only the fields selected in the inputs file will be included in inbase_avg.ms. 
+It will create a new MS `inbase_avg.ms` (or inbase_avg.mms if working with mms files). It will remove previous inbase_avg.ms file if it exists. Only the fields selected in the inputs file will be included in inbase_avg.ms.
 
 **Important** when the inbase_avg.ms file is produced, all the steps of the pipeline after this one will always work on inbase_avg.ms only, and not the original dataset. If the averaged dataset does not exist, the pipeline will always use the unaveraged dataset `inbase.ms`.
 
@@ -213,28 +226,28 @@ There is an option (to be selected from the `default_params.json` file) to shift
 0332+3205, 0336+3218_pos1, J2000 03h32m28.30s +32d05m46.0s
 ```
 
-Spaces will be ignored except inside the coordinate string. That particular example file will produce two shifts of field 0336+3218 and one shift of field 0332+3205 to the corresponding positions indicated. For each shift, the field will be splitted in a temporary MS on which the shift will be computed. Then that temporary MS will be merged to the main data set. 
+Spaces will be ignored except inside the coordinate string. That particular example file will produce two shifts of field 0336+3218 and one shift of field 0332+3205 to the corresponding positions indicated. For each shift, the field will be splitted in a temporary MS on which the shift will be computed. Then that temporary MS will be merged to the main data set.
 
-WARNING1: this step will add new fields to the MS (using concat) without removing any previous field: this adds phase centers, does not update the original ones. That means that the resulting MS will have two or more **new** fields with the same time stamps and same scan number but with different phase centers. This task is not intended to correct the phase center of a field, as it will keep the original one. 
+WARNING1: this step will add new fields to the MS (using concat) without removing any previous field: this adds phase centers, does not update the original ones. That means that the resulting MS will have two or more **new** fields with the same time stamps and same scan number but with different phase centers. This task is not intended to correct the phase center of a field, as it will keep the original one.
 
 WARNING2: note that because new fields are added to the MS, if you want to use them you need to specify them in the inputs file.
 
-
 ---
+
 ### 4.1.6 plot_data
-Produce plots of amp/phase vs time/freq for each baseline	plotms
+
+Produce plots of amp/phase vs time/freq for each baseline plotms
 
 Produces plots in png format for the visibilities in `inbase_avg.ms`. It iterates through all sources specified by the user in the inputs file, and produces plots for each baseline. All plots are stored in the output directory. The plots have some averaging:
 
- - Amp/Phase vs Time: time averaging is 4s, all channels averaged in each spw, colorized by spw.
- - Amp/Phase vs Frequency: time average is 300s, frequency average is 4 channels. ccolorized by correlation.
-
+- Amp/Phase vs Time: time averaging is 4s, all channels averaged in each spw, colorized by spw.
+- Amp/Phase vs Frequency: time average is 300s, frequency average is 4 channels. ccolorized by correlation.
 
 ### 4.1.7 save_flags
+
 Saves the current status of the flagging to the flag table with versionname='initialize_flags'.
 
 Makes a copy of the current flags to the flag table with versionname `initialize_flags` using flagmanager. It will overwrite previous versions of that table. This table means to contain flags produced by aoflagger, a-priori and manual_a flags, but only if the user has saved this table after producing those flags (so it is the responsability of the user to keep track of what was applied when this step is executed).
-
 
 ---
 
@@ -242,9 +255,9 @@ Makes a copy of the current flags to the flag table with versionname `initialize
 
 You can select which steps to run in the inputs file by setting the corresponding number to:
 
- - 0: don't run the step
- - 1: run the step and produce calibration tables and plots
- - 2: run the step and produce calibration tables and plots and apply the calibration to the data. *don't use this option if you don't understand it*.
+- 0: don't run the step
+- 1: run the step and produce calibration tables and plots
+- 2: run the step and produce calibration tables and plots and apply the calibration to the data. *don't use this option if you don't understand it*.
 
 During calibration, solutions are found using only the inner ~90% channels of each spw. So `innerchan=0.1*(nchan-nchan/512.), 0.9*(nchan-nchan/512.)`.
 
@@ -254,21 +267,22 @@ The step applycal_all will apply all calibration: it will write `CORRECTED_DATA`
 
 `calsources` is a comma-separated list of all calibrator sources.
 
-
 ### 4.2.1 restore_flags
+
 Restore the status of the flagging that was saved in the flag table with versionname='initialize_flags'.
 
 Output:
+
 ```
 initialize_flags        [flag table]
 ```
 
 Restores the flags saved in the flag table with versionname `initialize_flags` using flagmanager. The idea is to use this saving point to restart calibration from scratch but keeping the flags produced during the pre-process stage. Any other tables associated with the dataset will not be removed, so use flagmanager and remove them manually if needed.
 
-
-
 ---
+
 ### 4.2.2 flag_manual_avg
+
 Applies flags from an external file with a list of flag commands the unaveraged dataset. It needs file ./inputfg_avg.flags to be located in the current directory.
 
 Simply runs `flagdata(vis='inbase_avg.ms', mode='list', inpfile="inputfg_avg.flags")`. This is run on the averaged dataset `inbase_avg.ms`. To apply manual flags to an averaged dataset see `flag_manual` step above.
@@ -282,12 +296,15 @@ mode='manual' field='' antenna='Mk2' timerange='09:05:00~16:27:00'
 mode='manual' field='1258-2219' antenna='' timerange='12:57:01~12:59:59'
 mode='quack' field='1258-2219,1309-2322' quackinterval=24.
 ```
+
 ---
+
 ### 4.2.3 init_models
 
 The pipeline will initialize the model column for all sources different from 1331+305 using CASA `delmod`, so setting all amplitudes to 1 and all phases to 0 in the model column. For 1331+3030 it will check if the data is L band or C band, and use `setjy` to introduce the correct model of 1331+3030 (3C286) into the data column. The models can be found in `pipeline_path+'calibrator_models/'`. Only C and L band models are currently available.
 
 ---
+
 ### 4.2.5 bandpass
 
 It runs a delay, phase, and a&p calibration before finding the combined BP table for all sources listed in `bpcals`. Only the bandpass table is used in the following steps.
@@ -301,8 +318,8 @@ Tables produced:
 
 The pipeline will do a first pass to create the tables. Then will apply all of them to the `bpcal` sources and run an automatic flagging step (tfcrop by default). Once the data are cleaned from bad visibilities, it will do a second pass to find the four tables again.
 
-
 ---
+
 ### 4.2.6 initial_gaincal
 
 It will use table bpcal.BP0 and solve for delays, phases and amplitude&phases on all calibrators.
@@ -316,6 +333,7 @@ Tables produced:
 The pipeline will do a first pass to create the tables. Then will apply all of them to the calibrator sources and run an automatic flagging step (tfcrop by default). Once the data are cleaned from bad visibilities, it will do a second pass to find the three tables again.
 
 ---
+
 ### 4.2.7 fluxscale
 
 Runs CASA `fluxscale` to bootstrap the flux density scale of 1331+3030 using its model, and forward the corrections to all other sources, updating their model column. Also, a corrected `allcal_ap.G1_fluxscale` table is derived from the previous amplitude calibration.
@@ -331,13 +349,12 @@ CASA `fluxscale`
 | listfile      | ./calib/allcal_ap.G1_fluxscaled_fluxes.txt|
 |               |                                           |
 
-
 Then, the pipeline will run the script `dfluxpy` to find the correction factor eMfactor. This is a correction factor for the flux density of 1331+3030 (3C286) needed because the source is slightly resolved by the shortest baseline of e-MERLIN. The task will check the shortest baseline and the observation frequency, and scale the results accordingly. The values reported by the logger in eMCP.log are already corrected by this factor. The file allcal_ap.G1_fluxscaled_fluxes.txt is not corrected by this factor, but a warning note is included in the file.
 
 The step can accept an external model image for any source (typically the phase calibrator). For each source `fieldname` it will search for `./source_models/<fieldname>.model.tt0` and `./source_models/<fieldname>.model.tt1`. If both are present, the models will be scaled by eMcalflux/flux_in_model. eMcalflux is the flux derived by task `fluxscale` (see above), and flux_in_model is the sum of pixels in the model.tt0 image. Both the tt0 and tt1 model images will be scaled by that factor and the new models specific for the current observation will be placed in ./source_models. If no models are found for a source, a point-like model with the flux density and spectral index derived by `fluxscale` will be used. Finally, the model column in the MS will be updated using `ft` if there model images (tt0 and tt1) are available in `./source/models/`, of `setjy` if there are no models and a point-like model is assumed. In both cases the model column should contain spectral index information.
 
-
 ---
+
 ### 4.2.8 bandpass_final
 
 Tables produced:
@@ -346,8 +363,8 @@ Tables produced:
 
 Recalculate the BP table. Now the model columns contain the actual flux density of the calibrators, so the BP table will include spectral index information.
 
-
 ---
+
 ### 4.2.9 gaincal_final
 
 With updated models on all calibrators and the final bandpass (BP2) we can recompute phase and amplitude solutions. Note delays from `initial_gaincal` are used.
@@ -362,33 +379,35 @@ Tables produced:
 The first two use a short solution interval (by default `int` for phases and `32s` for a&p) and the later two produce scan-averaged solutions to correct the targets. The scan-averaged solutions are only found for phase-reference sources, but not for the bandpass or flux calibrator.
 
 ---
+
 ### 4.2.10 applycal_all
+
 Two runs are executed. One to correct calibrators, using their own solutions when relevant. A second correction is executed for each target, using the solutions from the corresponding phase reference calibrator.
 
-
 ---
+
 ### 4.2.11 flag_target
 
 After calibration, we can run `flagdata` in tfcrop mode to remove RFI from the target fields.
 
 ---
+
 ### 4.2.13 plot_corrected
 
 Produce plots of amp/phase vs time/freq for each baseline with plotms using corrected data column. Also produce Amp/phase vs UVwave plots of corrected visibilities and model.
 
-
 Produces plots in png format for the visibilities in `inbase_avg.ms`. It iterates through all sources specified by the user in the inputs file, and produces plots for each baseline. All plots are stored in the output directory. The plots have some averaging:
- 
- - Amp/Phase vs Time: time averaging is 4s, all channels averaged in each spw, colorized by spw.
- - Amp/Phase vs Frequency: time average is 300s, frequency average is 4 channels. ccolorized by correlation.
- - Amp/Phase vs UVwave: time average is 600s, channel average is 1/16 of total channels
 
+- Amp/Phase vs Time: time averaging is 4s, all channels averaged in each spw, colorized by spw.
+- Amp/Phase vs Frequency: time average is 300s, frequency average is 4 channels. ccolorized by correlation.
+- Amp/Phase vs UVwave: time average is 600s, channel average is 1/16 of total channels
 
 ---
 
 # 5. Support functions and variables
 
 ### msinfo [dict]
+
 The pipeline stores all available information on the dataset and the steps executed and all the parameters of each step in a dictionary. The dictionary is saved in pickle in file in `./weblog/info/eMCP_info.pkl`. It can be read with picke using:
 
 > `msinfo = pickle.load(open('weblog/info/eMCP_info.pkl', 'rb'))`
@@ -415,7 +434,7 @@ Example:
     fluxcal         : 1331+305
     bpcal           : 1407+284
     ptcal           : 1407+284
-    refant          : 
+    refant          :
     run_importfits  : 0
     flag_aoflagger  : 0
     flag_apriori    : 0
@@ -446,8 +465,8 @@ Example:
     flag_manual_avg
         Lo_datacolumn: data
         Lo_threshold: 0.5
-        Lo_min_scans: 
-        Lo_dropout  : 
+        Lo_min_scans:
+        Lo_dropout  :
         Lo_spws     : ['3']
         Lo_useflags : True
     plot_data
@@ -461,23 +480,23 @@ Example:
         run_statwt  : True
     average
         timebin     : 4s
-        antenna     : 
-        scan        : 
-        timerange   : 
+        antenna     :
+        scan        :
+        timerange   :
         datacolumn  : data
-        field       : 
+        field       :
         chanbin     : 4
         shift_phasecenter: False
 ...
 ...
 
 ```
+
 ### caltables [dict]
 
 This is a dictionary that is stored in the file `./calib/caltables.pkl`. It contains information on all the calibration tables produced by the pipeline. The pipeline saves cumulative pickle files after each step as ./calib/caltables_<step>.pkl. This is just for security and it is not used by the pipeline. The caltables variable can be load with python using:
 
 > `caltables = pickle.load(open('./calib/caltables.pkl', 'rb'))`
-
 
 Example:
 
@@ -507,10 +526,9 @@ Example:
                 'spwmap': [],
                 'table': './calib/CY5003_24_C_20170922_bpcal_p.G0'},
 
-... 
+...
 ...
 ```
-
 
 <!---
 
@@ -529,8 +547,6 @@ Example:
 | flag_2a_manual  | Applies flags from external file with a list of flag commands | flagdata                               |manual_flags_a           |               | Applies flag commands prepared by the user in external file to **unaveraged** data            |
 | average_1       | Split dataset and average to reduce data volume            | split                                     |sources                  |inbase_avg.ms  |                                                                                               |
 | plot_data       | Produce plots of amp/phase vs time/freq for each baseline  | plotms                                    |                         |plots (several)| Plots DATA column only.                                                                       |
-
-
 
 ### Calibration summary
 

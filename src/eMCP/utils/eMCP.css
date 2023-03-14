@@ -1,0 +1,53 @@
+body
+{
+  margin-top: 10px;
+  margin-left: 20px;
+  margin-right: 20px;
+  width:80%;
+}
+
+table.table1 {
+    display: table;
+    border: 30px;
+    border-spacing: 2px;
+    border-collapse: collapse;
+    padding: 4px;
+    background-color: #eeeeee;
+    border: 1px solid black;
+}
+
+table.table1 td{
+    background-color: light-gray;
+    padding: 5px;
+    border: 1px solid black;
+}
+
+.header-img img {
+        float: left;
+        width: 60px;
+        height: 60px;
+}
+
+.header-img h3 {
+        position: relative;
+        top: 8px;
+        left: 20px;
+}
+
+
+.imageBox {
+  position: relative;
+  float: left;
+}
+
+.imageBox .hoverImg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: none;
+   z-index: 10;
+}
+
+.imageBox:hover .hoverImg {
+  display: block;
+}

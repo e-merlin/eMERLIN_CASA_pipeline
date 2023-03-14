@@ -1,0 +1,50 @@
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+name: pypi-publish
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}:base
+      credentials:
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.REGISTRY_TOKEN }}
+    steps:
+    - uses: actions/checkout@v3.0.2
+      with:
+        fetch-depth: 0
+        set-safe-directory: true
+    - name: Force directory safe
+      run: |
+        git config --global --add safe.directory "$GITHUB_WORKSPACE"
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.8'
+    - name: Install dependencies
+      run: |
+        python3 -m pip install --upgrade pip wheel setuptools setuptools-scm
+        python3 -m pip install virtualenv
+        python3 -m pip install build
+    - name: Build package
+      run: python3 -m build
+    - name: Build bdist package
+      run: python3 setup.py bdist_wheel
+    - name: Publish package
+      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+      uses: pypa/gh-action-pypi-publish@master
+      with:
+        user: __token__
+        password: ${{ secrets.PYPI_API_TOKEN }}
+        verify_metadata: false

@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=62.6.0", "setuptools-scm", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "eMCP"
+authors = [
+    {name = "Miguel Cárcamo", email = "miguel.carcamo@manchester.ac.uk"},
+]
+maintainers = [
+    {name = "Miguel Cárcamo", email = "miguel.carcamo@manchester.ac.uk"},
+]
+description = "CASA eMERLIN pipeline to calibrate data from the e-MERLIN array."
+readme = "README.md"
+license = {text = "GNU GPL"}
+requires-python = ">=3.8, <=3.8.13"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent"
+]
+dynamic = ["version", "dependencies"]
+
+[project.urls]
+Source = "https://github.com/e-merlin/eMERLIN_CASA_pipeline"
+
+[tool.setuptools.package-data]
+"eMCP.aoflagger_strategies.default" = ["*.lua", "*.rfis"]
+"eMCP.aoflagger_strategies.other" = ["*.lua", "*.rfis"]
+"eMCP.calibrator_models" = ["*.dat", "*.f0", "*.f0_TSM0", "*.lock", "*.info"]
+"eMCP.utils" = ["*.css", "*.gif", "*.png"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["eMCP*"]
+namespaces = false
+
+[tool.setuptools_scm]
+write_to = "src/eMCP/_version.py"
