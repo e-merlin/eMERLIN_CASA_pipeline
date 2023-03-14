@@ -1,4 +1,4 @@
-![](../src/eMCP/utils/eMCP_logo.png)
+![](../../src/eMCP/utils/eMCP_logo.png)
 
 https://github.com/e-merlin/eMERLIN_CASA_pipeline
 
