@@ -1,0 +1,24 @@
+site_name: e-MERLIN CASA pipeline
+site_description: 'This is CASA eMERLIN pipeline to calibrate data from the e-MERLIN array'
+site_author: 'Javier Moldón'
+repo_url:
+
+nav:
+    - Home: index.md
+    - Pipeline description: src/description.md
+    - Installation: src/installation.md
+    - Configuration: src/configuration.md
+    - Data products: src/products.md
+    - Execution examples: src/examples.md
+    - Acknowledgements: src/acknowledgements.md
+
+theme:
+    name: readthedocs
+    toc_depth: 4
+    highlightjs: true
+
+markdown_extensions:
+  - toc:
+      permalink: True
+  - admonition
+

@@ -3794,15 +3794,16 @@ def shift_field_position(eMCP, msfile, shift):
     emutils.rmdir(msfile_split)
     # Split
     logger.info('Splitting field: {}'.format(field))
-    mstransform(msfile, outputvis=msfile_split, field=field, datacolumn='data')
+    mstransform(msfile, outputvis=msfile_split+'_tmp', field=field, datacolumn='data')
     find_casa_problems()
     logger.info('Changing phase center to: {}'.format(new_pos))
-    phaseshift(vis=msfile_split,
+    phaseshift(vis=msfile_split+'_tmp',
                field=field,
                outputvis=msfile_split,
                phasecenter=new_pos,
                datacolumn='data')
     find_casa_problems()
+    emutils.rmdir(msfile_split+'_tmp')
     # Change field name
     tb.open(msfile_split + '/FIELD', nomodify=False)
     st = tb.selectrows(0)
