@@ -1,68 +1,177 @@
+# eMERLIN CASA Pipeline
+
+## Contents
+
 1. [Description](#description)
-1. [Dependencies](#dependencies)
-1. [Download](#download)
-1. [Quick start](#quickstart)
+1. [Installation](#installation)
+   - [Conda Installation](#conda-installation)
+   - [Pip Installation](#pip-installation)
+   - [Docker Installation](#docker-installation)
+1. [Quick start](#quick-start)
 1. [Usage](#usage)
-1. [Additional information](#information)
+1. [Additional information](#additional-information)
 1. [FAQ](#faq)
 
-<a name="description"></a>
-
-## Description ##
+## Description
 
 The e-MERLIN CASA Pipeline (eMCP) is a python pipeline working on top of [CASA](https://casa.nrao.edu/) to process and calibrate interferometric data from the [e-MERLIN](http://www.e-merlin.ac.uk/) array. Access to data information, statistics and assessment plots on calibration tables and visibilities can be accessed by the pipeline weblog, which is updated in real time as the pipeline job progresses. The output is calibrated data and preliminary lookup images of the relevant fields. It can calibrate mixed mode data that includes narrow-band high spectral resolution spectral windows for spectral lines, and also special observing modes as pseudo-wideband observations. Currently no polarization calibration is performed.
 
-<a name="dependencies"></a>
+## Installation
 
-## Dependencies ##
+The e-MERLIN CASA Pipeline (eMCP) has the following dependencies:
 
-- CASA v5.5+ (see <https://casa.nrao.edu/>)
-- aoflagger v2.9+ (see <https://sourceforge.net/projects/aoflagger/>), only needed to calibrate L-band data.
+- Python 3.8
+- CASA v6.5+
+- aoflagger v2.9+ (needed for L-band data)
+- wsclean (optional, for improved imaging)
 
-<a name="download"></a>
+There are three ways to install eMCP:
 
-## Download ##
+### Conda Installation
 
-If you have git installed, you can get the pipeline using:
-`git clone https://github.com/e-merlin/eMERLIN_CASA_pipeline.git`
+This is the recommended approach as it will install all dependencies, including non-Python ones like aoflagger and wsclean:
 
-If you don't have git, you can download and unzip the files from [here](https://github.com/e-merlin/eMERLIN_CASA_pipeline/archive/master.zip).
+```bash
+git clone https://github.com/e-merlin/eMERLIN_CASA_pipeline.git
+cd eMERLIN_CASA_pipeline
+conda env create -f environment.yml
+conda activate emcp
+```
 
-To install aoflagger check out either A. Offringa's websites:
+### Pip Installation
 
-- aoflagger: <https://sourceforge.net/projects/aoflagger/>
-- wsclean: <https://sourceforge.net/projects/wsclean/>  (not required for running the pipeline)
+If you already have CASA, aoflagger and wsclean installed on your system, you can install eMCP using pip:
 
-or (recommended) use the handy anaconda scripts to instantly install dependcies within the conda environment. To do this follow the instructions in this repo.: <https://github.com/jradcliffe5/radio_conda_recipes>
+```bash
+pip install git+https://github.com/e-merlin/eMERLIN_CASA_pipeline.git
+```
 
-<a name="quickstart"></a>
+Or to install from a local copy:
 
-## Quick start ##
+```bash
+git clone https://github.com/e-merlin/eMERLIN_CASA_pipeline.git
+cd eMERLIN_CASA_pipeline
+pip install .
+```
+
+### Docker Installation
+
+For those who prefer containerized applications:
+
+```bash
+docker pull emerlin/emcp:latest
+docker run -it --rm -v $(pwd):/data emerlin/emcp:latest
+```
+
+## Quick start
 
 If you have received calibrated data from the observatory and you want to refine the calibration, you can:
 
-1. [Optionally] Modify `default_params.json` or add manual flags to `manual_avg.flags` with your desired values.
-2. Run:
+1. [Optionally] Modify `default_params.yaml` or add manual flags to `manual_avg.flags` with your desired values.
+2. Run one of the following commands depending on your installation method:
 
-`casa -c eMERLIN_CASA_pipeline/eMERLIN_CASA_pipeline.py -r calibration`
+- If installed with pip or conda:
 
-<a name="usage"></a>
+  ```bash
+  emcp -r calibration
+  ```
 
-## Usage ##
+- If using the repository directly:
 
-Normal pipeline execution. When you have in your working directory the file `inputs.ini` and you have extracted the pipeline:
+  ```bash
+  emcp -r calibration
+  ```
 
-`casa -c /path/to/pipeline/eMERLIN_CASA_pipeline.py`
+- If using Docker:
 
-To run the parallelized version using MPI in CASA you can use:
+  ```bash
+  docker run -it --rm -v $(pwd):/data emerlin/emcp:latest emcp -r calibration
+  ```
 
-`mpicasa -n <num_cores> casa -c /path/to/pipeline/eMERLIN_CASA_pipeline.py`
+## Usage
 
-**Optional arguments**
+The eMCP package can be run with the `emcp` command (if installed with pip or conda) or through CASA with the main script.
+
+### Command Line Interface (CLI)
+
+```bash
+# Show help
+emcp -h
+
+# Show version
+emcp -v
+
+# List available pipeline steps
+emcp -l
+
+# IMPORTANT: When specifying multiple steps, use comma WITHOUT SPACES
+emcp -r flag_apriori,flag_manual,average
+
+# NOT like this (will cause errors)
+# emcp -r flag_apriori flag_manual average  # ERROR! Will be interpreted as positional arguments
+# emcp -r flag_apriori, flag_manual, average  # ERROR! Spaces after commas will be included in step names
+
+# Skip specific steps (same comma-separated format)
+emcp -s plot_data,save_flags
+
+# Use a custom inputs file
+emcp -i my_inputs.ini -r flag_apriori,flag_manual
+emcp -v
+
+# List available steps
+emcp -l
+
+# Initialize a new project (create default_params.yaml and inputs.ini in current directory)
+emcp init
+
+# Initialize a new project and force overwrite of existing files
+emcp init --force
+
+# Run with custom inputs file
+emcp -i my_inputs.ini
+
+# Run specific steps
+emcp -r run_importfits,flag_apriori
+
+# Skip specific steps
+emcp -s plot_data,flag_target
+```
+
+### Starting a new project
+
+```bash
+# Create a new directory for your project
+mkdir my_project
+cd my_project
+
+# Initialize with default configuration files
+emcp init
+
+# Edit inputs.ini and default_params.yaml as needed
+```
+
+### Normal pipeline execution
+
+When you have in your working directory the file `inputs.ini`:
+
+```bash
+# Standard execution
+emcp
+```
+
+To run the parallelized version using MPI:
+
+```bash
+mpicasa -n <num_cores> emcp
+```
+
+For more details, check the [full documentation](docs/index.md).
+
+### Optional arguments
 
 Names in capital need to be set by the user:
 
-```
+```text
   -h, --help                     show this help message and exit
 
 
@@ -80,19 +189,22 @@ Names in capital need to be set by the user:
 
   -s           SKIP_STEPS [SKIP_STEPS ...]
   --skip-steps SKIP_STEPS [SKIP_STEPS ...]
-                                 Whispace separated list of steps to skip
+                                 Whitespace separated list of steps to skip
 
 
   -l
   --list-steps                   Show list of available steps and exit
 
+
+  init                           Initialize a new project directory with config files
+  init --force                   Overwrite existing config files when initializing
 ```
 
 You can get the list of available steps with:
 
-`casa -c eMERLIN_CASA_pipeline/eMERLIN_CASA_pipeline.py -l`
+`emcp -l`
 
-```
+```text
 pre_processing
     run_importfits
     flag_aoflagger
@@ -116,60 +228,62 @@ calibration
     plot_corrected
     first_images
     split_fields
-
 ```
 
 Selection options are any combination of: a list of any individual step names, `pre_processing`, `calibration` or `all`
 
-**Examples of step selection**
+### Examples of step selection
 
 You need to specify which steps of the pipeline to run. Some example on how to choose steps:
 
 1. Run all the calibration steps (ideal for observatory-processed data for which you want to tweak the calibration parameters). Includes all calibrations steps (see list above):
 
-`casa -c eMERLIN_CASA_pipeline/eMERLIN_CASA_pipeline.py -r calibration`
+`emcp -r calibration`
 
-2. Run all pipeline steps (you will need the raw FITS-IDI files for the initial step):
+1. Run all pipeline steps (you will need the raw FITS-IDI files for the initial step):
 
-`casa -c eMERLIN_CASA_pipeline/eMERLIN_CASA_pipeline.py -r all`
+   ```bash
+   emcp -r all
+   ```
 
-3. Run only the pre-processing steps (usually executed by the observatory. Otherwise you need the raw FITS-IDI files):
+1. Run only the pre-processing steps (usually executed by the observatory. Otherwise you need the raw FITS-IDI files):
 
-`casa -c eMERLIN_CASA_pipeline/eMERLIN_CASA_pipeline.py -r pre_processing`
+   ```bash
+   emcp -r pre_processing
+   ```
 
-4. Any combination of the steps above, for example:
+1. Any combination of the steps above, for example:
 
-`casa -c eMERLIN_CASA_pipeline/eMERLIN_CASA_pipeline.py -r plot_corrected first_images split_fields`
+   ```bash
+   emcp -r plot_corrected first_images split_fields
+   ```
 
-5. Run all calibration steps except plot_corrected:
+1. Run all calibration steps except plot_corrected:
 
-`casa -c eMERLIN_CASA_pipeline/eMERLIN_CASA_pipeline.py -r calibration -s plot_corrected`
+   ```bash
+   emcp -r calibration -s plot_corrected
+   ```
 
-**Running the pipeline interactively from CASA**
+### Running the pipeline interactively
 
 To execute the pipeline from a running CASA instance you need to write in the CASA shell:
 
-~~~~
+```python
 run_in_casa = True
 pipeline_path = '/path/to/pipeline_path/'   # You need to define this variable explicitly
 execfile(pipeline_path + 'eMERLIN_CASA_pipeline.py')
 eMCP = run_pipeline(run_steps=['calibration'])
-~~~~
+```
 
 Function `run_pipeline` parameters and defaults are: `run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[])`. Variables run_steps and skip_steps are python lists of steps as explained above.
 
-<a name="information"></a>
+## Additional information
 
-## Additional information ##
-
-- [Documentation [online]](documentation/docs.md)
+- [Documentation](#additional-information)
 - [Wiki pages](https://github.com/e-merlin/eMERLIN_CASA_pipeline/wiki)
+## FAQ
 
-<a name="faq"></a>
-
-## FAQ ##
-
-**How do I open the weblog?**
+### How do I open the weblog?
 
 The weblog consist of a series of html files. From the working directory you can open the file `./weblog/index.html` with your preferred web browser.
 
@@ -187,7 +301,7 @@ There are two main blocks: pre-processing and calibration. Most probably you wil
 - Edit the file `default_params.json` changing any parameter the pipeline is using, if needed.
 - Run the calibration block of the pipeline with the command:
 
-`casa -c ./eMERLIN_CASA_pipeline/eMERLIN_CASA_pipeline.py -r calibration`
+`emcp -r calibration`
 
 **Which flag files does the pipeline accept and what is the right syntax?**
 
@@ -228,6 +342,6 @@ scan='1~3,10~12' mode='quack' quackinterval=1.0
 
 **How do I fill the source names in inputs.ini if I don't know which fields were observed?**
 
-By default you should have all the information from the observatory. But if you only have the FITS-IDI and don't know the source names, you can run the first pipeline step alone `casa -c eMERLIN_CASA_pipeline/eMERLIN_CASA_pipeline.py -r run_importfits`. When the execution is finished, open the weblog and go to the tab `Observation Summary` where you will find the fields included in the MS and the listobs file with all the scans.
+By default you should have all the information from the observatory. But if you only have the FITS-IDI and don't know the source names, you can run the first pipeline step alone `emcp -r run_importfits`. When the execution is finished, open the weblog and go to the tab `Observation Summary` where you will find the fields included in the MS and the listobs file with all the scans.
 
 As a general rule, an observation will have 1331+3030 (3C286) as flux scale calibrator, 1407+2827 (OQ208) as bandpass calibrator and 0319+4130 (3C84) as bright ptcal calibrator. To distinguish between target and phasecal, you should look for alternating scans, and the target is usually the one with longer scans.
