@@ -1,45 +1,55 @@
-FROM ubuntu:20.04
-RUN echo "deb mirror://mirrors.ubuntu.com/mirrors.txt focal main restricted universe multiverse" > /etc/apt/sources.list && \
-    echo "deb mirror://mirrors.ubuntu.com/mirrors.txt focal-updates main restricted universe multiverse" >> /etc/apt/sources.list && \
-    echo "deb mirror://mirrors.ubuntu.com/mirrors.txt focal-security main restricted universe multiverse" >> /etc/apt/sources.list && \
-    apt-get update -y
+FROM continuumio/miniconda3:latest
 
-RUN DEBIAN_FRONTEND=noninteractive && \
-  apt-get install -y tzdata && \
-  apt-get install -y keyboard-configuration && \
-  apt-get install -y software-properties-common
+# Configure conda channels
+RUN conda config --add channels conda-forge \
+    && conda config --add channels pkgw-forge \
+    && conda config --add channels i4ds \
+    && conda config --set channel_priority strict
 
-RUN add-apt-repository main && \
-  add-apt-repository universe && \
-  add-apt-repository restricted && \
-  add-apt-repository multiverse && \
-  apt-get update -y
+# Install base conda dependencies
+RUN conda install -y python=3.8 mamba
 
-RUN apt-get install -y build-essential && \
-    apt-get install -y zlib1g-dev libncurses5-dev && \
-    apt-get install -y libgdbm-dev libnss3-dev libssl-dev  && \
-    apt-get install -y libreadline-dev libffi-dev wget && \
-    apt-get install -y --no-install-recommends && \
-    apt-get install -y python3-dev && \
-    apt-get install -y python3-pip && \
-    apt-get install -y python3-wheel && \
-    apt-get install -y python3-setuptools && \
-    apt-get install -y libblas-dev && \
-    apt-get install -y liblapack-dev && \
-    apt-get install -y liblapacke-dev && \
-    apt-get install -y git && \
-    apt-get install -y ImageMagick* && \
-    apt-get install -y xorg && \
-    apt-get install -y libgfortran4 && \
-    apt-get install -y libopenmpi-dev && \
-    apt-get install -y aoflagger && \
-    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+# Install CASA and radio astronomy tools
+RUN mamba install -y \
+    casacore \
+    openmpi \
+    mpi4py \
+    aoflagger \
+    wsclean \
+    numpy \
+    pandas \
+    matplotlib \
+    scipy \
+    astropy \
+    python-casacore
+
+# Install Python dependencies
+RUN mamba install -y \
+    setuptools>=62.6.0 \
+    setuptools-scm \
+    pip
+
+# Clean up conda cache
+RUN conda clean --all -f -y
+
+# Copy the package files
+WORKDIR /app
+COPY . /app/
+
+# Install the package
+RUN pip install -e .
+
+# Create entry points
+ENTRYPOINT ["emcp"]
+
+# Default command
+CMD ["--help"]
 
 RUN python3 --version
 RUN pip3 --version
 RUN python3 -m pip install --upgrade pip
 RUN python3 -m pip install mpi4py --no-cache-dir
-RUN echo "Hello from eMERLIN CASA pipeline base image"
-LABEL org.opencontainers.image.source="https://github.com/miguelcarcamov/emerlin_casa_pipeline"
+
+LABEL org.opencontainers.image.source="https://github.com/e-merlin/eMERLIN_CASA_pipeline"
 LABEL org.opencontainers.image.description="Container image for eMERLIN CASA pipeline"
 LABEL org.opencontainers.image.licenses=GPL3
