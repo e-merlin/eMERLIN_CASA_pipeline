@@ -24,7 +24,10 @@ from pathlib import Path
 from astropy.io import fits
 
 from ..plots import eMCP_plots as emplt
-from ..weblog import eMCP_weblog as emwlog
+from ..utils.weblog_config import get_weblog_function
+
+# Get the appropriate weblog function (original or modern)
+start_weblog = get_weblog_function()
 from ..utils import eMCP_utils as emutils
 from ..fluxscale import run_fluxscale
 from ..flagstatistics import run_flagstats
@@ -134,7 +137,7 @@ def exit_pipeline(eMCP=''):
     os.system('cp eMCP.log {}eMCP.log.txt'.format(info_dir))
     if eMCP != '':
         logger.info('Something went wrong. Producing weblog before quiting')
-        emwlog.start_weblog(eMCP)
+        start_weblog(eMCP)
     logger.info('Now quiting')
     sys.exit()
 
@@ -166,7 +169,7 @@ def add_step_time(step, eMCP, msg, t0, doweblog=True):
     save_obj(eMCP, info_dir + 'eMCP_info.pkl')
     os.system('cp eMCP.log {}eMCP.log.txt'.format(info_dir))
     if doweblog:
-        emwlog.start_weblog(eMCP)
+        start_weblog(eMCP)
     return eMCP
 
 
@@ -407,7 +410,7 @@ def get_distances(msfile, directions=''):
 def get_integration_time(msfile):
     time_diff = np.diff(emutils.read_keyword(msfile, 'TIME'))
     intervals = time_diff[time_diff > 0]
-    int_mode = mode(intervals)
+    int_mode = mode(intervals, keepdims=True)
     int_time = int_mode[0][0]
     perc = int_mode[1][0] / len(intervals) * 100.
     logger.debug(f'Mode time interval: {int_time}s (for {perc:4.1f}% of gaps)')
@@ -667,7 +670,7 @@ def plot_elev_uvcov(eMCP):
     else:
         emplt.make_elevation(msfile, msinfo)
         emplt.make_uvcov(msfile, msinfo)
-    emwlog.start_weblog(eMCP)
+    start_weblog(eMCP)
 
 
 def import_eMERLIN_fitsIDI(eMCP):
@@ -718,7 +721,7 @@ def import_eMERLIN_fitsIDI(eMCP):
     eMCP['msfile'] = eMCP['inputs']['inbase'] + '.ms'
     msfile = msfile0
     eMCP, msinfo, msfile = get_msinfo(eMCP, msfile)
-    emwlog.start_weblog(eMCP)
+    start_weblog(eMCP)
     #    eMCP = add_step_time('importfitsIDI', eMCP, msg, t0, doweblog=True)
 
     # mstransform
@@ -1289,8 +1292,9 @@ def flagdata1_apriori(eMCP):
         flagdata(vis=msfile_sp, mode='clip', clipzeros=True, flagbackup=False)
         find_casa_problems()
     # Subband edges
-    channels_to_flag = '*:0~{0};{1}~{2}'.format(nchan / 128 - 1,
-                                                nchan - nchan / 128, nchan - 1)
+    edge_frac = 4/512 # this could be moved to the default_parameters file
+    nedge = max([1, int(nchan * edge_frac)])
+    channels_to_flag = f'*:0~{nedge - 1};{nchan - nedge}~{nchan - 1}'
     logger.info('MS has {} channels/spw'.format(nchan))
     logger.info('Flagging edge channels {0}'.format(channels_to_flag))
 

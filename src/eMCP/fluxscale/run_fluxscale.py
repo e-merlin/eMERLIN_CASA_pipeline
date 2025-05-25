@@ -19,5 +19,6 @@ def run_fluxscale(vis, reference, transfer, antenna, caltable, fluxtable,
                           caltable=caltable,
                           fluxtable=fluxtable,
                           listfile=listfile)
+
     outfile = os.path.join(weblog_dir, 'calib/calfluxes.pkl')
     save_obj(calfluxes, outfile)

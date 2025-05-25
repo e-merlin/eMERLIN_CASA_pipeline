@@ -1,0 +1,350 @@
+# e-MERLIN CASA Pipeline default parameters
+global:
+  update_casa-data: true
+  refantmode: "strict"
+  refant: ""
+  is_mixed_mode: "auto"
+  applymode: "calflagstrict"
+  run_importfits: 1
+  flag_aoflagger: 1
+  flag_apriori: 1
+  flag_manual: 1
+  average: 1
+  plot_data: 1
+  save_flags: 1
+  restore_flags: 1
+  flag_manual_avg: 1
+  init_models: 1
+  bandpass: 1
+  initial_gaincal: 1
+  fluxscale: 1
+  bandpass_final: 1
+  gaincal_final: 1
+  applycal_all: 1
+  flag_target: 1
+  plot_corrected: 1
+  first_images: 1
+  split_fields: 1
+import_eM:
+  constobsid: true
+  scanreindexgap_s: 15.0
+  antenna: ""
+  field: ""
+  timeaverage: true
+  timebin: "4s"
+  chanaverage: false
+  chanbin: 1
+  usewtspectrum: false
+  run_hanning: "auto"
+  ms2mms: false
+  spw_separation: ["", ""]
+  spwmap_sp: []
+  fix_repeated_sources: false
+aoflagger:
+  run: "auto"
+  fields: "all"
+  separate_bands: false
+flag_apriori:
+  border_chan_perc: 5.0
+  observatory_flags: true
+  do_estimated_quack: "auto"
+  all_quack: 4.0
+  std_cal_quack: 120.0
+  flag_Lo-Mk2: true
+  observatory_flags: true
+average:
+  field: ""
+  timebin: "4s"
+  chanbin: 4
+  datacolumn: "data"
+  timerange: ""
+  scan: ""
+  antenna: ""
+  shift_phasecenter: false
+plot_data:
+  num_proc: 1
+flag_manual_avg:
+  Lo_dropout: ""
+  Lo_datacolumn: "data"
+  Lo_useflags: true
+  Lo_spws: ["3"]
+  Lo_threshold: 0.5
+  Lo_min_scans: ""
+init_models:
+  calibrator_models: "calibrator_models/"
+  manual_fluxcal: false
+  fluxcal_flux: [-1]
+  fluxcal_spix: 0.0
+  fluxcal_reffreq: "0GHz"
+  wtmode: "nyq"
+  dowtsp: false
+bandpass:
+  delay_tablename: "bpcal_d.K0"
+  delay_solint: "180s"
+  delay_combine: "spw"
+  delay_prev_cal: []
+  delay_interp: "linear"
+  delay_spw: ["*", "innerchan"]
+  delay_minblperant: 3
+  delay_minsnr: 2
+  phase_tablename: "bpcal_p.G0"
+  phase_solint: "int"
+  phase_prev_cal: ["bpcal_d.K0"]
+  phase_interp: "linear"
+  phase_combine: ""
+  phase_spw: ["*", "innerchan"]
+  phase_minblperant: 3
+  phase_minsnr: 2
+  ap_tablename: "bpcal_ap.G0"
+  ap_solint: "32s"
+  ap_prev_cal: ["bpcal_d.K0", "bpcal_p.G0"]
+  ap_interp: "linear"
+  ap_combine: ""
+  ap_spw: ["*", "innerchan"]
+  ap_minblperant: 3
+  ap_minsnr: 2
+  bp_tablename: "bpcal.BP0"
+  bp_solint: "inf"
+  bp_combine: "field,scan"
+  bp_interp: "nearest,cubicflag"
+  bp_spw: ["*", ""]
+  bp_uvrange: ""
+  bp_fillgaps: 8
+  bp_solnorm: true
+  bp_prev_cal: ["bpcal_d.K0", "bpcal_p.G0", "bpcal_ap.G0"]
+  apply_calibrators: ["bpcal.BP0"]
+  apply_targets: []
+  run_flag: true
+  tfcrop:
+    mode: "tfcrop"
+    sources: "bpcal"
+    antenna: ""
+    scan: ""
+    spw: ""
+    correlation: ""
+    ntime: ""
+    combinescans: false
+    datacolumn: "corrected"
+    winsize: 3
+    timecutoff: 4.5
+    freqcutoff: 4.5
+    maxnpieces: 7
+    uwstats: "none"
+    halfwin: 1
+    extendflags: true
+    action: "apply"
+    display: ""
+    flagbackup: false
+bp_apply_mid:
+  apply_calibrators: ["bpcal_d.K0", "bpcal_p.G0", "bpcal_ap.G0", "bpcal.BP0"]
+  apply_targets: []
+initial_gaincal:
+  delay:
+    use_fringefit: false
+    tablename: "allcal_d.K1"
+    delay_cal: "default"
+    solint: "180s"
+    combine: "spw"
+    prev_cal: ["bpcal.BP0"]
+    interp: "linear"
+    spw: ["*", "innerchan"]
+    zerorates: true
+    minblperant: 3
+    minsnr: 2
+  p_tablename: "allcal_p.G1"
+  p_prev_cal: ["bpcal.BP0", "allcal_d.K1"]
+  p_solint: "int"
+  p_spw: ["*", "innerchan"]
+  p_combine: ""
+  p_interp: "linear"
+  p_minblperant: 3
+  p_minsnr: 2
+  ap_tablename: "allcal_ap.G1"
+  ap_prev_cal: ["bpcal.BP0", "allcal_d.K1", "allcal_p.G1"]
+  ap_calibrator: "default"
+  ap_solint: "32s"
+  ap_spw: ["*", "innerchan"]
+  ap_combine: ""
+  ap_interp: "linear"
+  ap_minblperant: 3
+  ap_minsnr: 2
+  apply_calibrators: ["bpcal.BP0", "allcal_d.K1", "allcal_p.G1", "allcal_ap.G1"]
+  apply_targets: []
+  flagmode: "tfcrop"
+  tfcrop:
+    mode: "tfcrop"
+    sources: "calsources"
+    antenna: ""
+    scan: ""
+    spw: ""
+    correlation: ""
+    ntime: ""
+    combinescans: false
+    datacolumn: "residual"
+    winsize: 3
+    timecutoff: 5.0
+    freqcutoff: 5.0
+    maxnpieces: 7
+    uwstats: "none"
+    halfwin: 1
+    extendflags: true
+    action: "apply"
+    display: ""
+    flagbackup: false
+  rflag:
+    mode: "rflag"
+    sources: "calsources"
+    antenna: ""
+    scan: ""
+    spw: ""
+    correlation: ""
+    ntime: ""
+    combinescans: false
+    datacolumn: "residual"
+    timedevscale: 4.5
+    freqdevscale: 4.5
+    extendflags: true
+    action: "apply"
+    display: ""
+    flagbackup: false
+fluxscale:
+  tablename: "allcal_ap.G1_fluxscaled"
+  ampcal_table: "allcal_ap.G1"
+  apply_calibrators: ["bpcal.BP0", "allcal_d.K1", "allcal_p.G1", "allcal_ap.G1_fluxscaled"]
+  apply_targets: []
+bandpass_final:
+  bp_tablename: "bpcal.BP2"
+  bp_prev_cal: ["bpcal_d.K0", "bpcal_p.G0", "bpcal_ap.G0"]
+  bp_solint: "inf"
+  bp_spw: ["*", ""]
+  bp_combine: "field,scan"
+  bp_interp: "nearest,cubicflag"
+  bp_uvrange: ""
+  bp_fillgaps: 8
+  bp_solnorm: true
+  apply_calibrators: ["allcal_d.K0", "bpcal_p.G0", "bpcal_ap.G0", "bpcal.BP2"]
+  apply_targets: []
+gaincal_final:
+  p_tablename: "allcal_p.G3"
+  p_prev_cal: ["bpcal.BP2", "allcal_d.K1"]
+  p_solint: "int"
+  p_spw: ["*", "innerchan"]
+  p_combine: ""
+  p_interp: "linear"
+  p_minblperant: 3
+  p_minsnr: 2
+  ap_tablename: "allcal_ap.G3"
+  ap_prev_cal: ["bpcal.BP2", "allcal_d.K1", "allcal_p.G3"]
+  ap_calibrator: "default"
+  ap_solint: "32s"
+  ap_spw: ["*", "innerchan"]
+  ap_combine: ""
+  ap_interp: "linear"
+  ap_minblperant: 3
+  ap_minsnr: 2
+  p_scan_tablename: "phscal_p_scan.G3"
+  p_scan_prev_cal: ["bpcal.BP2", "allcal_d.K1"]
+  p_scan_solint: "inf"
+  p_scan_spw: ["*", "innerchan"]
+  p_scan_combine: ""
+  p_scan_interp: "linear"
+  p_scan_minblperant: 3
+  p_scan_minsnr: 2
+  ap_scan_tablename: "phscal_ap_scan.G3"
+  ap_scan_prev_cal: ["bpcal.BP2", "allcal_d.K1", "allcal_p.G3"]
+  ap_scan_calibrator: "phscals"
+  ap_scan_solint: "inf"
+  ap_scan_spw: ["*", "innerchan"]
+  ap_scan_combine: ""
+  ap_scan_interp: "linear"
+  ap_scan_minblperant: 3
+  ap_scan_minsnr: 2
+  apply_calibrators: ["allcal_d.K1", "bpcal.BP2", "allcal_p.G3", "allcal_ap.G3"]
+  apply_targets: ["allcal_d.K1", "bpcal.BP2", "phscal_p_scan.G3", "phscal_ap_scan.G3"]
+  p_offset_tablename: "narrow_p_offset.G3"
+  p_offset_prev_cal: ["allcal_d.K1", "allcal_p.G3"]
+  p_offset_solint: "inf"
+  p_offset_spw: ["*", ""]
+  p_offset_combine: "scan"
+  p_offset_interp: "linear"
+  p_offset_minblperant: 3
+  p_offset_minsnr: 2
+  narrow_bp_tablename: "narrow_bpcal.BP2"
+  narrow_bp_prev_cal: ["allcal_d.K1", "allcal_p.G3", "allcal_ap.G3", "narrow_p_offset.G3"]
+  narrow_bp_solint: "inf"
+  narrow_bp_spw: ["*", ""]
+  narrow_bp_combine: "field,scan"
+  narrow_bp_interp: "nearest,cubicflag"
+  narrow_bp_uvrange: ""
+  narrow_bp_fillgaps: 8
+  narrow_bp_solnorm: true
+  narrow_apply_calibrators: ["allcal_d.K1", "narrow_bpcal.BP2", "allcal_p.G3", "allcal_ap.G3", "narrow_p_offset.G3"]
+  narrow_apply_targets: ["allcal_d.K1", "narrow_bpcal.BP2", "phscal_p_scan.G3", "phscal_ap_scan.G3", "narrow_p_offset.G3"]
+applycal_all:
+  apply_calibrators: ["allcal_d.K1", "bpcal.BP2", "allcal_p.G3", "allcal_ap.G3"]
+  apply_targets: ["allcal_d.K1", "bpcal.BP2", "phscal_p_scan.G3", "phscal_ap_scan.G3"]
+  apply_narrow_calibrators: ["allcal_d.K1", "narrow_bpcal.BP2", "allcal_p.G3", "allcal_ap.G3", "narrow_p_offset.G3"]
+  apply_narrow_targets: ["allcal_d.K1", "narrow_bpcal.BP2", "phscal_p_scan.G3", "phscal_ap_scan.G3", "narrow_p_offset.G3"]
+  run_statwt: true
+  statwt_timebin: "0.001s"
+flag_target:
+  mode_to_run: "tfcrop"
+  rflag:
+    mode: "rflag"
+    sources: "targets"
+    antenna: ""
+    scan: ""
+    spw: ""
+    correlation: ""
+    ntime: "scan"
+    combinescans: false
+    datacolumn: "corrected"
+    timedevscale: 4.5
+    freqdevscale: 4.5
+    extendflags: true
+    action: "apply"
+    display: ""
+    flagbackup: false
+  tfcrop:
+    mode: "tfcrop"
+    sources: "targets"
+    antenna: ""
+    scan: ""
+    spw: ""
+    correlation: ""
+    ntime: ""
+    combinescans: false
+    datacolumn: "corrected"
+    winsize: 3
+    timecutoff: 4.5
+    freqcutoff: 4.5
+    maxnpieces: 7
+    uwstats: "none"
+    halfwin: 1
+    extendflags: true
+    action: "apply"
+    display: ""
+    flagbackup: false
+first_images:
+  wsclean:
+    "-size": 1024
+    "-scale": "auto"
+    "-gain": 0.05
+    "-mgain": 0.65
+    "-weight": "briggs 0.5"
+    "-niter": 10000
+    "-auto-mask": 5
+    "-auto-threshold": 2
+    "-taper-gaussian": 0
+    "-data-column": "CORRECTED_DATA"
+    "-beam-fitting-size": 0.5
+    "-save-source-list": ""
+split_fields:
+  fields: "targets"
+  timeaverage: true
+  timebin: "8s"
+  chanaverage: true
+  chanbin: 2
+  datacolumn: "corrected"
+  createmms: false
+  output_dir: "./splits"

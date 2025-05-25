@@ -17,7 +17,10 @@ import datetime
 import shutil
 import glob
 
-from ..weblog import eMCP_weblog as emwlog
+from ..utils.weblog_config import get_weblog_function
+
+# Get the appropriate weblog function (original or modern)
+start_weblog = get_weblog_function()
 from ..utils import eMCP_utils as emutils
 from ..functions import eMCP_functions as em
 
@@ -56,7 +59,7 @@ def add_step_time(step, eMCP, msg, t0, doweblog=True):
     emutils.save_obj(eMCP, info_dir + 'eMCP_info.pkl')
     os.system('cp eMCP.log {}eMCP.log.txt'.format(info_dir))
     if doweblog:
-        emwlog.start_weblog(eMCP)
+        start_weblog(eMCP)
     return eMCP
 
 
@@ -263,9 +266,7 @@ def make_4plots(eMCP, datacolumn='data'):
 
 def single_uvplt(msinfo, field, plots_data_dir):
     logger.info('uvplt for field: {}'.format(field))
-    plot_file_p = plots_data_dir + '{0}_uvplt_p_{1}.png'.format(
-        msinfo['msfilename'], field)
-    plot_file_a = plots_data_dir + '{0}_uvplt_a_{1}.png'.format(
+    plot_file = plots_data_dir + '{0}_uvplt_{1}.png'.format(
         msinfo['msfilename'], field)
     msfile = msinfo['msfile']
     nchan = msinfo['nchan']
@@ -296,7 +297,7 @@ def single_uvplt(msinfo, field, plots_data_dir):
            xselfscale=True,
            xsharedaxis=True,
            coloraxis='spw',
-           plotfile=plot_file_a,
+           plotfile=plot_file,
            expformat='png',
            customsymbol=True,
            symbolshape='circle',
@@ -328,7 +329,7 @@ def single_uvplt(msinfo, field, plots_data_dir):
            xsharedaxis=True,
            coloraxis='spw',
            plotrange=[-1, -1, -180, 180],
-           plotfile=plot_file_p,
+           plotfile=plot_file,
            expformat='png',
            customsymbol=True,
            symbolshape='circle',
@@ -343,9 +344,7 @@ def single_uvplt(msinfo, field, plots_data_dir):
 
 def single_uvplt_model(msinfo, field, plots_data_dir):
     logger.info('uvplt (model) for field: {}'.format(field))
-    plot_file_p = plots_data_dir + '{0}_uvpltmodel_p_{1}.png'.format(
-        msinfo['msfilename'], field)
-    plot_file_a = plots_data_dir + '{0}_uvpltmodel_a_{1}.png'.format(
+    plot_file = plots_data_dir + '{0}_uvpltmodel_{1}.png'.format(
         msinfo['msfilename'], field)
     msfile = msinfo['msfile']
     nchan = msinfo['nchan']
@@ -354,8 +353,8 @@ def single_uvplt_model(msinfo, field, plots_data_dir):
     showgui = False
     gridrows = 1
     gridcols = 2
+    
     # Amp
-
     plotms(vis=msfile,
            xaxis='UVwave',
            yaxis='amp',
@@ -376,7 +375,7 @@ def single_uvplt_model(msinfo, field, plots_data_dir):
            xselfscale=True,
            xsharedaxis=True,
            coloraxis='spw',
-           plotfile=plot_file_a,
+           plotfile=plot_file,
            expformat='png',
            customsymbol=True,
            symbolshape='circle',
@@ -407,7 +406,7 @@ def single_uvplt_model(msinfo, field, plots_data_dir):
            xsharedaxis=True,
            coloraxis='spw',
            plotrange=[-1, -1, -180, 180],
-           plotfile=plot_file_p,
+           plotfile=plot_file,
            expformat='png',
            customsymbol=True,
            symbolshape='circle',
@@ -571,8 +570,15 @@ def count_flags(flag_stats, label, list_order=[]):
 
 
 def plot_flagstatistics(flag_stats, msinfo, step):
-    # Different colors for each field
-
+    """Create flag statistics plots for a processing step.
+    
+    Creates two separate plots:
+    1. A plot showing only scan flags with detailed view
+    2. A plot showing field, spw, and antenna flags
+    
+    Both plots have the same dimensions for consistency.
+    """
+    # Read MS information for field identification
     msfile = msinfo['msfile']
     scan_number = emutils.read_keyword(msfile, 'SCAN_NUMBER')
     field_id = emutils.read_keyword(msfile, 'FIELD_ID')
@@ -593,167 +599,156 @@ def plot_flagstatistics(flag_stats, msinfo, step):
                                'antenna',
                                list_order=msinfo['antennas'])
 
-    fig = plt.figure(figsize=(25, 4))
-    plt.subplots_adjust(wspace=0.01)
-    ax1 = fig.add_subplot(1, 5, (1, 2))
-    ax2 = fig.add_subplot(153)
-    #    ax3 = fig.add_subplot(153)
-    ax4 = fig.add_subplot(154, sharey=ax2)
-    ax5 = fig.add_subplot(155, sharey=ax2)
-
+    # Create output directory
+    plots_obs_dir = './weblog/plots/plots_flagstats/'
+    emutils.makedir(plots_obs_dir)
+    
+    # Define common figure size for both plots
+    figsize = (25, 4)
+    
+    # 1. First plot - Only scan flags
+    fig_scans = plt.figure(figsize=figsize)
+    ax_scan = fig_scans.add_subplot(111)
+    
+    # Map scan to field colors
     scan_fieldID = np.array([scan_fieldID_dict[str(si)] for si in i_scan])
+    
+    # Plot bars for each field with different colors
     for i, fi in enumerate(i_field):
         cond = scan_fieldID == i
-        ax1.bar(i_scan[cond] - 0.5,
-                f_scan[cond],
-                alpha=1.0,
-                color=plt.cm.Set1(1.0 * i / len(i_field)),
-                width=1,
-                label='{0} ({1})'.format(fi, i),
-                zorder=10)
+        if np.any(cond):  # Only plot if there are scans for this field
+            ax_scan.bar(i_scan[cond] - 0.5,
+                    f_scan[cond],
+                    alpha=1.0,
+                    color=plt.cm.Set1(1.0 * i / len(i_field)),
+                    width=1,
+                    label='{0} ({1})'.format(fi, i),
+                    zorder=10)
+
+    # Scan plot styling
+    ax_scan.grid(axis='y', ls='-', color='0.6', zorder=-1000)
+    ax_scan.legend(loc=2, fontsize=7, ncol=4)
+    ax_scan.xaxis.set_major_locator(MultipleLocator(10))
+    ax_scan.set_xlim(np.min(i_scan) - 0.5, np.max(i_scan) + 0.5)
+    ax_scan.set_ylim(0, 1)
+    ax_scan.set_xlabel('Scan number')
+    ax_scan.set_ylabel('Flagged fraction')
+    ax_scan.set_title('Scan Flags - {0}'.format(step))
+
+    # Save scan plot
+    plot_file_scans = plots_obs_dir + '{0}_flagstats_scans_{1}.png'.format(
+        msinfo['msfilename'], step)
+    fig_scans.savefig(plot_file_scans, bbox_inches='tight')
+    plt.close(fig_scans)
+
+    # 2. Second plot - Field, SPW, and Antenna flags
+    fig_other = plt.figure(figsize=figsize)
+    plt.subplots_adjust(wspace=0.01)
+    
+    # Create three side-by-side subplots for field, spw, and antenna
+    ax_field = fig_other.add_subplot(131)
+    ax_spw = fig_other.add_subplot(132, sharey=ax_field)
+    ax_ant = fig_other.add_subplot(133, sharey=ax_field)
+
+    # Plot Field flags
+    for i, fi in enumerate(i_field):
         field_value = f_field[np.argwhere(i_field == fi)[0][0]]
-        ax2.bar(i,
-                field_value,
-                alpha=1.0,
-                color=plt.cm.Set1(1.0 * i / len(i_field)),
-                width=1,
-                label='{0} ({1})'.format(fi, i),
-                align='center',
-                zorder=10)
-        ax2.text(i - 0.1,
-                 0.9 * field_value,
-                 "{0:2.0f}".format(field_value * 100.),
-                 color='k',
-                 va='center',
-                 zorder=12)
+        ax_field.bar(i,
+                  field_value,
+                  alpha=1.0,
+                  color=plt.cm.Set1(1.0 * i / len(i_field)),
+                  width=1,
+                  label='{0} ({1})'.format(fi, i),
+                  align='center',
+                  zorder=10)
+        ax_field.text(i - 0.1,
+                   0.9 * field_value,
+                   "{0:2.0f}".format(field_value * 100.),
+                   color='k',
+                   va='center',
+                   zorder=12)
 
+    # Plot SPW flags
+    ax_spw.bar(range(len(i_spw)),
+              f_spw,
+              alpha=1.0,
+              color='0.5',
+              width=1,
+              align='center',
+              zorder=10)
+    
+    # Plot Antenna flags
+    ax_ant.bar(range(len(i_ant)),
+              f_ant,
+              alpha=1.0,
+              color='0.5',
+              width=1,
+              align='center',
+              zorder=10)
 
-#    ax3.bar(range(len(i_corr)), f_corr, alpha=0.5, color='k', width=1, align='center')
-    ax4.bar(range(len(i_spw)),
-            f_spw,
-            alpha=1.0,
-            color='0.5',
-            width=1,
-            align='center',
-            zorder=10)
-    ax5.bar(range(len(i_ant)),
-            f_ant,
-            alpha=1.0,
-            color='0.5',
-            width=1,
-            align='center',
-            zorder=10)
-
-    ax2.axes.set_xticks(range(len(i_field)))
-    #    ax3.axes.set_xticks(range(len(i_corr)))
-    ax5.axes.set_xticks(range(len(i_ant)))
-    ax2.axes.set_xticks(range(len(i_field)))
-    ax2.axes.set_xticklabels([])
-    #    ax3.axes.set_xticks(range(len(i_corr)))
-    #    ax3.axes.set_xticklabels(i_corr)
-    ax4.axes.set_xticks(range(len(i_spw)))
-    ax4.axes.set_xticklabels(range(len(i_spw)))
-    ax5.axes.set_xticks(range(len(i_ant)))
-    ax5.axes.set_xticklabels(i_ant)
-    ax2.axes.set_yticklabels([])
-    ax4.axes.set_yticklabels([])
-    ax5.axes.set_yticklabels([])
-
-    [
-        ax2.annotate('{0} ({1})'.format(si, i), (i + 0.1, 0.95),
-                     va='top',
-                     ha='right',
-                     rotation=90,
-                     zorder=100) for i, si in enumerate(i_field)
-    ]
-    #[ax3.annotate(si, (i+0.5, f_corr[i])) for i, si in enumerate(i_corr)]
-    #[ax5.annotate(si, (i+0.3, f_ant[i])) for i, si in enumerate(i_ant)]
-
+    # Add text annotations for values
     for i, v in enumerate(f_spw):
-        ax4.text(i - 0.1,
-                 0.9 * v,
-                 "{0:2.0f}".format(v * 100.),
-                 color='k',
-                 va='center',
-                 zorder=12)
+        ax_spw.text(i - 0.1,
+                   0.9 * v,
+                   "{0:2.0f}".format(v * 100.),
+                   color='k',
+                   va='center',
+                   zorder=12)
+    
     for i, v in enumerate(f_ant):
-        ax5.text(i - 0.1,
-                 0.9 * v,
-                 "{0:2.0f}".format(v * 100.),
-                 color='k',
-                 va='center',
-                 zorder=12)
+        ax_ant.text(i - 0.1,
+                   0.9 * v,
+                   "{0:2.0f}".format(v * 100.),
+                   color='k',
+                   va='center',
+                   zorder=12)
 
-    ax1.set_title('Scan')
-    ax2.set_title('Field')
-    #    ax3.set_title('Correlation')
-    ax4.set_title('spw')
-    ax5.set_title('Antenna')
+    # Set axis properties for field plot
+    ax_field.set_xticks(range(len(i_field)))
+    ax_field.set_xticklabels([])
+    ax_field.set_title('Field')
+    ax_field.set_ylabel('Flagged fraction')
+    ax_field.set_ylim(0, 1)
+    ax_field.set_xlim(-0.5, len(i_field) - 0.5)
+    ax_field.grid(axis='y', zorder=-1000, ls='-', color='0.6')
+    
+    # Add field names as rotated annotations
+    for i, fi in enumerate(i_field):
+        ax_field.annotate('{0} ({1})'.format(fi, i), 
+                         (i + 0.1, 0.95),
+                         va='top',
+                         ha='right',
+                         rotation=90,
+                         zorder=100)
 
-    ax1.set_xlabel('Scan')
-    ax4.set_xlabel('spw')
-    ax1.xaxis.set_major_locator(MultipleLocator(10))
-    ax1.set_ylabel('Flagged fraction')
-    #ax2.set_ylabel('Flagged fraction')
-    #ax4.set_ylabel('Flagged fraction')
+    # Set axis properties for spw plot
+    ax_spw.set_xticks(range(len(i_spw)))
+    ax_spw.set_xticklabels(range(len(i_spw)))
+    ax_spw.set_title('SPW')
+    ax_spw.set_xlabel('spw')
+    ax_spw.set_yticklabels([])
+    ax_spw.set_xlim(-0.5, len(i_spw) - 0.5)
+    ax_spw.grid(axis='y', zorder=-1000, ls='-', color='0.6')
 
-    ax1.grid(axis='y', zorder=-1000, ls='-', color='0.6')
-    ax2.grid(axis='y', zorder=-1000, ls='-', color='0.6')
-    ax4.grid(axis='y', zorder=-1000, ls='-', color='0.6')
-    ax5.grid(axis='y', zorder=-1000, ls='-', color='0.6')
+    # Set axis properties for antenna plot
+    ax_ant.set_xticks(range(len(i_ant)))
+    ax_ant.set_xticklabels(i_ant, rotation=90)
+    ax_ant.set_title('Antenna')
+    ax_ant.set_yticklabels([])
+    ax_ant.set_xlim(-0.5, len(i_ant) - 0.5)
+    ax_ant.grid(axis='y', zorder=-1000, ls='-', color='0.6')
 
-    ax1.set_ylim(0, 1)
-    ax2.set_ylim(0, 1)
-    #    ax3.set_ylim(0,1)
-    ax4.set_ylim(0, 1)
-    ax5.set_ylim(0, 1)
-
-    #'#    ax1.set_xlim(np.min(i_scan)-0.5, np.max(i_scan)+0.5)
-    ax1.set_xlim(np.min(i_scan) - 1.0, np.max(i_scan) + 0.)
-    ax2.set_xlim(-0.5, len(i_field) - 0.5)
-    #    ax3.set_xlim(-0.5, len(i_corr)-0.5)
-    ax4.set_xlim(-0.5, len(i_spw) - 0.5)
-    ax5.set_xlim(-0.5, len(i_ant) - 0.5)
-
-    #ax1.legend(loc=0)
-    #ax2.legend(loc=0)
-
-    plots_obs_dir = './weblog/plots/plots_flagstats/'
-    plot_file1 = plots_obs_dir + '{0}_flagstats_{1}.png'.format(
+    # Add overall title
+    fig_other.suptitle('Other Flags - {0}'.format(step), fontsize=14)
+    
+    # Save other flags plot
+    plot_file_other = plots_obs_dir + '{0}_flagstats_other_{1}.png'.format(
         msinfo['msfilename'], step)
-    #logger.info('Plot flagstats: {0}'.format(plot_file1))
-    fig.savefig(plot_file1, bbox_inches='tight')
-
-    # Plot only scans:
-    fig = plt.figure(figsize=(50, 8))
-    ax1 = fig.add_subplot(111)
-
-    for i, fi in enumerate(np.unique(i_field)):
-        cond = scan_fieldID == i
-        ax1.bar(i_scan[cond] - 0.5,
-                f_scan[cond],
-                alpha=1.0,
-                color=plt.cm.Set1(1.0 * i / len(i_field)),
-                width=1,
-                label='{0} ({1})'.format(fi, i),
-                zorder=10)
-
-    try:
-        ax1.legend(loc=0)
-    except:
-        pass
-    ax1.grid(axis='y', zorder=-1000, ls='-', color='0.6')
-
-    ax1.xaxis.set_major_locator(MultipleLocator(5))
-    ax1.set_xlim(np.min(i_scan) - 0.5, np.max(i_scan) + 0.5)
-    ax1.set_ylim(0, 1)
-    ax1.set_xlabel('Scan number')
-    ax1.set_ylabel('Flagged fraction')
-
-    plot_file2 = plots_obs_dir + '{0}_flagstats_scans_{1}.png'.format(
-        msinfo['msfilename'], step)
-    #logger.info('Plot flagstats scans: {0}'.format(plot_file2))
-    fig.savefig(plot_file2, bbox_inches='tight')
+    fig_other.savefig(plot_file_other, bbox_inches='tight')
+    plt.close(fig_other)
+    
+    # Return both plot filenames for use in the weblog
+    return plot_file_scans, plot_file_other
 
 
 def plot_Lo_drops(phscal_scans, scans, amp_mean, lo_dropout_scans, phscal,
@@ -1199,4 +1194,6 @@ def fits2png(fits_name,
     output_name = fits_name.replace('.fits', ext + '.png')
     #    logger.info(f'Converting to png fits file {fits_name}')
     plt.savefig(output_name, dpi=200, bbox_inches='tight')
+    plt.close()
+    f.close()
     emutils.rmfile(fits_name_tmp)

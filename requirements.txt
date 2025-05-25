@@ -1,4 +1,4 @@
-almatasks==1.6.1
+#almatasks==1.6.1
 aplpy==2.1.0
 astropy==5.1.1
 astroquery==0.4.6
