@@ -734,12 +734,12 @@ def show_image(eMCP, wlog, i):
     )
     wlog.write('<tr><td><b>{0}</b> (Target) ' \
                'Peak: {1:3.3f} mJy ' \
-               '(rms: {2:3.3f} mJy/b)</td><td>Target residual</td>\n'.format(target,
+               '(RMS: {2:3.3f} mJy/b)</td><td>Target residual</td>\n'.format(target,
                                                                  peak_target*1000.,
                                                                  noise_target*1000.))
     wlog.write('<td><b>{0}</b> (Phasecal) ' \
                'Peak: {1:5.1f} mJy ' \
-               '(rms: {2:5.3f} mJy/b)</td><td>Phasecal residual</td></tr>\n<tr>\n'.format(phscal,
+               '(RMS: {2:5.3f} mJy/b)</td><td>Phasecal residual</td></tr>\n<tr>\n'.format(phscal,
                                                                peak_phscal*1000.,
                                                                noise_phscal*1000.))
     wlog.write(write_img_zoom(f'.{img_target}-image{ext}.png'))
