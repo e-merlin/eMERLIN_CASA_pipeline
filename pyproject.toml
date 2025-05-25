@@ -5,29 +5,61 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "eMCP"
 authors = [
-    {name = "Miguel Cárcamo", email = "miguel.carcamo@manchester.ac.uk"},
+    {name = "Javier Moldon", email = "jmoldon@iaa.es"},
 ]
 maintainers = [
-    {name = "Miguel Cárcamo", email = "miguel.carcamo@manchester.ac.uk"},
+    {name = "Javier Moldon", email = "jmoldon@iaa.es"},
 ]
 description = "CASA eMERLIN pipeline to calibrate data from the e-MERLIN array."
 readme = "README.md"
 license = {text = "GNU GPL"}
-requires-python = ">=3.8, <=3.8.16"
+requires-python = ">=3.8, <=3.8.19"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Operating System :: OS Independent"
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Astronomy"
 ]
-dynamic = ["version", "dependencies"]
+dependencies = [
+    #"almatasks>=1.6.1",
+    "aplpy>=2.1.0",
+    "astropy>=5.1.1",
+    "astroquery>=0.4.6",
+    "casadata>=2023.4.10",
+    "casampi>=0.5.3",
+    "casaplotms>=2.0.1",
+    "casaplotserver>=1.5.1",
+    "casashell>=6.5.5.21",
+    "casatasks>=6.5.5.21",
+    "casatestutils>=6.5.5.21",
+    "casatools>=6.5.5.21",
+    "casaviewer>=1.7.1",
+    "casatablebrowser>=0.0.31",
+    "casalogger>=1.0.15",
+    "casafeather>=0.0.18",
+    "cmasher>=1.6.3",
+    "ipython>=8.6.0",
+    "matplotlib>=3.6.1",
+    "numpy>=1.23.4",
+    "python-casacore>=3.5.2",
+    "scipy>=1.9.3",
+]
+dynamic = ["version"]
 
 [project.urls]
 Source = "https://github.com/e-merlin/eMERLIN_CASA_pipeline"
+Documentation = "https://github.com/e-merlin/eMERLIN_CASA_pipeline/tree/master/docs"
+Issues = "https://github.com/e-merlin/eMERLIN_CASA_pipeline/issues"
+
+[project.scripts]
+emcp = "eMCP.cli:main"
 
 [tool.setuptools.package-data]
 "eMCP.aoflagger_strategies.default" = ["*.lua", "*.rfis"]
 "eMCP.aoflagger_strategies.other" = ["*.lua", "*.rfis"]
 "eMCP.calibrator_models" = ["*.dat", "*.f0", "*.f0_TSM0", "*.lock", "*.info"]
 "eMCP.utils" = ["*.css", "*.gif", "*.png"]
+"eMCP" = ["default_params.yaml", "inputs.ini"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
