@@ -97,7 +97,7 @@ def weblog_flagstats(msinfo):
     prev_perc_flagged = 0.0
     for step in flagstats_steps:
         # Check if the flag stats file exists for this step
-        flag_stats_file = './weblog/plots/plots_flagstats/flagstats_{}.pkl'.format(step)
+        flag_stats_file = './weblog/plots/plots_flagstats/flagstats_{}.yaml'.format(step)
         if not os.path.isfile(flag_stats_file):
             continue
             

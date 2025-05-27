@@ -45,7 +45,7 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
     eMCP['pipeline_path'] = pipeline_path
     emutils.check_pipeline_conflict(eMCP, pipeline_version)
     eMCP['pipeline_version'] = pipeline_version
-    emutils.save_obj(eMCP, info_dir + 'eMCP_info.pkl')
+    emutils.save_obj(eMCP, info_dir + 'eMCP_info.yaml')
 
     # Load default parameters from YAML
     yaml_file = './default_params.yaml'
@@ -141,7 +141,7 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
     if eMCP['input_steps']['flag_manual_avg'] == 1:
         eMCP = em.flagdata_manual(eMCP, run_name='flag_manual_avg')
         caltables['Lo_dropout_scans'] = eMCP['msinfo']['Lo_dropout_scans']
-        emutils.save_obj(caltables, os.path.join(calib_dir, 'caltables.pkl'))
+        emutils.save_obj(caltables, os.path.join(calib_dir, 'caltables.yaml'))
 
     ### Initialize models ###
     if eMCP['input_steps']['init_models'] > 0:  # Need to add parameter to GUI

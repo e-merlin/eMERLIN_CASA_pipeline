@@ -78,12 +78,12 @@ def weblog_pipelineinfo(eMCP):
         write_link_txt(wlog, info_link + 'eMCP_info.txt', 'Pipeline info (dict)', text='eMCP_info.txt')
     
     # Create and link to caltables.txt if available
-    if os.path.isfile(calib_dir + 'caltables.pkl'):
+    if os.path.isfile(calib_dir + 'caltables.yaml'):
         try:
             from pickle import load
             from ..utils import eMCP_utils as emutils
             
-            with open(calib_dir + 'caltables.pkl', 'rb') as f:
+            with open(calib_dir + 'caltables.yaml', 'r') as f:
                 caltables = load(f)
             
             emutils.prt_dict_tofile(caltables, tofilename=info_dir + 'caltables.txt', pre='  ')

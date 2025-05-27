@@ -166,8 +166,8 @@ def weblog_calibration(eMCP):
     
     # Load caltables to get the proper names
     caltable_names = {}
-    if os.path.isfile('./weblog/calib/caltables.pkl'):
-        caltables = emutils.load_obj('./weblog/calib/caltables.pkl')
+    if os.path.isfile('./weblog/calib/caltables.yaml'):
+        caltables = emutils.load_obj('./weblog/calib/caltables.yaml')
         for calstep in all_calsteps:
             if calstep in caltables:
                 if calstep == 'fluxscale':
@@ -185,8 +185,8 @@ def weblog_calibration(eMCP):
     wlog.write('</div>\n')
     
     # Load caltables if available
-    if os.path.isfile('./weblog/calib/caltables.pkl'):
-        caltables = emutils.load_obj('./weblog/calib/caltables.pkl')
+    if os.path.isfile('./weblog/calib/caltables.yaml'):
+        caltables = emutils.load_obj('./weblog/calib/caltables.yaml')
         
         # Process each calibration step
         for calstep in all_calsteps:

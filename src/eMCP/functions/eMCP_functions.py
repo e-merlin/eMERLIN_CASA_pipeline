@@ -4,6 +4,8 @@ import subprocess
 import numpy as np
 import socket
 import pickle
+import yaml
+import os
 import glob
 import itertools
 import sys
@@ -173,20 +175,57 @@ def find_casa_problems():
 # Functions to save and load dictionaries
 def save_obj(obj, name):
     """
-    Save a Python object to disk using pickle.
+    Save a Python object to disk using pickle and/or YAML.
+    
+    If file ends with .yaml, saves only as YAML.
+    Otherwise saves as pickle, and also creates a parallel YAML file with the same name but .yaml extension.
+    This ensures both formats are available during the transition period.
     """
     
-    with open(name, 'wb') as f:
-        pickle.dump(obj, f)
+    if name.endswith('.yaml'):
+        # Save only YAML if explicitly requested
+        with open(name, 'w') as f:
+            yaml.dump(obj, f, default_flow_style=False)
+    else:
+        # Save original pickle format for backward compatibility
+        with open(name, 'wb') as f:
+            pickle.dump(obj, f)
+        
+        # Also save as YAML (with .yaml extension)
+        yaml_name = name.replace('.pkl', '.yaml')
+        if not yaml_name.endswith('.yaml'):
+            yaml_name = name + '.yaml'
+            
+        with open(yaml_name, 'w') as f:
+            yaml.dump(obj, f, default_flow_style=False)
 
 
 def load_obj(name):
     """
-    Load a Python object from disk using pickle.
+    Load a Python object from disk using pickle or YAML.
+    
+    Prioritizes YAML over pickle during transition:
+    - If name ends with .yaml, loads as YAML
+    - If a .yaml version exists with the same base name, loads that instead
+    - Otherwise falls back to pickle
     """
     
-    with open(name, 'rb') as f:
-        return pickle.load(f)
+    if name.endswith('.yaml'):
+        with open(name, 'r') as f:
+            return yaml.safe_load(f)
+    else:
+        # Check if a YAML version exists (prioritize it)
+        yaml_name = name.replace('.pkl', '.yaml')
+        if not yaml_name.endswith('.yaml'):
+            yaml_name = name + '.yaml'
+            
+        if os.path.exists(yaml_name):
+            with open(yaml_name, 'r') as f:
+                return yaml.safe_load(f)
+        else:
+            # Fall back to pickle
+            with open(name, 'rb') as f:
+                return pickle.load(f)
 
 
 def add_step_time(step, eMCP, msg, t0, doweblog=True):
@@ -198,7 +237,7 @@ def add_step_time(step, eMCP, msg, t0, doweblog=True):
     timestamp = t1.strftime('%Y-%m-%d %H:%M:%S')
     delta_t_min = (t1 - t0).total_seconds() / 60.
     eMCP['steps'][step] = [timestamp, delta_t_min, msg]
-    save_obj(eMCP, info_dir + 'eMCP_info.pkl')
+    save_obj(eMCP, info_dir + 'eMCP_info.yaml')
     os.system('cp eMCP.log {}eMCP.log.txt'.format(info_dir))
     if doweblog:
         start_weblog(eMCP)
@@ -660,7 +699,7 @@ def get_msinfo(eMCP, msfile, doprint=False):
     if doprint:
         emutils.prt_dict(msinfo)
     eMCP['msinfo'] = msinfo
-    save_obj(eMCP, info_dir + 'eMCP_info.pkl')
+    save_obj(eMCP, info_dir + 'eMCP_info.yaml')
     return eMCP, msinfo, msfile
 
 
@@ -2028,9 +2067,9 @@ def initialize_cal_dict(eMCP):
     ]
     if np.array([eMCP['input_steps'][cal] > 0 for cal in any_calsteps]).any():
         try:
-            caltables = load_obj(os.path.join(calib_dir, 'caltables.pkl'))
+            caltables = load_obj(os.path.join(calib_dir, 'caltables.yaml'))
             logger.info('Loaded previous calibration tables from: {0}'.format(
-                calib_dir + 'caltables.pkl'))
+                calib_dir + 'caltables.yaml'))
         except:
             caltables = {}
             caltables['inbase'] = eMCP['inputs']['inbase']
@@ -2039,14 +2078,14 @@ def initialize_cal_dict(eMCP):
             caltables['num_spw'] = msinfo['num_spw']
             logger.info(
                 'New caltables dictionary created. Saved to: {0}'.format(
-                    calib_dir + 'caltables.pkl'))
+                    calib_dir + 'caltables.yaml'))
         # Refant
         eMCP['msinfo']['refant'] = define_refant(eMCP)
-        save_obj(eMCP, os.path.join(info_dir, 'eMCP_info.pkl'))
+        save_obj(eMCP, os.path.join(info_dir, 'eMCP_info.yaml'))
         caltables['refant'] = eMCP['msinfo']['refant']
         caltables['Lo_dropout_scans'] = eMCP['msinfo']['Lo_dropout_scans']
         caltables['refantmode'] = eMCP['defaults']['global']['refantmode']
-        save_obj(caltables, os.path.join(calib_dir, 'caltables.pkl'))
+        save_obj(caltables, os.path.join(calib_dir, 'caltables.yaml'))
         return caltables
 
 
@@ -2583,7 +2622,7 @@ def initial_bp_cal(eMCP, caltables):
         run_applycal(eMCP, caltables, step='bandpass')
 
     flag_statistics(eMCP, step='bandpass')
-    save_obj(caltables, os.path.join(caltables['calib_dir'], 'caltables.pkl'))
+    save_obj(caltables, os.path.join(caltables['calib_dir'], 'caltables.yaml'))
     bp = eMCP['defaults']['bandpass']
     msg = 'field={0}, combine={1}, solint={2}'.format(
         eMCP['msinfo']['sources']['bpcal'], bp['bp_combine'], bp['bp_solint'])
@@ -2817,7 +2856,7 @@ def initial_gaincal(eMCP, caltables):
     if eMCP['input_steps']['initial_gaincal'] == 2:
         run_applycal(eMCP, caltables, step='initial_gaincal')
     flag_statistics(eMCP, step='initial_gaincal')
-    save_obj(caltables, caltables['calib_dir'] + 'caltables.pkl')
+    save_obj(caltables, caltables['calib_dir'] + 'caltables.yaml')
     ini_gaincal = eMCP['defaults']['initial_gaincal']
     msg = 'delay solint={0}, combine={1}, flagmode={2}, p_solint={3}, ' \
           'ap_solint={4}'.format(ini_gaincal['delay']['solint'],
@@ -3234,7 +3273,7 @@ def eM_fluxscale(eMCP, caltables):
     run_fluxscale(msfile, fluxcal, cals_to_scale, ','.join(anten_for_flux),
                   caltables[ampcal_table]['table'],
                   caltables[caltable_name]['table'], fluxes_txt)
-    calfluxes = load_obj(calib_dir + 'calfluxes.pkl')
+    calfluxes = load_obj(calib_dir + 'calfluxes.yaml')
 
     logger.info('Modified caltable: {0}'.format(
         caltables[caltable_name]['table']))
@@ -3339,7 +3378,7 @@ def eM_fluxscale(eMCP, caltables):
     if eMCP['input_steps']['fluxscale'] == 2:
         run_applycal(eMCP, caltables, step='fluxscale')
     logger.info('End fluxscale')
-    save_obj(caltables, caltables['calib_dir'] + 'caltables.pkl')
+    save_obj(caltables, caltables['calib_dir'] + 'caltables.yaml')
     msg = ''
     eMCP = add_step_time('fluxscale', eMCP, msg, t0)
     return eMCP, caltables
@@ -4243,7 +4282,7 @@ def bandpass_final(eMCP, caltables):
     if eMCP['input_steps']['bandpass_final'] == 2:
         run_applycal(eMCP, caltables, step='bandpass_final')
 
-    save_obj(caltables, caltables['calib_dir'] + 'caltables.pkl')
+    save_obj(caltables, caltables['calib_dir'] + 'caltables.yaml')
     msg = 'field={0}, combine={1}, solint={2}'.format(
         msinfo['sources']['bpcal'], bp_final['bp_combine'],
         bp_final['bp_solint'])
@@ -4269,7 +4308,7 @@ def gaincal_final(eMCP, caltables):
     # Apply calibration if requested:
     if eMCP['input_steps']['gaincal_final'] == 2:
         run_applycal(eMCP, caltables, step='gaincal_final')
-    save_obj(caltables, caltables['calib_dir'] + 'caltables.pkl')
+    save_obj(caltables, caltables['calib_dir'] + 'caltables.yaml')
     logger.info('End gaincal_final')
     msg = 'p_solint={0}, ap_solint={1}'.format(gain_final['p_solint'],
                                                gain_final['ap_solint'])
@@ -4682,7 +4721,7 @@ def flag_statistics(eMCP, step):
                 comment=str(current_time))
 
     find_casa_problems()
-    outfile = weblog_dir + 'plots/plots_flagstats/flagstats_{}.pkl'.format(
+    outfile = weblog_dir + 'plots/plots_flagstats/flagstats_{}.yaml'.format(
         step)
     logger.info('flagstats file saved to: {}'.format(outfile))
     logger.info('Flag statistics ready. Now plotting.')

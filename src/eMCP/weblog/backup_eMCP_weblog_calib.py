@@ -7,7 +7,7 @@ logger = logging.getLogger('logger')
 
 def write_fluxscale(wlog, msinfo):
     """Display flux calibration results in a modern format"""
-    calfluxes_file = './weblog/calib/calfluxes.pkl'
+    calfluxes_file = './weblog/calib/calfluxes.yaml'
     if os.path.isfile(calfluxes_file):
         try:
             with open(calfluxes_file, 'rb') as fp:

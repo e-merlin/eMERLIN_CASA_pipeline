@@ -169,7 +169,7 @@ def get_pipeline_version():
 
 def start_eMCP_dict(info_dir):
     try:
-        eMCP_obj = load_obj(info_dir + 'eMCP_info.pkl')
+        eMCP_obj = load_obj(info_dir + 'eMCP_info.yaml')
     except:
         eMCP_obj = {'steps': eMCP_info_start_steps(), 'img_stats': {}}
     return eMCP_obj

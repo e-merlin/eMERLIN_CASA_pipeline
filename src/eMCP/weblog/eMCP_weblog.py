@@ -471,7 +471,7 @@ def weblog_pipelineinfo(eMCP):
                    text='eMCP_info.txt')
     # caltables dictionary as text
     try:
-        caltables = load_obj(calib_dir + 'caltables.pkl')
+        caltables = load_obj(calib_dir + 'caltables.yaml')
         emutils.prt_dict_tofile(caltables,
                                 tofilename=info_dir + 'caltables.txt',
                                 pre='  ')
@@ -542,8 +542,8 @@ def weblog_calibration(eMCP):
     if eMCP['is_mixed_mode']:
         all_calsteps.append('narrow_p_offset.G3')
         all_calsteps.append('narrow_bpcal.BP2')
-    if os.path.isfile('./weblog/calib/caltables.pkl'):
-        caltables = emutils.load_obj('./weblog/calib/caltables.pkl')
+    if os.path.isfile('./weblog/calib/caltables.yaml'):
+        caltables = emutils.load_obj('./weblog/calib/caltables.yaml')
         for calstep in all_calsteps:
             logger.debug('calstep {}'.format(calstep))
             try:
@@ -601,7 +601,7 @@ def weblog_flagstats(msinfo):
     for step in flagstats_steps:
         try:
             flag_stats = emutils.load_obj(
-                './weblog/plots/plots_flagstats/flagstats_{}.pkl'.format(step))
+                './weblog/plots/plots_flagstats/flagstats_{}.yaml'.format(step))
             perc_flagged = flag_stats['flagged'] / flag_stats['total'] * 100.
             diff_flagged = perc_flagged - prev_perc_flagged
             prev_perc_flagged = perc_flagged

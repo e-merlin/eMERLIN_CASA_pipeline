@@ -38,5 +38,5 @@ def run_flagstats(msfile, step):
                           antenna='*&*',
                           flagbackup=False)
     outfile = os.path.join(
-        weblog_dir, 'plots/plots_flagstats/flagstats_{}.pkl'.format(step))
+        weblog_dir, 'plots/plots_flagstats/flagstats_{}.yaml'.format(step))
     save_obj(flag_stats, outfile)
