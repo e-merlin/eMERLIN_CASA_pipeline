@@ -55,8 +55,9 @@ def show_image(eMCP, wlog, i):
         phscal, msinfo['msfilename'], num)
     
     # Create image section with modern styling
-    wlog.write('<div id="{0}" class="image-section mb-4">\n'.format(target))
-    wlog.write('<h3 style="text-align:center">{0} <a href="#top" class="small">(up)</a></h3>\n'.format(target))
+    wlog.write('<div id="{0}" class="subsection centered">\n'.format(target))
+    wlog.write('  <h3 class="collapsible-header">{0}</h3>\n'.format(target))
+    wlog.write('  <div>\n')
     
     # Create card with image comparison
     wlog.write('<div class="card">\n')
@@ -93,8 +94,8 @@ def show_image(eMCP, wlog, i):
     
     wlog.write('</div>\n')
     wlog.write('</div>\n')
+    wlog.write('  </div>\n')
     wlog.write('</div>\n')
-    wlog.write('<hr>\n')
 
 def weblog_images(eMCP):
     msinfo = eMCP['msinfo']

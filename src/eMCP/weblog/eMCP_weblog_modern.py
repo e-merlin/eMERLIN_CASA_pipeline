@@ -213,7 +213,7 @@ def weblog_obssum(msinfo):
     weblog_header(wlog, 'Observation summary', msinfo['run'])
     
     # Summary section
-    wlog.write('<div class="subsection">\n')
+    wlog.write('<div class="subsection centered">\n')
     wlog.write('  <h3 class="collapsible-header">Summary</h3>\n')
     wlog.write('  <div>\n')
     
@@ -242,7 +242,7 @@ def weblog_obssum(msinfo):
     wlog.write('</div>\n')
     
     # Sources section
-    wlog.write('<div class="subsection">\n')
+    wlog.write('<div class="subsection centered">\n')
     wlog.write('  <h3 class="collapsible-header">Sources</h3>\n')
     wlog.write('  <div>\n')
     
@@ -301,18 +301,19 @@ def weblog_obssum(msinfo):
     
     # Sources in MS section
     wlog.write('<div class="subsection centered">\n')
-    wlog.write('  <h3>Sources in MS</h3>\n')
-    wlog.write('  <div class="table-responsive">\n')
-    wlog.write('    <table class="table" style="width:80%; margin: 0 auto;">\n')
-    wlog.write('      <thead>\n')
-    wlog.write('        <tr>\n')
-    wlog.write('          <th>Source</th>\n')
-    wlog.write('          <th>Intent</th>\n')
-    wlog.write('          <th>Coordinates (h:m:s d:m:s)</th>\n')
-    wlog.write('          <th>MJD range</th>\n')
-    wlog.write('        </tr>\n')
-    wlog.write('      </thead>\n')
-    wlog.write('      <tbody>\n')
+    wlog.write('  <h3 class="collapsible-header">Sources in MS</h3>\n')
+    wlog.write('  <div>\n')
+    wlog.write('    <div class="table-responsive">\n')
+    wlog.write('      <table class="table" style="width:80%; margin: 0 auto;">\n')
+    wlog.write('        <thead>\n')
+    wlog.write('          <tr>\n')
+    wlog.write('            <th>Source</th>\n')
+    wlog.write('            <th>Intent</th>\n')
+    wlog.write('            <th>Coordinates (h:m:s d:m:s)</th>\n')
+    wlog.write('            <th>MJD range</th>\n')
+    wlog.write('          </tr>\n')
+    wlog.write('        </thead>\n')
+    wlog.write('        <tbody>\n')
     
     # Add source information like in the original
     if 'sources' in msinfo and 'mssources' in msinfo['sources']:
@@ -375,16 +376,16 @@ def weblog_obssum(msinfo):
             else:
                 coords = "Unknown"
             
-            wlog.write(f'        <tr>\n')
-            wlog.write(f'          <td>{source}</td>\n')
-            wlog.write(f'          <td>{intent}</td>\n')
-            wlog.write(f'          <td>{coords}</td>\n')
-            wlog.write(f'          <td>{mjd_range}</td>\n')
-            wlog.write('        </tr>\n')
+            wlog.write(f'          <tr>\n')
+            wlog.write(f'            <td>{source}</td>\n')
+            wlog.write(f'            <td>{intent}</td>\n')
+            wlog.write(f'            <td>{coords}</td>\n')
+            wlog.write(f'            <td>{mjd_range}</td>\n')
+            wlog.write('          </tr>\n')
     
-    wlog.write('      </tbody>\n')
-    wlog.write('    </table>\n')
-    wlog.write('  </div>\n')
+    wlog.write('        </tbody>\n')
+    wlog.write('      </table>\n')
+    wlog.write('    </div>\n')
     
     # Add missing sources info
     if 'sources' in msinfo and 'allsources' in msinfo['sources'] and 'mssources' in msinfo['sources']:
@@ -394,31 +395,34 @@ def weblog_obssum(msinfo):
         ])
         
         if missing_sources != '':
-            wlog.write(f'  <p><em>Sources specified in the inputs file but not in MS: {missing_sources}</em></p>\n')
+            wlog.write(f'    <p><em>Sources specified in the inputs file but not in MS: {missing_sources}</em></p>\n')
         else:
-            wlog.write('  <p><em>All sources specified in the inputs file are in the MS.</em></p>\n')
+            wlog.write('    <p><em>All sources specified in the inputs file are in the MS.</em></p>\n')
     
     wlog.write('  </div>\n')
     wlog.write('</div>\n')
     
     # Antennas section
     wlog.write('<div class="subsection centered">\n')
-    wlog.write('  <h3>Antennas</h3>\n')
-    wlog.write('  <p class="centered">Reference antenna: {}</p>\n'.format(msinfo.get('refant', 'Not specified')))
+    wlog.write('  <h3 class="collapsible-header">Antennas</h3>\n')
+    wlog.write('  <div>\n')
+    wlog.write('    <p class="centered">Reference antenna: {}</p>\n'.format(msinfo.get('refant', 'Not specified')))
     
     # List antennas in a centered table
     if 'antennas' in msinfo:
-        wlog.write('  <table class="table" style="width:50%; margin: 0 auto;">\n')
-        wlog.write('    <tr><th>Antennas</th></tr>\n')
+        wlog.write('    <table class="table" style="width:50%; margin: 0 auto;">\n')
+        wlog.write('      <tr><th>Antennas</th></tr>\n')
         for ant in msinfo['antennas']:
-            wlog.write(f'    <tr><td style="text-align:center;">{ant}</td></tr>\n')
-        wlog.write('  </table>\n')
+            wlog.write(f'      <tr><td style="text-align:center;">{ant}</td></tr>\n')
+        wlog.write('    </table>\n')
+    wlog.write('  </div>\n')
     
     wlog.write('</div>\n')
     
     # Source elevation section
     wlog.write('<div class="subsection centered">\n')
-    wlog.write('  <h3>Source elevation</h3>\n')
+    wlog.write('  <h3 class="collapsible-header">Source elevation</h3>\n')
+    wlog.write('  <div>\n')
     
     # Look for elevation plots using the msfilename pattern like the original
     if 'msfilename' in msinfo:
@@ -426,22 +430,23 @@ def weblog_obssum(msinfo):
         if elev_plots:
             plot_path = elev_plots[0]
             rel_path = os.path.join('plots', 'plots_observation', os.path.basename(plot_path))
-            wlog.write('  <div class="image-container">\n')
-            wlog.write(f'    <img src="{rel_path}" class="centered" style="max-width:700px;" alt="Source elevation plot">\n')
-            wlog.write('  </div>\n')
+            wlog.write('    <div class="image-container">\n')
+            wlog.write(f'      <img src="{rel_path}" class="centered" style="max-width:700px;" alt="Source elevation plot">\n')
+            wlog.write('    </div>\n')
         else:
             # Try to find any elevation plot as fallback
             all_elev_plots = glob.glob('./weblog/plots/plots_observation/*elevation*.png')
             if all_elev_plots:
                 plot_path = all_elev_plots[0]
                 rel_path = os.path.join('plots', 'plots_observation', os.path.basename(plot_path))
-                wlog.write('  <div class="image-container">\n')
-                wlog.write(f'    <img src="{rel_path}" class="centered" style="max-width:700px;" alt="Source elevation plot">\n')
-                wlog.write('  </div>\n')
+                wlog.write('    <div class="image-container">\n')
+                wlog.write(f'      <img src="{rel_path}" class="centered" style="max-width:700px;" alt="Source elevation plot">\n')
+                wlog.write('    </div>\n')
             else:
-                wlog.write('  <p class="centered">No elevation plot available</p>\n')
+                wlog.write('    <p class="centered">No elevation plot available</p>\n')
     else:
-        wlog.write('  <p class="centered">No elevation plot available - msfilename not specified</p>\n')
+        wlog.write('    <p class="centered">No elevation plot available - msfilename not specified</p>\n')
+    wlog.write('  </div>\n')
     
     wlog.write('</div>\n')
     

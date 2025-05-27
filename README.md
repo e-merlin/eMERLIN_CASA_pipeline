@@ -186,7 +186,7 @@ Names in capital need to be set by the user:
   --run-steps RUN_STEPS
                                  List of steps to run (space or comma-separated). For example:
                                  "flag_apriori flag_manual average" or "flag_apriori,flag_manual,average"
-                                 Also accepts "all", "pre_processing" and "calibration"
+                                 Also accepts "all", "pre_processing",  "calibration" and "imaging"
 
 
   -s SKIP_STEPS

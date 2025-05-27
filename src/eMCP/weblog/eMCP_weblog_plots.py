@@ -10,62 +10,66 @@ weblog_dir = './weblog/'
 
 
 def plots_data(msinfo, wlog):
-    wlog.write('<div id="uncalibrated">\n')
-    wlog.write('<h3 style="text-align:center">Uncalibrated visibilities</h3>\n')
-    wlog.write('<div class="table-responsive">\n')
-    wlog.write('<table class="table table-sm table-bordered" style="width:80%; margin: 0 auto;">\n')
-    wlog.write('<tbody>\n')
+    wlog.write('<div id="uncalibrated" class="subsection centered">\n')
+    wlog.write('  <h3 class="collapsible-header">Uncalibrated visibilities</h3>\n')
+    wlog.write('  <div>\n')
+    wlog.write('    <div class="table-responsive">\n')
+    wlog.write('      <table class="table table-sm table-bordered" style="width:80%; margin: 0 auto;">\n')
+    wlog.write('      <tbody>\n')
     
     for source in msinfo['sources']['mssources'].split(','):
         page_path = create_pnghtml_baselines(
             'plots_data', source,
             'Uncalibrated amplitude and phase against time and frequency.',
             msinfo, 'data')
-        wlog.write('<tr>\n')
-        wlog.write('<td><strong>{0}</strong></td>\n'.format(source))
-        wlog.write('<td><a href=".{0}" target="_blank" class="btn btn-primary btn-sm">View Plots</a></td>\n'.format(page_path))
-        wlog.write('</tr>\n')
+        wlog.write('        <tr>\n')
+        wlog.write('          <td><strong>{0}</strong></td>\n'.format(source))
+        wlog.write('          <td><a href=".{0}" target="_blank" class="btn btn-primary btn-sm">View Plots</a></td>\n'.format(page_path))
+        wlog.write('        </tr>\n')
     
-    wlog.write('</tbody>\n')
-    wlog.write('</table>\n')
+    wlog.write('      </tbody>\n')
+    wlog.write('      </table>\n')
+    wlog.write('    </div>\n')
+    wlog.write('  </div>\n')
     wlog.write('</div>\n')
-    wlog.write('</div>\n')
-    wlog.write('<hr>\n')
 
 
 def plots_corrected(msinfo, wlog):
-    wlog.write('<div id="calibrated">\n')
-    wlog.write('<h3 style="text-align:center">Calibrated visibilities</h3>\n')
-    wlog.write('<div class="table-responsive">\n')
-    wlog.write('<table class="table table-sm table-bordered" style="width:80%; margin: 0 auto;">\n')
-    wlog.write('<tbody>\n')
+    wlog.write('<div id="calibrated" class="subsection centered">\n')
+    wlog.write('  <h3 class="collapsible-header">Calibrated visibilities</h3>\n')
+    wlog.write('  <div>\n')
+    wlog.write('    <div class="table-responsive">\n')
+    wlog.write('      <table class="table table-sm table-bordered" style="width:80%; margin: 0 auto;">\n')
+    wlog.write('      <tbody>\n')
     
     for source in msinfo['sources']['mssources'].split(','):
         page_path = create_pnghtml_baselines(
             'plots_corrected', source,
             'Calibrated amplitude and phase against time and frequency.',
             msinfo, 'corrected')
-        wlog.write('<tr>\n')
-        wlog.write('<td><strong>{0}</strong></td>\n'.format(source))
-        wlog.write('<td><a href=".{0}" target="_blank" class="btn btn-primary btn-sm">View Plots</a></td>\n'.format(page_path))
-        wlog.write('</tr>\n')
+        wlog.write('        <tr>\n')
+        wlog.write('          <td><strong>{0}</strong></td>\n'.format(source))
+        wlog.write('          <td><a href=".{0}" target="_blank" class="btn btn-primary btn-sm">View Plots</a></td>\n'.format(page_path))
+        wlog.write('        </tr>\n')
     
-    wlog.write('</tbody>\n')
-    wlog.write('</table>\n')
+    wlog.write('      </tbody>\n')
+    wlog.write('      </table>\n')
+    wlog.write('    </div>\n')
+    wlog.write('  </div>\n')
     wlog.write('</div>\n')
-    wlog.write('</div>\n')
-    wlog.write('<hr>\n')
 
 
 def plots_uvplt(msinfo, wlog):
-    wlog.write('<div id="uvplots">\n')
-    wlog.write('<h3 style="text-align:center">Calibrated UVplots</h3>\n')
+    wlog.write('<div id="uvplots" class="subsection centered">\n')
+    wlog.write('  <h3 class="collapsible-header">Calibrated UVplots</h3>\n')
+    wlog.write('  <div>\n')
     all_plots = np.sort(glob.glob('./weblog/plots/plots_uvplt/*_uvplt_*png'))
     
     for p in all_plots:
         source_name = os.path.splitext(p)[0].split('_')[-1]
-        wlog.write('<div id="{0}-uvplot">\n'.format(source_name))
-        wlog.write('<h4 style="text-align:center">{0}</h4>\n'.format(source_name))
+        wlog.write('    <div id="{0}-uvplot" class="subsection">\n'.format(source_name))
+        wlog.write('      <h4 class="collapsible-header">{0}</h4>\n'.format(source_name))
+        wlog.write('      <div>\n')
         
         wlog.write('<div class="row">\n')
         # Amplitude plot
@@ -104,9 +108,10 @@ def plots_uvplt(msinfo, wlog):
             wlog.write('</div>\n')
             wlog.write('</div>\n')
         
-        wlog.write('</div>\n')
-        wlog.write('<hr>\n')
+        wlog.write('      </div>\n')
+        wlog.write('    </div>\n')
     
+    wlog.write('  </div>\n')
     wlog.write('</div>\n')
 
 

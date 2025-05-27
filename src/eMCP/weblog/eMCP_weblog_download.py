@@ -48,9 +48,10 @@ def weblog_download(msinfo):
     wlog.write('</style>\n')
     
     # Main archive section
-    wlog.write('<div class="download-section">\n')
-    wlog.write('  <h2 class="download-title">Main Archive</h2>\n')
-    wlog.write('  <p>This tar file contains the MS and all the plots in the weblog:</p>\n')
+    wlog.write('<div class="subsection centered">\n')
+    wlog.write('  <h3 class="collapsible-header">Main Archive</h3>\n')
+    wlog.write('  <div>\n')
+    wlog.write('    <p>This tar file contains the MS and all the plots in the weblog:</p>\n')
     
     filepath = '../{}.tar'.format(msinfo['run'])
     file_size = ""
@@ -63,14 +64,16 @@ def weblog_download(msinfo):
     wlog.write(f'    <a href="../{filepath}" target="_blank" class="download-link">Download TAR</a>\n')
     wlog.write(f'    <div class="file-info">Archive file{file_size}</div>\n')
     wlog.write('  </div>\n')
+    wlog.write('  </div>\n')
     wlog.write('</div>\n')
     
     # FITS images section
     fits_files = glob.glob(weblog_dir + 'images/**/*.fits', recursive=True)
     if fits_files:
-        wlog.write('<div class="download-section">\n')
-        wlog.write('  <h2 class="download-title">FITS Images</h2>\n')
-        wlog.write('  <p>Individual FITS image files:</p>\n')
+        wlog.write('<div class="subsection centered">\n')
+        wlog.write('  <h3 class="collapsible-header">FITS Images</h3>\n')
+        wlog.write('  <div>\n')
+        wlog.write('    <p>Individual FITS image files:</p>\n')
         wlog.write('  <div class="table-responsive">\n')
         wlog.write('    <table class="table table-striped table-sm">\n')
         wlog.write('      <thead>\n')
@@ -105,21 +108,24 @@ def weblog_download(msinfo):
         wlog.write('      </tbody>\n')
         wlog.write('    </table>\n')
         wlog.write('  </div>\n')
+        wlog.write('  </div>\n')
         wlog.write('</div>\n')
     
     # Optional measurement sets section
     ms_files = glob.glob('./*.ms')
     if ms_files:
-        wlog.write('<div class="download-section">\n')
-        wlog.write('  <h2 class="download-title">Measurement Sets</h2>\n')
-        wlog.write('  <p>Note: These files are typically large and not directly downloadable through the browser.</p>\n')
-        wlog.write('  <ul class="list-group">\n')
+        wlog.write('<div class="subsection centered">\n')
+        wlog.write('  <h3 class="collapsible-header">Measurement Sets</h3>\n')
+        wlog.write('  <div>\n')
+        wlog.write('    <p>Note: These files are typically large and not directly downloadable through the browser.</p>\n')
+        wlog.write('    <ul class="list-group">\n')
         
         for ms_file in sorted(ms_files):
             ms_name = os.path.basename(ms_file)
-            wlog.write(f'    <li class="list-group-item">{ms_name}</li>\n')
+            wlog.write(f'      <li class="list-group-item">{ms_name}</li>\n')
         
-        wlog.write('  </ul>\n')
+        wlog.write('    </ul>\n')
+        wlog.write('  </div>\n')
         wlog.write('</div>\n')
     
     # Close the page

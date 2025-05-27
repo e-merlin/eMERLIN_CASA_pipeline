@@ -195,19 +195,21 @@ def weblog_calibration(eMCP):
                 # Special handling for fluxscale
                 if calstep == 'fluxscale':
                     if os.path.isfile(calib_dir + 'allcal_ap.G1_fluxes.txt'):
-                        wlog.write(f'<div id="{calstep}">\n')
-                        wlog.write('<h4 style="text-align:center">fluxscale</h4>\n')
+                        wlog.write(f'<div id="{calstep}" class="subsection centered">\n')
+                        wlog.write('  <h3 class="collapsible-header">Fluxscale</h3>\n')
+                        wlog.write('  <div>\n')
                         write_fluxscale(wlog, msinfo)
+                        wlog.write('  </div>\n')
                         wlog.write('</div>\n')
-                        wlog.write('<hr>\n')
                 # Process other calibration steps
                 elif calstep in caltables:  # Only process if the calstep exists in caltables
-                    wlog.write(f'<div id="{calstep}">\n')
-                    wlog.write('<h4 style="text-align:center">{}</h4>\n'.format(caltables[calstep]['name']))
+                    wlog.write(f'<div id="{calstep}" class="subsection centered">\n')
+                    wlog.write('  <h3 class="collapsible-header">{}</h3>\n'.format(caltables[calstep]['name']))
+                    wlog.write('  <div>\n')
                     
                     # Create a table with caltable on left and plots on right
-                    wlog.write('<table cellspacing="20" cellpadding="4px" style="width:90%; margin: 0 auto;">\n')
-                    wlog.write('<tr>\n')
+                    wlog.write('    <table cellspacing="20" cellpadding="4px" style="width:90%; margin: 0 auto;">\n')
+                    wlog.write('    <tr>\n')
                     
                     # Left column for caltable
                     wlog.write('<td valign="top" style="width:40%">\n')
@@ -227,18 +229,18 @@ def weblog_calibration(eMCP):
                     else:
                         wlog.write('<td><p>No plots available for this calibration step.</p></td>\n')
                     
-                    wlog.write('</tr>\n')
-                    wlog.write('</table>\n')
+                    wlog.write('    </tr>\n')
+                    wlog.write('    </table>\n')
+                    wlog.write('  </div>\n')
                     wlog.write('</div>\n')
-                    wlog.write('<hr>\n')
             except Exception as e:
                 logger.warning('Error processing calstep {}: {}'.format(calstep, e))
     
     # Applycal section
     try:
-        wlog.write('<div id="applycal">\n')
-        wlog.write('<h2 style="text-align:center">Applycal</h2>\n')
-        wlog.write('<p style="text-align:center">List of tables and apply parameters used to correct each source:</p>\n')
+        wlog.write('<div id="applycal" class="section centered">\n')
+        wlog.write('  <h2 class="section-title">Applycal</h2>\n')
+        wlog.write('  <p style="text-align:center">List of tables and apply parameters used to correct each source:</p>\n')
         write_applycal_table(wlog, eMCP, ap_dict='applycal_dict')
         
         # Handle mixed mode data

@@ -116,33 +116,78 @@ p, ul, ol, dl {
 
 /* Section styling */
 .section {
-  margin-bottom: 30px;
+  margin-bottom: 40px;
   background-color: white;
-  border-radius: 5px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border-radius: 8px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.15);
   padding: 20px;
   width: 100%;
+  border-top: 5px solid var(--secondary-color);
 }
 
 .section-title {
-  color: var(--primary-color);
-  border-bottom: 2px solid var(--secondary-color);
-  padding-bottom: 10px;
-  margin-top: 0;
+  color: white;
+  background-color: var(--primary-color);
+  padding: 12px 20px;
+  margin: -20px -20px 20px -20px;
   text-align: center;
+  font-size: 1.6rem;
+  border-radius: 8px 8px 0 0;
+  letter-spacing: 1px;
+  position: relative;
+}
+
+/* Add a subtle indicator before section titles */
+.section-title::before {
+  content: "";
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 4px;
+  background-color: var(--secondary-color);
+  border-radius: 2px;
+}
+
+.section-title::after {
+  content: "";
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 4px;
+  background-color: var(--secondary-color);
+  border-radius: 2px;
 }
 
 /* Subsection styling */
 .subsection {
-  margin-bottom: 20px;
+  margin-bottom: 30px;
   width: 100%;
+  background-color: var(--light-bg);
+  border-radius: 6px;
+  padding: 15px;
+  border-left: 4px solid var(--secondary-color);
 }
 
-.subsection h3, .subsection h4 {
+.subsection h3 {
+  color: var(--primary-color);
+  background-color: rgba(52, 152, 219, 0.1);  /* Light blue background */
+  padding: 10px 15px;
+  margin: -15px -15px 15px -15px;
+  border-radius: 6px 6px 0 0;
+  font-size: 1.3rem;
+  border-bottom: 2px solid var(--secondary-color);
+}
+
+.subsection h4 {
   color: var(--primary-color);
   border-bottom: 1px solid var(--secondary-color);
-  padding-bottom: 5px;
-  text-align: center;
+  padding: 8px 0;
+  margin-top: 20px;
+  font-size: 1.1rem;
 }
 
 /* Table styling */
@@ -178,25 +223,46 @@ p, ul, ol, dl {
 .data-summary {
   background-color: var(--light-bg);
   border: 1px solid var(--border-color);
-  border-radius: 5px;
-  padding: 15px;
-  margin-bottom: 20px;
+  border-radius: 6px;
+  padding: 20px;
+  margin-bottom: 25px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
 }
 
 .data-summary dt {
   font-weight: bold;
-  margin-bottom: 5px;
+  margin-bottom: 8px;
+  color: var(--primary-color);
+  border-bottom: 1px dashed var(--border-color);
+  padding-bottom: 5px;
 }
 
 .data-summary dd {
   margin-left: 0;
-  margin-bottom: 10px;
+  margin-bottom: 15px;
+  padding-left: 10px;
+  border-left: 3px solid var(--secondary-color);
 }
 
 /* Image and plot containers */
 .image-container {
-  margin: 0 auto 20px auto;
+  margin: 0 auto 25px auto;
   text-align: center;
+  max-width: 100%;
+  padding: 15px;
+  background-color: white;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: transform 0.2s ease;
+}
+
+.image-container:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.image-container img {
+  border-radius: 4px;
   max-width: 100%;
 }
 

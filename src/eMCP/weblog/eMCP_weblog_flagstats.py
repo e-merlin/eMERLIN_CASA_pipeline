@@ -119,18 +119,17 @@ def weblog_flagstats(msinfo):
             # Check if at least one of the plots exists
             if scan_plot is not None or other_plot is not None:
                 # Create a section for this step
-                wlog.write('<div id="{0}" class="plot-container">\n'.format(step))
+                wlog.write('<div id="{0}" class="subsection centered">\n'.format(step))
                 
                 # Step header with name and statistics (simple format as requested)
-                wlog.write('<h3>\n')
-                link_target = scan_plot if os.path.isfile(scan_plot) else other_plot
-                #wlog.write('  <a href=".{0}" target="_blank">{1}</a>\n'.format(link_target, step))
-                wlog.write(f'  {step}')
-                wlog.write('  <span class="stats-label">\n')
-                wlog.write('    (Total: <span class="total-stat">{0:3.1f}%</span>\n'.format(perc_flagged))
-                wlog.write('    Increase: <span class="increase-stat">{0:3.1f}%</span>)\n'.format(diff_flagged))
-                wlog.write('  </span>\n')
-                wlog.write('</h3>\n')
+                wlog.write('  <h3 class="collapsible-header">\n')
+                wlog.write(f'    {step}')
+                wlog.write('    <span class="stats-label">\n')
+                wlog.write('      (Total: <span class="total-stat">{0:3.1f}%</span>\n'.format(perc_flagged))
+                wlog.write('      Increase: <span class="increase-stat">{0:3.1f}%</span>)\n'.format(diff_flagged))
+                wlog.write('    </span>\n')
+                wlog.write('  </h3>\n')
+                wlog.write('  <div>\n')
                 
                 # Display the scan flags plot if it exists
                 if os.path.isfile(scan_plot):
@@ -145,11 +144,13 @@ def weblog_flagstats(msinfo):
                     wlog.write('</a><br>\n')
                 
                 wlog.write('<hr>\n')
+                wlog.write('  </div>\n')
                 wlog.write('</div>\n')
         except Exception as e:
-            logger.warning('Error processing flag stats for step {}: {}'.format(step, e))
-    
-    wlog.write('</div>\n')
+            logger.warning(f'Error processing flag stats for {step}: {e}')
+            # Handle error case by writing closing tags if necessary
+            wlog.write('  </div>\n')
+            wlog.write('</div>\n')
     
     # Flag summary table if available
     if os.path.isfile('./weblog/flagstats/flag_summary.txt'):
