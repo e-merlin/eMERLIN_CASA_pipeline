@@ -16,6 +16,8 @@
 
 The e-MERLIN CASA Pipeline (eMCP) is a python pipeline working on top of [CASA](https://casa.nrao.edu/) to process and calibrate interferometric data from the [e-MERLIN](http://www.e-merlin.ac.uk/) array. Access to data information, statistics and assessment plots on calibration tables and visibilities can be accessed by the pipeline weblog, which is updated in real time as the pipeline job progresses. The output is calibrated data and preliminary lookup images of the relevant fields. It can calibrate mixed mode data that includes narrow-band high spectral resolution spectral windows for spectral lines, and also special observing modes as pseudo-wideband observations. Currently no polarization calibration is performed.
 
+The pipeline uses YAML for all data serialization, including calibration tables, flag statistics, and pipeline information. This provides human-readable data files that can be easily inspected and modified if needed.
+
 ## Installation
 
 The e-MERLIN CASA Pipeline (eMCP) has the following dependencies:
@@ -180,24 +182,23 @@ Names in capital need to be set by the user:
                                  Inputs file to use. Default is inputs.ini
 
 
-  -r          RUN_STEPS [RUN_STEPS ...]
-  --run-steps RUN_STEPS [RUN_STEPS ...]
-                                 Whitespace separated list of steps to run. Apart from
-                                 individual steps, it also accepts "all",
-                                 "pre_processing" and "calibration"
+  -r RUN_STEPS
+  --run-steps RUN_STEPS
+                                 List of steps to run (space or comma-separated). For example:
+                                 "flag_apriori flag_manual average" or "flag_apriori,flag_manual,average"
+                                 Also accepts "all", "pre_processing" and "calibration"
 
 
-  -s           SKIP_STEPS [SKIP_STEPS ...]
-  --skip-steps SKIP_STEPS [SKIP_STEPS ...]
-                                 Whitespace separated list of steps to skip
+  -s SKIP_STEPS
+  --skip-steps SKIP_STEPS
+                                 List of steps to skip (space or comma-separated)
 
 
   -l
   --list-steps                   Show list of available steps and exit
-
-
-  init                           Initialize a new project directory with config files
-  init --force                   Overwrite existing config files when initializing
+  
+  --init                         Initialize a new project directory with config files
+  --init --force                 Overwrite existing config files when initializing
 ```
 
 You can get the list of available steps with:
@@ -279,8 +280,20 @@ Function `run_pipeline` parameters and defaults are: `run_pipeline(inputs_file='
 
 ## Additional information
 
+### Data Storage
+
+The pipeline uses YAML files for storing all serialized data, including:
+
+- Pipeline information (`eMCP_info.yaml`)
+- Calibration tables (`caltables.yaml`)
+- Flag statistics (`flagstats_*.yaml`)
+- Flux calibration results (`calfluxes.yaml`)
+
+These YAML files are human-readable and can be inspected or modified with any text editor. This format allows for easier debugging and customization compared to binary formats.
+
 - [Documentation](#additional-information)
 - [Wiki pages](https://github.com/e-merlin/eMERLIN_CASA_pipeline/wiki)
+
 ## FAQ
 
 ### How do I open the weblog?
@@ -322,7 +335,7 @@ For the syntax needed for CASA follow [Basic Syntax Rules](https://casa.nrao.edu
 
 Example for e-MERLIN:
 
-```
+```text
 mode='manual' field='1331+305' antenna='' timerange='10:00:00~10:11:30'
 mode='manual' field='' antenna='' timerange='' spw='0:0~30'
 mode='manual' field='' antenna='Mk2' timerange='09:05:00~16:27:00'
@@ -332,7 +345,7 @@ mode='quack' field='1258-2219,1309-2322' quackinterval=24.
 
 Example from the CASA docs:
 
-```
+```python
 scan='1~3' mode='manual'
 # this line will be ignored
 spw='9' mode='tfcrop' correlation='ABS_XX,YY' ntime=51.0

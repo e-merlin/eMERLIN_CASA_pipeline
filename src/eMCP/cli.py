@@ -235,38 +235,26 @@ def get_args():
     parser = argparse.ArgumentParser(
         description='eMERLIN CASA Pipeline',
         epilog='''
-Subcommands:
-  init         Initialize a new project directory with default config files.
-               Use 'emcp init -h' for more options (e.g. --force).
-
 Examples:
-  emcp init                # Create default config files in current directory
-  emcp init --force        # Overwrite existing config files
-  emcp -r flag_apriori,flag_manual,average  # Run specific steps (comma-separated, NO SPACES)
-  emcp -l                  # List available steps
+  emcp --init               # Create default config files in current directory
+  emcp --init --force       # Overwrite existing config files
+  emcp -r "flag_apriori flag_manual average"  # Run specific steps (space or comma-separated)
+  emcp -l                   # List available steps
 ''',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     
-    # Create subparsers for different commands
-    subparsers = parser.add_subparsers(dest='command')
-    
-    # Init command
-    init_parser = subparsers.add_parser(
-        'init',
-        help='Initialize a new project directory with default config files',
-        description='Initialize a new project directory with default config files (default_params.yaml and inputs.ini).',
-        formatter_class=argparse.RawDescriptionHelpFormatter
-    )
-    init_parser.add_argument('--force', action='store_true', help='Overwrite existing files')
-    
-    # Main run command options (can be used directly without a subcommand)
+    # Main options
+    parser.add_argument('--init', action='store_true',
+                       help='Initialize a new project directory with default config files')
+    parser.add_argument('--force', action='store_true', 
+                       help='Overwrite existing files when using --init')
     parser.add_argument('-i', '--inputs', dest='inputs_file', default='./inputs.ini',
                         help='Inputs file [./inputs.ini]')
     parser.add_argument('-r', '--run-steps', dest='run_steps', default='',
-                        help='Comma-separated list of steps to run (NO SPACES between commas: "flag_apriori,flag_manual,average")')
+                        help='List of steps to run (space or comma-separated: "flag_apriori flag_manual average")')
     parser.add_argument('-s', '--skip-steps', dest='skip_steps', default='',
-                        help='Comma-separated list of steps to skip (NO SPACES between commas: "plot_data,save_flags")')
+                        help='List of steps to skip (space or comma-separated: "plot_data save_flags")')
     parser.add_argument('-l', '--list-steps', dest='list_steps', action='store_true',
                         help='List all available steps')
     parser.add_argument('-v', '--version', action='store_true',
@@ -278,8 +266,8 @@ def main():
     """Entry point for the application"""
     args = get_args()
     
-    # Handle the init command
-    if hasattr(args, 'command') and args.command == 'init':
+    # Handle the init flag
+    if args.init:
         init_project(force=args.force)
         return
     
@@ -290,20 +278,25 @@ def main():
         
     # Handle the list steps flag
     if args.list_steps:
-        # This needs a better implementation
+        # Organize steps into categories for better readability
         logger.info('Available steps:')
-        logger.info('run_importfits, flag_aoflagger, flag_apriori, flag_manual, average, plot_data, save_flags, restore_flags, flag_manual_avg, init_models, bandpass, initial_gaincal, fluxscale, bandpass_final, gaincal_final, applycal_all, flag_target, plot_corrected, first_images')
+        logger.info('pre_processing:')
+        logger.info('    run_importfits, flag_aoflagger, flag_apriori, flag_manual, average, plot_data, save_flags')
+        logger.info('calibration:')
+        logger.info('    restore_flags, flag_manual_avg, init_models, bandpass, initial_gaincal, fluxscale, bandpass_final, gaincal_final', 'applycal_all', 'flag_target', 'plot_corrected', 'first_images')
         return
 
     run_steps = []
     if args.run_steps:
-        # Strip spaces and split by comma
-        run_steps = [step.strip() for step in args.run_steps.split(',') if step.strip()]
+        # Support both comma and space as separators
+        steps_str = args.run_steps.replace(',', ' ')
+        run_steps = [step.strip() for step in steps_str.split() if step.strip()]
     
     skip_steps = []
     if args.skip_steps:
-        # Strip spaces and split by comma
-        skip_steps = [step.strip() for step in args.skip_steps.split(',') if step.strip()]
+        # Support both comma and space as separators
+        steps_str = args.skip_steps.replace(',', ' ')
+        skip_steps = [step.strip() for step in steps_str.split() if step.strip()]
     
     run_pipeline(args.inputs_file, run_steps, skip_steps)
 
