@@ -62,6 +62,10 @@ line0 = '-' * 15
 
 
 def backslash_check(directory):
+    """
+    Ensure directory path ends with a slash.
+    """
+    
     if directory[-1] != '/':
         return directory + '/'
     else:
@@ -69,12 +73,20 @@ def backslash_check(directory):
 
 
 def read_inputs(inputs_file):
+    """
+    Read pipeline inputs from configuration file.
+    """
+    
     config = configparser.ConfigParser()
     config.read(inputs_file)
     return config._sections['inputs']
 
 
 def find_run_steps(eMCP, run_steps, skip_steps=[]):
+    """
+    Determine which pipeline steps to run based on configuration.
+    """
+    
     if run_steps == '':
         run_steps = []
     if skip_steps == '':
@@ -134,6 +146,10 @@ def find_run_steps(eMCP, run_steps, skip_steps=[]):
 
 
 def exit_pipeline(eMCP=''):
+    """
+    Exit the pipeline and save log file.
+    """
+    
     os.system('cp eMCP.log {}eMCP.log.txt'.format(info_dir))
     if eMCP != '':
         logger.info('Something went wrong. Producing weblog before quiting')
@@ -143,6 +159,10 @@ def exit_pipeline(eMCP=''):
 
 
 def find_casa_problems():
+    """
+    Check CASA logs for problems.
+    """
+    
     logger.debug('Checking casa_log for problems')
     # TODO: Here we need to make a list with all the casa log files
     # TODO: Then check the file that has the most recent date and
@@ -152,16 +172,28 @@ def find_casa_problems():
 
 # Functions to save and load dictionaries
 def save_obj(obj, name):
+    """
+    Save a Python object to disk using pickle.
+    """
+    
     with open(name, 'wb') as f:
         pickle.dump(obj, f)
 
 
 def load_obj(name):
+    """
+    Load a Python object from disk using pickle.
+    """
+    
     with open(name, 'rb') as f:
         return pickle.load(f)
 
 
 def add_step_time(step, eMCP, msg, t0, doweblog=True):
+    """
+    Record timing information for a pipeline step and update eMCP dictionary.
+    """
+    
     t1 = datetime.datetime.utcnow()
     timestamp = t1.strftime('%Y-%m-%d %H:%M:%S')
     delta_t_min = (t1 - t0).total_seconds() / 60.
@@ -174,6 +206,10 @@ def add_step_time(step, eMCP, msg, t0, doweblog=True):
 
 
 def check_pipeline_conflict(eMCP, pipeline_version):
+    """
+    Check for conflicts between current and previous pipeline versions.
+    """
+    
     try:
         if eMCP['pipeline_version'] != pipeline_version:
             logger.warning(
@@ -256,6 +292,10 @@ def mjdtodate(mjd):
 
 
 def join_lists(x=[]):
+    """
+    Join list elements into a comma-separated string.
+    """
+    
     x1 = ','.join(x)
     x2 = set(x1.split(','))
     return ','.join(x2)
@@ -293,6 +333,10 @@ def user_sources(inputs):
 
 
 def get_antennas(msfile):
+    """
+    Get list of antennas in measurement set.
+    """
+    
     # Output example: ['Mk2', 'Pi', 'Da', 'Kn', 'De', 'Cm']
     # Antenna list
     antennas = emutils.read_keyword(msfile, 'NAME', subtable='ANTENNA')
@@ -305,6 +349,10 @@ def get_antennas(msfile):
 
 
 def get_obstime(msfile):
+    """
+    Get start and end observation times from measurement set.
+    """
+    
     # returns datetime object of first and last times
     # Output example:  time objects: 2017-12-20 00:35:00, 2017-12-20 03:42:58
     times = emutils.read_keyword(msfile, 'TIME')
@@ -315,6 +363,10 @@ def get_obstime(msfile):
 
 
 def get_obsfreq(msfile):
+    """
+    Get frequency information from measurement set.
+    """
+    
     # Returns freq of first channel, end chan, channel resolution
     # and number of channels (first spw) in GHz
     # Output example: (4.816125, 5.327875, 0.00025, 512)
@@ -334,6 +386,10 @@ def get_obsfreq(msfile):
 
 
 def find_mssources(msfile):
+    """
+    Find all source names in measurement set.
+    """
+    
     # Output example: '1107-1226,1109-1235,1118-1232,1331+305,1407+284'
     fieldnames = emutils.read_keyword(msfile, 'NAME', subtable='FIELD')
     mssources = ','.join(np.sort(fieldnames))
@@ -342,6 +398,10 @@ def find_mssources(msfile):
 
 
 def find_source_intent(msinfo, cats=None):
+    """
+    Find source intents for calibration (amp, phase, bandpass, etc).
+    """
+    
     if cats is None:
         cats = ['targets', 'phscals', 'bpcal', 'fluxcal', 'ptcal']
     fields_ms = msinfo['sources']['mssources'].split(',')
@@ -354,6 +414,10 @@ def find_source_intent(msinfo, cats=None):
 
 
 def find_source_timerange(msfile):
+    """
+    Find time range for each source in measurement set.
+    """
+    
     fieldnames = emutils.read_keyword(msfile, 'NAME', subtable='FIELD')
     source_timerange_mjd = {}
     fact = 60. * 60. * 24.
@@ -364,6 +428,10 @@ def find_source_timerange(msfile):
 
 
 def get_project(msfile):
+    """
+    Get project name from measurement set.
+    """
+    
     # Output example: 'CY0000'
     project = emutils.read_keyword(msfile, 'PROJECT', subtable='OBSERVATION')
     logger.debug(f'Read project from {msfile}: {project}')
@@ -371,6 +439,10 @@ def get_project(msfile):
 
 
 def get_polarization(msfile):
+    """
+    Get polarization information from measurement set.
+    """
+    
     # Output example: 'L, R'
     pol_types = np.unique(
         emutils.read_keyword(msfile, 'POLARIZATION_TYPE', 'FEED')['array'])
@@ -380,6 +452,10 @@ def get_polarization(msfile):
 
 
 def get_directions(msfile):
+    """
+    Get source direction coordinates for all fields.
+    """
+    
     directions = {}
     field_names = emutils.read_keyword(msfile, 'NAME', 'FIELD')
     phase_dir = emutils.read_keyword(msfile, 'PHASE_DIR', 'FIELD')
@@ -392,6 +468,10 @@ def get_directions(msfile):
 
 
 def get_distances(msfile, directions=''):
+    """
+    Calculate angular separations between sources.
+    """
+    
     if directions == '':
         directions = get_directions(msfile)
     field_names = emutils.read_keyword(msfile, 'NAME', 'FIELD')
@@ -408,6 +488,10 @@ def get_distances(msfile, directions=''):
 
 
 def get_integration_time(msfile):
+    """
+    Get integration time from measurement set.
+    """
+    
     time_diff = np.diff(emutils.read_keyword(msfile, 'TIME'))
     intervals = time_diff[time_diff > 0]
     int_mode = mode(intervals, keepdims=True)
@@ -418,6 +502,10 @@ def get_integration_time(msfile):
 
 
 def get_msfile_sp(eMCP):
+    """
+    Get spectrally averaged measurement set filename.
+    """
+    
     ext_ms = {False: '.ms', True: '.mms'}
     do_ms2mms = eMCP['defaults']['import_eM']['ms2mms']
     msfile_sp = os.path.join(
@@ -455,6 +543,10 @@ def find_wide_narrow(spw_sp, cent_chan_sp, msfile):
 
 
 def get_cent_freq(msfile):
+    """
+    Get central frequency of observation.
+    """
+    
     msmd.open(msfile)
     spws = msmd.spwfordatadesc()
     cent_freq = np.array([np.mean(msmd.chanfreqs(spw)) for spw in spws])
@@ -463,6 +555,10 @@ def get_cent_freq(msfile):
 
 
 def get_chan_width(msfile):
+    """
+    Get channel width of observation.
+    """
+    
     msmd.open(msfile)
     spws = msmd.spwfordatadesc()
     chan_width = np.array([np.unique(msmd.chanwidths(spw))[0] for spw in spws])
@@ -1060,6 +1156,10 @@ def check_aoflagger_version():
 
 
 def find_quacktime(msinfo, s1, s2):
+    """
+    Determine appropriate quack time based on source separation.
+    """
+    
     separations = msinfo['separations']
     if s1 not in msinfo['sources']['mssources'].split(','):
         logger.warning('{} not in MS'.format(s1))
@@ -1387,6 +1487,9 @@ def log_manual_flags(inpfile):
 
 
 def flagdata_manual(eMCP, run_name='flag_manual'):
+    """
+    Apply manual flags based on configuration.
+    """
     logger.info(line0)
     msfile = eMCP['msinfo']['msfile']
     if run_name == 'flag_manual':
@@ -1742,6 +1845,10 @@ def list_sources_out(eMCP):
 
 
 def run_average(eMCP):
+    """
+    Create spectrally averaged measurement set for calibration.
+    """
+    
     logger.info(line0)
     logger.info('Start average')
     t0 = datetime.datetime.utcnow()
@@ -2447,6 +2554,10 @@ def run_applycal_narrow(eMCP, caltables, step, spwmap_sp, insources=''):
 
 
 def initial_bp_cal(eMCP, caltables):
+    """
+    Create initial bandpass calibration tables.
+    """
+    
     logger.info('Start initial_bpcal')
     t0 = datetime.datetime.utcnow()
     # Pass 1
@@ -2661,6 +2772,10 @@ def run_bpcal(eMCP, caltables, doplots=True):
 
 
 def initial_gaincal(eMCP, caltables):
+    """
+    Create initial gain calibration tables.
+    """
+    
     logger.info('Start initial_gaincal')
     t0 = datetime.datetime.utcnow()
     # Pass 1
@@ -3928,6 +4043,10 @@ def eMCP_info_start_steps():
 
 
 def find_fields_scans(msfile):
+    """
+    Get mapping between field IDs and scan numbers.
+    """
+    
     msmd.open(msfile)
     scans = msmd.scannumbers()
     dict_scans = msmd.fieldsforscans(scans,
@@ -4011,6 +4130,10 @@ def find_Lo_amp_spw(msfile, phscal, phscal_scans, spw, eMCP):
 
 
 def find_Lo_amp(msfile, phscal, phscal_scans, eMCP, spws):
+    """
+    Calculate amplitude values for Lovell telescope data.
+    """
+    
     amp_means = np.zeros((len(spws), len(phscal_scans)))
     amp_stds = np.zeros((len(spws), len(phscal_scans)))
     logger.info('Analysing {0} scans for phscal: {1}'.format(
@@ -4521,11 +4644,23 @@ def find_Lo_drops(msfile, phscals, eMCP):
 
 
 def remove_flagversion(msfile, versionname):
+    """
+    Remove a specific flag version from measurement set.
+    """
+    
     flagmanager(vis=msfile, mode="delete", versionname=versionname)
     find_casa_problems()
 
 
 def flag_statistics(eMCP, step):
+    """
+    Calculate and save flag statistics for a processing step.
+    
+    Args:
+        eMCP: Pipeline dictionary with MS information
+        step: Name of the pipeline step
+    """
+    
     msinfo = eMCP['msinfo']
     msfile = msinfo['msfile']
     logger.info(line0)
