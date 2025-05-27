@@ -283,7 +283,7 @@ def main():
         logger.info('pre_processing:')
         logger.info('    run_importfits, flag_aoflagger, flag_apriori, flag_manual, average, plot_data, save_flags')
         logger.info('calibration:')
-        logger.info('    restore_flags, flag_manual_avg, init_models, bandpass, initial_gaincal, fluxscale, bandpass_final, gaincal_final', 'applycal_all', 'flag_target', 'plot_corrected', 'first_images')
+        logger.info('    restore_flags, flag_manual_avg, init_models, bandpass, initial_gaincal, fluxscale, bandpass_final, gaincal_final, applycal_all, flag_target, plot_corrected, first_images')
         return
 
     run_steps = []
