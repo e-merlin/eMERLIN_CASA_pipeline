@@ -1,6 +1,6 @@
 import os
 import sys
-import pickle
+import yaml
 import configparser
 import time
 import shutil
@@ -59,13 +59,25 @@ def mvdir(pathdir, outpudir):
 
 # Save and load dictionaries
 def save_obj(obj, name):
-    with open(name, 'wb') as f:
-        pickle.dump(obj, f)
+    # Make sure the name ends with .yaml
+    if not name.endswith('.yaml'):
+        name = name.replace('.pkl', '.yaml')
+        if not name.endswith('.yaml'):
+            name = name + '.yaml'
+    
+    with open(name, 'w') as f:
+        yaml.dump(obj, f, default_flow_style=False)
 
 
 def load_obj(name):
-    with open(name, 'rb') as f:
-        return pickle.load(f)
+    # Make sure the name ends with .yaml
+    if not name.endswith('.yaml'):
+        name = name.replace('.pkl', '.yaml')
+        if not name.endswith('.yaml'):
+            name = name + '.yaml'
+            
+    with open(name, 'r') as f:
+        return yaml.safe_load(f)
 
 
 def get_logger(LOG_FORMAT='%(asctime)s | %(levelname)s | %(message)s',

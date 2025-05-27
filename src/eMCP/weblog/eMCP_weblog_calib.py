@@ -1,7 +1,7 @@
 import os
 import glob
 import logging
-import pickle
+import yaml
 import datetime
 import numpy as np
 from ..utils import eMCP_utils as emutils

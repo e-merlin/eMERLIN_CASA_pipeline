@@ -5,22 +5,10 @@ Collects and saves flag statistics from measurement sets.
 """
 
 import os
-import pickle
 from casatasks import flagdata
+from ..utils.eMCP_utils import save_obj
 
 weblog_dir = './weblog/'
-
-
-def save_obj(obj, name):
-    """
-    Save a Python object to disk using pickle.
-    
-    Args:
-        obj: Object to save
-        name: Output file path
-    """
-    with open(name, 'wb') as f:
-        pickle.dump(obj, f)
 
 
 def run_flagstats(msfile, step):

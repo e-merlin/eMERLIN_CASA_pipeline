@@ -3,9 +3,7 @@ import os
 import subprocess
 import numpy as np
 import socket
-import pickle
 import yaml
-import os
 import glob
 import itertools
 import sys
@@ -175,57 +173,38 @@ def find_casa_problems():
 # Functions to save and load dictionaries
 def save_obj(obj, name):
     """
-    Save a Python object to disk using pickle and/or YAML.
+    Save a Python object to disk using YAML.
     
-    If file ends with .yaml, saves only as YAML.
-    Otherwise saves as pickle, and also creates a parallel YAML file with the same name but .yaml extension.
-    This ensures both formats are available during the transition period.
+    Ensures the file has a .yaml extension.
     """
     
-    if name.endswith('.yaml'):
-        # Save only YAML if explicitly requested
-        with open(name, 'w') as f:
-            yaml.dump(obj, f, default_flow_style=False)
-    else:
-        # Save original pickle format for backward compatibility
-        with open(name, 'wb') as f:
-            pickle.dump(obj, f)
-        
-        # Also save as YAML (with .yaml extension)
-        yaml_name = name.replace('.pkl', '.yaml')
-        if not yaml_name.endswith('.yaml'):
-            yaml_name = name + '.yaml'
-            
-        with open(yaml_name, 'w') as f:
-            yaml.dump(obj, f, default_flow_style=False)
+    # Make sure the name ends with .yaml
+    if not name.endswith('.yaml'):
+        name = name.replace('.pkl', '.yaml')
+        if not name.endswith('.yaml'):
+            name = name + '.yaml'
+    
+    # Save as YAML
+    with open(name, 'w') as f:
+        yaml.dump(obj, f, default_flow_style=False)
 
 
 def load_obj(name):
     """
-    Load a Python object from disk using pickle or YAML.
+    Load a Python object from disk using YAML.
     
-    Prioritizes YAML over pickle during transition:
-    - If name ends with .yaml, loads as YAML
-    - If a .yaml version exists with the same base name, loads that instead
-    - Otherwise falls back to pickle
+    Ensures the file has a .yaml extension.
     """
     
-    if name.endswith('.yaml'):
-        with open(name, 'r') as f:
-            return yaml.safe_load(f)
-    else:
-        # Check if a YAML version exists (prioritize it)
-        yaml_name = name.replace('.pkl', '.yaml')
-        if not yaml_name.endswith('.yaml'):
-            yaml_name = name + '.yaml'
-            
-        if os.path.exists(yaml_name):
-            with open(yaml_name, 'r') as f:
-                return yaml.safe_load(f)
-        else:
-            # Fall back to pickle
-            with open(name, 'rb') as f:
-                return pickle.load(f)
+    # Make sure the name ends with .yaml
+    if not name.endswith('.yaml'):
+        name = name.replace('.pkl', '.yaml')
+        if not name.endswith('.yaml'):
+            name = name + '.yaml'
+    
+    # Load YAML file
+    with open(name, 'r') as f:
+        return yaml.safe_load(f)
 
 
 def add_step_time(step, eMCP, msg, t0, doweblog=True):
@@ -1164,14 +1143,8 @@ def run_aoflagger_fields(eMCP):
 
 
 def check_command(command):
-    try:
-        devnull = open(os.devnull)
-        subprocess.Popen([command], stdout=devnull,
-                         stderr=devnull).communicate()
-    except OSError as e:
-        if e.errno == os.errno.ENOENT:
-            return False
-    return True
+    """Check if a command exists in the system path."""
+    return shutil.which(command) is not None
 
 
 def check_aoflagger_version():

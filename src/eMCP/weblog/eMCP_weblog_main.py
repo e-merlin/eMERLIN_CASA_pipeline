@@ -80,11 +80,11 @@ def weblog_pipelineinfo(eMCP):
     # Create and link to caltables.txt if available
     if os.path.isfile(calib_dir + 'caltables.yaml'):
         try:
-            from pickle import load
+            import yaml
             from ..utils import eMCP_utils as emutils
             
             with open(calib_dir + 'caltables.yaml', 'r') as f:
-                caltables = load(f)
+                caltables = yaml.safe_load(f)
             
             emutils.prt_dict_tofile(caltables, tofilename=info_dir + 'caltables.txt', pre='  ')
             write_link_txt(wlog, info_link + 'caltables.txt', 'Calibration info (dict)', text='caltables.txt')
@@ -299,9 +299,9 @@ if __name__ == "__main__":
     # For testing or direct execution
     import sys
     if len(sys.argv) > 1:
-        from pickle import load
-        with open(sys.argv[1], 'rb') as f:
-            eMCP = load(f)
+        import yaml
+        with open(sys.argv[1], 'r') as f:
+            eMCP = yaml.safe_load(f)
         start_weblog(eMCP)
     else:
-        print("Usage: python -m eMCP.weblog.eMCP_weblog_main <eMCP_pickle_file>")
+        print("Usage: python -m eMCP.weblog.eMCP_weblog_main <eMCP_yaml_file>")

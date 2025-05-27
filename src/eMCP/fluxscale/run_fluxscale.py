@@ -1,13 +1,13 @@
 import os
-import pickle
+import yaml
 from casatasks import fluxscale
 
 weblog_dir = './weblog/'
 
 
 def save_obj(obj, name):
-    with open(name, 'wb') as f:
-        pickle.dump(obj, f)
+    with open(name, 'w') as f:
+        yaml.dump(obj, f, default_flow_style=False)
 
 
 def run_fluxscale(vis, reference, transfer, antenna, caltable, fluxtable,
