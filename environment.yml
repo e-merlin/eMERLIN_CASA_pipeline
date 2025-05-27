@@ -1,7 +1,6 @@
 name: emcp
 channels:
 - pkgw-forge
-- i4ds
 - conda-forge
 - defaults
 dependencies:
@@ -9,7 +8,7 @@ dependencies:
 - casacore
 - openmpi
 - mpi4py
-- aoflagger
+#- aoflagger
 - wsclean
 - numpy
 - setuptools>=62.6.0
@@ -37,5 +36,6 @@ dependencies:
   - python-casacore==3.5.2
   - protobuf==3.20
   - scipy==1.9.3
+  - shadems
   - -e .
 clean
