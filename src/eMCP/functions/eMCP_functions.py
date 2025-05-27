@@ -294,7 +294,7 @@ def get_baselines(msfile):
         f'{pair[0]}-{pair[1]}' for pair in itertools.combinations(antennas, 2)
     ]
     logger.debug(f'Baselines in {msfile}; {baselines}')
-    return np.array(baselines)
+    return list(baselines)
 
 
 def get_dates(d):
@@ -400,7 +400,7 @@ def get_obsfreq(msfile):
     logger.debug(
         f'freq_ini, freq_end, chan_res, nchan: {freq_ini}, {freq_end}, {chan_res}, {nchan}'
     )
-    return freq_ini, freq_end, chan_res, nchan
+    return freq_ini, freq_end, chan_res.tolist(), nchan
 
 
 def find_mssources(msfile):
@@ -441,7 +441,7 @@ def find_source_timerange(msfile):
     fact = 60. * 60. * 24.
     for source in fieldnames:
         mjd_min, mjd_max = emutils.find_source_timerange(msfile, source)
-        source_timerange_mjd[source] = [mjd_min / fact, mjd_max / fact]
+        source_timerange_mjd[source] = [float(mjd_min / fact), float(mjd_max / fact)]
     return source_timerange_mjd
 
 
@@ -498,8 +498,8 @@ def get_distances(msfile, directions=''):
     with open(os.path.join(info_dir, 'source_separations.txt'),
               'w') as sep_file:
         for (f1, f2) in itertools.combinations(field_names, 2):
-            separations[f1 + '-' + f2] = directions[f1].separation(
-                directions[f2]).to(u.deg)
+            separations[f1 + '-' + f2] = float(directions[f1].separation(
+                directions[f2]).to(u.deg).value)
             sep_file.write('{0:10} {1:10} {2:7.2f}\n'.format(
                 f1, f2, separations[f1 + '-' + f2]))
     return separations
@@ -641,7 +641,6 @@ def get_msinfo(eMCP, msfile, doprint=False):
     msinfo['antennas'] = get_antennas(msfile)
     msinfo['band'] = check_band(eMCP, msfile)
     msinfo['baselines'] = get_baselines(msfile)
-    #    msinfo['num_spw'] = len(casatasks.vishead(msfile, mode = 'list', listitems = ['spw_name'])['spw_name'][0])
     msinfo['num_spw'] = len(
         emutils.read_keyword(msfile,
                              'MEAS_FREQ_REF',
@@ -650,9 +649,9 @@ def get_msinfo(eMCP, msfile, doprint=False):
     freq_ini, freq_end, chan_res, nchan = get_obsfreq(msfile)
     msinfo['t_ini'] = t_ini
     msinfo['t_end'] = t_end
-    msinfo['freq_ini'] = freq_ini
-    msinfo['freq_end'] = freq_end
-    msinfo['int_time'] = get_integration_time(msfile)
+    msinfo['freq_ini'] = float(freq_ini)
+    msinfo['freq_end'] = float(freq_end)
+    msinfo['int_time'] = float(get_integration_time(msfile))
     msinfo['chan_res'] = chan_res
     msinfo['nchan'] = nchan
     msinfo['innerchan'] = '{0:.0f}~{1:.0f}'.format(
@@ -4050,7 +4049,7 @@ def eMCP_info_start_steps():
     steps = {}
     steps['start_pipeline'] = default_value
     for s in all_steps:
-        steps[s] = default_value
+        steps[s] = int(default_value)
     return steps
 
 
