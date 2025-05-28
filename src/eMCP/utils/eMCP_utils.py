@@ -181,13 +181,13 @@ def get_pipeline_version():
 
 def start_eMCP_dict(info_dir):
     try:
-        eMCP_obj = load_obj(info_dir + 'eMCP_info.yaml')
+        eMCP_info_dir = load_obj(info_dir + 'eMCP_info.yaml')
         logger.info('Loaded eMCP_info.yaml')
     except Exception as e:
         logger.error(f'Failed to load eMCP_info.yaml: {e}')
-        eMCP_obj = {'steps': eMCP_info_start_steps(), 'img_stats': {}}
+        eMCP_info_dir = {'steps': eMCP_info_start_steps(), 'img_stats': {}}
         logger.info('Created new eMCP_info.yaml')
-    return eMCP_obj
+    return eMCP_info_dir
 
 
 def list_of_steps():

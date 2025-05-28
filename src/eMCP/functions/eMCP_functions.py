@@ -1,6 +1,7 @@
 #!/usr/local/python
 import os
 import subprocess
+import shlex
 import numpy as np
 import socket
 import yaml
@@ -212,7 +213,7 @@ def add_step_time(step, eMCP, msg, t0, doweblog=True):
     Record timing information for a pipeline step and update eMCP dictionary.
     """
     
-    t1 = datetime.datetime.utcnow()
+    t1 = datetime.datetime.now(datetime.timezone.utc)
     timestamp = t1.strftime('%Y-%m-%d %H:%M:%S')
     delta_t_min = (t1 - t0).total_seconds() / 60.
     eMCP['steps'][step] = [timestamp, delta_t_min, msg]
@@ -682,8 +683,6 @@ def get_msinfo(eMCP, msfile, doprint=False):
     msinfo['directions'] = get_directions(msfile)
     msinfo['separations'] = get_distances(msfile,
                                           directions=msinfo['directions'])
-    print(msinfo['directions'])
-    print(msinfo['separations'])
     msinfo['Lo_dropout_scans'] = msinfo.get('Lo_dropout_scans', 'none')
     # Info related to mixed mode:
     eMCP, msinfo = info_mixed_mode(eMCP, msinfo)
@@ -812,7 +811,7 @@ def import_eMERLIN_fitsIDI(eMCP):
     fits_path = backslash_check(eMCP['inputs']['fits_path'])
     msfile_name = eMCP['inputs']['inbase']
     msg = 'first execution'
-    t0 = datetime.datetime.utcnow()
+    t0 = datetime.datetime.now(datetime.timezone.utc)
     eMCP = add_step_time('start_pipeline', eMCP, msg, t0, doweblog=False)
 
     # importfitsIDI
@@ -835,7 +834,7 @@ def import_eMERLIN_fitsIDI(eMCP):
     emutils.rmdir(eMCP['inputs']['inbase'] + '_sp.mms')
 
     logger.info('Running importfitsIDI')
-    t0 = datetime.datetime.utcnow()
+    t0 = datetime.datetime.now(datetime.timezone.utc)
     msfile0 = msfile_name + '_imported.ms'
     emutils.rmdir(msfile0)
 
@@ -892,7 +891,7 @@ def import_eMERLIN_fitsIDI(eMCP):
     if do_ms2mms:
         logger.info('Data will be converted to MMS')
     logger.info('Start mstransform')
-    t0 = datetime.datetime.utcnow()
+    t0 = datetime.datetime.now(datetime.timezone.utc)
     emutils.rmdir(msfile1)
     if import_eM['fix_repeated_sources']:
         fix_repeated_sources(msfile0, msfile1, datacolumn, antenna,
@@ -959,7 +958,6 @@ def import_eMERLIN_fitsIDI(eMCP):
     # Phase shift
     msfile = eMCP['inputs']['inbase'] + ext_ms[do_ms2mms]
     logger.info('Start phase shift')
-    #    t0 = datetime.datetime.utcnow()
     fixvis(vis=msfile1, outputvis=msfile, reuse=False)
     find_casa_problems()
     logger.info('Fixed {0} into {1}'.format(msfile1, msfile))
@@ -1072,7 +1070,7 @@ def run_aoflagger_fields(eMCP):
         run_aoflagger = True
 
     logger.info('Start run_aoflagger_fields')
-    t0 = datetime.datetime.utcnow()
+    t0 = datetime.datetime.now(datetime.timezone.utc)
     if separate_bands:
         logger.info('Bands will be processed separately.')
     elif not separate_bands:
@@ -1209,13 +1207,13 @@ def find_quacktime(msinfo, s1, s2):
             except:
                 separation = 0.0
 
-    if separation < 1.0 * u.deg:
+    if separation < 1.0:
         quack_time = 20.
-    elif 1.0 * u.deg <= separation < 2.0 * u.deg:
+    elif 1.0 <= separation < 2.0:
         quack_time = 25.
-    elif 2.0 * u.deg <= separation < 3.5 * u.deg:
+    elif 2.0 <= separation < 3.5:
         quack_time = 30.
-    elif separation >= 3.5 * u.deg:
+    elif separation >= 3.5:
         quack_time = 35.
     else:
         quack_time = 0
@@ -1389,12 +1387,16 @@ def search_observatory_flags(eMCP):
 def select_first_last_chan(msfile, spw_frac, nchan):
     first_spw = emutils.read_keyword(msfile, 'DATA_DESC_ID').min()
     last_spw = emutils.read_keyword(msfile, 'DATA_DESC_ID').max()
-    chan_fact = (nchan - nchan / 512.)
-    first_chan = '{0}:{1:.0f}~{2:.0f}'.format(first_spw, 0. * chan_fact,
-                                              spw_frac * chan_fact)
-    last_chan = '{0}:{1:.0f}~{2:.0f}'.format(last_spw,
-                                             (1. - spw_frac) * chan_fact,
-                                             1.0 * chan_fact)
+    chan_fact = nchan - nchan / 512.
+
+    start1 = int(round(0. * chan_fact))
+    end1 = min(nchan - 1, int(round(spw_frac * chan_fact)))
+    first_chan = f'{first_spw}:{start1}~{end1}'
+
+    start2 = int(round((1. - spw_frac) * chan_fact))
+    end2 = min(nchan - 1, int(round(1.0 * chan_fact)))
+    last_chan = f'{last_spw}:{start2}~{end2}'
+
     return first_chan, last_chan
 
 
@@ -1403,7 +1405,7 @@ def flagdata1_apriori(eMCP):
     msfile = msinfo['msfile']
     sources = msinfo['sources']
     logger.info('Start flagdata1_apriori')
-    t0 = datetime.datetime.utcnow()
+    t0 = datetime.datetime.now(datetime.timezone.utc)
     antennas = get_antennas(msfile)
     # Check if all sources are in the MS:
     check_sources_in_ms(eMCP)
@@ -1531,7 +1533,7 @@ def flagdata_manual(eMCP, run_name='flag_manual'):
         logger.warning('Wrong run_name specified')
         inpfile = ''
     logger.info('Start {}'.format(run_name))
-    t0 = datetime.datetime.utcnow()
+    t0 = datetime.datetime.now(datetime.timezone.utc)
     if os.path.isfile(inpfile):
         logger.info('Applying manual flags from file: {0}'.format(inpfile))
         are_there_flags = log_manual_flags(inpfile)
@@ -1575,7 +1577,7 @@ def flagdata_manual(eMCP, run_name='flag_manual'):
 def flagdata_tfcrop(eMCP, defaults):
     logger.info(line0)
     if defaults == 'flag_target':
-        t0 = datetime.datetime.utcnow()
+        t0 = datetime.datetime.now(datetime.timezone.utc)
         logger.info('Start flag_target')
     msinfo = eMCP['msinfo']
     msfile = eMCP['msinfo']['msfile']
@@ -1625,7 +1627,7 @@ def flagdata_tfcrop(eMCP, defaults):
 def flagdata_rflag(eMCP, defaults):
     logger.info(line0)
     if defaults == 'flag_target':
-        t0 = datetime.datetime.utcnow()
+        t0 = datetime.datetime.now(datetime.timezone.utc)
         logger.info('Start flag_target')
     msinfo = eMCP['msinfo']
     msfile = eMCP['msinfo']['msfile']
@@ -1773,7 +1775,7 @@ def find_refant(msfile, field):
 def saveflagstatus(eMCP):
     msinfo = eMCP['msinfo']
     logger.info('Starting saveflagstatus')
-    t0 = datetime.datetime.utcnow()
+    t0 = datetime.datetime.now(datetime.timezone.utc)
     logger.info(
         'Saving current flagging status to versionname=\'initialize_flags\'')
 
@@ -1801,7 +1803,7 @@ def saveflagstatus(eMCP):
 
 def restoreflagstatus(eMCP):
     msinfo = eMCP['msinfo']
-    t0 = datetime.datetime.utcnow()
+    t0 = datetime.datetime.now(datetime.timezone.utc)
     logger.info('Starting restoreflagstatus')
     logger.info(
         'Restoring flagging status in versionname=\'initialize_flags\'')
@@ -1882,7 +1884,7 @@ def run_average(eMCP):
     
     logger.info(line0)
     logger.info('Start average')
-    t0 = datetime.datetime.utcnow()
+    t0 = datetime.datetime.now(datetime.timezone.utc)
     chanbin = eMCP['defaults']['average']['chanbin']
     timebin = eMCP['defaults']['average']['timebin']
     msfile = eMCP['msinfo']['msfile']
@@ -1977,7 +1979,7 @@ def load_3C286_model(eMCP):
 def run_initialize_models(eMCP):
     logger.info(line0)
     logger.info('Start init_models')
-    t0 = datetime.datetime.utcnow()
+    t0 = datetime.datetime.now(datetime.timezone.utc)
     init_models = eMCP['defaults']['init_models']
     # Check if all sources are in the MS:
     check_sources_in_ms(eMCP)
@@ -2590,7 +2592,7 @@ def initial_bp_cal(eMCP, caltables):
     """
     
     logger.info('Start initial_bpcal')
-    t0 = datetime.datetime.utcnow()
+    t0 = datetime.datetime.now(datetime.timezone.utc)
     # Pass 1
     logger.info('Starting pass 1 of initial_bpcal')
     eMCP, caltables = run_bpcal(eMCP, caltables, doplots=False)
@@ -2808,7 +2810,7 @@ def initial_gaincal(eMCP, caltables):
     """
     
     logger.info('Start initial_gaincal')
-    t0 = datetime.datetime.utcnow()
+    t0 = datetime.datetime.now(datetime.timezone.utc)
     # Pass 1
     logger.info('Starting pass 1 of initial_gaincal')
     # Delay calibration #
@@ -3232,7 +3234,7 @@ def read_source_model(model, field, msinfo, eMcalflux):
 
 def eM_fluxscale(eMCP, caltables):
     logger.info('Start eM_fluxscale')
-    t0 = datetime.datetime.utcnow()
+    t0 = datetime.datetime.now(datetime.timezone.utc)
     # Check if all sources are in the MS:
     check_sources_in_ms(eMCP)
     flux = eMCP['defaults']['fluxscale']
@@ -3773,12 +3775,12 @@ def single_wsclean(eMCP, s, field_id):
     logger.info(f"weight = {config_wsclean['-weight']}")
     wsclean_command = write_wsclean_command(msfile, config_wsclean)
     logger.info(f'Full wsclean command:\n{wsclean_command}')
-    logger.info(f'{wsclean_command.split()}')
+    #logger.info(f'{wsclean_command.split()}')
+
 
     with open('stdouterr.log', 'a') as f:
-        subprocess.run(wsclean_command.split(),
-                       stdout=f,
-                       stderr=subprocess.STDOUT)
+        subprocess.run(shlex.split(wsclean_command), stdout=f, stderr=subprocess.STDOUT, check=True, shell=True)
+        f.flush()
 
 
 #    if nterms > 1:
@@ -3834,7 +3836,7 @@ def run_first_images(eMCP):
     msinfo = eMCP['msinfo']
     logger.info(line0)
     logger.info('Start run_first_images')
-    t0 = datetime.datetime.utcnow()
+    t0 = datetime.datetime.now(datetime.timezone.utc)
 
     eMCP['img_stats'] = {}
     field_names = np.array(
@@ -3854,7 +3856,7 @@ def run_split_fields(eMCP):
     msfile = msinfo['msfile']
     logger.info(line0)
     logger.info('Start split_fields')
-    t0 = datetime.datetime.utcnow()
+    t0 = datetime.datetime.now(datetime.timezone.utc)
     split_fields_defaults = eMCP['defaults']['split_fields']
     fields_to_split = split_fields_defaults['fields']
     datacolumn = split_fields_defaults['datacolumn']
@@ -3913,7 +3915,7 @@ def run_split_fields(eMCP):
                     keepflags=True)
         find_casa_problems()
         flagtable_info = 'after_split'
-        current_time = datetime.datetime.utcnow()
+        current_time = datetime.datetime.now(datetime.timezone.utc)
         flagmanager(vis=outputmsfile,
                     mode='save',
                     versionname=flagtable_info,
@@ -4024,7 +4026,6 @@ def shift_all_positions(eMCP):
     logger.info(line0)
     msfile = eMCP['msinfo']['msfile']
     logger.info('Running shift_all_pos')
-    #    t0 = datetime.datetime.utcnow()
     shifts_file = './shift_phasecenter.txt'
     try:
         shifts_list = read_shifts_file(shifts_file)
@@ -4222,7 +4223,7 @@ def plot_Lo_drops(msfile, phscal_scans, amp_mean, lo_dropout_scans, phscal,
 
 def bandpass_final(eMCP, caltables):
     logger.info('Start bandpass_final')
-    t0 = datetime.datetime.utcnow()
+    t0 = datetime.datetime.now(datetime.timezone.utc)
     # Check if all sources are in the MS:
     check_sources_in_ms(eMCP)
     bp_final = eMCP['defaults']['bandpass_final']
@@ -4284,7 +4285,7 @@ def bandpass_final(eMCP, caltables):
 
 def gaincal_final(eMCP, caltables):
     logger.info('Start gaincal_final')
-    t0 = datetime.datetime.utcnow()
+    t0 = datetime.datetime.now(datetime.timezone.utc)
     # Check if all sources are in the MS:
     check_sources_in_ms(eMCP)
     gain_final = eMCP['defaults']['gaincal_final']
@@ -4587,7 +4588,7 @@ def gaincal_final_scan(eMCP, caltables):
 
 
 def applycal_all(eMCP, caltables):
-    t0 = datetime.datetime.utcnow()
+    t0 = datetime.datetime.now(datetime.timezone.utc)
     run_applycal(eMCP, caltables, step='applycal_all')
     if eMCP['is_mixed_mode']:
         spwmap_sp = eMCP['msinfo']['spwmap_sp']
@@ -4705,7 +4706,7 @@ def flag_statistics(eMCP, step):
     versionname = 'eMCP_{}'.format(step)
     remove_flagversion(msfile, versionname)
     logger.info('Saving flagtable in versionname="{0}"'.format(versionname))
-    current_time = datetime.datetime.utcnow()
+    current_time = datetime.datetime.now(datetime.timezone.utc)
 
     flagmanager(vis=msfile,
                 mode="save",

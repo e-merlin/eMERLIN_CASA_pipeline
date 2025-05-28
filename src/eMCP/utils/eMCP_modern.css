@@ -423,3 +423,7 @@ p, ul, ol, dl {
     margin-bottom: 10px;
   }
 }
+
+html {
+  scroll-padding-top: 65px; /* or height of your sticky nav */
+}

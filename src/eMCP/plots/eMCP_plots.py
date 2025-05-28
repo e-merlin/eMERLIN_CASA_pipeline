@@ -52,7 +52,7 @@ line0 = '-' * 15
 
 
 def add_step_time(step, eMCP, msg, t0, doweblog=True):
-    t1 = datetime.datetime.utcnow()
+    t1 = datetime.datetime.now(datetime.timezone.utc)
     timestamp = t1.strftime('%Y-%m-%d %H:%M:%S')
     delta_t_min = (t1 - t0).total_seconds() / 60.
     eMCP['steps'][step] = [timestamp, delta_t_min, msg]
@@ -238,7 +238,7 @@ def make_4plots(eMCP, datacolumn='data'):
     msinfo = eMCP['msinfo']
     msfile = eMCP['msinfo']['msfile']
     logger.info('Start plot_{}'.format(datacolumn))
-    t0 = datetime.datetime.utcnow()
+    t0 = datetime.datetime.now(datetime.timezone.utc)
     if datacolumn == 'data':
         plots_data_dir = './weblog/plots/plots_data/'
     elif datacolumn == 'corrected':
@@ -792,7 +792,7 @@ def plot_Lo_drops(phscal_scans, scans, amp_mean, lo_dropout_scans, phscal,
 
 
 def read_calfluxes(calfluxes, k, eMfactor):
-    freq = calfluxes['freq']
+    freq = np.array(calfluxes['freq'])
     spws = calfluxes['spwID']
     fieldName = calfluxes[k]['fieldName']
     spindex = calfluxes[k]['spidx'][1]
@@ -852,6 +852,7 @@ def fluxscale_models(calfluxes, eMfactor, msinfo):
                           label=label)
             color1 = str(p.get_color())
             #ax1.errorbar(freq*factor_unit, flux, eflux, fmt = 'o', color =color1, mec = color1, zorder = 10)
+            print(freq, factor_unit)
             ax1.plot(freq * factor_unit,
                      flux,
                      marker='o',
@@ -876,7 +877,7 @@ def fluxscale_models(calfluxes, eMfactor, msinfo):
                              linewidth=0,
                              zorder=-32)
 
-    freq = calfluxes['freq']
+    freq = np.array(calfluxes['freq'])
     freqspan = freq_max - freq_min
     freqlim = np.array(
         [freq_min - 0.025 * freqspan, freq_max + 0.1 * freqspan])

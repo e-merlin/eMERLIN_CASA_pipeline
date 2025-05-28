@@ -40,7 +40,7 @@ def write_fluxscale(wlog, msinfo):
             lines = f.readlines()
         wlog.write('\n<br><br>\n')
         wlog.write('CASA fluxscale output (not corrected by eMfactor):')
-        wlog.write('\n<pre>')
+        wlog.write('\n<pre style="text-align: left;">')
         for line in lines:
             wlog.write(line)
         wlog.write('\n</pre>\n<br>')

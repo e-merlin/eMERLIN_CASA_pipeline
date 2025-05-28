@@ -31,7 +31,6 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
 
     # Initialize eMCP dictionary, or continue with previous pipeline configuration if possible:
     eMCP = emutils.start_eMCP_dict(info_dir)
-    print(eMCP)
     # Get git info about pipeline version
     installed_version = emutils.get_pipeline_version()
     pipeline_version = __version__
@@ -58,16 +57,17 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
         defaults_file = package_yaml
     
     # Load the YAML file
-    print('Loading default parameters from {0}:'.format(defaults_file))
     with open(defaults_file, 'r') as f:
         eMCP['defaults'] = yaml.safe_load(f)
+        logger.info('Loaded default parameters from {0}:'.format(defaults_file))
 
     # Inputs
     if os.path.exists(inputs_file):
         inputs = emutils.read_inputs(inputs_file)
         eMCP['inputs'] = inputs
+        logger.info('Loaded inputs from {0}'.format(inputs_file))
     else:
-        print('No inputs file found: {}'.format(inputs_file))
+        logger.critical('No inputs file found: {0}'.format(inputs_file))
         emutils.exit_pipeline(eMCP='')
 
     # Steps to run:
