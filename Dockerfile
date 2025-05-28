@@ -1,55 +1,63 @@
 FROM continuumio/miniconda3:latest
 
-# Configure conda channels
-RUN conda config --add channels conda-forge \
-    && conda config --add channels pkgw-forge \
-    && conda config --add channels i4ds \
-    && conda config --set channel_priority strict
+# Set environment variables to avoid prompts during install
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Install base conda dependencies
-RUN conda install -y python=3.8 mamba
+# Configure conda and install mamba
+RUN conda config --add channels conda-forge && \
+    conda config --set channel_priority strict && \
+    conda install -y mamba && \
+    conda clean --all -f -y
 
-# Install CASA and radio astronomy tools
-RUN mamba install -y \
-    casacore \
-    openmpi \
-    mpi4py \
-    aoflagger \
-    wsclean \
-    numpy \
-    pandas \
-    matplotlib \
-    scipy \
-    astropy \
-    python-casacore
-
-# Install Python dependencies
-RUN mamba install -y \
-    setuptools>=62.6.0 \
+# Create and activate environment with exact dependencies
+RUN mamba create -y -n emcp \
+    python=3.10.17 \
+    casacore=3.7.1 \
+    python-casacore=3.7.1 \
+    cmasher=1.9.2 \
+    ipython=8.36.0 \
+    libboost-python=1.86.0 \
+    matplotlib=3.10.3 \
+    mpi4py=4.0.3 \
+    numpy=2.2.6 \
+    openmpi=5.0.7 \
+    scipy=1.15.2 \
+    pip=25.1.1 \
+    setuptools=80.8.0 \
     setuptools-scm \
-    pip
+    wheel && \
+    conda clean --all -f -y
 
-# Clean up conda cache
-RUN conda clean --all -f -y
+# Activate environment and install pip-only dependencies
+SHELL ["conda", "run", "-n", "emcp", "/bin/bash", "-c"]
 
-# Copy the package files
+RUN pip install \
+    casaconfig==1.0.2 \
+    casatools==6.7.0.31 \
+    casatasks==6.7.0.31 \
+    casaplotms==2.6.2 \
+    casaviewer==2.3.2 \
+    casashell==6.7.0.31 \
+    casaplotserver==1.9.2 \
+    casatestutils==6.7.0.31 \
+    casatablebrowser==0.0.37 \
+    casalogger==1.0.21 \
+    casafeather==0.0.24 \
+    casampi==0.5.6
+
+# Set working directory and copy files
 WORKDIR /app
 COPY . /app/
 
-# Install the package
+# Install your package
 RUN pip install -e .
 
-# Create entry points
-ENTRYPOINT ["emcp"]
-
-# Default command
+# Entrypoint and default CMD
+ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "emcp", "emcp"]
 CMD ["--help"]
 
-RUN python3 --version
-RUN pip3 --version
-RUN python3 -m pip install --upgrade pip
-RUN python3 -m pip install mpi4py --no-cache-dir
-
+# Metadata
 LABEL org.opencontainers.image.source="https://github.com/e-merlin/eMERLIN_CASA_pipeline"
 LABEL org.opencontainers.image.description="Container image for eMERLIN CASA pipeline"
-LABEL org.opencontainers.image.licenses=GPL3
+LABEL org.opencontainers.image.licenses="GPL-3.0-or-later"
+
