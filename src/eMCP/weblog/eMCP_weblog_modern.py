@@ -328,51 +328,7 @@ def weblog_obssum(msinfo):
             
             # Get coordinates from directions in msinfo if available
             if 'directions' in msinfo and source in msinfo['directions']:
-                try:
-                    from astropy.coordinates import SkyCoord
-                    import astropy.units as u
-                    
-                    # Get the direction as an astropy coordinate
-                    direction = msinfo['directions'][source]
-                    
-                    # If it's already an astropy SkyCoord object
-                    if isinstance(direction, SkyCoord):
-                        coord = direction
-                    else:
-                        # If it's stored as a tuple of (ra, dec) in degrees
-                        if isinstance(direction, tuple) and len(direction) == 2:
-                            ra_deg, dec_deg = direction
-                            coord = SkyCoord(ra=ra_deg*u.deg, dec=dec_deg*u.deg)
-                        else:
-                            raise ValueError(f"Unknown direction format: {direction}")
-                    
-                    # Format the coordinates in sexagesimal notation (hms dms)
-                    ra_hms = coord.ra.to_string(unit=u.hourangle, sep=':', pad=True, precision=2)
-                    dec_dms = coord.dec.to_string(unit=u.deg, sep=':', pad=True, precision=2)
-                    coords = f"{ra_hms} {dec_dms}"
-                except Exception as e:
-                    logger.warning(f"Error converting coordinates for {source}: {e}")
-                    coords = "Format error"
-            elif 'source_coordinates' in msinfo.get('sources', {}) and source in msinfo['sources']['source_coordinates']:
-                # Fallback to source_coordinates if available
-                try:
-                    ra, dec = msinfo['sources']['source_coordinates'][source]
-                    ra_h = int(ra/15.0)
-                    ra_m = int((ra/15.0 - ra_h) * 60)
-                    ra_s = ((ra/15.0 - ra_h) * 60 - ra_m) * 60
-                    
-                    dec_d = int(abs(dec))
-                    if dec < 0:
-                        dec_sign = '-'
-                    else:
-                        dec_sign = '+'
-                    dec_m = int((abs(dec) - dec_d) * 60)
-                    dec_s = ((abs(dec) - dec_d) * 60 - dec_m) * 60
-                    
-                    coords = f"{ra_h:02d}:{ra_m:02d}:{ra_s:05.2f} {dec_sign}{dec_d:02d}:{dec_m:02d}:{dec_s:05.2f}"
-                except Exception as e:
-                    logger.warning(f"Error converting source_coordinates for {source}: {e}")
-                    coords = "Format error"
+                coords = msinfo['directions'][source]
             else:
                 coords = "Unknown"
             

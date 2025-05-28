@@ -31,7 +31,7 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
 
     # Initialize eMCP dictionary, or continue with previous pipeline configuration if possible:
     eMCP = emutils.start_eMCP_dict(info_dir)
-
+    print(eMCP)
     # Get git info about pipeline version
     installed_version = emutils.get_pipeline_version()
     pipeline_version = __version__

@@ -481,17 +481,35 @@ def get_directions(msfile):
         ra = phase_dir[i][0][0] * u.rad
         dec = phase_dir[i][0][1] * u.rad
         # TODO: Frame need to be read from Measurement Set
-        directions[field] = SkyCoord(ra, dec, frame='icrs')
+        #directions[field] = SkyCoord(ra, dec, frame='icrs')
+        coord = SkyCoord(ra, dec, frame='icrs')
+        directions[field] = coord.to_string('hmsdms', sep=':', pad=True, alwayssign=True)
     return directions
 
+def get_directions_skycoord(msfile):
+    """
+    Get source direction coordinates for all fields.
+    """
+    
+    directions = {}
+    field_names = emutils.read_keyword(msfile, 'NAME', 'FIELD')
+    phase_dir = emutils.read_keyword(msfile, 'PHASE_DIR', 'FIELD')
+    for i, field in enumerate(field_names):
+        ra = phase_dir[i][0][0] * u.rad
+        dec = phase_dir[i][0][1] * u.rad
+        # TODO: Frame need to be read from Measurement Set
+        directions[field] = SkyCoord(ra, dec, frame='icrs')
+        #coord = SkyCoord(ra, dec, frame='icrs')
+        #directions[field] = [coord.ra.deg, coord.dec.deg]
+    return directions
 
 def get_distances(msfile, directions=''):
     """
     Calculate angular separations between sources.
     """
     
-    if directions == '':
-        directions = get_directions(msfile)
+    #if directions == '':
+    directions = get_directions_skycoord(msfile)
     field_names = emutils.read_keyword(msfile, 'NAME', 'FIELD')
     separations = {}
     # Write all separations in a txt file
@@ -664,6 +682,8 @@ def get_msinfo(eMCP, msfile, doprint=False):
     msinfo['directions'] = get_directions(msfile)
     msinfo['separations'] = get_distances(msfile,
                                           directions=msinfo['directions'])
+    print(msinfo['directions'])
+    print(msinfo['separations'])
     msinfo['Lo_dropout_scans'] = msinfo.get('Lo_dropout_scans', 'none')
     # Info related to mixed mode:
     eMCP, msinfo = info_mixed_mode(eMCP, msinfo)
