@@ -83,10 +83,10 @@ def show_image(eMCP, wlog, i):
     wlog.write('<tr>\n')
     
     # Add the images using the write_img_zoom function
-    wlog.write(write_img_zoom(f'.{img_target}-image{ext}.png'))
-    wlog.write(write_img_zoom(f'.{img_target}-residual{ext}.png'))
-    wlog.write(write_img_zoom(f'.{img_phscal}-image{ext}.png'))
-    wlog.write(write_img_zoom(f'.{img_phscal}-residual{ext}.png'))
+    wlog.write(write_img_zoom(f'.{img_target}.image{ext}.png'))
+    wlog.write(write_img_zoom(f'.{img_target}.residual{ext}.png'))
+    wlog.write(write_img_zoom(f'.{img_phscal}.image{ext}.png'))
+    wlog.write(write_img_zoom(f'.{img_phscal}.residual{ext}.png'))
     
     wlog.write('</tr>\n')
     wlog.write('</tbody>\n')

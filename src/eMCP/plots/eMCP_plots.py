@@ -1137,10 +1137,11 @@ def fits2png(fits_name,
     wcs_celestial = WCS(hdu.header).celestial
     img_tmp = fits.PrimaryHDU(hdu.data[0, 0] * 1000.,
                               header=wcs_celestial.to_header())
-    img_tmp.header['BUNIT'] = hdu.header['BUNIT']
-    img_tmp.header['BMAJ'] = hdu.header['BMAJ']
-    img_tmp.header['BMIN'] = hdu.header['BMIN']
-    img_tmp.header['BPA'] = hdu.header['BPA']
+    #ToDo I need to make this work when running tclean
+    # img_tmp.header['BUNIT'] = hdu.header['BUNIT']
+    # img_tmp.header['BMAJ'] = hdu.header['BMAJ']
+    # img_tmp.header['BMIN'] = hdu.header['BMIN']
+    # img_tmp.header['BPA'] = hdu.header['BPA']
     img_tmp.writeto(fits_name_tmp, overwrite=True)
 
     f = aplpy.FITSFigure(fits_name_tmp, figsize=(10, 8))

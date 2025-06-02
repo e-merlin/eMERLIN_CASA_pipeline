@@ -30,12 +30,13 @@ from ..utils.weblog_config import get_weblog_function
 # Get the appropriate weblog function (original or modern)
 start_weblog = get_weblog_function()
 from ..utils import eMCP_utils as emutils
+
 from ..fluxscale import run_fluxscale
 from ..flagstatistics import run_flagstats
 
 from casatasks import mstransform, applycal, gaincal, flagmanager, flagdata, concat,\
     setjy, importfitsidi, listobs, vishead, visstat, fixvis, phaseshift, statwt, fluxscale, immath,\
-    imstat, fringefit, smoothcal, bandpass, delmod, clearcal, initweights, ft, tclean
+    imstat, fringefit, smoothcal, bandpass, delmod, clearcal, initweights, ft, tclean, exportfits
 
 from casatools import table, msmetadata, ctsys
 from casaviewer import imview
@@ -3554,89 +3555,6 @@ def dfluxpy(freq, baseline):
     return vla_flux, e_merlin_flux, resolved_percent, caution_res_pc, this_bl
 
 
-def plot_image(eMCP, imagename, center, ext='.tt0', dozoom=False):
-    imstat_residual = imstat(imagename + '.residual' + ext)
-    find_casa_problems()
-    imstat_image = imstat(imagename + '.image' + ext)
-    find_casa_problems()
-    noise = imstat_residual['rms'][0]
-    peak = imstat_image['max'][0]
-    scaling = np.min([0, -np.log(1.0 * peak / noise) + 4])
-    imgpar = eMCP['defaults']['first_images']
-    level0 = imgpar['level0']
-    levels = level0 * np.sqrt(3**np.arange(20))
-    zoom_range = 150
-    for extension in ['image' + ext]:
-        filename = '{0}.{1}'.format(imagename, extension)
-        logger.info('Creating png for image: {0}'.format(filename))
-        logger.info('Peak: {0:5.2e} mJy, noise: {1:5.2e} mJy, ' \
-                    'scaling: {2:3.1f}'.format(peak*1000.,
-                                               noise*1000.,
-                                               scaling))
-        imview(raster={
-            'file': filename,
-            'scaling': float(scaling),
-            'colorwedge': True
-        },
-               contour={
-                   'file': filename,
-                   'levels': list(levels),
-                   'base': 0,
-                   'unit': float(noise) * 2.
-               },
-               out=filename + '.png')
-        find_casa_problems()
-        if dozoom:
-            imview(raster={
-                'file': filename,
-                'scaling': float(scaling),
-                'colorwedge': True
-            },
-                   contour={
-                       'file': filename,
-                       'levels': list(levels),
-                       'base': 0,
-                       'unit': float(noise) * 2.
-                   },
-                   zoom={
-                       'blc': [center - zoom_range, center - zoom_range],
-                       'trc': [center + zoom_range, center + zoom_range]
-                   },
-                   out=filename + '_zoom.png')
-            find_casa_problems()
-    return peak, noise, scaling
-
-
-def plot_image_add(imagename, center, zoom_range, ext='.tt0', dozoom=False):
-    filename = imagename
-    imview(raster={
-        'file': filename + '.residual' + ext,
-        'colorwedge': True
-    },
-           contour={
-               'file': filename + '.mask',
-               'levels': [1]
-           },
-           out=filename + '.residual' + ext + '.png')
-    find_casa_problems()
-    if dozoom:
-        imview(raster={
-            'file': filename + '.residual' + ext,
-            'colorwedge': True
-        },
-               contour={
-                   'file': filename + '.mask',
-                   'levels': [1]
-               },
-               zoom={
-                   'blc': [center - zoom_range, center - zoom_range],
-                   'trc': [center + zoom_range, center + zoom_range]
-               },
-               out=filename + '.residual' + ext + '_zoom.png')
-        find_casa_problems()
-    return
-
-
 def write_wsclean_command(msfile, config_wsclean):
     logger.debug('config_wsclean')
     # Duplicate size if needed:
@@ -3660,7 +3578,7 @@ def write_wsclean_command(msfile, config_wsclean):
     return wsclean_command
 
 
-def single_tclean(eMCP, s, num):
+def single_tclean(eMCP, s, num=0):
     msinfo = eMCP['msinfo']
     logger.info('Producing tclean images for {0}, field: {1}'.format(
         msinfo['msfile'], s))
@@ -3670,8 +3588,9 @@ def single_tclean(eMCP, s, num):
     prev_images = glob.glob(imagename + '*')
     for prev_image in prev_images:
         emutils.rmdir(prev_image)
+        emutils.rmfile(prev_image)
     cellsize = {'C': '0.008arcsec', 'L': '0.02arcsec', 'K': '0.002arcsec'}
-    imgpar = eMCP['defaults']['first_images']
+    imgpar = eMCP['defaults']['first_images']['tclean']
     imsize = imgpar['imsize']
     cell = cellsize[msinfo['band']]
     niter = imgpar['niter']
@@ -3728,19 +3647,33 @@ def single_tclean(eMCP, s, num):
         ext = '.tt0'
     else:
         ext = ''
-    peak, noise, scaling = plot_image(eMCP,
-                                      imagename,
-                                      center=int(imsize / 2.0),
-                                      ext=ext,
-                                      dozoom=True)
-    zoom_range = eMCP['defaults']['first_images']['zoom_range_pix']
-    plot_image_add(imagename,
-                   center=int(imsize / 2.0),
-                   zoom_range=zoom_range,
-                   ext=ext,
-                   dozoom=True)
-    eMCP['img_stats'][s] = [peak, noise, scaling]
+
+    fitsimagename = imagename+'.image'+ext+'.fits'
+    fitsresidualname = imagename+'.residual'+ext+'.fits'
+    print(fitsimagename)
+    print(fitsresidualname)
+    print(imagename+'.image'+ext)
+    print(imagename+'.residual'+ext)
+    exportfits(imagename=imagename+'.image'+ext, fitsimage=fitsimagename, overwrite=True)
+    exportfits(imagename=imagename+'.residual'+ext, fitsimage=fitsresidualname, overwrite=True)
+    
+    eMCP = process_fits(fitsimagename, eMCP, s)
+
     return eMCP
+
+    # peak, noise, scaling = plot_image(eMCP,
+    #                                   imagename,
+    #                                   center=int(imsize / 2.0),
+    #                                   ext=ext,
+    #                                   dozoom=True)
+    # zoom_range = eMCP['defaults']['first_images']['zoom_range_pix']
+    # plot_image_add(imagename,
+    #                center=int(imsize / 2.0),
+    #                zoom_range=zoom_range,
+    #                ext=ext,
+    #                dozoom=True)
+    # eMCP['img_stats'][s] = [peak, noise, scaling]
+    # return eMCP
 
 
 def single_wsclean(eMCP, s, field_id):
@@ -3776,27 +3709,23 @@ def single_wsclean(eMCP, s, field_id):
     wsclean_command = write_wsclean_command(msfile, config_wsclean)
     logger.info(f'Full wsclean command:\n{wsclean_command}')
     #logger.info(f'{wsclean_command.split()}')
-
-
     with open('stdouterr.log', 'a') as f:
         subprocess.run(shlex.split(wsclean_command), stdout=f, stderr=subprocess.STDOUT, check=True, shell=True)
         f.flush()
-
-
-#    if nterms > 1:
-#        ext = '.tt0'
-#    else:
-#        ext = ''
     fitsfile = imagename + '-image.fits'
+    eMCP = process_fits(fitsfile, eMCP, s)
+    return eMCP
+
+def process_fits(fitsfile, eMCP, s):
     # Image statistics
     imstats_img = get_image_stats(fitsfile)
     imstats_res = get_image_stats(fitsfile.replace('-image', '-residual'))
     scaling = np.min(
         [0, -np.log(1.0 * imstats_img['max'] / imstats_res['rms']) + 4])
     eMCP['img_stats'][s] = [imstats_img['max'], imstats_res['rms'], scaling]
-    logger.debug(imstats_img['max'])
-    logger.debug(imstats_res['rms'])
-    logger.debug(scaling)
+    logger.info(imstats_img['max'])
+    logger.info(imstats_res['rms'])
+    logger.info(scaling)
     # Convert to png
     emplt.fits2png(fitsfile,
                    rms=imstats_res['rms'],
@@ -3806,11 +3735,11 @@ def single_wsclean(eMCP, s, field_id):
                    rms=imstats_res['rms'],
                    scaling=scaling,
                    zoom=True)
-    emplt.fits2png(fitsfile.replace('-image', '-residual'),
+    emplt.fits2png(fitsfile.replace('.image', '.residual'),
                    scaling=scaling,
                    rms=imstats_res['rms'],
                    contour=False)
-    emplt.fits2png(fitsfile.replace('-image', '-residual'),
+    emplt.fits2png(fitsfile.replace('.image', '.residual'),
                    scaling=scaling,
                    rms=imstats_res['rms'],
                    contour=False,
@@ -3843,8 +3772,14 @@ def run_first_images(eMCP):
         emutils.read_keyword(msinfo['msfile'], 'NAME', subtable='FIELD'))
     for s in msinfo['sources']['targets_phscals'].split(','):
         field_id = np.argwhere(field_names == s)[0][0]
-        #        eMCP = single_tclean(eMCP, s, num)
-        eMCP = single_wsclean(eMCP, s, field_id)
+        if eMCP['defaults']['first_images']['cleaner'] == 'tclean':
+            eMCP = single_tclean(eMCP, s)
+        elif eMCP['defaults']['first_images']['cleaner'] == 'wsclean':
+            eMCP = single_wsclean(eMCP, s, field_id)
+        else:
+            logger.critical('Unknown cleaner: {}'
+                            .format(eMCP['defaults']['first_images']['cleaner']))
+            exit_pipeline(eMCP)
     logger.info('End first_images')
     msg = ''
     eMCP = add_step_time('first_images', eMCP, msg, t0)
