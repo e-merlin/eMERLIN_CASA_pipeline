@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=62.6.0", "setuptools-scm", "wheel"]
+requires = ["setuptools>=75.0", "setuptools-scm", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -21,6 +21,21 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Astronomy"
 ]
 dependencies = [
+    # Core system dependencies (versions matching environment.yaml)
+    "numpy==1.25.2",  # Critical: must match conda version
+    "aplpy==2.1.0",
+    "astropy==5.1.1",
+    "astroquery==0.4.6",
+    "cmasher==1.6.3",
+    "ipython==8.6.0",
+    "matplotlib==3.6.1",
+    "python-casacore==3.5.2",
+    "protobuf==3.20",
+    "scipy==1.9.3",
+    "reproject==0.14.1",
+    "pyregion==2.3.0",
+
+    # CASA tools
     "casaconfig==1.0.2",
     "casatools==6.7.0.31",
     "casatasks==6.7.0.31",
@@ -33,15 +48,6 @@ dependencies = [
     "casalogger==1.0.21",
     "casafeather==0.0.24",
     "casampi==0.5.6",
-    "aplpy==2.1.0",
-    "astropy==5.1.1",
-    "astroquery==0.4.6",
-    "cmasher==1.6.3",
-    "ipython==8.6.0",
-    "matplotlib==3.6.1",
-    "python-casacore==3.5.2",
-    "protobuf==3.20",
-    "scipy==1.9.3",
 ]
 dynamic = ["version"]
 

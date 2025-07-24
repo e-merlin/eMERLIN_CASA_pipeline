@@ -20,41 +20,50 @@ The pipeline uses YAML for all data serialization, including calibration tables,
 
 ## Installation
 
-The e-MERLIN CASA Pipeline (eMCP) has the following dependencies:
 
-- Python 3.8
-- CASA v6.5+
-- aoflagger v2.9+ (needed for L-band data)
+The e-MERLIN CASA Pipeline (eMCP) requires:
+- Python 3.10
+- casacore
+- aoflagger v2.9+ (optional, needed for L-band data)
 - wsclean (optional, for improved imaging)
 
-There are three ways to install eMCP:
+We recommend using [mamba](https://mamba.readthedocs.io/en/latest/index.html) for faster installation.
 
-### Conda Installation
-
-This is the recommended approach as it will install all dependencies, th conda. We highly recommend to use [mamba](https://mamba.readthedocs.io/en/latest/index.html). 
-
+### Method 1: Conda with environment file (Recommended)
+Installs Python, casacore, and all Python dependencies. You still need to install aoflagger and wsclean separately if needed.
 ```bash
 git clone https://github.com/e-merlin/eMERLIN_CASA_pipeline.git
 cd eMERLIN_CASA_pipeline
-conda env create -f environment.yaml
-conda activate emcp
+git checkout casa6
+mamba env create -f environment.yaml
+mamba activate emcp
 ```
 
-### Pip Installation
-
-If you already have CASA, aoflagger and wsclean installed on your system, you can install eMCP using pip:
-
+### Method 2: Direct pip installation (no cloning required)
+Make sure to have python3.10 and casacore available (otherwise, see note below)
 ```bash
-pip install git+https://github.com/e-merlin/eMERLIN_CASA_pipeline.git
+pip install git+https://github.com/e-merlin/eMERLIN_CASA_pipeline.git@casa6
 ```
 
-Or to install from a local copy:
-
+### Method 3: Local installation
+Make sure to have python3.10 and casacore available (otherwise, see note below)
 ```bash
 git clone https://github.com/e-merlin/eMERLIN_CASA_pipeline.git
 cd eMERLIN_CASA_pipeline
+git checkout casa6
 pip install .
 ```
+For development, use `pip install -e .` to install in editable mode.
+
+---
+
+**Important for Methods 2 and 3:** These methods require casacore to be already available on your system. If you don't have casacore installed, first run:
+```bash
+mamba create -n emcp python=3.10 casacore=3.5 -c conda-forge -y
+mamba activate emcp
+```
+Then proceed with Method 2 or 3 in the activated environment.
+
 
 ### Docker Installation
 
