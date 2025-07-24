@@ -22,18 +22,18 @@ classifiers = [
 ]
 dependencies = [
     # Core system dependencies (versions matching environment.yaml)
-    "numpy==1.25.2",  # Critical: must match conda version
+    "numpy==1.24.4",
     "aplpy==2.1.0",
-    "astropy==5.1.1",
-    "astroquery==0.4.6",
+    "astropy==5.2.2",
+    "astroquery==0.4.7",
     "cmasher==1.6.3",
-    "ipython==8.6.0",
-    "matplotlib==3.6.1",
-    "python-casacore==3.5.2",
-    "protobuf==3.20",
-    "scipy==1.9.3",
-    "reproject==0.14.1",
-    "pyregion==2.3.0",
+    "ipython==8.12.3",
+    "matplotlib==3.7.5",
+    "python-casacore==3.7.1",
+    "protobuf==5.29",
+    "scipy==1.10.1",
+    "reproject==0.13.0",
+    "pyregion==2.2.0",
 
     # CASA tools
     "casaconfig==1.0.0",

@@ -35,8 +35,8 @@ Installs Python, casacore, and all Python dependencies. You still need to instal
 git clone https://github.com/e-merlin/eMERLIN_CASA_pipeline.git
 cd eMERLIN_CASA_pipeline
 git checkout casa6
-mamba env create -f environment.yaml
-mamba activate emcp
+conda env create -f environment.yaml
+conda activate emcp
 ```
 
 ### Method 2: Direct pip installation (no cloning required)
