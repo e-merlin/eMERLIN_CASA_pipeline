@@ -31,12 +31,12 @@ There are three ways to install eMCP:
 
 ### Conda Installation
 
-This is the recommended approach as it will install all dependencies, including non-Python ones like aoflagger and wsclean:
+This is the recommended approach as it will install all dependencies, th conda. We highly recommend to use [mamba](https://mamba.readthedocs.io/en/latest/index.html). 
 
 ```bash
 git clone https://github.com/e-merlin/eMERLIN_CASA_pipeline.git
 cd eMERLIN_CASA_pipeline
-conda env create -f environment.yml
+conda env create -f environment.yaml
 conda activate emcp
 ```
 

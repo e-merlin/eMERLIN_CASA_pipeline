@@ -11,6 +11,7 @@ RUN conda config --add channels conda-forge && \
 
 # Create and activate environment with exact dependencies
 RUN mamba create -y -n emcp \
+    astropy=6.1.7 \
     python=3.10.17 \
     casacore=3.7.1 \
     python-casacore=3.7.1 \
