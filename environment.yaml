@@ -4,7 +4,6 @@ channels:
   - nodefaults
 dependencies:
   - python=3.10
-  - casacore=3.5
   - pip
   - pip:
     - git+https://github.com/e-merlin/eMERLIN_CASA_pipeline.git@casa6
