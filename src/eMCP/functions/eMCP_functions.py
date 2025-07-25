@@ -16,7 +16,7 @@ from scipy.stats import mode
 import logging
 from astropy.coordinates import SkyCoord
 import astropy.units as u
-from casacore import tables as casacore_tables
+#from casacore import tables as casacore_tables
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator
 import configparser
@@ -465,7 +465,7 @@ def get_polarization(msfile):
     
     # Output example: 'L, R'
     pol_types = np.unique(
-        emutils.read_keyword(msfile, 'POLARIZATION_TYPE', 'FEED')['array'])
+        emutils.read_keyword(msfile, 'POLARIZATION_TYPE', 'FEED').flatten())
     polarization = ', '.join(pol_types)
     logger.debug(f'Polarization types for {msfile}: {polarization}')
     return polarization
@@ -480,8 +480,8 @@ def get_directions(msfile):
     field_names = emutils.read_keyword(msfile, 'NAME', 'FIELD')
     phase_dir = emutils.read_keyword(msfile, 'PHASE_DIR', 'FIELD')
     for i, field in enumerate(field_names):
-        ra = phase_dir[i][0][0] * u.rad
-        dec = phase_dir[i][0][1] * u.rad
+        ra = phase_dir[0][0][i] * u.rad
+        dec = phase_dir[1][0][i] * u.rad
         # TODO: Frame need to be read from Measurement Set
         #directions[field] = SkyCoord(ra, dec, frame='icrs')
         coord = SkyCoord(ra, dec, frame='icrs')
@@ -497,12 +497,10 @@ def get_directions_skycoord(msfile):
     field_names = emutils.read_keyword(msfile, 'NAME', 'FIELD')
     phase_dir = emutils.read_keyword(msfile, 'PHASE_DIR', 'FIELD')
     for i, field in enumerate(field_names):
-        ra = phase_dir[i][0][0] * u.rad
-        dec = phase_dir[i][0][1] * u.rad
+        ra = phase_dir[0][0][i] * u.rad
+        dec = phase_dir[1][0][i] * u.rad
         # TODO: Frame need to be read from Measurement Set
         directions[field] = SkyCoord(ra, dec, frame='icrs')
-        #coord = SkyCoord(ra, dec, frame='icrs')
-        #directions[field] = [coord.ra.deg, coord.dec.deg]
     return directions
 
 def get_distances(msfile, directions=''):
@@ -739,9 +737,13 @@ def remove_missing_scans(caltable, scans2flag):
     index_missing_rows = np.where(antenna1_Lo * missing_rows)[0]
     logger.info('Removing Lo solutions for dropout scans from {0}: {1}'.format(
         caltable, scans2flag))
-    with casacore_tables.table(caltable, ack=False,
-                               readonly=False) as main_table:
-        main_table.removerows(index_missing_rows)
+    tb = table()
+    tb.open(caltable, nomodify=False)
+    tb.removerows(index_missing_rows)
+    tb.close()
+    #with casacore_tables.table(caltable, ack=False,
+    #                           readonly=False) as main_table:
+    #    main_table.removerows(index_missing_rows)
 
 
 def run_listobs(msfile):

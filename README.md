@@ -20,33 +20,42 @@ The pipeline uses YAML for all data serialization, including calibration tables,
 
 ## Installation
 
-
 The e-MERLIN CASA Pipeline (eMCP) requires:
-- Python 3.10
-- casacore
-- aoflagger v2.9+ (optional, needed for L-band data)
-- wsclean (optional, for improved imaging)
+- Python 3.8-3.10. We recommend 3.10 since it supports more operating systems.
 
-We recommend using [mamba](https://mamba.readthedocs.io/en/latest/index.html) for faster installation.
+Optional requirements:
+- aoflagger v2.9+ (needed for L-band data)
+- wsclean (alternative to tclean for faster imaging)
+
+In the examples below we use python 3.10. CASA does not support all versions of python for all operating systems, so check the documentation in [casadocs](https://casadocs.readthedocs.io/en/stable/notebooks/introduction.html#Compatibility), in particular the Compatibility > Modular CASA section for the right python version for you.
 
 ### Method 1: Conda with environment file (Recommended)
-Installs Python, casacore, and all Python dependencies. You still need to install aoflagger and wsclean separately if needed.
+Installs Python 3.10 by default and all the dependencies. You still need to install aoflagger and wsclean separately if needed.
+
+We recommend using [mamba](https://mamba.readthedocs.io/en/latest/index.html) for faster installation. If you have conda but not mamba, replace `mamba` by `conda` in the command below:
+
 ```bash
 git clone https://github.com/e-merlin/eMERLIN_CASA_pipeline.git
 cd eMERLIN_CASA_pipeline
 git checkout casa6
-conda env create -f environment.yaml
+mamba env create -f environment.yaml -y
 conda activate emcp
 ```
 
 ### Method 2: Direct pip installation (no cloning required)
-Make sure to have python3.10 and casacore available (otherwise, see note below)
+
+Make sure to have the right python version and pip in your system or environment. You can use virtualenv, conda (`mamba create -n emcp python=3.10 pip -y`) or any other method
+
+You have two alternatives:
+
+2.1 Direct pip installation
+
 ```bash
 pip install git+https://github.com/e-merlin/eMERLIN_CASA_pipeline.git@casa6
 ```
 
-### Method 3: Local installation
-Make sure to have python3.10 and casacore available (otherwise, see note below)
+2.2 Local installation (allows you to modify the code if needed)
+
 ```bash
 git clone https://github.com/e-merlin/eMERLIN_CASA_pipeline.git
 cd eMERLIN_CASA_pipeline
@@ -55,14 +64,6 @@ pip install .
 ```
 For development, use `pip install -e .` to install in editable mode.
 
----
-
-**Important for Methods 2 and 3:** These methods require casacore to be already available on your system. If you don't have casacore installed, first run:
-```bash
-mamba create -n emcp python=3.10 casacore=3.5 -c conda-forge -y
-mamba activate emcp
-```
-Then proceed with Method 2 or 3 in the activated environment.
 
 
 ### Docker Installation

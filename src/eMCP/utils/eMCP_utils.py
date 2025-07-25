@@ -4,7 +4,8 @@ import yaml
 import configparser
 import time
 import shutil
-import casacore.tables
+#import casacore.tables
+from casatools import table
 import eMCP
 
 import logging
@@ -298,53 +299,127 @@ def find_run_steps(eMCP, run_steps, skip_steps=[]):
     return input_steps
 
 
-## CASACORE funcions
-
-
 def read_keyword(infile, column, subtable=None):
-    with casacore.tables.table(infile, ack=False) as maintable:
-        if subtable is not None:
-            tb = casacore.tables.table(maintable.getkeyword(subtable),
-                                       ack=False)
-            maintable.close()
+    """
+    Read a column from a CASA table or its subtable using casatools.
+    If subtable is given, simply open infile/subtable.
+    """
+    tb = table()
+    try:
+        table_path = infile if subtable is None else infile.rstrip('/') + '/' + subtable
+        tb.open(table_path, nomodify=True)
+        if column in tb.colnames():
+            return tb.getcol(column)
         else:
-            tb = maintable
-        column = tb.getcol(column)
+            raise RuntimeError(f"Column '{column}' not found in table '{table_path}'. Columns: {tb.colnames()}")
+    finally:
+        try:
+            tb.close()
+        except Exception:
+            pass
 
-
-#        tb.close()
-    return column
-
+# Functions to access tables
 
 def read_all_keywords(infile, subtable):
-    with casacore.tables.table(infile, ack=False) as maintable:
-        with casacore.tables.table(maintable.getkeyword(subtable),
-                                   ack=False) as subtable:
-            keywords = {
-                column: subtable.getcol(column)
-                for column in subtable.colnames()
-            }
-    return keywords
-
+    """Read all columns from a subtable"""
+    tb = table()
+    try:
+        tb.open(infile, nomodify=True)
+        subtable_name = tb.getkeyword(subtable)
+        tb.close()
+        
+        # Open subtable
+        tb.open(subtable_name, nomodify=True)
+        colnames = tb.colnames()
+        
+        keywords = {
+            column: tb.getcol(column)
+            for column in colnames
+        }
+        return keywords
+    finally:
+        tb.close()
 
 def read_caltable_data(caltable):
-    with casacore.tables.table(caltable, ack=False) as maintable:
-        colnames = maintable.colnames()
+    """Read all relevant columns from a calibration table"""
+    tb = table()
+    try:
+        tb.open(caltable, nomodify=True)
+        colnames = tb.colnames()
         dontread = ['WEIGHT', 'INTERVAL']
+        
         data = {
-            colname: maintable.getcol(colname)
+            colname: tb.getcol(colname)
             for colname in colnames if colname not in dontread
         }
-    return data
-
+        return data
+    finally:
+        tb.close()
 
 def find_source_timerange(msfile, source):
+    """Find time range for a specific source in MS file"""
+    # Get field names and find source ID
     field_names = read_keyword(msfile, 'NAME', 'FIELD')
     source_id = [i for i, j in enumerate(field_names) if source == j][0]
-    field_id = read_keyword(msfile, 'FIELD_ID')
-    t = casacore.tables.table(msfile, ack=False)
-    t1 = casacore.tables.taql('select from $t where FIELD_ID == $source_id')
-    times = t1.getcol('TIME')
-    t.close()
-    t1.close()
-    return times.min(), times.max()
+
+    tb = table()
+    try:
+        tb.open(msfile, nomodify=True)
+        # Query for rows matching the source field ID
+        subtable = tb.query(f'FIELD_ID == {source_id}')
+        times = subtable.getcol('TIME')
+        subtable.close()
+
+        return times.min(), times.max()
+    finally:
+        tb.close()
+
+### CASACORE funcions
+#
+#def read_keyword(infile, column, subtable=None):
+#    with casacore.tables.table(infile, ack=False) as maintable:
+#        if subtable is not None:
+#            tb = casacore.tables.table(maintable.getkeyword(subtable),
+#                                       ack=False)
+#            maintable.close()
+#        else:
+#            tb = maintable
+#        column = tb.getcol(column)
+#
+#
+##        tb.close()
+#    return column
+#
+#
+#def read_all_keywords(infile, subtable):
+#    with casacore.tables.table(infile, ack=False) as maintable:
+#        with casacore.tables.table(maintable.getkeyword(subtable),
+#                                   ack=False) as subtable:
+#            keywords = {
+#                column: subtable.getcol(column)
+#                for column in subtable.colnames()
+#            }
+#    return keywords
+#
+#
+#def read_caltable_data(caltable):
+#    with casacore.tables.table(caltable, ack=False) as maintable:
+#        colnames = maintable.colnames()
+#        dontread = ['WEIGHT', 'INTERVAL']
+#        data = {
+#            colname: maintable.getcol(colname)
+#            for colname in colnames if colname not in dontread
+#        }
+#    return data
+#
+#
+#def find_source_timerange(msfile, source):
+#    field_names = read_keyword(msfile, 'NAME', 'FIELD')
+#    source_id = [i for i, j in enumerate(field_names) if source == j][0]
+#    field_id = read_keyword(msfile, 'FIELD_ID')
+#    t = casacore.tables.table(msfile, ack=False)
+#    t1 = casacore.tables.taql('select from $t where FIELD_ID == $source_id')
+#    times = t1.getcol('TIME')
+#    t.close()
+#    t1.close()
+#    return times.min(), times.max()
