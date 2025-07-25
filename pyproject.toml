@@ -84,3 +84,5 @@ namespaces = false
 
 [tool.setuptools_scm]
 write_to = "src/eMCP/_version.py"
+version_scheme = "guess-next-dev"
+local_scheme = "node-and-date"

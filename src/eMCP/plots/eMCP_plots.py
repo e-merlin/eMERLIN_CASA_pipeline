@@ -539,7 +539,7 @@ def sort_list(item, flagged, list_order):
     order = {a: i for i, a in enumerate(list_order)}
     item_sorted, flagged_sorted = np.asarray(
         sorted(zip(item, flagged), key=lambda d: order[d[0]])).T
-    return item_sorted, np.asfarray(flagged_sorted)
+    return item_sorted, np.asarray(flagged_sorted)
 
 
 def read_scan_summary(datain):
@@ -598,6 +598,8 @@ def plot_flagstatistics(flag_stats, msinfo, step):
     i_ant, f_ant = count_flags(flag_stats,
                                'antenna',
                                list_order=msinfo['antennas'])
+    f_ant = np.array(f_ant, dtype=float)
+    f_field = np.array(f_field, dtype=float)
 
     # Create output directory
     plots_obs_dir = './weblog/plots/plots_flagstats/'
@@ -662,8 +664,8 @@ def plot_flagstatistics(flag_stats, msinfo, step):
                   align='center',
                   zorder=10)
         ax_field.text(i - 0.1,
-                   0.9 * field_value,
-                   "{0:2.0f}".format(field_value * 100.),
+                   0.9 * float(field_value),
+                   "{0:2.0f}".format(float(field_value) * 100.),
                    color='k',
                    va='center',
                    zorder=12)
@@ -696,6 +698,7 @@ def plot_flagstatistics(flag_stats, msinfo, step):
                    zorder=12)
     
     for i, v in enumerate(f_ant):
+        v = float(v)
         ax_ant.text(i - 0.1,
                    0.9 * v,
                    "{0:2.0f}".format(v * 100.),
@@ -925,16 +928,16 @@ def plot_gaintable(data, antenna, ax, calmode='ap', field_id=None, s=60):
     else:
         cond1 = data['FIELD_ID'] == field_id
     cond2 = data['ANTENNA1'] == antenna_id
-    cond3 = ~data['FLAG'][:, 0, 0]
+    cond3 = ~data['FLAG'][0, 0, :]
     cond = cond1 * cond2 * cond3
     if len(np.unique(data['SPECTRAL_WINDOW_ID'])) > 1:
         color1 = color2 = data['SPECTRAL_WINDOW_ID'][cond]
     else:
         color1, color2 = '#0067cb', '#c67d50'
-    logger.debug(f'Num points in plot: {len(value[cond][:,0,0])}')
+    logger.debug(f'Num points in plot: {len(value[0,0][cond])}')
     if np.count_nonzero(cond) > 1:
         ax.scatter(tm[cond].datetime64,
-                   value[cond][:, 0, 0],
+                   value[0,0][cond],
                    marker='.',
                    s=s,
                    c=color1,
@@ -942,7 +945,7 @@ def plot_gaintable(data, antenna, ax, calmode='ap', field_id=None, s=60):
                    alpha=0.5,
                    cmap=plt.get_cmap('winter_r'))
         ax.scatter(tm[cond].datetime64,
-                   value[cond][:, 0, 1],
+                   value[1,0][cond],
                    marker='.',
                    s=s,
                    c=color2,
@@ -963,7 +966,7 @@ def plot_delaytable(data, antenna, ax, calmode='p', field_id=None, s=120):
     else:
         cond1 = data['FIELD_ID'] == field_id
     cond2 = data['ANTENNA1'] == antenna_id
-    cond3 = ~data['FLAG'][:, 0, 0]
+    cond3 = ~data['FLAG'][0, 0,:]
     cond = cond1 * cond2 * cond3
     if len(np.unique(data['SPECTRAL_WINDOW_ID'])) > 1:
         color1 = color2 = data['SPECTRAL_WINDOW_ID'][cond]
@@ -973,9 +976,9 @@ def plot_delaytable(data, antenna, ax, calmode='p', field_id=None, s=120):
     logger.debug(tm[cond].datetime64)
     logger.debug(cond)
     if np.count_nonzero(cond) > 1:
-        ax.scatter(tm[cond][0:10].datetime64, value[cond][:, 0, 0][0:10])
+        ax.scatter(tm[cond][0:10].datetime64, value[0,0][cond][0:10])
         ax.scatter(tm[cond].datetime64,
-                   value[cond][:, 0, 0],
+                   value[0,0][cond],
                    marker='.',
                    s=s,
                    c=color1,
@@ -983,7 +986,7 @@ def plot_delaytable(data, antenna, ax, calmode='p', field_id=None, s=120):
                    alpha=1.0,
                    cmap=plt.get_cmap('winter_r'))
         ax.scatter(tm[cond].datetime64,
-                   value[cond][:, 0, 1],
+                   value[1,0][cond],
                    marker='.',
                    s=s,
                    c=color2,
@@ -1014,31 +1017,34 @@ def plot_bptable(data, caltable, antenna, ax, calmode='p', field_id=None):
     else:
         cond1 = data['FIELD_ID'] == field_id
     cond2 = data['ANTENNA1'] == antenna_id
-    cond3 = ~data['FLAG'][:, 0, 0]
+    cond3 = ~data['FLAG'][0, 0, :]
     cond = cond1 * cond2 * cond3
     value[data['FLAG']] = np.nan
     s = 80
     spws = np.unique(emutils.read_keyword(caltable, 'SPECTRAL_WINDOW_ID'))
     all_freqs = emutils.read_keyword(caltable,
                                      'CHAN_FREQ',
-                                     subtable='SPECTRAL_WINDOW')
+                                     subtable='SPECTRAL_WINDOW').T
+    print('all_freqs', all_freqs.shape)
     for spw in spws:
         cond4 = data['SPECTRAL_WINDOW_ID'] == spw
         cond = cond1 * cond2 * cond4
         freq = all_freqs[spw] / 1e9
-        ax.scatter(freq, value[cond][0, :, 0], marker='.', s=s, c='#0067cb')
-        ax.scatter(freq, value[cond][0, :, 1], marker='.', s=s, c='#c67d50')
+        idx = np.where(cond)[0][0]
+
+        ax.scatter(freq, value[0,:,idx], marker='.', s=s, c='#0067cb')
+        ax.scatter(freq, value[1,:,idx], marker='.', s=s, c='#c67d50')
         ax.errorbar(freq,
-                    value[cond][0, :, 0],
-                    value_err[cond][0, :, 0],
+                    value[0,:,idx],
+                    value_err[0,:,idx],
                     marker='.',
                     ls='',
                     color='#0067cb',
                     ms=1,
                     alpha=0.5)
         ax.errorbar(freq,
-                    value[cond][0, :, 1],
-                    value_err[cond][0, :, 1],
+                    value[1,:,idx],
+                    value_err[1,:,idx],
                     marker='.',
                     ls='',
                     color='#c67d50',

@@ -19,6 +19,8 @@ from eMCP.plots import eMCP_plots as emplt
 from eMCP.utils.weblog_config import get_weblog_function
 from ._version import __version__
 
+line00 = '=' * 25
+
 # Initialize logger
 logger = emutils.get_logger()
 
@@ -79,7 +81,10 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
 
     ## Pipeline processes, inputs are read from the inputs dictionary
     if eMCP['input_steps']['run_importfits'] > 0:
+        logger.info(line00)
+        logger.info(f"STARTING STEP: run_importfits")
         eMCP = em.import_eMERLIN_fitsIDI(eMCP)
+        logger.info(f"FINISHED STEP: run_importfits")
 
     if os.path.isdir('./' + inputs['inbase'] + '.ms') == True:
         msfile = inputs['inbase'] + '.ms'
@@ -94,19 +99,31 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
 
     ### Run AOflagger
     if eMCP['input_steps']['flag_aoflagger'] > 0:
+        logger.info(line00)
+        logger.info(f"STARTING STEP: flag_aoflagger")
         eMCP = em.run_aoflagger_fields(eMCP)
+        logger.info(f"FINISHED STEP: flag_aoflagger")
 
     ### A-priori flagdata: Lo&Mk2, edge channels, standard quack
     if eMCP['input_steps']['flag_apriori'] > 0:
+        logger.info(line00)
+        logger.info(f"STARTING STEP: flag_apriori")
         eMCP = em.flagdata1_apriori(eMCP)
+        logger.info(f"FINISHED STEP: flag_apriori")
 
     ### Load manual flagging file
     if eMCP['input_steps']['flag_manual'] > 0:
+        logger.info(line00)
+        logger.info(f"STARTING STEP: flag_manual")
         eMCP = em.flagdata_manual(eMCP, run_name='flag_manual')
+        logger.info(f"FINISHED STEP: flag_manual")
 
     ### Average data ###
     if eMCP['input_steps']['average'] > 0:
+        logger.info(line00)
+        logger.info(f"STARTING STEP: average")
         eMCP = em.run_average(eMCP)
+        logger.info(f"FINISHED STEP: average")
 
     # Check if averaged data already generated
     if os.path.isdir('./' + inputs['inbase'] + '_avg.mms') == True:
@@ -120,11 +137,17 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
 
     ### Produce some plots ###
     if eMCP['input_steps']['plot_data'] == 1:
+        logger.info(line00)
+        logger.info(f"STARTING STEP: plot_data")
         eMCP = emplt.make_4plots(eMCP, datacolumn='data')
+        logger.info(f"FINISHED STEP: plot_data")
 
     ### Save flag status up to this point
     if eMCP['input_steps']['save_flags'] == 1:
+        logger.info(line00)
+        logger.info(f"STARTING STEP: save_flags")
         eMCP = em.saveflagstatus(eMCP)
+        logger.info(f"FINISHED STEP: save_flags")
 
     ###################
     ### CALIBRATION ###
@@ -135,59 +158,97 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
 
     ### Restore flag status at to this point
     if eMCP['input_steps']['restore_flags'] == 1:
+        logger.info(line00)
+        logger.info(f"STARTING STEP: restore_flags")
         eMCP = em.restoreflagstatus(eMCP)
+        logger.info(f"FINISHED STEP: restore_flags")
 
     ### Load manual flagging file
     if eMCP['input_steps']['flag_manual_avg'] == 1:
+        logger.info(line00)
+        logger.info(f"STARTING STEP: flag_manual_avg")
         eMCP = em.flagdata_manual(eMCP, run_name='flag_manual_avg')
         caltables['Lo_dropout_scans'] = eMCP['msinfo']['Lo_dropout_scans']
         emutils.save_obj(caltables, os.path.join(calib_dir, 'caltables.yaml'))
+        logger.info(f"FINISHED STEP: flag_manual_avg")
 
     ### Initialize models ###
     if eMCP['input_steps']['init_models'] > 0:  # Need to add parameter to GUI
+        logger.info(line00)
+        logger.info(f"STARTING STEP: init_models")
         eMCP = em.run_initialize_models(eMCP)
+        logger.info(f"FINISHED STEP: init_models")
 
     ### Initial BandPass calibration ###
     if eMCP['input_steps']['bandpass'] > 0:
+        logger.info(line00)
+        logger.info(f"STARTING STEP: bandpass")
         eMCP, caltables = em.initial_bp_cal(eMCP, caltables)
+        logger.info(f"FINISHED STEP: bandpass")
 
     ### Initial gaincal = delay, p, ap ###
     if eMCP['input_steps']['initial_gaincal'] > 0:
+        logger.info(line00)
+        logger.info(f"STARTING STEP: initial_gaincal")
         eMCP, caltables = em.initial_gaincal(eMCP, caltables)
+        logger.info(f"FINISHED STEP: initial_gaincal")
 
     ### Flux scale ###
     if eMCP['input_steps']['fluxscale'] > 0:
+        logger.info(line00)
+        logger.info(f"STARTING STEP: fluxscale")
         eMCP, caltables = em.eM_fluxscale(eMCP, caltables)
+        logger.info(f"FINISHED STEP: fluxscale")
 
     ### BandPass calibration with spectral index information ###
     if eMCP['input_steps']['bandpass_final'] > 0:
+        logger.info(line00)
+        logger.info(f"STARTING STEP: bandpass_final")
         eMCP, caltables = em.bandpass_final(eMCP, caltables)
+        logger.info(f"FINISHED STEP: bandpass_final")
 
     ### Amplitude calibration including spectral information ###
     if eMCP['input_steps']['gaincal_final'] > 0:
+        logger.info(line00)
+        logger.info(f"STARTING STEP: gaincal_final")
         eMCP, caltables = em.gaincal_final(eMCP, caltables)
+        logger.info(f"FINISHED STEP: gaincal_final")
 
     ### Apply calibration  ###
     if eMCP['input_steps']['applycal_all'] > 0:
+        logger.info(line00)
+        logger.info(f"STARTING STEP: applycal_all")
         eMCP = em.applycal_all(eMCP, caltables)
+        logger.info(f"FINISHED STEP: applycal_all")
 
     ### RFLAG automatic flagging ###
     if eMCP['input_steps']['flag_target'] > 0:
+        logger.info(line00)
+        logger.info(f"STARTING STEP: flag_target")
         em.run_flag_target(eMCP)
+        logger.info(f"FINISHED STEP: flag_target")
 
     ### Produce some visibility plots ###
     if eMCP['input_steps']['plot_corrected'] > 0:
+        logger.info(line00)
+        logger.info(f"STARTING STEP: plot_corrected")
         eMCP = emplt.make_4plots(eMCP, datacolumn='corrected')
+        logger.info(f"FINISHED STEP: plot_corrected")
 
     ### First images ###
     if eMCP['input_steps']['first_images'] > 0:
+        logger.info(line00)
+        logger.info(f"STARTING STEP: first_images")
         eMCP = em.run_first_images(eMCP)
+        logger.info(f"FINISHED STEP: first_images")
 
     try:
-        os.system('mv casa-*.log *.last ./logs')
-        print('Moved casa-*.log *.last to ./logs')
+        os.system('mv casa-*.log  ./logs')
+        print('Moved casa-*.log  to ./logs')
     except:
         pass
+
+    logger.info(f"Pipeline execution finished")
 
 def init_project(force=False):
     """Copy config files to current directory"""
@@ -251,16 +312,33 @@ Examples:
                        help='Overwrite existing files when using --init')
     parser.add_argument('-i', '--inputs', dest='inputs_file', default='./inputs.ini',
                         help='Inputs file [./inputs.ini]')
-    parser.add_argument('-r', '--run-steps', dest='run_steps', default='',
-                        help='List of steps to run (space or comma-separated: "flag_apriori flag_manual average")')
-    parser.add_argument('-s', '--skip-steps', dest='skip_steps', default='',
-                        help='List of steps to skip (space or comma-separated: "plot_data save_flags")')
+    parser.add_argument('-r', '--run-steps', dest='run_steps', nargs='*', default=[],
+                        help='List of steps to run (space-separated or comma-separated in quotes)')
+    parser.add_argument('-s', '--skip-steps', dest='skip_steps', nargs='*', default=[],
+                        help='List of steps to skip (space-separated or comma-separated in quotes)')
     parser.add_argument('-l', '--list-steps', dest='list_steps', action='store_true',
                         help='List all available steps')
     parser.add_argument('-v', '--version', action='store_true',
                         help='Show version information')
     
     return parser.parse_args()
+
+def parse_steps(steps_args):
+    """Parse steps from command line arguments, supporting both comma and space separation"""
+    if not steps_args:
+        return []
+
+    run_steps = []
+    for arg in steps_args:
+        # If the argument contains commas, split by comma
+        if ',' in arg:
+            steps = [step.strip() for step in arg.split(',') if step.strip()]
+        else:
+            # Otherwise treat as a single step
+            steps = [arg.strip()] if arg.strip() else []
+        run_steps.extend(steps)
+
+    return run_steps
 
 def main():
     """Entry point for the application"""
@@ -286,17 +364,8 @@ def main():
         logger.info('    restore_flags, flag_manual_avg, init_models, bandpass, initial_gaincal, fluxscale, bandpass_final, gaincal_final, applycal_all, flag_target, plot_corrected, first_images')
         return
 
-    run_steps = []
-    if args.run_steps:
-        # Support both comma and space as separators
-        steps_str = args.run_steps.replace(',', ' ')
-        run_steps = [step.strip() for step in steps_str.split() if step.strip()]
-    
-    skip_steps = []
-    if args.skip_steps:
-        # Support both comma and space as separators
-        steps_str = args.skip_steps.replace(',', ' ')
-        skip_steps = [step.strip() for step in steps_str.split() if step.strip()]
+    run_steps = parse_steps(args.run_steps)
+    skip_steps = parse_steps(args.skip_steps)
     
     run_pipeline(args.inputs_file, run_steps, skip_steps)
 

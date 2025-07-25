@@ -432,18 +432,18 @@ def find_source_intent(msinfo, cats=None):
         for source in fields_ms
     }
 
-
 def find_source_timerange(msfile):
     """
     Find time range for each source in measurement set.
+    Returns: dict {str: [float, float]}
     """
-    
     fieldnames = emutils.read_keyword(msfile, 'NAME', subtable='FIELD')
     source_timerange_mjd = {}
     fact = 60. * 60. * 24.
     for source in fieldnames:
         mjd_min, mjd_max = emutils.find_source_timerange(msfile, source)
-        source_timerange_mjd[source] = [float(mjd_min / fact), float(mjd_max / fact)]
+        # Ensure YAML compatibility: convert to str and float
+        source_timerange_mjd[str(source)] = [float(mjd_min / fact), float(mjd_max / fact)]
     return source_timerange_mjd
 
 
@@ -453,9 +453,9 @@ def get_project(msfile):
     """
     
     # Output example: 'CY0000'
-    project = emutils.read_keyword(msfile, 'PROJECT', subtable='OBSERVATION')
-    logger.debug(f'Read project from {msfile}: {project}')
-    return project
+    project = emutils.read_keyword(msfile, 'PROJECT', subtable='OBSERVATION')[0]
+    logger.info(f'Read project from {msfile}: {project}')
+    return str(project)
 
 
 def get_polarization(msfile):
@@ -470,22 +470,22 @@ def get_polarization(msfile):
     logger.debug(f'Polarization types for {msfile}: {polarization}')
     return polarization
 
-
 def get_directions(msfile):
     """
     Get source direction coordinates for all fields.
+    Returns a dict: {field_name: 'RA Dec'}
     """
-    
     directions = {}
     field_names = emutils.read_keyword(msfile, 'NAME', 'FIELD')
     phase_dir = emutils.read_keyword(msfile, 'PHASE_DIR', 'FIELD')
     for i, field in enumerate(field_names):
         ra = phase_dir[0][0][i] * u.rad
         dec = phase_dir[1][0][i] * u.rad
-        # TODO: Frame need to be read from Measurement Set
-        #directions[field] = SkyCoord(ra, dec, frame='icrs')
         coord = SkyCoord(ra, dec, frame='icrs')
-        directions[field] = coord.to_string('hmsdms', sep=':', pad=True, alwayssign=True)
+        ra_str = coord.ra.to_string(unit=u.hour, sep=':', pad=True, alwayssign=True, precision=4)
+        dec_str = coord.dec.to_string(unit=u.deg, sep=':', pad=True, alwayssign=True, precision=3)
+        # Convert field to plain Python str
+        directions[str(field)] = f"{ra_str} {dec_str}"
     return directions
 
 def get_directions_skycoord(msfile):
@@ -882,7 +882,8 @@ def import_eMERLIN_fitsIDI(eMCP):
     if is_mixed_mode:
         logger.info('Narrow (sp): {}'.format(spw_separation[1]))
     ext_ms = {False: '.ms', True: '.mms'}
-    msfile1 = msfile_name + '_transformed' + ext_ms[do_ms2mms]
+    msfile1 = msfile_name + ext_ms[do_ms2mms]
+    #msfile1 = msfile_name + '_transformed' + ext_ms[do_ms2mms]
     if timeaverage:
         logger.info('Data will be averaged to {}'.format(timebin))
     if chanaverage:
@@ -1390,14 +1391,16 @@ def search_observatory_flags(eMCP):
 def select_first_last_chan(msfile, spw_frac, nchan):
     first_spw = emutils.read_keyword(msfile, 'DATA_DESC_ID').min()
     last_spw = emutils.read_keyword(msfile, 'DATA_DESC_ID').max()
-    chan_fact = nchan - nchan / 512.
+
+    chan_fact = int(round(nchan - nchan / 512.0))
+    n_last = max(1, int(round(spw_frac * chan_fact)))
 
     start1 = int(round(0. * chan_fact))
     end1 = min(nchan - 1, int(round(spw_frac * chan_fact)))
     first_chan = f'{first_spw}:{start1}~{end1}'
 
-    start2 = int(round((1. - spw_frac) * chan_fact))
-    end2 = min(nchan - 1, int(round(1.0 * chan_fact)))
+    start2 = max(0, chan_fact - n_last)
+    end2 = min(nchan - 1, chan_fact - 1)
     last_chan = f'{last_spw}:{start2}~{end2}'
 
     return first_chan, last_chan
@@ -1429,7 +1432,7 @@ def flagdata1_apriori(eMCP):
         find_casa_problems()
     # Subband edges
     edge_frac = 4/512 # this could be moved to the default_parameters file
-    nedge = max([1, int(nchan * edge_frac)])
+    nedge = max(1, int(round(nchan * edge_frac)))
     channels_to_flag = f'*:0~{nedge - 1};{nchan - nedge}~{nchan - 1}'
     logger.info('MS has {} channels/spw'.format(nchan))
     logger.info('Flagging edge channels {0}'.format(channels_to_flag))
@@ -1748,9 +1751,9 @@ def find_refant(msfile, field):
     for i, ant_id in enumerate(np.unique(antenna_ids)):
         cond = antenna_ids == ant_id
         #t = times[cond]
-        f = flags[:, 0, 0][cond]
-        p = phases[:, 0, 0][cond]
-        snr = snrs[:, 0, 0][cond]
+        f = flags[0, 0, :][cond]
+        p = phases[0, 0, :][cond]
+        snr = snrs[0, 0, :][cond]
         frac = 1.0 * np.count_nonzero(~f) / len(f) * 100.
         snr_mean = np.nanmean(snr[~f])
         good_frac.append(frac)
@@ -4001,13 +4004,12 @@ def list_of_steps():
 
 
 def eMCP_info_start_steps():
-    default_value = [0, 0, '']
     all_steps = list_of_steps()[0]
 
     steps = {}
-    steps['start_pipeline'] = default_value
+    steps['start_pipeline'] = [0, 0, '']
     for s in all_steps:
-        steps[s] = int(default_value)
+        steps[s] = [0, 0, '']
     return steps
 
 
