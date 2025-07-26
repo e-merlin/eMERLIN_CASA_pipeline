@@ -10,201 +10,164 @@ weblog_dir = './weblog/'
 
 
 def plots_data(msinfo, wlog):
-    wlog.write('<div id="uncalibrated" class="subsection centered">\n')
+    wlog.write('<div id="uncalibrated" class="subsection">\n')
     wlog.write('  <h3 class="collapsible-header">Uncalibrated visibilities</h3>\n')
     wlog.write('  <div>\n')
     wlog.write('    <div class="table-responsive">\n')
-    wlog.write('      <table class="table table-sm table-bordered" style="width:80%; margin: 0 auto;">\n')
+    wlog.write('      <table class="table table-sm table-bordered" style="width:80%;">\n')
     wlog.write('      <tbody>\n')
-    
     for source in msinfo['sources']['mssources'].split(','):
         page_path = create_pnghtml_baselines(
             'plots_data', source,
             'Uncalibrated amplitude and phase against time and frequency.',
             msinfo, 'data')
-        wlog.write('        <tr>\n')
-        wlog.write('          <td><strong>{0}</strong></td>\n'.format(source))
-        wlog.write('          <td><a href=".{0}" target="_blank" class="btn btn-primary btn-sm">View Plots</a></td>\n'.format(page_path))
-        wlog.write('        </tr>\n')
-    
-    wlog.write('      </tbody>\n')
-    wlog.write('      </table>\n')
-    wlog.write('    </div>\n')
-    wlog.write('  </div>\n')
-    wlog.write('</div>\n')
+        wlog.write(f'        <tr><td><strong>{source}</strong></td>')
+        wlog.write(f'<td><a href=".{page_path}" target="_blank" class="btn btn-primary btn-sm">View Plots</a></td></tr>\n')
+    wlog.write('      </tbody></table></div></div></div>\n')
 
 
 def plots_corrected(msinfo, wlog):
-    wlog.write('<div id="calibrated" class="subsection centered">\n')
+    wlog.write('<div id="calibrated" class="subsection">\n')
     wlog.write('  <h3 class="collapsible-header">Calibrated visibilities</h3>\n')
     wlog.write('  <div>\n')
     wlog.write('    <div class="table-responsive">\n')
-    wlog.write('      <table class="table table-sm table-bordered" style="width:80%; margin: 0 auto;">\n')
+    wlog.write('      <table class="table table-sm table-bordered" style="width:80%;">\n')
     wlog.write('      <tbody>\n')
-    
     for source in msinfo['sources']['mssources'].split(','):
         page_path = create_pnghtml_baselines(
             'plots_corrected', source,
             'Calibrated amplitude and phase against time and frequency.',
             msinfo, 'corrected')
-        wlog.write('        <tr>\n')
-        wlog.write('          <td><strong>{0}</strong></td>\n'.format(source))
-        wlog.write('          <td><a href=".{0}" target="_blank" class="btn btn-primary btn-sm">View Plots</a></td>\n'.format(page_path))
-        wlog.write('        </tr>\n')
-    
-    wlog.write('      </tbody>\n')
-    wlog.write('      </table>\n')
-    wlog.write('    </div>\n')
-    wlog.write('  </div>\n')
-    wlog.write('</div>\n')
-
+        wlog.write(f'        <tr><td><strong>{source}</strong></td>')
+        wlog.write(f'<td><a href=".{page_path}" target="_blank" class="btn btn-primary btn-sm">View Plots</a></td></tr>\n')
+    wlog.write('      </tbody></table></div></div></div>\n')
 
 def plots_uvplt(msinfo, wlog):
-    wlog.write('<div id="uvplots" class="subsection centered">\n')
-    wlog.write('  <h3 class="collapsible-header">Calibrated UVplots</h3>\n')
-    wlog.write('  <div>\n')
-    all_plots = np.sort(glob.glob('./weblog/plots/plots_uvplt/*_uvplt_*png'))
-    
-    for p in all_plots:
+    all_uvplt = np.sort(glob.glob('./weblog/plots/plots_uvplt/*_uvplt_*.png'))
+    calsources = [x.strip() for x in msinfo['sources']['calsources'].split(',')]
+    msfilename = msinfo['msfilename']
+
+    for p in all_uvplt:
         source_name = os.path.splitext(p)[0].split('_')[-1]
-        wlog.write('    <div id="{0}-uvplot" class="subsection">\n'.format(source_name))
-        wlog.write('      <h4 class="collapsible-header">{0}</h4>\n'.format(source_name))
-        wlog.write('      <div>\n')
-        
-        wlog.write('<div class="row">\n')
-        # Amplitude plot
-        wlog.write('<div class="col-md-6 text-center">\n')
-        wlog.write('<a href=".{0}" target="_blank">\n'.format(p))
-        wlog.write('<img class="img-fluid" style="max-width:100%" src=".{0}" alt="Amplitude UVplot for {1}">\n'.format(p, source_name))
-        wlog.write('</a>\n')
+        wlog.write(f'<div id="uvplot-{source_name}" class="subsection">\n')
+        wlog.write(f'  <h3 class="collapsible-header">UV Plot: {source_name}</h3>\n')
+        wlog.write('  <div class="text-left">\n')
+        wlog.write(f'    <a href=".{p}" target="_blank">\n')
+        wlog.write(f'      <img class="img-fluid" style="max-width:100%" src=".{p}" alt="UVplot for {source_name}">\n')
+        wlog.write('    </a>\n')
+        wlog.write('  </div>\n')
+        # Model plot for calibration sources
+        if source_name in calsources:
+            model_pattern = f'./weblog/plots/plots_uvplt/{msfilename}_uvpltmodel_{source_name}.png'
+            if os.path.isfile(model_pattern):
+                wlog.write('  <div class="text-left mt-2">\n')
+                wlog.write(f'    <a href=".{model_pattern}" target="_blank">\n')
+                wlog.write(f'      <img class="img-fluid" style="max-width:100%" src=".{model_pattern}" alt="Model UVplot for {source_name}">\n')
+                wlog.write('    </a>\n')
+                wlog.write('  </div>\n')
         wlog.write('</div>\n')
-        
-        # Phase plot
-        wlog.write('<div class="col-md-6 text-center">\n')
-        wlog.write('<a href=".{0}" target="_blank">\n'.format(p.replace('_a_', '_p_')))
-        wlog.write('<img class="img-fluid" style="max-width:100%" src=".{0}" alt="Phase UVplot for {1}">\n'.format(p.replace('_a_', '_p_'), source_name))
-        wlog.write('</a>\n')
-        wlog.write('</div>\n')
-        wlog.write('</div>\n')
-        
-        # Model plots for calibration sources
-        if source_name in msinfo['sources']['calsources'].split(','):
-            p_model = './weblog/plots/plots_uvplt/{0}_uvpltmodel_a_{1}.png'.format(
-                msinfo['msfilename'], source_name)
-                
-            wlog.write('<div class="row mt-3">\n')
-            # Model amplitude plot
-            wlog.write('<div class="col-md-6 text-center">\n')
-            wlog.write('<a href=".{0}" target="_blank">\n'.format(p_model))
-            wlog.write('<img class="img-fluid" style="max-width:100%" src=".{0}" alt="Model Amplitude UVplot for {1}">\n'.format(p_model, source_name))
-            wlog.write('</a>\n')
-            wlog.write('</div>\n')
-            
-            # Model phase plot
-            wlog.write('<div class="col-md-6 text-center">\n')
-            wlog.write('<a href=".{0}" target="_blank">\n'.format(p_model.replace('_a_', '_p_')))
-            wlog.write('<img class="img-fluid" style="max-width:100%" src=".{0}" alt="Model Phase UVplot for {1}">\n'.format(p_model.replace('_a_', '_p_'), source_name))
-            wlog.write('</a>\n')
-            wlog.write('</div>\n')
-            wlog.write('</div>\n')
-        
-        wlog.write('      </div>\n')
-        wlog.write('    </div>\n')
-    
-    wlog.write('  </div>\n')
-    wlog.write('</div>\n')
+
 
 
 def weblog_plots(weblog, weblog_link, plots_link, msinfo):
-    
-    # Create the plots page
     wlog = open(weblog_dir + "plots.html", "w")
     weblog_header(wlog, 'Plots', msinfo['run'])
-    
-    # Add sticky navigation bar
-    wlog.write('<style>\n')
-    wlog.write('.sticky-nav {\n')
-    wlog.write('  position: sticky;\n')
-    wlog.write('  top: 0;\n')
-    wlog.write('  background-color: #f8f9fa;\n')
-    wlog.write('  border-bottom: 1px solid #ddd;\n')
-    wlog.write('  padding: 10px;\n')
-    wlog.write('  z-index: 1000;\n')
-    wlog.write('  text-align: center;\n')
-    wlog.write('  box-shadow: 0 2px 4px rgba(0,0,0,0.1);\n')
-    wlog.write('}\n')
-    wlog.write('.nav-link {\n')
-    wlog.write('  display: inline-block;\n')
-    wlog.write('  margin: 5px;\n')
-    wlog.write('  padding: 5px 10px;\n')
-    wlog.write('  background-color: #f1f1f1;\n')
-    wlog.write('  border-radius: 4px;\n')
-    wlog.write('  text-decoration: none;\n')
-    wlog.write('  color: #333;\n')
-    wlog.write('  font-size: 14px;\n')
-    wlog.write('}\n')
-    wlog.write('.nav-link:hover {\n')
-    wlog.write('  background-color: #e0e0e0;\n')
-    wlog.write('}\n')
-    wlog.write('</style>\n')
-    
-    wlog.write('<div class="sticky-nav">\n')
-    wlog.write('  <strong>Jump to: </strong>\n')
-    
-    # Add navigation links
-    plot_sections = []
-    
-    if (os.path.isdir('./weblog/plots/plots_data/')) and \
-       (os.listdir('./weblog/plots/plots_data/')):
-        plot_sections.append(('uncalibrated', 'Uncalibrated Visibilities'))
-        
-    if (os.path.isdir('./weblog/plots/plots_corrected/')) and \
-       (os.listdir('./weblog/plots/plots_corrected/')):
-        plot_sections.append(('calibrated', 'Calibrated Visibilities'))
-        
-    if (os.path.isdir('./weblog/plots/plots_uvplt/')) and \
-       (os.listdir('./weblog/plots/plots_uvplt/')):
-        plot_sections.append(('uvplots', 'UV Plots'))
-    
-    # Create navigation links
-    for section_id, section_name in plot_sections:
-        wlog.write('<a class="nav-link" href="#{0}">{1}</a>\n'.format(section_id, section_name))
-    
-    wlog.write('</div>\n')
+
+    # Unified layout
+    wlog.write('''
+    <style>
+    .plots-layout {
+      display: flex;
+      flex-direction: row;
+      max-width: 1200px;
+      margin: 0 auto;
+      min-height: 90vh;
+    }
+    .plots-main {
+      flex: 1 1 0;
+      padding: 28px 26px 28px 0;
+    }
+    .plots-jump-sidebar {
+      width: 220px;
+      position: sticky;
+      top: 35px;
+      height: fit-content;
+      align-self: flex-start;
+      background: #f8f9fa;
+      border-left: 1.5px solid #e3e3e3;
+      border-radius: 8px 0 0 8px;
+      padding: 18px 16px 16px 16px;
+      margin-left: 18px;
+      z-index: 10;
+    }
+    .plots-jump-sidebar h4 {
+      font-size: 1.06em;
+      margin: 0 0 14px 0;
+      color: #444;
+      font-weight: 600;
+      text-align: left;
+    }
+    .plots-jump-links {
+      display: flex;
+      flex-direction: column;
+      gap: 0.48em;
+    }
+    .plots-jump-link {
+      display: block;
+      padding: 7px 12px;
+      background: #f2f2f2;
+      color: #34618c;
+      border-left: 4px solid #e5e5e5;
+      border-radius: 4px;
+      text-decoration: none;
+      font-size: 1em;
+      transition: background .13s, color .13s, border .13s;
+      margin-left: 0;
+    }
+    .plots-jump-link:hover, .plots-jump-link.active {
+      background: #ddeefd;
+      color: #1279bc;
+      border-left: 4px solid #3498db;
+    }
+    </style>
+    ''')
+
+    wlog.write('<div class="plots-layout">\n')
+    wlog.write('<div class="plots-main">\n')
     
     # Display available plots
-    if (os.path.isdir('./weblog/plots/plots_data/')) and \
-       (os.listdir('./weblog/plots/plots_data/')):
+    if os.path.isdir('./weblog/plots/plots_data/') and os.listdir('./weblog/plots/plots_data/'):
         plots_data(msinfo, wlog)
-        
-    if (os.path.isdir('./weblog/plots/plots_corrected/')) and \
-       (os.listdir('./weblog/plots/plots_corrected/')):
+    if os.path.isdir('./weblog/plots/plots_corrected/') and os.listdir('./weblog/plots/plots_corrected/'):
         plots_corrected(msinfo, wlog)
-        
-    if (os.path.isdir('./weblog/plots/plots_uvplt/')) and \
-       (os.listdir('./weblog/plots/plots_uvplt/')):
+    if os.path.isdir('./weblog/plots/plots_uvplt/') and os.listdir('./weblog/plots/plots_uvplt/'):
         plots_uvplt(msinfo, wlog)
     
-    # Add floating back-to-top button
-    wlog.write('<style>\n')
-    wlog.write('.back-to-top {\n')
-    wlog.write('  position: fixed;\n')
-    wlog.write('  bottom: 20px;\n')
-    wlog.write('  right: 20px;\n')
-    wlog.write('  background-color: #007bff;\n')
-    wlog.write('  color: white;\n')
-    wlog.write('  padding: 10px 15px;\n')
-    wlog.write('  border-radius: 4px;\n')
-    wlog.write('  text-decoration: none;\n')
-    wlog.write('  box-shadow: 0 2px 5px rgba(0,0,0,0.2);\n')
-    wlog.write('}\n')
-    wlog.write('.back-to-top:hover {\n')
-    wlog.write('  background-color: #0056b3;\n')
-    wlog.write('  color: white;\n')
-    wlog.write('}\n')
-    wlog.write('</style>\n')
-    wlog.write('<a href="#top" class="back-to-top">↑ Top</a>\n')
+    wlog.write('</div>')  # close plots-main
     
+    # --- Sidebar navigation for jump-to-section (MUST be inside plots-layout) ---
+    plot_sections = []
+    if os.path.isdir('./weblog/plots/plots_data/') and os.listdir('./weblog/plots/plots_data/'):
+        plot_sections.append(('uncalibrated', 'Uncalibrated Visibilities'))
+    if os.path.isdir('./weblog/plots/plots_corrected/') and os.listdir('./weblog/plots/plots_corrected/'):
+        plot_sections.append(('calibrated', 'Calibrated Visibilities'))
+    if os.path.isdir('./weblog/plots/plots_uvplt/') and os.listdir('./weblog/plots/plots_uvplt/'):
+        all_uvplt = np.sort(glob.glob('./weblog/plots/plots_uvplt/*_uvplt_*.png'))
+        for p in all_uvplt:
+            source_name = os.path.splitext(p)[0].split('_')[-1]
+            plot_sections.append((f'uvplot-{source_name}', f'UV Plot: {source_name}'))
+    
+    wlog.write('<nav class="plots-jump-sidebar">\n')
+    wlog.write('<h4>Jump to section</h4>\n')
+    wlog.write('<div class="plots-jump-links">\n')
+    for section_id, section_name in plot_sections:
+        wlog.write(f'<a class="plots-jump-link" href="#{section_id}">{section_name}</a>\n')
+    wlog.write('</div>\n')
+    wlog.write('</nav>\n')
+    
+    wlog.write('</div>')  # close plots-layout
+
     # Close the page
     weblog_foot(wlog)
     wlog.close()
+

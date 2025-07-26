@@ -1025,7 +1025,6 @@ def plot_bptable(data, caltable, antenna, ax, calmode='p', field_id=None):
     all_freqs = emutils.read_keyword(caltable,
                                      'CHAN_FREQ',
                                      subtable='SPECTRAL_WINDOW').T
-    print('all_freqs', all_freqs.shape)
     for spw in spws:
         cond4 = data['SPECTRAL_WINDOW_ID'] == spw
         cond = cond1 * cond2 * cond4
@@ -1193,12 +1192,13 @@ def fits2png(fits_name,
         f.beam.set_alpha(0.5)
     if contour:
         levels = 3. * rms * 1000. * np.sqrt(3)**np.arange(1, 25, 1)
-        logger.debug(f"levels: {levels*1000}")
+        logger.info(f"levels: {levels*1000}")
         f.show_contour(levels=levels, alpha=0.4)
     else:
-        levels = 3. * rms * 1000. * np.sqrt(3)**np.arange(1, 3, 1)
-        logger.debug(f"levels: {levels*1000}")
-        f.show_contour(levels=levels, alpha=0.4)
+        pass
+        #levels = 3. * rms * 1000. * np.sqrt(3)**np.arange(1, 3, 1)
+        #logger.debug(f"levels: {levels*1000}")
+        #f.show_contour(levels=levels, alpha=0.4)
     output_name = fits_name.replace('.fits', ext + '.png')
     #    logger.info(f'Converting to png fits file {fits_name}')
     plt.savefig(output_name, dpi=200, bbox_inches='tight')
