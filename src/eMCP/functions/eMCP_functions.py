@@ -706,7 +706,7 @@ def get_unique_field(caltable):
     field_id = np.unique(emutils.read_keyword(caltable, 'FIELD_ID'))[0]
     unique_field = emutils.read_keyword(caltable, 'NAME',
                                         subtable='FIELD')[field_id]
-    return unique_field
+    return str(unique_field)
 
 
 def backup_table(caltable):
@@ -1163,9 +1163,34 @@ def run_aoflagger_fields(eMCP):
     return eMCP
 
 
-def check_command(command):
-    """Check if a command exists in the system path."""
-    return shutil.which(command) is not None
+def check_command(command, verbose=False):
+    """Check if a command is available by trying to run it with --help."""
+    try:
+        # Add --help to the command to avoid actually running it
+        cmd_parts = shlex.split(command) + ['--help']
+
+        result = subprocess.run(cmd_parts,
+                              capture_output=True,
+                              timeout=10)
+
+        if verbose:
+            print(f"Command: {' '.join(cmd_parts)}")
+            print(f"Return code: {result.returncode}")
+            print(f"stdout: {result.stdout.decode()[:200]}...")
+            print(f"stderr: {result.stderr.decode()[:200]}...")
+
+        # Most commands return 0 or 1 for --help and are considered available
+        return result.returncode in [0, 1]
+
+    except Exception as e:
+        if verbose:
+            print(f"Exception: {e}")
+        return False
+
+
+#def check_command(command):
+#    """Check if a command exists in the system path."""
+#    return shutil.which(command) is not None
 
 
 def check_aoflagger_version():
@@ -3560,7 +3585,7 @@ def dfluxpy(freq, baseline):
     return vla_flux, e_merlin_flux, resolved_percent, caution_res_pc, this_bl
 
 
-def write_wsclean_command(msfile, config_wsclean):
+def write_wsclean_command(msfile, config_wsclean, wsclean_exec='wsclean'):
     logger.debug('config_wsclean')
     # Duplicate size if needed:
     if type(config_wsclean['-size']) == int:
@@ -3579,7 +3604,7 @@ def write_wsclean_command(msfile, config_wsclean):
     logger.debug(config_wsclean)
     wsclean_params = ' '.join(
         ['{0} {1}'.format(k, v) for (k, v) in config_wsclean.items()])
-    wsclean_command = '{0} {1} {2}'.format('wsclean', wsclean_params, msfile)
+    wsclean_command = '{0} {1} {2}'.format(wsclean_exec, wsclean_params, msfile)
     return wsclean_command
 
 
@@ -3655,10 +3680,7 @@ def single_tclean(eMCP, s, num=0):
 
     fitsimagename = imagename+'.image'+ext+'.fits'
     fitsresidualname = imagename+'.residual'+ext+'.fits'
-    print(fitsimagename)
-    print(fitsresidualname)
-    print(imagename+'.image'+ext)
-    print(imagename+'.residual'+ext)
+    logger.info('converting images to fits format')
     exportfits(imagename=imagename+'.image'+ext, fitsimage=fitsimagename, overwrite=True)
     exportfits(imagename=imagename+'.residual'+ext, fitsimage=fitsresidualname, overwrite=True)
     
@@ -3686,7 +3708,10 @@ def single_wsclean(eMCP, s, field_id):
     msinfo = eMCP['msinfo']
     msfile = msinfo['msfile']
     # Check if wsclean is available:
-    wsclean_available = check_command('wsclean')
+    wsclean_exec = eMCP['defaults']['first_images']['wsclean_exec']
+    logger.info('wsclean executed as:')
+    logger.info(wsclean_exec)
+    wsclean_available = check_command(wsclean_exec)
     if not wsclean_available:
         logger.critical('wsclean not available.')
         logger.warning('Exiting pipeline.')
@@ -3711,11 +3736,11 @@ def single_wsclean(eMCP, s, field_id):
         f"imsize = {config_wsclean['-size']}, scale = {config_wsclean['-scale']}, niter = {config_wsclean['-niter']}"
     )
     logger.info(f"weight = {config_wsclean['-weight']}")
-    wsclean_command = write_wsclean_command(msfile, config_wsclean)
+    wsclean_command = write_wsclean_command(msfile, config_wsclean, wsclean_exec)
     logger.info(f'Full wsclean command:\n{wsclean_command}')
     #logger.info(f'{wsclean_command.split()}')
-    with open('stdouterr.log', 'a') as f:
-        subprocess.run(shlex.split(wsclean_command), stdout=f, stderr=subprocess.STDOUT, check=True, shell=True)
+    with open(f"wsclean_{s}.log", 'w') as f:
+        subprocess.run(shlex.split(wsclean_command), stdout=f, stderr=subprocess.STDOUT, check=True)
         f.flush()
     fitsfile = imagename + '-image.fits'
     eMCP = process_fits(fitsfile, eMCP, s)
@@ -3724,13 +3749,13 @@ def single_wsclean(eMCP, s, field_id):
 def process_fits(fitsfile, eMCP, s):
     # Image statistics
     imstats_img = get_image_stats(fitsfile)
-    imstats_res = get_image_stats(fitsfile.replace('-image', '-residual'))
+    imstats_res = get_image_stats(fitsfile.replace('image.fits', 'residual.fits'))
     scaling = np.min(
         [0, -np.log(1.0 * imstats_img['max'] / imstats_res['rms']) + 4])
-    eMCP['img_stats'][s] = [imstats_img['max'], imstats_res['rms'], scaling]
-    logger.info(imstats_img['max'])
-    logger.info(imstats_res['rms'])
-    logger.info(scaling)
+    eMCP['img_stats'][s] = [float(imstats_img['max']), float(imstats_res['rms']), float(scaling)]
+    logger.debug('imstats_img max: ',imstats_img['max'])
+    logger.debug('imstats_res rms: ',imstats_res['rms'])
+    logger.debug('scaling: ', scaling)
     # Convert to png
     emplt.fits2png(fitsfile,
                    rms=imstats_res['rms'],
@@ -3739,12 +3764,13 @@ def process_fits(fitsfile, eMCP, s):
     emplt.fits2png(fitsfile,
                    rms=imstats_res['rms'],
                    scaling=scaling,
-                   zoom=True)
-    emplt.fits2png(fitsfile.replace('.image', '.residual'),
+                   zoom=True,
+                   contour=False)
+    emplt.fits2png(fitsfile.replace('image.fits', 'residual.fits'),
                    scaling=scaling,
                    rms=imstats_res['rms'],
                    contour=False)
-    emplt.fits2png(fitsfile.replace('.image', '.residual'),
+    emplt.fits2png(fitsfile.replace('image.fits', 'residual.fits'),
                    scaling=scaling,
                    rms=imstats_res['rms'],
                    contour=False,
@@ -3776,10 +3802,14 @@ def run_first_images(eMCP):
     field_names = np.array(
         emutils.read_keyword(msinfo['msfile'], 'NAME', subtable='FIELD'))
     for s in msinfo['sources']['targets_phscals'].split(','):
+        s = str(s)
         field_id = np.argwhere(field_names == s)[0][0]
+        field_id = int(field_id)
         if eMCP['defaults']['first_images']['cleaner'] == 'tclean':
+            logger.info('Using tclean')
             eMCP = single_tclean(eMCP, s)
         elif eMCP['defaults']['first_images']['cleaner'] == 'wsclean':
+            logger.info('Using wsclean')
             eMCP = single_wsclean(eMCP, s, field_id)
         else:
             logger.critical('Unknown cleaner: {}'

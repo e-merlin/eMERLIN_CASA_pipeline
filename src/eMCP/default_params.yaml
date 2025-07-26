@@ -326,6 +326,26 @@ flag_target:
     display: ""
     flagbackup: false
 first_images:
+  cleaner: wsclean
+  tclean:
+    imsize: 1024
+    niter: 100
+    gain: 0.1
+    uvtaper: []
+    uvrange: ''
+    restoringbeam: []
+    deconvolver: hogbom
+    nterms: 1
+    scales: []
+    weighting: briggs
+    robust: 0.5
+    nsigma: 5.0
+    sidelobethreshold: 1.0
+    noisethreshold: 8.0
+    lownoisethreshold: 1.5
+    minbeamfrac: 0.2
+    growiterations: 25
+  wsclean_exec: singularity exec --bind /mnt:/mnt /mnt/software/containers/wsclean_3.4_idg_dysco_everybeam.sif wsclean
   wsclean:
     "-size": 1024
     "-scale": "auto"

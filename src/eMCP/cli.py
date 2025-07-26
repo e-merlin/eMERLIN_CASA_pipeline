@@ -12,6 +12,7 @@ import importlib.resources
 from datetime import datetime
 import numpy as np
 import yaml
+import glob
 
 from eMCP.functions import eMCP_functions as em
 from eMCP.utils import eMCP_utils as emutils
@@ -242,11 +243,13 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
         eMCP = em.run_first_images(eMCP)
         logger.info(f"FINISHED STEP: first_images")
 
-    try:
-        os.system('mv casa-*.log  ./logs')
-        print('Moved casa-*.log  to ./logs')
-    except:
-        pass
+    logfiles = glob.glob('casa-*.log') + glob.glob('wsclean_*.log')
+    for f in logfiles:
+        try:
+            shutil.move(f, './logs')
+            logger.info(f"Moved {f} to ./logs")
+        except Exception as e:
+            logger.warning(f"Could not move {f}: {e}")
 
     logger.info(f"Pipeline execution finished")
 
