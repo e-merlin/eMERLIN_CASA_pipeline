@@ -68,10 +68,12 @@ ENV PATH="/opt/conda/bin:${PATH}"
 
 # Install specific Boost version for aoflagger compatibility
 WORKDIR /software
-RUN wget -nv -O - https://boostorg.jfrog.io/artifactory/main/release/1.78.0/source/boost_1_78_0.tar.bz2 | tar xj && \
+RUN wget -nv https://sourceforge.net/projects/boost/files/boost/1.78.0/boost_1_78_0.tar.bz2/download -O boost_1_78_0.tar.bz2 && \
+    tar xjf boost_1_78_0.tar.bz2 && \
     cd boost_1_78_0/ && \
     ./bootstrap.sh --with-toolset=clang && \
-    ./b2 toolset=clang cxxflags="-stdlib=libc++" linkflags="-stdlib=libc++" install
+    ./b2 toolset=clang cxxflags="-stdlib=libc++" linkflags="-stdlib=libc++" install && \
+    cd .. && rm -rf boost_1_78_0 boost_1_78_0.tar.bz2
 
 # Install HDF5 with clang for aoflagger compatibility
 RUN wget -nv -O - https://github.com/HDFGroup/hdf5/archive/refs/tags/hdf5-1_12_1.tar.gz | tar xz && \

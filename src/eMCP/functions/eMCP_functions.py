@@ -402,7 +402,7 @@ def get_obsfreq(msfile):
     logger.debug(
         f'freq_ini, freq_end, chan_res, nchan: {freq_ini}, {freq_end}, {chan_res}, {nchan}'
     )
-    return freq_ini, freq_end, chan_res.tolist(), nchan
+    return freq_ini, freq_end, chan_res, nchan
 
 
 def find_mssources(msfile):

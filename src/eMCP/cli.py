@@ -20,7 +20,7 @@ from eMCP.plots import eMCP_plots as emplt
 from eMCP.utils.weblog_config import get_weblog_function
 from ._version import __version__
 
-line00 = '=' * 25
+line00 = '=' * 35
 
 # Initialize logger
 logger = emutils.get_logger()
