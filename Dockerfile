@@ -41,6 +41,7 @@ RUN apt-get update && apt-get install -y \
     libgtkmm-3.0-dev \
     liblua5.3-dev \
     libopenmpi-dev \
+    libxml2-dev \  
  && rm -rf /var/lib/apt/lists/*
 
 # Install Python 3.10 and emcp
