@@ -65,21 +65,25 @@ RUN git clone https://git.astron.nl/RD/idg.git && \
     make install -j$(nproc)
 
 # Build and install aoflagger
+RUN apt-get update && apt-get install -y \
+    libboost-python1.74-dev \
+    libboost-numpy1.74-dev \
+    python3.10-numpy && \
+    rm -rf /var/lib/apt/lists/*
+
 WORKDIR /external
 RUN git clone https://git.code.sf.net/p/aoflagger/code aoflagger-src
-
 RUN mkdir /external/build && \
     cd /external/build && \
-    cmake ../aoflagger-src && \
+    cmake ../aoflagger-src -DPYTHON_EXECUTABLE=/usr/bin/python3.10 && \
     make -j$(nproc) && \
     make install && \
     cd /external/build/python && \
-    echo "import aoflagger" | python3
+    echo "import aoflagger" | python3.10
 
 # Build and install wsclean
 WORKDIR /external
 RUN git clone https://gitlab.com/aroffringa/wsclean.git wsclean-src
-
 RUN mkdir /external/build-wsclean && \
     cd /external/build-wsclean && \
     cmake ../wsclean-src && \
@@ -89,6 +93,3 @@ RUN mkdir /external/build-wsclean && \
 
 # Set working directory for user
 WORKDIR /data
-
-# Default command
-CMD ["/bin/bash"]
