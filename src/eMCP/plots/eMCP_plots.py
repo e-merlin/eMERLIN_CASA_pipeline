@@ -450,9 +450,9 @@ def make_uvcov(msfile, msinfo):
     emutils.makedir(plots_obs_dir)
     # CASA 5.4 has a bug, it selects the uv limits of the first spw
     # I create this manual limit as a compromise
-    max_freq = emutils.read_keyword(msfile,
+    max_freq = float(emutils.read_keyword(msfile,
                                     'CHAN_FREQ',
-                                    subtable='SPECTRAL_WINDOW').max()
+                                    subtable='SPECTRAL_WINDOW').max())
     #'#    msmd.open(msfile)
     c = light_speed.value
     #'#    max_freq = np.max(np.array([msmd.chanfreqs(spw) for spw in
@@ -586,7 +586,7 @@ def plot_flagstatistics(flag_stats, msinfo, step):
     for scan in np.unique(scan_number):
         scan_fieldID_dict[str(scan)] = np.unique(
             field_id[np.where(scan_number == scan)[0]])[0]
-    vis_fields = emutils.read_keyword(msfile, 'NAME', 'FIELD')
+    vis_fields = emutils.read_keyword(msfile, 'NAME', 'FIELD').tolist()
 
     # Compute % statistics
     i_scan, f_scan = count_flags(flag_stats, 'scan')

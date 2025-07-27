@@ -274,8 +274,8 @@ def update_mixed_mode(eMCP):
 def check_band(eMCP, msfile):
     # Output example: 'C'
     # Take first frequency in the MS
-    freq = emutils.read_keyword(
-        msfile, 'CHAN_FREQ', subtable='SPECTRAL_WINDOW').mean() / 1e9
+    freq = float(emutils.read_keyword(
+        msfile, 'CHAN_FREQ', subtable='SPECTRAL_WINDOW').mean()) / 1e9
     band = ''
     if 1.2 < freq < 1.7:
         band = 'L'
@@ -291,7 +291,7 @@ def check_band(eMCP, msfile):
 
 
 def get_baselines(msfile):
-    antennas = emutils.read_keyword(msfile, 'NAME', subtable='ANTENNA')
+    antennas = emutils.read_keyword(msfile, 'NAME', subtable='ANTENNA').tolist()
     baselines = [
         f'{pair[0]}-{pair[1]}' for pair in itertools.combinations(antennas, 2)
     ]
@@ -359,7 +359,7 @@ def get_antennas(msfile):
     
     # Output example: ['Mk2', 'Pi', 'Da', 'Kn', 'De', 'Cm']
     # Antenna list
-    antennas = emutils.read_keyword(msfile, 'NAME', subtable='ANTENNA')
+    antennas = emutils.read_keyword(msfile, 'NAME', subtable='ANTENNA').tolist()
     nice_order = ['Lo', 'Mk2', 'Pi', 'Da', 'Kn', 'De', 'Cm']
     antennas_sorted = [a for a in nice_order if a in antennas]
     external = [a for a in antennas if a not in antennas_sorted]
@@ -390,15 +390,15 @@ def get_obsfreq(msfile):
     # Returns freq of first channel, end chan, channel resolution
     # and number of channels (first spw) in GHz
     # Output example: (4.816125, 5.327875, 0.00025, 512)
-    freq_ini = emutils.read_keyword(
-        msfile, 'CHAN_FREQ', subtable='SPECTRAL_WINDOW').min() / 1e9
-    freq_end = emutils.read_keyword(
-        msfile, 'CHAN_FREQ', subtable='SPECTRAL_WINDOW').max() / 1e9
-    chan_res = emutils.read_keyword(
-        msfile, 'RESOLUTION', subtable='SPECTRAL_WINDOW').mean() / 1e9
+    freq_ini = float(emutils.read_keyword(
+        msfile, 'CHAN_FREQ', subtable='SPECTRAL_WINDOW').min()) / 1e9
+    freq_end = float(emutils.read_keyword(
+        msfile, 'CHAN_FREQ', subtable='SPECTRAL_WINDOW').max()) / 1e9
+    chan_res = float(emutils.read_keyword(
+        msfile, 'RESOLUTION', subtable='SPECTRAL_WINDOW').mean()) / 1e9
     nchan = emutils.read_keyword(msfile,
                                  'CHAN_FREQ',
-                                 subtable='SPECTRAL_WINDOW').shape[1]
+                                 subtable='SPECTRAL_WINDOW').shape[0]
     logger.debug(
         f'freq_ini, freq_end, chan_res, nchan: {freq_ini}, {freq_end}, {chan_res}, {nchan}'
     )
@@ -411,7 +411,7 @@ def find_mssources(msfile):
     """
     
     # Output example: '1107-1226,1109-1235,1118-1232,1331+305,1407+284'
-    fieldnames = emutils.read_keyword(msfile, 'NAME', subtable='FIELD')
+    fieldnames = emutils.read_keyword(msfile, 'NAME', subtable='FIELD').tolist()
     mssources = ','.join(np.sort(fieldnames))
     logger.debug('Sources in MS {0}: {1}'.format(msfile, mssources))
     return mssources
@@ -437,7 +437,7 @@ def find_source_timerange(msfile):
     Find time range for each source in measurement set.
     Returns: dict {str: [float, float]}
     """
-    fieldnames = emutils.read_keyword(msfile, 'NAME', subtable='FIELD')
+    fieldnames = emutils.read_keyword(msfile, 'NAME', subtable='FIELD').tolist()
     source_timerange_mjd = {}
     fact = 60. * 60. * 24.
     for source in fieldnames:
@@ -453,9 +453,9 @@ def get_project(msfile):
     """
     
     # Output example: 'CY0000'
-    project = emutils.read_keyword(msfile, 'PROJECT', subtable='OBSERVATION')[0]
+    project = str(emutils.read_keyword(msfile, 'PROJECT', subtable='OBSERVATION')[0])
     logger.info(f'Read project from {msfile}: {project}')
-    return str(project)
+    return project
 
 
 def get_polarization(msfile):
@@ -476,8 +476,8 @@ def get_directions(msfile):
     Returns a dict: {field_name: 'RA Dec'}
     """
     directions = {}
-    field_names = emutils.read_keyword(msfile, 'NAME', 'FIELD')
-    phase_dir = emutils.read_keyword(msfile, 'PHASE_DIR', 'FIELD')
+    field_names = emutils.read_keyword(msfile, 'NAME', 'FIELD').tolist()
+    phase_dir = emutils.read_keyword(msfile, 'PHASE_DIR', 'FIELD').tolist()
     for i, field in enumerate(field_names):
         ra = phase_dir[0][0][i] * u.rad
         dec = phase_dir[1][0][i] * u.rad
@@ -494,8 +494,8 @@ def get_directions_skycoord(msfile):
     """
     
     directions = {}
-    field_names = emutils.read_keyword(msfile, 'NAME', 'FIELD')
-    phase_dir = emutils.read_keyword(msfile, 'PHASE_DIR', 'FIELD')
+    field_names = emutils.read_keyword(msfile, 'NAME', 'FIELD').tolist()
+    phase_dir = emutils.read_keyword(msfile, 'PHASE_DIR', 'FIELD').tolist()
     for i, field in enumerate(field_names):
         ra = phase_dir[0][0][i] * u.rad
         dec = phase_dir[1][0][i] * u.rad
@@ -510,7 +510,7 @@ def get_distances(msfile, directions=''):
     
     #if directions == '':
     directions = get_directions_skycoord(msfile)
-    field_names = emutils.read_keyword(msfile, 'NAME', 'FIELD')
+    field_names = emutils.read_keyword(msfile, 'NAME', 'FIELD').tolist()
     separations = {}
     # Write all separations in a txt file
     with open(os.path.join(info_dir, 'source_separations.txt'),
@@ -705,7 +705,7 @@ def get_unique_field(caltable):
     # function will find which was actually used.
     field_id = np.unique(emutils.read_keyword(caltable, 'FIELD_ID'))[0]
     unique_field = emutils.read_keyword(caltable, 'NAME',
-                                        subtable='FIELD')[field_id]
+                                        subtable='FIELD').tolist()[field_id]
     return str(unique_field)
 
 
@@ -722,7 +722,7 @@ def backup_table(caltable):
 def remove_missing_scans(caltable, scans2flag):
     # Backup original table
     backup_table(caltable)
-    antenna_names = emutils.read_keyword(caltable, 'NAME', subtable='ANTENNA')
+    antenna_names = emutils.read_keyword(caltable, 'NAME', subtable='ANTENNA').tolist()
 
     if 'Lo' in antenna_names:
         anten_Lo = np.argwhere(np.array(antenna_names) == 'Lo')[0][0]
@@ -747,7 +747,7 @@ def remove_missing_scans(caltable, scans2flag):
 
 
 def run_listobs(msfile):
-    outfile = os.path.join(info_dir, msfile.rstrip('/'), '.listobs.txt')
+    outfile = os.path.join(info_dir, os.path.basename(msfile.rstrip('/')) + '.listobs.txt')
     listobs(vis=msfile, listfile=outfile, overwrite=True)
     find_casa_problems()
     logger.info('Listobs file in: {0}'.format(outfile))
@@ -986,6 +986,7 @@ def import_eMERLIN_fitsIDI(eMCP):
 #                'Problem generating phase fixvis ms. Stopping pipeline')
 #            exit_pipeline(eMCP)
 #    logger.info('Finished fixvis')
+    run_listobs(msfile)
     msg = ''
     logger.info('End run_importfits')
     eMCP, msinfo, msfile = get_msinfo(eMCP, msfile)
@@ -1094,7 +1095,7 @@ def run_aoflagger_fields(eMCP):
         logger.critical('aoflagger version <2.9 does not work correctly.')
         logger.warning('Exiting pipeline.')
         exit_pipeline(eMCP)
-    vis_fields = emutils.read_keyword(msfile, 'NAME', 'FIELD')
+    vis_fields = emutils.read_keyword(msfile, 'NAME', 'FIELD').tolist()
 
     fields_num = {f: i for i, f in enumerate(vis_fields)}
     if fields == 'all':
@@ -1414,8 +1415,8 @@ def search_observatory_flags(eMCP):
 
 
 def select_first_last_chan(msfile, spw_frac, nchan):
-    first_spw = emutils.read_keyword(msfile, 'DATA_DESC_ID').min()
-    last_spw = emutils.read_keyword(msfile, 'DATA_DESC_ID').max()
+    first_spw = int(emutils.read_keyword(msfile, 'DATA_DESC_ID').min())
+    last_spw = int(emutils.read_keyword(msfile, 'DATA_DESC_ID').max())
 
     chan_fact = int(round(nchan - nchan / 512.0))
     n_last = max(1, int(round(spw_frac * chan_fact)))
@@ -1443,7 +1444,7 @@ def flagdata1_apriori(eMCP):
     # Find number of channels in MS:
     nchan = emutils.read_keyword(msfile,
                                  'CHAN_FREQ',
-                                 subtable='SPECTRAL_WINDOW').shape[1]
+                                 subtable='SPECTRAL_WINDOW').shape[0]
     msg = ''
     # Remove pure zeros
     logger.info('Flagging zeros')
@@ -1764,7 +1765,7 @@ def find_refant(msfile, field):
             calmode='p')
     find_casa_problems()
     # Read solutions (phases):
-    antenna_names = emutils.read_keyword(tablename, 'NAME', subtable='ANTENNA')
+    antenna_names = emutils.read_keyword(tablename, 'NAME', subtable='ANTENNA').tolist()
     antenna_ids = emutils.read_keyword(tablename, 'ANTENNA1')
     flags = emutils.read_keyword(tablename, 'FLAG')
     phases = np.angle(emutils.read_keyword(tablename, 'CPARAM'))
