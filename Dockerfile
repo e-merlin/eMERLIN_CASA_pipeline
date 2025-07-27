@@ -43,8 +43,17 @@ RUN apt-get update && apt-get install -y \
     libopenmpi-dev \
  && rm -rf /var/lib/apt/lists/*
 
-# Install emcp directly with pip (simpler than conda environment)
-RUN pip3 install git+https://github.com/e-merlin/eMERLIN_CASA_pipeline.git@casa6
+# Install Python 3.10 and emcp
+RUN apt-get update && apt-get install -y software-properties-common && \
+    add-apt-repository ppa:deadsnakes/ppa && \
+    apt-get update && apt-get install -y python3.10 python3.10-dev python3.10-distutils && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install pip for Python 3.10 and then emcp
+RUN wget https://bootstrap.pypa.io/get-pip.py && \
+    python3.10 get-pip.py && \
+    rm get-pip.py && \
+    python3.10 -m pip install git+https://github.com/e-merlin/eMERLIN_CASA_pipeline.git@casa6
 
 # Build and install IDG (dependency for wsclean)
 WORKDIR /external
@@ -54,25 +63,25 @@ RUN git clone https://git.astron.nl/RD/idg.git && \
     cmake ../ && \
     make install -j$(nproc)
 
-# Build and install aoflagger (following official Dockerfile)
+# Build and install aoflagger
 WORKDIR /external
-RUN git clone https://git.code.sf.net/p/aoflagger/code aoflagger
-WORKDIR /external/aoflagger
-RUN mkdir /build-aoflagger && \
-    cd /build-aoflagger && \
-    cmake ../aoflagger && \
+RUN git clone https://git.code.sf.net/p/aoflagger/code aoflagger-src
+WORKDIR /external
+RUN mkdir /build && \
+    cd /build && \
+    cmake ../aoflagger-src && \
     make -j$(nproc) && \
     make install && \
-    cd /build-aoflagger/python && \
+    cd /build/python && \
     echo "import aoflagger" | python3
 
-# Build and install wsclean (following official Dockerfile)
+# Build and install wsclean
 WORKDIR /external
-RUN git clone https://gitlab.com/aroffringa/wsclean.git
-WORKDIR /external/wsclean
+RUN git clone https://gitlab.com/aroffringa/wsclean.git wsclean-src
+WORKDIR /external
 RUN mkdir /build-wsclean && \
     cd /build-wsclean && \
-    cmake ../wsclean && \
+    cmake ../wsclean-src && \
     make -j$(nproc) && \
     make install && \
     wsclean --version
