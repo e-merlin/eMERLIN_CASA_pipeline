@@ -66,21 +66,21 @@ RUN git clone https://git.astron.nl/RD/idg.git && \
 # Build and install aoflagger
 WORKDIR /external
 RUN git clone https://git.code.sf.net/p/aoflagger/code aoflagger-src
-WORKDIR /external
-RUN mkdir /build && \
-    cd /build && \
+
+RUN mkdir /external/build && \
+    cd /external/build && \
     cmake ../aoflagger-src && \
     make -j$(nproc) && \
     make install && \
-    cd /build/python && \
+    cd /external/build/python && \
     echo "import aoflagger" | python3
 
 # Build and install wsclean
 WORKDIR /external
 RUN git clone https://gitlab.com/aroffringa/wsclean.git wsclean-src
-WORKDIR /external
-RUN mkdir /build-wsclean && \
-    cd /build-wsclean && \
+
+RUN mkdir /external/build-wsclean && \
+    cd /external/build-wsclean && \
     cmake ../wsclean-src && \
     make -j$(nproc) && \
     make install && \
