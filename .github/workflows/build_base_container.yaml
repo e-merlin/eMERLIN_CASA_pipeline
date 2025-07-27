@@ -4,13 +4,13 @@ on:
   push:
     branches:
       - casa6
-    paths:
-      - Dockerfile
+#    paths:
+#      - Dockerfile
   pull_request:
     branches:
-      - casa6  # Changed from master to casa6 to match your branch
-    paths:
-      - Dockerfile
+      - casa6
+#    paths:
+#      - Dockerfile
 
 env:
   REGISTRY: ghcr.io
