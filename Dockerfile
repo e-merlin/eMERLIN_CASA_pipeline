@@ -41,7 +41,7 @@ RUN apt-get update && apt-get install -y \
     libgtkmm-3.0-dev \
     liblua5.3-dev \
     libopenmpi-dev \
-    libxml2-dev \  
+    libxml2-dev \
  && rm -rf /var/lib/apt/lists/*
 
 # Install Python 3.10 and emcp
@@ -56,36 +56,38 @@ RUN wget https://bootstrap.pypa.io/get-pip.py && \
     rm get-pip.py && \
     python3.10 -m pip install git+https://github.com/e-merlin/eMERLIN_CASA_pipeline.git@casa6
 
-# Build and install IDG (dependency for wsclean)
+# Create external directory for builds
+RUN mkdir -p /external
 WORKDIR /external
+
+# Build and install IDG (dependency for wsclean)
 RUN git clone https://git.astron.nl/RD/idg.git && \
-    mkdir /external/idg/build && \
+    mkdir -p /external/idg/build && \
     cd /external/idg/build && \
     cmake ../ && \
     make install -j$(nproc)
 
-# Build and install aoflagger
+# Install additional dependencies for aoflagger
 RUN apt-get update && apt-get install -y \
     libboost-python1.74-dev \
     libboost-numpy1.74-dev \
     python3.10-numpy && \
     rm -rf /var/lib/apt/lists/*
 
-WORKDIR /external
-RUN git clone https://git.code.sf.net/p/aoflagger/code aoflagger-src
-RUN mkdir /external/build && \
-    cd /external/build && \
+# Build and install aoflagger
+RUN git clone https://git.code.sf.net/p/aoflagger/code aoflagger-src && \
+    mkdir -p /external/aoflagger-build && \
+    cd /external/aoflagger-build && \
     cmake ../aoflagger-src -DPYTHON_EXECUTABLE=/usr/bin/python3.10 && \
     make -j$(nproc) && \
     make install && \
-    cd /external/build/python && \
+    ldconfig && \
     echo "import aoflagger" | python3.10
 
-# Build and install wsclean
-WORKDIR /external
-RUN git clone https://gitlab.com/aroffringa/wsclean.git wsclean-src
-RUN mkdir /external/build-wsclean && \
-    cd /external/build-wsclean && \
+# Build and install wsclean  
+RUN git clone https://gitlab.com/aroffringa/wsclean.git wsclean-src && \
+    mkdir -p /external/wsclean-build && \
+    cd /external/wsclean-build && \
     cmake ../wsclean-src && \
     make -j$(nproc) && \
     make install && \
@@ -93,3 +95,6 @@ RUN mkdir /external/build-wsclean && \
 
 # Set working directory for user
 WORKDIR /data
+
+# Default command
+CMD ["/bin/bash"]
