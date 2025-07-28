@@ -14,11 +14,14 @@ RUN apt-get update && \
         libqt5widgets5 \
         xvfb && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/* && \
-    pip3 install --upgrade pip && \
-    pip3 install git+https://github.com/e-merlin/eMERLIN_CASA_pipeline.git@casa6 && \
-    mkdir -p /root/.casa/data && \
-    emcp -l
+    rm -rf /var/lib/apt/lists/*
+
+
+RUN pip3 install --upgrade pip
+RUN pip3 install git+https://github.com/e-merlin/eMERLIN_CASA_pipeline.git@casa6
+RUN mkdir -p /root/.casa/data
+
+RUN emcp -l
 
 # Extract plotms AppImage and modify the calls  
 RUN PLOTMS_DIR=$(find /usr/local -name "casaplotms-x86_64.AppImage" -exec dirname {} \; | head -1) && \
