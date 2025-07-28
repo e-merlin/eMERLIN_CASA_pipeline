@@ -245,13 +245,14 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
 
     logfiles = glob.glob('casa-*.log') + glob.glob('wsclean_*.log')
     for f in logfiles:
+        dest = os.path.join('./logs', os.path.basename(f))
         try:
-            shutil.move(f, './logs')
-            logger.info(f"Moved {f} to ./logs")
-        except Exception as e:
-            logger.warning(f"Could not move {f}: {e}")
-
-    logger.info(f"Pipeline execution finished")
+            shutil.move(f, dest)
+        except FileExistsError:
+            os.remove(dest)
+            shutil.move(f, dest)
+        logger.info(f"Moved {f} to ./logs")
+        logger.info(f"Pipeline execution finished")
 
 def init_project(force=False):
     """Copy config files to current directory"""

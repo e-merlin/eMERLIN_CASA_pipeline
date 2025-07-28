@@ -4,13 +4,15 @@ on:
   push:
     branches:
       - casa6
-#    paths:
-#      - Dockerfile
+    paths:
+      - 'Dockerfile'
+      - '**/*.py'
   pull_request:
     branches:
       - casa6
-#    paths:
-#      - Dockerfile
+    paths:
+      - 'Dockerfile'
+      - '**/*.py'
 
 env:
   REGISTRY: ghcr.io

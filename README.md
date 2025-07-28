@@ -6,7 +6,9 @@
 1. [Installation](#installation)
    - [Conda Installation](#conda-installation)
    - [Pip Installation](#pip-installation)
-   - [Docker Installation](#docker-installation)
+   - [Containers Installation](#containers)
+     - [Singularity](#singularity-installation)
+     - [Docker](#docker-installation)
 1. [Quick start](#quick-start)
 1. [Usage](#usage)
 1. [Additional information](#additional-information)
@@ -64,15 +66,43 @@ pip install .
 ```
 For development, use `pip install -e .` to install in editable mode.
 
+## Containers
+### Singularity Installation
 
+For HPC environments and those who prefer Singularity:
+
+```bash
+# Pull the container
+singularity pull emerlin_casa.sif docker://ghcr.io/e-merlin/emerlin_casa_pipeline:base
+
+# Run interactively with CASA data mounted
+singularity shell --bind $HOME/.casa/data:$(pwd)/.casa/data emerlin_casa.sif
+
+# Execute specific commands
+singularity exec --bind $HOME/.casa/data:$(pwd)/.casa/data emerlin_casa.sif emcp -h
+```
+
+**Note**: Replace `$HOME/.casa/data` with your actual CASA data directory path if different.
 
 ### Docker Installation
 
 For those who prefer containerized applications:
 
 ```bash
-docker pull emerlin/emcp:latest
-docker run -it --rm -v $(pwd):/data emerlin/emcp:latest
+# Pull the container
+docker pull ghcr.io/e-merlin/emerlin_casa_pipeline:base
+
+# Run interactively with CASA data mounted
+docker run -it --rm -v $HOME/.casa/data:$(pwd)/.casa/data ghcr.io/e-merlin/emerlin_casa_pipeline:base
+```
+
+**Note**: Replace `$HOME/.casa/data` with your actual CASA data directory path if different.
+
+### Additional directory access
+
+If you need to access directories outside your current location (e.g., `/path/to/my/raw_data`), add additional bind mounts:
+```bash
+... --bind /path/to/my/raw_data:/path/to/my/raw_data --bind $HOME/.casa/data:$(pwd)/.casa/data 
 ```
 
 ## Quick start
