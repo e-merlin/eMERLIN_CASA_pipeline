@@ -1,11 +1,11 @@
 name: build
 
-#on:
-#  push:
-#    branches: [casa6]
-#  pull_request:
-#    branches:
-#    - master
+on:
+  push:
+    branches: [casa6]
+  pull_request:
+    branches:
+    - master
 
 env:
   REGISTRY: ghcr.io
