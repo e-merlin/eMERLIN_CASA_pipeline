@@ -1,100 +1,56 @@
 FROM ubuntu:22.04
 
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Install all system dependencies in one layer (union of all requirements)
-RUN apt-get update && apt-get install -y \
-    # Build tools
+# Set non-interactive frontend and install all dependencies in one layer
+RUN export DEBIAN_FRONTEND=noninteractive && apt-get update && \
+    apt-get install -y \
     git \
     cmake \
     build-essential \
     g++ \
     pkg-config \
-    wget \
-    # Python and pip
+    casacore-data casacore-dev \
+    libblas-dev liblapack-dev \
     python3 \
-    python3-dev \
     python3-pip \
+    python3-dev \
     python3-numpy \
     python3-pytest \
     python3-sphinx \
-    # Core libraries for astronomical software
-    casacore-data \
-    casacore-dev \
-    # Math libraries
-    libblas-dev \
-    liblapack-dev \
+    libpython3-dev \
+    libboost-date-time-dev libboost-test-dev \
+    libboost-program-options-dev libboost-system-dev libboost-filesystem-dev \
+    libcfitsio-dev \
     libfftw3-dev \
     libgsl-dev \
-    # I/O libraries
-    libcfitsio-dev \
-    libhdf5-serial-dev \
     libhdf5-dev \
-    libpng-dev \
-    # Boost libraries
-    libboost-date-time-dev \
-    libboost-system-dev \
-    libboost-test-dev \
-    libboost-program-options-dev \
-    libboost-filesystem-dev \
-    # GUI and other libraries
-    libgtkmm-3.0-dev \
-    liblua5.3-dev \
+    libhdf5-serial-dev \
     libopenmpi-dev \
-    libxml2-dev \
- && rm -rf /var/lib/apt/lists/*
+    libpng-dev \
+    liblua5.3-dev \
+    libgtkmm-3.0-dev \
+    wget
 
-# Install Python 3.10 and emcp
-RUN apt-get update && apt-get install -y software-properties-common && \
-    add-apt-repository ppa:deadsnakes/ppa && \
-    apt-get update && apt-get install -y python3.10 python3.10-dev python3.10-distutils && \
-    rm -rf /var/lib/apt/lists/*
+# Install IDG (dependency for WSClean)
+RUN mkdir /external && cd /external && git clone https://git.astron.nl/RD/idg.git && \
+    mkdir /external/idg/build && cd /external/idg/build && cmake ../ && make install -j`nproc`
 
-# Install pip for Python 3.10 and then emcp
-RUN wget https://bootstrap.pypa.io/get-pip.py && \
-    python3.10 get-pip.py && \
-    rm get-pip.py && \
-    python3.10 -m pip install git+https://github.com/e-merlin/eMERLIN_CASA_pipeline.git@casa6
+# Clone AOFlagger source
+RUN cd /external && git clone https://gitlab.com/aroffringa/aoflagger.git
 
-# Create external directory for builds
-RUN mkdir -p /external
-WORKDIR /external
+# Build and install AOFlagger
+RUN cd /external/aoflagger && mkdir /build && cd /build && cmake ../src
+RUN cd /external/aoflagger/build && make -j`nproc --all` && make install
+RUN cd /external/aoflagger/build/python && echo "import aoflagger" | python3
 
-# Build and install IDG (dependency for wsclean)
-RUN git clone https://git.astron.nl/RD/idg.git && \
-    mkdir -p /external/idg/build && \
-    cd /external/idg/build && \
-    cmake ../ && \
-    make install -j$(nproc)
+# Clone WSClean source  
+RUN cd /external && git clone https://gitlab.com/aroffringa/wsclean.git
 
-# Install additional dependencies for aoflagger
-RUN apt-get update && apt-get install -y \
-    libboost-python1.74-dev \
-    libboost-numpy1.74-dev \
-    python3.10-numpy && \
-    rm -rf /var/lib/apt/lists/*
+# Build and install WSClean
+RUN cd /external/wsclean && mkdir /build && cd /build && cmake ../src && \
+    make -j`nproc` && make install && wsclean --version
 
-# Build and install aoflagger
-RUN git clone https://git.code.sf.net/p/aoflagger/code aoflagger-src && \
-    mkdir -p /external/aoflagger-build && \
-    cd /external/aoflagger-build && \
-    cmake ../aoflagger-src -DPYTHON_EXECUTABLE=/usr/bin/python3.10 && \
-    make -j$(nproc) && \
-    make install && \
-    ldconfig && \
-    echo "import aoflagger" | python3.10
+# Install emcp from pip (eMERLIN CASA pipeline)
+RUN pip3 install git+https://github.com/e-merlin/eMERLIN_CASA_pipeline.git@casa6
 
-# Build and install wsclean  
-RUN git clone https://gitlab.com/aroffringa/wsclean.git wsclean-src && \
-    mkdir -p /external/wsclean-build && \
-    cd /external/wsclean-build && \
-    cmake ../wsclean-src && \
-    make -j$(nproc) && \
-    make install && \
-    wsclean --version
-
-# Set working directory for user
-WORKDIR /data
-
-# Default command
-CMD ["/bin/bash"]
+# Set working directory
+WORKDIR /workspace
