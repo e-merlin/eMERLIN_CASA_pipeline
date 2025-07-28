@@ -18,9 +18,9 @@ RUN apt-get update && \
     pip3 install --upgrade pip && \
     pip3 install git+https://github.com/e-merlin/eMERLIN_CASA_pipeline.git@casa6 && \
     mkdir -p /root/.casa/data && \
-#    emcp -h
+    emcp -l
 
-# Extract plotms AppImage and modify the calls
+# Extract plotms AppImage and modify the calls  
 RUN PLOTMS_DIR=$(find /usr/local -name "casaplotms-x86_64.AppImage" -exec dirname {} \; | head -1) && \
     cd "$PLOTMS_DIR" && \
     ./casaplotms-x86_64.AppImage --appimage-extract && \
