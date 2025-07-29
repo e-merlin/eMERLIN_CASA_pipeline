@@ -29,6 +29,10 @@ def show_image(eMCP, wlog, i):
     img_phscal = f"{weblog_dir}images/{phscal}/{msinfo['msfilename']}_{phscal}_img{num:02d}-image{ext}.png"
     img_target_resid = f"{weblog_dir}images/{target}/{msinfo['msfilename']}_{target}_img{num:02d}-residual{ext}.png"
     img_phscal_resid = f"{weblog_dir}images/{phscal}/{msinfo['msfilename']}_{phscal}_img{num:02d}-residual{ext}.png"
+    img_target_zoom = f"{weblog_dir}images/{target}/{msinfo['msfilename']}_{target}_img{num:02d}-image{ext}_zoom.png"
+    img_phscal_zoom = f"{weblog_dir}images/{phscal}/{msinfo['msfilename']}_{phscal}_img{num:02d}-image{ext}_zoom.png"
+    img_target_resid_zoom = f"{weblog_dir}images/{target}/{msinfo['msfilename']}_{target}_img{num:02d}-residual{ext}_zoom.png"
+    img_phscal_resid_zoom = f"{weblog_dir}images/{phscal}/{msinfo['msfilename']}_{phscal}_img{num:02d}-residual{ext}_zoom.png"
     # Section (anchor) for this target
     wlog.write(f'<div id="{target}" class="subsection">')
     wlog.write(f'<h3 class="collapsible-header">{target}</h3>')
@@ -39,17 +43,21 @@ def show_image(eMCP, wlog, i):
     wlog.write(f'<div style="font-weight:bold;color:#337ab7;">Target</div>')
     wlog.write(f'<div style="font-size:90%">{target} (Peak: {peak_target*1000:.3f} mJy, RMS: {noise_target*1000:.3f} mJy/b, S/N: {peak_target/noise_target:.1f})</div>')
     wlog.write(f'<a href=".{img_target}" target="_blank"><img src=".{img_target}" alt="Target image" style="max-width:450px;margin:4px 0;"></a>')
+    wlog.write(f'<a href=".{img_target_zoom}" target="_blank">Zoom</a>')
     wlog.write('<br>')
     wlog.write(f'<div style="font-size:90%">Residual</div>')
     wlog.write(f'<a href=".{img_target_resid}" target="_blank"><img src=".{img_target_resid}" alt="Target residual image" style="max-width:450px;margin:4px 0;"></a>')
+    wlog.write(f'<a href=".{img_target_resid_zoom}" target="_blank">Zoom</a>')
     wlog.write('</td>')
     wlog.write('<td style="vertical-align:top">')
     wlog.write(f'<div style="font-weight:bold;color:#337ab7;">Phase Calibrator</div>')
     wlog.write(f'<div style="font-size:90%">{phscal} (Peak: {peak_phscal*1000:.1f} mJy, RMS: {noise_phscal*1000:.3f} mJy/b, S/N: {peak_phscal/noise_phscal:.1f})</div>')
     wlog.write(f'<a href=".{img_phscal}" target="_blank"><img src=".{img_phscal}" alt="Phasecal image" style="max-width:450px;margin:4px 0;"></a>')
+    wlog.write(f'<a href=".{img_phscal_zoom}" target="_blank">Zoom</a>')
     wlog.write('<br>')
     wlog.write(f'<div style="font-size:90%">Residual</div>')
     wlog.write(f'<a href=".{img_phscal_resid}" target="_blank"><img src=".{img_phscal_resid}" alt="Phasecal residual image" style="max-width:450px;margin:4px 0;"></a>')
+    wlog.write(f'<a href=".{img_phscal_resid_zoom}" target="_blank">Zoom</a>')
     wlog.write('</td>')
     wlog.write('</tr></tbody></table>')
     wlog.write('</div>')

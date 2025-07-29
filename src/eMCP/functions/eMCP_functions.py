@@ -3679,8 +3679,8 @@ def single_tclean(eMCP, s, num=0):
     else:
         ext = ''
 
-    fitsimagename = imagename+'.image'+ext+'.fits'
-    fitsresidualname = imagename+'.residual'+ext+'.fits'
+    fitsimagename = imagename+'-image'+ext+'.fits'
+    fitsresidualname = imagename+'-residual'+ext+'.fits'
     logger.info('converting images to fits format')
     exportfits(imagename=imagename+'.image'+ext, fitsimage=fitsimagename, overwrite=True)
     exportfits(imagename=imagename+'.residual'+ext, fitsimage=fitsresidualname, overwrite=True)
