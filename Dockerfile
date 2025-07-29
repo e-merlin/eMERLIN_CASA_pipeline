@@ -40,7 +40,7 @@ RUN apt-get update && \
     libfftw3-dev \
     libgsl-dev \
     libgtkmm-3.0-dev \
-    libhdf5-openmpi-dev \
+    libhdf5-dev \
     liblapack-dev \
     liblua5.3-dev \
     libopenmpi-dev \
