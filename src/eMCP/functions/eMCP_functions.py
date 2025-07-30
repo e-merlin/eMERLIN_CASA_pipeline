@@ -1164,35 +1164,14 @@ def run_aoflagger_fields(eMCP):
     return eMCP
 
 
-def check_command(command, verbose=False):
-    """Check if a command is available by trying to run it with --help."""
+def check_command(command):
     try:
-        # Add --help to the command to avoid actually running it
-        cmd_parts = shlex.split(command) + ['--help']
-
-        result = subprocess.run(cmd_parts,
-                              capture_output=True,
-                              timeout=10)
-
-        if verbose:
-            print(f"Command: {' '.join(cmd_parts)}")
-            print(f"Return code: {result.returncode}")
-            print(f"stdout: {result.stdout.decode()[:200]}...")
-            print(f"stderr: {result.stderr.decode()[:200]}...")
-
-        # Most commands return 0 or 1 for --help and are considered available
-        return result.returncode in [0, 1]
-
-    except Exception as e:
-        if verbose:
-            print(f"Exception: {e}")
+        subprocess.run(shlex.split(command), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return True
+    except FileNotFoundError:
         return False
-
-
-#def check_command(command):
-#    """Check if a command exists in the system path."""
-#    return shutil.which(command) is not None
-
+    except Exception:
+        return False
 
 def check_aoflagger_version():
     logger.info('Checking AOflagger version')
