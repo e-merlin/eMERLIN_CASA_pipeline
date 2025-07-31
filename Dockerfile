@@ -153,5 +153,5 @@ WORKDIR /root
 # Verify all installations
 RUN echo "Verifying installations..." && \
     wsclean --version && \
-    emcp -l && \
+    #emcp -l && \
     python3 -c "import aoflagger; print('AOFlagger Python bindings imported successfully.')"

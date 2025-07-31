@@ -1956,11 +1956,12 @@ def load_3C286_model(eMCP):
     # Check dataset frequency:
     band = check_band(eMCP, msfile)
     if band == 'C':
-        model_file_path = models_path / '3C286_C.clean.model.tt0'
-        logger.info('Dataset is band C. Using C band model of 3C286')
+        #model_file_path = models_path / '3C286_C.clean.model.tt0'
+        model_file_path = models_path / '1331+3030_Istatwt_TS8002.clean.model.tt0'
+        logger.info(f'Dataset is band C. Using C band model of 3C286 from: {model_file_path}')
     elif band == 'L':
         model_file_path = models_path / '1331+305.clean.model.tt0'
-        logger.info('Dataset is band L. Using L band model of 3C286')
+        logger.info(f'Dataset is band L. Using L band model of 3C286 from {model_file_path}')
     else:
         logger.warning('No 3C286 model available!')
         model_file_path = ""
