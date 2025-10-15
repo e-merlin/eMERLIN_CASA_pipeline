@@ -67,6 +67,8 @@ def backslash_check(directory):
     """
     Ensure directory path ends with a slash.
     """
+    if not directory:
+        raise ValueError("Directory path cannot be empty")
     
     if directory[-1] != '/':
         return directory + '/'
