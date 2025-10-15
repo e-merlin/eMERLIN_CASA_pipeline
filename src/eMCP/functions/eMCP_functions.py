@@ -689,7 +689,7 @@ def plot_elev_uvcov(eMCP):
 def import_eMERLIN_fitsIDI(eMCP):
     import_eM = eMCP['defaults']['import_eM']
     logger.info('Start run_importfits')
-    fits_path = backslash_check(eMCP['inputs']['fits_path'])
+    fits_path = eMCP['inputs']['fits_path']
     msfile_name = eMCP['inputs']['inbase']
     msg = 'first execution'
     t0 = datetime.datetime.now(datetime.timezone.utc)
@@ -701,7 +701,7 @@ def import_eMERLIN_fitsIDI(eMCP):
     fitsfiles = []
     for infile in os.listdir(fits_path):
         if infile.endswith('fits') or infile.endswith('FITS'):
-            fitsfiles = fitsfiles + [fits_path + infile]
+            fitsfiles = fitsfiles + [os.path.join(fits_path, infile)]
             logger.info('FITS file found to be imported: {0}'.format(infile))
     if fitsfiles == []:
         logger.critical('No fits files found in {}'.format(fits_path))
