@@ -68,15 +68,15 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=None, skip_steps=None):
     # Load the YAML file
     with open(defaults_file, 'r') as f:
         eMCP['defaults'] = yaml.safe_load(f)
-        logger.info('Loaded default parameters from {0}:'.format(defaults_file))
+        logger.info(f'Loaded default parameters from {defaults_file}:')
 
     # Inputs
     if os.path.exists(inputs_file):
         inputs = emutils.read_inputs(inputs_file)
         eMCP['inputs'] = inputs
-        logger.info('Loaded inputs from {0}'.format(inputs_file))
+        logger.info(f'Loaded inputs from {inputs_file}')
     else:
-        logger.critical('No inputs file found: {0}'.format(inputs_file))
+        logger.critical(f'No inputs file found: {inputs_file}')
         emutils.exit_pipeline(eMCP='')
 
     # Steps to run:

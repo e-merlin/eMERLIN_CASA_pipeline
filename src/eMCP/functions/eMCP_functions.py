@@ -701,9 +701,9 @@ def import_eMERLIN_fitsIDI(eMCP):
     for infile in os.listdir(fits_path):
         if infile.endswith('fits') or infile.endswith('FITS'):
             fitsfiles = fitsfiles + [os.path.join(fits_path, infile)]
-            logger.info('FITS file found to be imported: {0}'.format(infile))
+            logger.info(f'FITS file found to be imported: {infile}')
     if fitsfiles == []:
-        logger.critical('No fits files found in {}'.format(fits_path))
+        logger.critical(f'No fits files found in {fits_path}')
         exit_pipeline(eMCP='')
 
     emutils.rmdir(eMCP['inputs']['inbase'] + '.ms')
@@ -723,13 +723,12 @@ def import_eMERLIN_fitsIDI(eMCP):
                   constobsid=constobsid,
                   scanreindexgap_s=scanreindexgap_s)
     find_casa_problems()
-    logger.info('Created file: {}'.format(msfile0))
+    logger.info(f'Created file: {msfile0}')
     logger.info('Removing initial correlator flags')
     flagdata(vis=msfile0, mode='unflag', flagbackup=False)
     find_casa_problems()
     logger.info('Finished importfitsIDI')
-    msg = 'constobsid={0}, scanreindexgap_s={1}'.format(
-        constobsid, scanreindexgap_s)
+    msg = f'constobsid={constobsid}, scanreindexgap_s={scanreindexgap_s}'
     eMCP['msfile'] = eMCP['inputs']['inbase'] + '.ms'
     msfile = msfile0
     eMCP, msinfo, msfile = get_msinfo(eMCP, msfile)
@@ -742,7 +741,7 @@ def import_eMERLIN_fitsIDI(eMCP):
         antenna = '*&*'
     else:
         antenna = '*&*;' + import_eM['antenna']
-        logger.info('Splitting antennas: {}'.format(antenna))
+        logger.info(f'Splitting antennas: {antenna}')
     field = import_eM['field']
     timeaverage = import_eM['timeaverage']
     timebin = import_eM['timebin']
@@ -755,16 +754,16 @@ def import_eMERLIN_fitsIDI(eMCP):
     if import_eM['spw_separation'] != ['', '']:
         spw_separation = import_eM['spw_separation']
         logger.info('Using user-defined spw_separation:')
-    logger.info('Continuum:   {}'.format(spw_separation[0]))
+    logger.info(f'Continuum:   {spw_separation[0]}')
     if is_mixed_mode:
-        logger.info('Narrow (sp): {}'.format(spw_separation[1]))
+        logger.info(f'Narrow (sp): {spw_separation[1]}')
     ext_ms = {False: '.ms', True: '.mms'}
     msfile1 = msfile_name + ext_ms[do_ms2mms]
     #msfile1 = msfile_name + '_transformed' + ext_ms[do_ms2mms]
     if timeaverage:
-        logger.info('Data will be averaged to {}'.format(timebin))
+        logger.info(f'Data will be averaged to {timebin}')
     if chanaverage:
-        logger.info('Data will be averaged to {} chan/spw'.format(chanbin))
+        logger.info(f'Data will be averaged to {chanbin} chan/spw')
     if do_hanning:
         logger.info('Running Hanning smoothing')
     else:
@@ -794,7 +793,7 @@ def import_eMERLIN_fitsIDI(eMCP):
                     hanning=do_hanning,
                     createmms=do_ms2mms)
         find_casa_problems()
-    logger.info('Transformed: {0} into {1}'.format(msfile0, msfile1))
+    logger.info(f'Transformed: {msfile0} into {msfile1}')
     if is_mixed_mode:  # No hanning and no channel average
         logger.info('Mixed mode data detected')
         msfile1_sp = msfile_name + '_transformed_sp' + ext_ms[do_ms2mms]
@@ -817,21 +816,20 @@ def import_eMERLIN_fitsIDI(eMCP):
                         usewtspectrum=usewtspectrum,
                         createmms=do_ms2mms)
             find_casa_problems()
-        logger.info('Transformed: {0} into {1}'.format(msfile0, msfile1_sp))
+        logger.info(f'Transformed: {msfile0} into {msfile1_sp}')
     if os.path.isdir(msfile1):
         emutils.rmdir(msfile0)
     else:
-        logger.critical('Problem generating {}. Stopping ' \
-                        'pipeline'.format(msfile1))
+        logger.critical(f'Problem generating {msfile1}. Stopping pipeline')
         exit_pipeline(eMCP)
     logger.info('Finished mstransform')
-    msg += '. Hanning={0}, createmms={1}'.format(do_hanning, do_ms2mms)
+    msg += f'. Hanning={do_hanning}, createmms={do_ms2mms}'
     if timeaverage:
-        msg += ', timebin={0}'.format(timebin)
+        msg += f', timebin={timebin}'
     if chanaverage:
-        msg += ', chanbin={0}'.format(chanbin)
+        msg += f', chanbin={chanbin}'
     if import_eM['antenna'] != '':
-        msg += ', antenna="{}"'.format(antenna)
+        msg += f', antenna="{antenna}"'
     msfile = msfile1
     run_listobs(msfile)
     msg = ''
