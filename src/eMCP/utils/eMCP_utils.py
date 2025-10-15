@@ -6,7 +6,6 @@ import time
 import shutil
 #import casacore.tables
 from casatools import table
-import eMCP
 
 import logging
 
@@ -177,7 +176,8 @@ def list_steps():
 
 
 def get_pipeline_version():
-    return eMCP.__version__
+    from .. import __version__
+    return __version__
 
 
 def start_eMCP_dict(info_dir):
