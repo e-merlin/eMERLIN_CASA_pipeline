@@ -242,7 +242,9 @@ def exit_pipeline(eMCP=''):
     sys.exit()
 
 
-def find_run_steps(eMCP, run_steps, skip_steps=[]):
+def find_run_steps(eMCP, run_steps, skip_steps=None):
+    if skip_steps is None:
+        skip_steps = []
     if run_steps == '': run_steps = []
     if skip_steps == '': skip_steps = []
     logger.info('Step selection')

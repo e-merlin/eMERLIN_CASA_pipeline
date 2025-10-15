@@ -25,8 +25,14 @@ line00 = '=' * 35
 # Initialize logger
 logger = emutils.get_logger()
 
-def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
+def run_pipeline(inputs_file='./inputs.ini', run_steps=None, skip_steps=None):
     """Main function to run the pipeline with specified steps"""
+    # Handle mutable default arguments
+    if run_steps is None:
+        run_steps = []
+    if skip_steps is None:
+        skip_steps = []
+    
     # Create directory structure
     pipeline_path = os.path.dirname(os.path.realpath(__file__))
     logger.info(f'Executing pipeline in: {pipeline_path}')
