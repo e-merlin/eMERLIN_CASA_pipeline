@@ -50,17 +50,8 @@ images_link = './images/'
 
 line0 = '-' * 15
 
-
-def add_step_time(step, eMCP, msg, t0, doweblog=True):
-    t1 = datetime.datetime.now(datetime.timezone.utc)
-    timestamp = t1.strftime('%Y-%m-%d %H:%M:%S')
-    delta_t_min = (t1 - t0).total_seconds() / 60.
-    eMCP['steps'][step] = [timestamp, delta_t_min, msg]
-    emutils.save_obj(eMCP, info_dir + 'eMCP_info.yaml')
-    os.system('cp eMCP.log {}eMCP.log.txt'.format(info_dir))
-    if doweblog:
-        start_weblog(eMCP)
-    return eMCP
+# Import add_step_time from em module to avoid duplication
+add_step_time = em.add_step_time
 
 
 def simple_plot_name(plot_file, i):
