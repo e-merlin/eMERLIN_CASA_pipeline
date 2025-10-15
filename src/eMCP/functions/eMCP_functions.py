@@ -3,7 +3,6 @@ import os
 import subprocess
 import shlex
 import numpy as np
-import socket
 import yaml
 import glob
 import itertools
