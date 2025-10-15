@@ -3236,65 +3236,81 @@ def eM_fluxscale(eMCP, caltables):
 
 
 def compile_delays(tablename, outname):
-    tb.open(tablename + '/ANTENNA')
-    antennas = tb.getcol('NAME')
-    tb.close()
-    tb.open(tablename)
-    a = tb.getcol('ANTENNA1')
-    times = tb.getcol('TIME')
-    delays = tb.getcol('FPARAM')
-    tb.close()
-    delay_stats = []
-    for i in range(len(times)):
-        delay_stats.append([antennas[a[i]], 'RR', delays[0, 0, i]])
-        delay_stats.append([antennas[a[i]], 'LL', delays[1, 0, i]])
-    delay_stats = np.asarray(delay_stats)
-    np.save('delay_' + outname, delay_stats)
-    logger.info('Delay statistics saved to: {0}'.format(outname))
+    tb_local = table()
+    try:
+        tb_local.open(tablename + '/ANTENNA')
+        antennas = tb_local.getcol('NAME')
+        tb_local.close()
+        
+        tb_local.open(tablename)
+        a = tb_local.getcol('ANTENNA1')
+        times = tb_local.getcol('TIME')
+        delays = tb_local.getcol('FPARAM')
+        tb_local.close()
+        
+        delay_stats = []
+        for i in range(len(times)):
+            delay_stats.append([antennas[a[i]], 'RR', delays[0, 0, i]])
+            delay_stats.append([antennas[a[i]], 'LL', delays[1, 0, i]])
+        delay_stats = np.asarray(delay_stats)
+        np.save('delay_' + outname, delay_stats)
+        logger.info(f'Delay statistics saved to: {outname}')
+    finally:
+        try:
+            tb_local.close()
+        except Exception:
+            pass
 
 
 def calc_eMfactor(msfile, field='1331+305'):
     logger.info('Computing eMfactor')
     if field not in ['1331+305', '1331+3030', 'J1331+305', 'J1331+3030']:
         logger.warning(
-            'Scaling flux assuming 3C286 is the flux calibrator. Your flux calibrator is: {}. Scaling could wrong.'
-            .format(field))
+            f'Scaling flux assuming 3C286 is the flux calibrator. Your flux calibrator is: {field}. Scaling could wrong.')
         logger.info('Assuming eMfactor = 1')
         eMfactor = 1.0
         return eMfactor
-    tb.open(msfile + '/FIELD')
-    names = tb.getcol('NAME')
-    field_id = np.argwhere(names == field)[0][0]
-    tb.close()
-
-    tb.open(msfile + '/ANTENNA')
-    anten = tb.getcol('NAME')
-    tb.close()
+    
+    tb_local = table()
     try:
-        Lo_id = np.argwhere(anten == 'Lo')[0][0]
-    except:
-        Lo_id = -1
+        tb_local.open(msfile + '/FIELD')
+        names = tb_local.getcol('NAME')
+        field_id = np.argwhere(names == field)[0][0]
+        tb_local.close()
 
-    tb.open(msfile)
-    uvw = tb.getcol('UVW')
-    a1 = tb.getcol('ANTENNA1')
-    a2 = tb.getcol('ANTENNA2')
-    field = tb.getcol('FIELD_ID')
-    tb.close()
+        tb_local.open(msfile + '/ANTENNA')
+        anten = tb_local.getcol('NAME')
+        tb_local.close()
+        try:
+            Lo_id = np.argwhere(anten == 'Lo')[0][0]
+        except Exception:
+            Lo_id = -1
 
-    uvdist = np.sqrt(uvw[0]**2 + uvw[1]**2)
-    mask = (uvdist == 0) + (field != field_id) + (anten[a1] == 'Lo')
-    uvdist_nonzero = np.ma.array(uvdist, mask=mask)
+        tb_local.open(msfile)
+        uvw = tb_local.getcol('UVW')
+        a1 = tb_local.getcol('ANTENNA1')
+        a2 = tb_local.getcol('ANTENNA2')
+        field = tb_local.getcol('FIELD_ID')
+        tb_local.close()
 
-    # To exclude completely flagged data:
-    # I comment this out because for some data sets tb.getcol returns a flatten
-    # array without shape
+        uvdist = np.sqrt(uvw[0]**2 + uvw[1]**2)
+        mask = (uvdist == 0) + (field != field_id) + (anten[a1] == 'Lo')
+        uvdist_nonzero = np.ma.array(uvdist, mask=mask)
 
-    n = np.argmin(uvdist_nonzero)
+        # To exclude completely flagged data:
+        # I comment this out because for some data sets tb.getcol returns a flatten
+        # array without shape
 
-    tb.open(msfile + '/SPECTRAL_WINDOW')
-    chan_freq = tb.getcol('CHAN_FREQ') * u.Hz
-    tb.close()
+        n = np.argmin(uvdist_nonzero)
+
+        tb_local.open(msfile + '/SPECTRAL_WINDOW')
+        chan_freq = tb_local.getcol('CHAN_FREQ') * u.Hz
+        tb_local.close()
+    finally:
+        try:
+            tb_local.close()
+        except Exception:
+            pass
 
     shortest_baseline = uvdist_nonzero[n]  # Shortest baseline in m
     center_freq = (np.min(chan_freq) + np.max(chan_freq)) / 2.
