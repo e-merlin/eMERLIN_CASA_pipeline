@@ -74,90 +74,10 @@ def backslash_check(directory):
         return directory
 
 
-def read_inputs(inputs_file):
-    """
-    Read pipeline inputs from configuration file.
-    """
-    
-    config = configparser.ConfigParser()
-    config.read(inputs_file)
-    return config._sections['inputs']
-
-
-def find_run_steps(eMCP, run_steps, skip_steps=[]):
-    """
-    Determine which pipeline steps to run based on configuration.
-    """
-    
-    if run_steps == '':
-        run_steps = []
-    if skip_steps == '':
-        skip_steps = []
-    logger.info('Step selection')
-    logger.info('run_steps : {}'.format(run_steps))
-    logger.info('skip_steps: {}'.format(skip_steps))
-
-    all_steps, pre_processing_steps, calibration_steps = list_of_steps()
-
-    # Populate list of steps selected
-    step_list = []
-    if 'pre_processing' in run_steps:
-        step_list += pre_processing_steps
-        run_steps.remove('pre_processing')
-    if 'calibration' in run_steps:
-        step_list += calibration_steps
-        run_steps.remove('calibration')
-    if 'all' in run_steps:
-        step_list += all_steps
-        run_steps.remove('all')
-    step_list += run_steps
-
-    # Check if all are valid steps:
-    wrong_steps = [s for s in step_list if s not in all_steps]
-    if wrong_steps:
-        ws = ', '.join(wrong_steps)
-        logger.critical('Not available step(s) to run: {0}'.format(ws))
-        exit_pipeline(eMCP='')
-
-    wrong_steps = [s for s in skip_steps if s not in all_steps]
-    if wrong_steps:
-        ws = ', '.join(wrong_steps)
-        logger.critical('Not available step(s) to skip: {0}'.format(ws))
-        exit_pipeline(eMCP='')
-
-    # Remove skipped steps:
-    for skip_step in skip_steps:
-        if skip_step != '':
-            step_list.remove(skip_step)
-
-    # Define final step dictionary:
-    logger.info('Sorted list of steps to execute:')
-    input_steps = {}
-    for s in all_steps:
-        if s in step_list:
-            logger.info('{0:16s}: {1}'.format(s,
-                                              eMCP['defaults']['global'][s]))
-            input_steps[s] = eMCP['defaults']['global'][s]
-        elif s not in step_list:
-            logger.info('{0:16s}: {1}'.format(s, 0))
-            input_steps[s] = 0
-        else:
-            pass
-
-    return input_steps
-
-
-def exit_pipeline(eMCP=''):
-    """
-    Exit the pipeline and save log file.
-    """
-    
-    os.system('cp eMCP.log {}eMCP.log.txt'.format(info_dir))
-    if eMCP != '':
-        logger.info('Something went wrong. Producing weblog before quiting')
-        start_weblog(eMCP)
-    logger.info('Now quiting')
-    sys.exit()
+# Import these functions from emutils to avoid duplication
+read_inputs = emutils.read_inputs
+find_run_steps = emutils.find_run_steps
+exit_pipeline = emutils.exit_pipeline
 
 
 def find_casa_problems():
@@ -172,41 +92,9 @@ def find_casa_problems():
     pass
 
 
-# Functions to save and load dictionaries
-def save_obj(obj, name):
-    """
-    Save a Python object to disk using YAML.
-    
-    Ensures the file has a .yaml extension.
-    """
-    
-    # Make sure the name ends with .yaml
-    if not name.endswith('.yaml'):
-        name = name.replace('.pkl', '.yaml')
-        if not name.endswith('.yaml'):
-            name = name + '.yaml'
-    
-    # Save as YAML
-    with open(name, 'w') as f:
-        yaml.dump(obj, f, default_flow_style=False)
-
-
-def load_obj(name):
-    """
-    Load a Python object from disk using YAML.
-    
-    Ensures the file has a .yaml extension.
-    """
-    
-    # Make sure the name ends with .yaml
-    if not name.endswith('.yaml'):
-        name = name.replace('.pkl', '.yaml')
-        if not name.endswith('.yaml'):
-            name = name + '.yaml'
-    
-    # Load YAML file
-    with open(name, 'r') as f:
-        return yaml.safe_load(f)
+# Import save/load functions from emutils to avoid duplication
+save_obj = emutils.save_obj
+load_obj = emutils.load_obj
 
 
 def add_step_time(step, eMCP, msg, t0, doweblog=True):
@@ -225,20 +113,8 @@ def add_step_time(step, eMCP, msg, t0, doweblog=True):
     return eMCP
 
 
-def check_pipeline_conflict(eMCP, pipeline_version):
-    """
-    Check for conflicts between current and previous pipeline versions.
-    """
-    
-    try:
-        if eMCP['pipeline_version'] != pipeline_version:
-            logger.warning(
-                'The log shows that different versions of the pipeline'
-                ' has been executed. Please verify versions')
-            logger.warning('Previous version: {0}. Current version {1}'.format(
-                eMCP['pipeline_version'], pipeline_version))
-    except:
-        pass
+# Import from emutils to avoid duplication
+check_pipeline_conflict = emutils.check_pipeline_conflict
 
 
 def update_mixed_mode(eMCP):
