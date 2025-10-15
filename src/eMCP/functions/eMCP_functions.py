@@ -833,36 +833,6 @@ def import_eMERLIN_fitsIDI(eMCP):
     if import_eM['antenna'] != '':
         msg += ', antenna="{}"'.format(antenna)
     msfile = msfile1
-#    eMCP, msinfo, msfile = get_msinfo(eMCP, msfile)
-    #    eMCP = add_step_time('mstransform', eMCP, msg, t0, doweblog=True)
-
-#    # FIXVIS
-#    msfile = eMCP['inputs']['inbase'] + ext_ms[do_ms2mms]
-#    logger.info('Start fixvis')
-#    fixvis(vis=msfile1, outputvis=msfile, reuse=False)
-#    find_casa_problems()
-#    logger.info('Fixed {0} into {1}'.format(msfile1, msfile))
-#    run_listobs(msfile)
-#    if os.path.isdir(msfile):
-#        emutils.rmdir(msfile1)
-#    else:
-#        logger.critical('Problem generating {}. Stopping ' \
-#                        'pipeline'.format(msfile))
-#        exit_pipeline(eMCP)
-#    if is_mixed_mode:
-#        msfile_sp = get_msfile_sp(eMCP)
-#        logger.info('Running fixvis on spectral line data')
-#        fixvis(vis=msfile1_sp, outputvis=msfile_sp, reuse=False)
-#        find_casa_problems()
-#        logger.info('Fixed {0} into {1}'.format(msfile1_sp, msfile_sp))
-#        run_listobs(msfile_sp)
-#        if os.path.isdir(msfile_sp):
-#            emutils.rmdir(msfile1_sp)
-#        else:
-#            logger.critical(
-#                'Problem generating phase fixvis ms. Stopping pipeline')
-#            exit_pipeline(eMCP)
-#    logger.info('Finished fixvis')
     run_listobs(msfile)
     msg = ''
     logger.info('End run_importfits')
