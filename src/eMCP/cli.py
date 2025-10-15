@@ -19,7 +19,7 @@ from eMCP.utils import eMCP_utils as emutils
 from eMCP.plots import eMCP_plots as emplt
 from eMCP.utils.weblog_config import get_weblog_function
 from ._version import __version__
-
+print('HELLO')
 line00 = '=' * 35
 
 # Initialize logger
@@ -87,13 +87,13 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
         eMCP = em.import_eMERLIN_fitsIDI(eMCP)
         logger.info(f"FINISHED STEP: run_importfits")
 
-    if os.path.isdir('./' + inputs['inbase'] + '.ms') == True:
+    if os.path.isdir('./' + inputs['inbase'] + '.ms'):
         msfile = inputs['inbase'] + '.ms'
         eMCP, msinfo, msfile = em.get_msinfo(eMCP, msfile)
         em.plot_elev_uvcov(eMCP)
 
     ### check for parallelisation
-    if os.path.isdir('./' + inputs['inbase'] + '.mms') == True:
+    if os.path.isdir('./' + inputs['inbase'] + '.mms'):
         msfile = inputs['inbase'] + '.mms'
         eMCP, msinfo, msfile = em.get_msinfo(eMCP, msfile)
         em.plot_elev_uvcov(eMCP)
@@ -127,11 +127,11 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=[], skip_steps=[]):
         logger.info(f"FINISHED STEP: average")
 
     # Check if averaged data already generated
-    if os.path.isdir('./' + inputs['inbase'] + '_avg.mms') == True:
+    if os.path.isdir('./' + inputs['inbase'] + '_avg.mms'):
         msfile = './' + inputs['inbase'] + '_avg.mms'
         eMCP, msinfo, msfile = em.get_msinfo(eMCP, msfile)
         em.plot_elev_uvcov(eMCP)
-    elif os.path.isdir('./' + inputs['inbase'] + '_avg.ms') == True:
+    elif os.path.isdir('./' + inputs['inbase'] + '_avg.ms'):
         msfile = './' + inputs['inbase'] + '_avg.ms'
         eMCP, msinfo, msfile = em.get_msinfo(eMCP, msfile)
         em.plot_elev_uvcov(eMCP)
