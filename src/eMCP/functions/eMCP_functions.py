@@ -1187,6 +1187,8 @@ def casa_flagcommand(antenna, time_ini, time_end):
 
 
 def search_observatory_flags(eMCP):
+    import socket
+    
     msinfo = eMCP['msinfo']
     msfile = msinfo['msfile']
     antennas = msinfo['antennas']
