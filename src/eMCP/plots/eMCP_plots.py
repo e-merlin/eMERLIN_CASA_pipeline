@@ -50,9 +50,6 @@ images_link = './images/'
 
 line0 = '-' * 15
 
-# Import add_step_time from em module to avoid duplication
-add_step_time = em.add_step_time
-
 
 def simple_plot_name(plot_file, i):
     try:
@@ -251,7 +248,7 @@ def make_4plots(eMCP, datacolumn='data'):
         make_uvplt(eMCP)
     logger.info('End plot_{}'.format(datacolumn))
     msg = ''
-    eMCP = add_step_time('plot_' + datacolumn, eMCP, msg, t0)
+    eMCP = em.add_step_time('plot_' + datacolumn, eMCP, msg, t0)
     return eMCP
 
 
