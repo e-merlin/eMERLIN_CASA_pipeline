@@ -42,7 +42,7 @@ dependencies = [
     "casatestutils>=6.6.0,<6.8.0",
 
     # Configuration - follows CASA major releases
-    "casaconfig>=1.0.0,<1.1.0",
+    "casaconfig>=1.1.0,<1.2.0",
 
     # Data packages - date-based versioning
     "casadata>=2023.9.25",  # No upper bound, data packages are backward compatible
