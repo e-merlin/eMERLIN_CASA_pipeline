@@ -249,6 +249,13 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=None, skip_steps=None):
         eMCP = em.run_first_images(eMCP)
         logger.info(f"FINISHED STEP: first_images")
 
+    ### Split fields ###
+    if eMCP['input_steps']['split_fields'] > 0:
+        logger.info(line00)
+        logger.info(f"STARTING STEP: split_fields")
+        eMCP = em.run_split_fields(eMCP)
+        logger.info(f"FINISHED STEP: split_fields")
+
     logfiles = glob.glob('casa-*.log') + glob.glob('wsclean_*.log')
     for f in logfiles:
         dest = os.path.join('./logs', os.path.basename(f))
@@ -371,7 +378,7 @@ def main():
         logger.info('pre_processing:')
         logger.info('    run_importfits, flag_aoflagger, flag_apriori, flag_manual, average, plot_data, save_flags')
         logger.info('calibration:')
-        logger.info('    restore_flags, flag_manual_avg, init_models, bandpass, initial_gaincal, fluxscale, bandpass_final, gaincal_final, applycal_all, flag_target, plot_corrected, first_images')
+        logger.info('    restore_flags, flag_manual_avg, init_models, bandpass, initial_gaincal, fluxscale, bandpass_final, gaincal_final, applycal_all, flag_target, plot_corrected, first_images, split_fields')
         return
 
     run_steps = parse_steps(args.run_steps)
