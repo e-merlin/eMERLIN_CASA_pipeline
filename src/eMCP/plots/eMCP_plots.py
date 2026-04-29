@@ -169,7 +169,7 @@ def single_4plot(msinfo, field, datacolumn, plots_data_dir):
            xselfscale=True,
            xsharedaxis=True,
            coloraxis="corr",
-           plotfile=plot_file + '1.png',
+           plotfile=plot_file + '2.png',
            expformat="png",
            customsymbol=True,
            symbolshape="circle",
