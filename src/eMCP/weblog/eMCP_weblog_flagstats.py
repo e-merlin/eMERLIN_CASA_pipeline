@@ -14,89 +14,6 @@ def weblog_flagstats(msinfo):
     wlog = open(weblog_dir + "flagstats.html", "w")
     weblog_header(wlog, 'Flag statistics', msinfo['run'])
 
-    # Use calib-layout for consistency
-    wlog.write('''
-    <style>
-    .calib-layout {
-      display: flex;
-      flex-direction: row;
-      max-width: 2400px;
-      margin: 0 auto;
-      width: 100%;
-    }
-    .calib-main {
-      flex: 1 1 0;
-      padding: 28px 26px 28px 0;
-      min-width: 0;
-      max-width: 1200px;
-    }
-    .calib-jump-sidebar {
-      width: 220px;
-      position: sticky;
-      top: 35px;
-      height: fit-content;
-      align-self: flex-start;
-      background: #f8f9fa;
-      border-left: 1.5px solid #e3e3e3;
-      border-radius: 8px 0 0 8px;
-      padding: 18px 16px 16px 16px;
-      margin-left: 18px;
-      z-index: 10;
-    }
-    .calib-jump-sidebar h4 {
-      font-size: 1.06em;
-      margin: 0 0 14px 0;
-      color: #444;
-      font-weight: 600;
-      text-align: left;
-    }
-    .calib-jump-links {
-      display: flex;
-      flex-direction: column;
-      gap: 0.48em;
-    }
-    .calib-jump-link {
-      display: block;
-      padding: 7px 12px;
-      background: #f2f2f2;
-      color: #34618c;
-      border-left: 4px solid #e5e5e5;
-      border-radius: 4px;
-      text-decoration: none;
-      font-size: 1em;
-      transition: background .13s, color .13s, border .13s;
-      margin-left: 0;
-    }
-    .calib-jump-link:hover, .calib-jump-link.active {
-      background: #ddeefd;
-      color: #1279bc;
-      border-left: 4px solid #3498db;
-    }
-    .stats-label {
-      display: inline-block;
-      margin-left: 5px;
-      font-weight: normal;
-    }
-    .total-stat {
-      background-color: #0d6efd;
-      color: white;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 0.9em;
-    }
-    .increase-stat {
-      background-color: #dc3545;
-      color: white;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 0.9em;
-    }
-    .plot-container {
-      margin-bottom: 30px;
-    }
-    </style>
-    ''')
-
     wlog.write('<div class="calib-layout">\n')
     wlog.write('<div class="calib-main">\n')
 
@@ -227,4 +144,3 @@ def weblog_flagstats(msinfo):
 
     weblog_foot(wlog)
     wlog.close()
-

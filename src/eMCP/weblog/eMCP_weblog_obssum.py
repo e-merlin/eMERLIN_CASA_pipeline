@@ -12,7 +12,7 @@ def weblog_obssum(msinfo):
     weblog_header(wlog, 'Observation summary', msinfo.get('run', msinfo.get('project', 'eMERLIN')))
 
     # Summary section
-    wlog.write('<div class="subsection centered">\n')
+    wlog.write('<div class="subsection">\n')
     wlog.write('  <h3 class="collapsible-header">Summary</h3>\n')
     wlog.write('  <div>\n')
 
@@ -41,7 +41,7 @@ def weblog_obssum(msinfo):
     wlog.write('</div>\n')
 
     # Sources section
-    wlog.write('<div class="subsection centered">\n')
+    wlog.write('<div class="subsection">\n')
     wlog.write('  <h3 class="collapsible-header">Sources</h3>\n')
     wlog.write('  <div>\n')
 
@@ -101,11 +101,11 @@ def weblog_obssum(msinfo):
     wlog.write('</div>\n')
 
     # Sources in MS section
-    wlog.write('<div class="subsection centered">\n')
+    wlog.write('<div class="subsection">\n')
     wlog.write('  <h3 class="collapsible-header">Sources in MS</h3>\n')
     wlog.write('  <div>\n')
     wlog.write('    <div class="table-responsive">\n')
-    wlog.write('      <table class="table" style="width:80%; margin: 0 auto;">\n')
+    wlog.write('      <table class="table">\n')
     wlog.write('        <thead>\n')
     wlog.write('          <tr>\n')
     wlog.write('            <th>Source</th>\n')
@@ -153,21 +153,21 @@ def weblog_obssum(msinfo):
     wlog.write('</div>\n')
 
     # Antennas section
-    wlog.write('<div class="subsection centered">\n')
+    wlog.write('<div class="subsection">\n')
     wlog.write('  <h3 class="collapsible-header">Antennas</h3>\n')
     wlog.write('  <div>\n')
-    wlog.write('    <p class="centered">Reference antenna: {}</p>\n'.format(msinfo.get('refant', 'Not specified')))
+    wlog.write('    <p>Reference antenna: {}</p>\n'.format(msinfo.get('refant', 'Not specified')))
     if 'antennas' in msinfo:
-        wlog.write('    <table class="table" style="width:50%; margin: 0 auto;">\n')
+        wlog.write('    <table class="table" style="max-width:420px;">\n')
         wlog.write('      <tr><th>Antennas</th></tr>\n')
         for ant in msinfo['antennas']:
-            wlog.write(f'      <tr><td style="text-align:center;">{ant}</td></tr>\n')
+            wlog.write(f'      <tr><td>{ant}</td></tr>\n')
         wlog.write('    </table>\n')
     wlog.write('  </div>\n')
     wlog.write('</div>\n')
 
     # Source elevation section
-    wlog.write('<div class="subsection centered">\n')
+    wlog.write('<div class="subsection">\n')
     wlog.write('  <h3 class="collapsible-header">Source elevation</h3>\n')
     wlog.write('  <div>\n')
 
@@ -183,15 +183,15 @@ def weblog_obssum(msinfo):
         plot_path = elev_plots[0]
         rel_path = os.path.join('plots', 'plots_observation', os.path.basename(plot_path))
         wlog.write('    <div >\n')
-        wlog.write(f'      <img src="{rel_path}" class="centered" style="max-width:700px;" alt="Source elevation plot">\n')
+        wlog.write(f'      <img src="{rel_path}" style="width:100%; max-width:1100px;" alt="Source elevation plot">\n')
         wlog.write('    </div>\n')
     else:
-        wlog.write('    <p class="centered">No elevation plot available</p>\n')
+        wlog.write('    <p>No elevation plot available</p>\n')
     wlog.write('  </div>\n')
     wlog.write('</div>\n')
 
     # UV coverage section
-    wlog.write('<div class="subsection centered">\n')
+    wlog.write('<div class="subsection">\n')
     wlog.write('  <h3>UV coverage</h3>\n')
 
     uvcov_plots = []
@@ -203,12 +203,11 @@ def weblog_obssum(msinfo):
         wlog.write('  <div >\n')
         for plot_path in uvcov_plots:
             rel_path = os.path.join('plots', 'plots_observation', os.path.basename(plot_path))
-            wlog.write(f'    <img src="{rel_path}" class="centered" style="max-width:700px; margin-bottom:20px;" alt="UV coverage plot">\n')
+            wlog.write(f'    <img src="{rel_path}" style="width:100%; max-width:1100px; margin-bottom:20px;" alt="UV coverage plot">\n')
         wlog.write('  </div>\n')
     else:
-        wlog.write('  <p class="centered">No UV coverage plots available</p>\n')
+        wlog.write('  <p>No UV coverage plots available</p>\n')
     wlog.write('</div>\n')
 
     weblog_foot(wlog)
     wlog.close()
-

@@ -25,14 +25,6 @@ def create_pnghtml_baselines(plots_path, source, subtitle, msinfo, datacolumn):
     wlog.write(f'<div class="subsection">\n')
     wlog.write(f'  <h3 class="collapsible-header">{escape(source)}</h3>\n')
     wlog.write(f'  <p>{escape(subtitle)}</p>\n')
-    wlog.write('  <style>\n')
-    wlog.write('    .visibility-plot-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; align-items: start; }\n')
-    wlog.write('    .visibility-plot-cell h4 { margin: 0 0 8px 0; }\n')
-    wlog.write('    .visibility-plot-cell img { width: 100%; height: auto; display: block; }\n')
-    wlog.write('    .missing-plot { min-height: 140px; display: flex; align-items: center; justify-content: center; border: 1px dashed #b8c0cc; background: #f7f8fa; color: #687386; }\n')
-    wlog.write('    @media (max-width: 1400px) { .visibility-plot-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }\n')
-    wlog.write('    @media (max-width: 900px) { .visibility-plot-grid { grid-template-columns: 1fr; } }\n')
-    wlog.write('  </style>\n')
     wlog.write('  <div class="visibility-plot-grid">\n')
     for label, plot_path in plot_labels:
         wlog.write('    <div class="visibility-plot-cell">\n')
@@ -114,65 +106,6 @@ def plots_uvplt(msinfo, wlog):
 def weblog_plots(weblog, weblog_link, plots_link, msinfo):
     wlog = open(weblog_dir + "plots.html", "w")
     weblog_header(wlog, 'Plots', msinfo['run'])
-
-    # Unified layout
-    wlog.write('''
-    <style>
-    .plots-layout {
-      display: flex;
-      flex-direction: row;
-      max-width: 1200px;
-      margin: 0 auto;
-      min-height: 90vh;
-    }
-    .plots-main {
-      flex: 1 1 0;
-      padding: 28px 26px 28px 0;
-    }
-    .plots-jump-sidebar {
-      width: 220px;
-      position: sticky;
-      top: 35px;
-      height: fit-content;
-      align-self: flex-start;
-      background: #f8f9fa;
-      border-left: 1.5px solid #e3e3e3;
-      border-radius: 8px 0 0 8px;
-      padding: 18px 16px 16px 16px;
-      margin-left: 18px;
-      z-index: 10;
-    }
-    .plots-jump-sidebar h4 {
-      font-size: 1.06em;
-      margin: 0 0 14px 0;
-      color: #444;
-      font-weight: 600;
-      text-align: left;
-    }
-    .plots-jump-links {
-      display: flex;
-      flex-direction: column;
-      gap: 0.48em;
-    }
-    .plots-jump-link {
-      display: block;
-      padding: 7px 12px;
-      background: #f2f2f2;
-      color: #34618c;
-      border-left: 4px solid #e5e5e5;
-      border-radius: 4px;
-      text-decoration: none;
-      font-size: 1em;
-      transition: background .13s, color .13s, border .13s;
-      margin-left: 0;
-    }
-    .plots-jump-link:hover, .plots-jump-link.active {
-      background: #ddeefd;
-      color: #1279bc;
-      border-left: 4px solid #3498db;
-    }
-    </style>
-    ''')
 
     wlog.write('<div class="plots-layout">\n')
     wlog.write('<div class="plots-main">\n')
