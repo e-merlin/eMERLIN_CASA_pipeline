@@ -762,7 +762,7 @@ def plot_Lo_drops(phscal_scans, scans, amp_mean, lo_dropout_scans, phscal,
             color='0.5',
             width=1,
             label='{0}'.format(phscal))
-    if lo_dropout_scans != []:
+    if len(lo_dropout_scans) > 0:
         ax1.bar(phscal_scans[drops] - 0.5,
                 amp_mean[drops],
                 alpha=1.0,

@@ -3922,7 +3922,7 @@ def flag_Lo_dropouts(eMCP):
                     "when rerun flag_manual_avg")
                 phscals = msinfo['sources']['phscals'].split(',')
                 Lo_drop_list = find_Lo_drops(msfile, phscals, eMCP)
-                if not Lo_drop_list:
+                if len(Lo_drop_list) == 0:
                     eMCP['msinfo']['Lo_dropout_scans'] = 'none'
                 else:
                     eMCP['msinfo']['Lo_dropout_scans'] = ','.join(
@@ -4466,8 +4466,8 @@ def find_Lo_drops(msfile, phscals, eMCP):
                                         spws)
         threshold = eMCP['defaults']['flag_manual_avg']['Lo_threshold']
         lo_dropout_scans_i = calc_Lo_drops(amp_mean, phscal_scans, threshold)
-        emplt.plot_Lo_drops(msfile, phscal_scans, scans, amp_mean,
-                            lo_dropout_scans_i, phscal, eMCP)
+        emplt.plot_Lo_drops(phscal_scans, scans, amp_mean, lo_dropout_scans_i,
+                            phscal, eMCP)
         if len(lo_dropout_scans_i) > 0:
             logger.info('Potential dropout scans: '
                         '{0}'.format(','.join(
@@ -4482,10 +4482,7 @@ def find_Lo_drops(msfile, phscals, eMCP):
                 logger.info('Less than {0}/{1} dropout scans, not considered '
                             'persistent drops'.format(min_scans,
                                                       len(phscal_scans)))
-                lo_dropout_scans = []
-        else:
-            lo_dropout_scans = []
-    return lo_dropout_scans
+    return np.unique(lo_dropout_scans).astype('int')
 
 
 def remove_flagversion(msfile, versionname):

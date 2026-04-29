@@ -67,7 +67,7 @@ flag_manual_avg:
   Lo_dropout: ""
   Lo_datacolumn: "data"
   Lo_useflags: true
-  Lo_spws: ["3"]
+  Lo_spws: ["2"]
   Lo_threshold: 0.5
   Lo_min_scans: ""
 init_models:
