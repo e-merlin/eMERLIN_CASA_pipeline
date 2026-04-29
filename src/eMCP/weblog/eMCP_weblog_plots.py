@@ -2,11 +2,52 @@ import os
 import glob
 import logging
 import numpy as np
+from html import escape
 from .eMCP_weblog_modern import weblog_header, weblog_foot
-from .eMCP_weblog import create_pnghtml_baselines
 
 logger = logging.getLogger('logger')
 weblog_dir = './weblog/'
+
+
+def create_pnghtml_baselines(plots_path, source, subtitle, msinfo, datacolumn):
+    page_path = weblog_dir + plots_path + '_' + source + ".html"
+    plot_base = weblog_dir + 'plots/' + plots_path + '/{0}_4plot_{1}_{2}'.format(
+        msinfo['msfilename'], source, datacolumn)
+    plot_labels = (
+        ('Amp vs Time', plot_base + '0.png'),
+        ('Phase vs Time', plot_base + '1.png'),
+        ('Amp vs Freq', plot_base + '2.png'),
+        ('Phase vs Freq', plot_base + '3.png'),
+    )
+
+    wlog = open(page_path, "w")
+    weblog_header(wlog, 'Plots', msinfo['run'])
+    wlog.write(f'<div class="subsection">\n')
+    wlog.write(f'  <h3 class="collapsible-header">{escape(source)}</h3>\n')
+    wlog.write(f'  <p>{escape(subtitle)}</p>\n')
+    wlog.write('  <style>\n')
+    wlog.write('    .visibility-plot-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }\n')
+    wlog.write('    .visibility-plot-cell h4 { margin: 0 0 8px 0; }\n')
+    wlog.write('    .visibility-plot-cell img { width: 100%; max-width: 900px; height: auto; display: block; }\n')
+    wlog.write('    .missing-plot { min-height: 140px; display: flex; align-items: center; justify-content: center; border: 1px dashed #b8c0cc; background: #f7f8fa; color: #687386; }\n')
+    wlog.write('    @media (max-width: 900px) { .visibility-plot-grid { grid-template-columns: 1fr; } }\n')
+    wlog.write('  </style>\n')
+    wlog.write('  <div class="visibility-plot-grid">\n')
+    for label, plot_path in plot_labels:
+        wlog.write('    <div class="visibility-plot-cell">\n')
+        wlog.write(f'      <h4>{label}</h4>\n')
+        if os.path.isfile(plot_path):
+            wlog.write(f'      <a href=".{plot_path}" target="_blank">\n')
+            wlog.write(f'        <img src=".{plot_path}" alt="{label} for {escape(source)}">\n')
+            wlog.write('      </a>\n')
+        else:
+            wlog.write(f'      <div class="missing-plot">Missing plot: {escape(os.path.basename(plot_path))}</div>\n')
+        wlog.write('    </div>\n')
+    wlog.write('  </div>\n')
+    wlog.write('</div>\n')
+    weblog_foot(wlog)
+    wlog.close()
+    return page_path
 
 
 def plots_data(msinfo, wlog):
@@ -170,4 +211,3 @@ def weblog_plots(weblog, weblog_link, plots_link, msinfo):
     # Close the page
     weblog_foot(wlog)
     wlog.close()
-
