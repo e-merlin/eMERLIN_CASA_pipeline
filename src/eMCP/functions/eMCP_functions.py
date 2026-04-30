@@ -907,6 +907,8 @@ def run_aoflagger_fields(eMCP):
     pipeline_path = eMCP['pipeline_path']
     msfile = eMCP['msinfo']['msfile']
     run_input = eMCP['defaults']['aoflagger']['run']
+    aoflagger_exec = eMCP['defaults']['aoflagger'].get(
+        'aoflagger_exec', 'aoflagger')
     if run_input == 'auto':
         logger.info('aoflagger mode "auto"')
         if eMCP['msinfo']['band'] == 'L':
@@ -928,14 +930,14 @@ def run_aoflagger_fields(eMCP):
     else:
         logger.warning('separate_bands can only be True or False')
         exit_pipeline(eMCP)
-    # Check if aoflagger is available:
-    aoflagger_available = check_command('aoflagger')
-    if not aoflagger_available:
-        logger.critical('aoflagger requested but not available.')
+    # Check if aoflagger is available and at least version 2.9:
+    logger.info('AOFlagger executable: {}'.format(aoflagger_exec))
+    old_aoflagger = check_aoflagger_version(aoflagger_exec)
+    if old_aoflagger is None:
+        logger.critical('aoflagger requested but not available: {}'.format(
+            aoflagger_exec))
         logger.warning('Exiting pipeline.')
         exit_pipeline(eMCP)
-    # Check that version is at least 2.9+
-    old_aoflagger = check_aoflagger_version()
     if old_aoflagger:
         logger.critical('aoflagger version <2.9 does not work correctly.')
         logger.warning('Exiting pipeline.')
@@ -991,14 +993,15 @@ def run_aoflagger_fields(eMCP):
                         listitems=['spw_name'])['spw_name'][0])
             for b in range(num_spw):
                 logger.info('Processing source {0}, band {1}'.format(field, b))
-                flag_command = 'aoflagger -fields {2} -bands {3} -strategy {0} {1}'.format(
-                    ao_strategy, msfile, fields_num[field], b)
+                flag_command = '{4} -fields {2} -bands {3} -strategy {0} {1}'.format(
+                    ao_strategy, msfile, fields_num[field], b,
+                    aoflagger_exec)
                 os.system(flag_command)
                 logger.info('Last AOFlagger command: {}'.format(flag_command))
         else:
             logger.info('Processing source {0}, all bands'.format(field))
-            flag_command = 'aoflagger -fields {2} -strategy {0} {1}'.format(
-                ao_strategy, msfile, fields_num[field])
+            flag_command = '{3} -fields {2} -strategy {0} {1}'.format(
+                ao_strategy, msfile, fields_num[field], aoflagger_exec)
             os.system(flag_command + ' | tee -a pre-cal_flag_stats.txt')
             logger.info('Last AOFlagger command: {}'.format(flag_command))
 
@@ -1018,14 +1021,21 @@ def check_command(command):
     except Exception:
         return False
 
-def check_aoflagger_version():
+def check_aoflagger_version(aoflagger_exec='aoflagger'):
     logger.info('Checking AOflagger version')
-    from subprocess import Popen, PIPE
     try:
-        process = Popen(['aoflagger --version'], stdout=PIPE)
-        (output, err) = process.communicate()
-        exit_code = process.wait()
-        version = output.split()[1]
+        import re
+        process = subprocess.run(
+            shlex.split(aoflagger_exec) + ['--version'],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False)
+        if process.returncode != 0:
+            logger.info('AOflagger version check failed: {0}'.format(
+                process.stderr.decode(errors='replace').strip()))
+            return None
+        output = (process.stdout + process.stderr).decode(errors='replace')
+        version = re.search(r'\d+(?:\.\d+)+', output).group(0)
         version_list = version.split('.')
         if (version_list[0] == '2') and (int(version_list[1]) < 9):
             old_aoflagger = True
@@ -1034,7 +1044,7 @@ def check_aoflagger_version():
         logger.info('AOflagger version is {0}'.format(version))
     except:
         logger.info('AOflagger not available in this computer.')
-        old_aoflagger = False
+        old_aoflagger = None
     return old_aoflagger
 
 

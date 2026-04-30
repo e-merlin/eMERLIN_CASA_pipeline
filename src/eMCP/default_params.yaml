@@ -44,6 +44,8 @@ aoflagger:
   run: "auto"
   fields: "all"
   separate_bands: false
+  aoflagger_exec: aoflagger
+  # aoflagger_exec: singularity exec --bind /mnt:/mnt /path/to/aoflagger.sif aoflagger
 flag_apriori:
   border_chan_perc: 5.0
   observatory_flags: true
@@ -345,7 +347,8 @@ first_images:
     lownoisethreshold: 1.5
     minbeamfrac: 0.2
     growiterations: 25
-  wsclean_exec: singularity exec --bind /mnt:/mnt /mnt/software/containers/wsclean_3.4_idg_dysco_everybeam.sif wsclean
+  wsclean_exec: wsclean
+  # wsclean_exec: singularity exec --bind /mnt:/mnt /mnt/software/containers/wsclean_3.4_idg_dysco_everybeam.sif wsclean
   wsclean:
     "-size": 1024
     "-scale": "auto"

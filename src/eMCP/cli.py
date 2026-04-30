@@ -19,7 +19,6 @@ from eMCP.utils import eMCP_utils as emutils
 from eMCP.plots import eMCP_plots as emplt
 from eMCP.utils.weblog_config import get_weblog_function
 from ._version import __version__
-print('HELLO')
 line00 = '=' * 35
 
 # Initialize logger
