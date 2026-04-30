@@ -84,9 +84,7 @@ FROM ubuntu:24.04
 ENV \
     CASASITECONFIG=/usr/local/etc/casasiteconfig.py \
     DEBIAN_FRONTEND=noninteractive \
-    PYTHONNOUSERSITE=1 \
-    SETUPTOOLS_SCM_PRETEND_VERSION=0.0.0 \
-    SETUPTOOLS_SCM_PRETEND_VERSION_FOR_EMCP=0.0.0
+    PYTHONNOUSERSITE=1
 
 COPY --from=native-builder /usr/local /usr/local
 COPY --from=native-builder /usr/share/casacore /usr/share/casacore

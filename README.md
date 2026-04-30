@@ -5,11 +5,11 @@
 1. [Description](#description)
 1. [Installation](#installation)
    - [Conda Installation](#conda-installation)
-	   - [Pip Installation](#pip-installation)
-	   - [Containers Installation](#containers)
-	     - [Singularity](#singularity)
-	     - [Apptainer](#apptainer)
-	     - [Docker](#docker)
+   - [Pip Installation](#pip-installation)
+   - [Containers Installation](#containers)
+     - [Singularity](#singularity)
+     - [Apptainer](#apptainer)
+     - [Docker](#docker)
 1. [Quick start](#quick-start)
 1. [Usage](#usage)
 1. [Additional information](#additional-information)
@@ -69,26 +69,26 @@ For development, use `pip install -e .` to install in editable mode.
 
 ## Containers
 
-The container includes eMCP, modular CASA, WSClean, and AOFlagger. CASA data is
-not baked into the image; keep it in a persistent host directory such as
-`$HOME/.casa/data` and mount it at `/root/.casa/data`.
+The container includes eMCP, modular CASA, WSClean, and AOFlagger. Run it from
+the directory containing `inputs.ini`. CASA data is not baked into the image; if
+CASA cannot find your data tables, add the extra CASA-data bind shown below.
 
 ### Singularity
 
 ```bash
 singularity pull emerlin_casa.sif docker://ghcr.io/e-merlin/emerlin_casa_pipeline:base
-singularity exec --cleanenv --env PYTHONNOUSERSITE=1 \
-  --bind $HOME/.casa/data:/root/.casa/data \
-  emerlin_casa.sif emcp -h
+singularity exec --cleanenv \
+  --home "$PWD:/work" \
+  emerlin_casa.sif emcp -i inputs.ini -r all
 ```
 
 ### Apptainer
 
 ```bash
 apptainer pull emerlin_casa.sif docker://ghcr.io/e-merlin/emerlin_casa_pipeline:base
-apptainer exec --cleanenv --env PYTHONNOUSERSITE=1 \
-  --bind $HOME/.casa/data:/root/.casa/data \
-  emerlin_casa.sif emcp -h
+apptainer exec --cleanenv \
+  --home "$PWD:/work" \
+  emerlin_casa.sif emcp -i inputs.ini -r all
 ```
 
 ### Docker
@@ -96,10 +96,13 @@ apptainer exec --cleanenv --env PYTHONNOUSERSITE=1 \
 ```bash
 docker pull ghcr.io/e-merlin/emerlin_casa_pipeline:base
 docker run --rm -it \
-  -v $PWD:/work \
-  -v $HOME/.casa/data:/root/.casa/data \
-  ghcr.io/e-merlin/emerlin_casa_pipeline:base emcp -h
+  -v "$PWD:/work" \
+  ghcr.io/e-merlin/emerlin_casa_pipeline:base emcp -i inputs.ini -r all
 ```
+
+If CASA data is not available inside the container, add
+`--bind "$HOME/.casa/data:/root/.casa/data"` for Singularity/Apptainer, or
+`-v "$HOME/.casa/data:/root/.casa/data"` for Docker.
 
 ## Quick start
 
@@ -124,8 +127,7 @@ If you have received calibrated data from the observatory and you want to refine
 
   ```bash
   docker run -it --rm \
-    -v $(pwd):/work \
-    -v $HOME/.casa/data:/root/.casa/data \
+    -v "$PWD:/work" \
     ghcr.io/e-merlin/emerlin_casa_pipeline:base emcp -r calibration
   ```
 
@@ -145,12 +147,9 @@ emcp -v
 # List available pipeline steps
 emcp -l
 
-# IMPORTANT: When specifying multiple steps, use comma WITHOUT SPACES
+# Multiple steps can be space-separated or comma-separated
 emcp -r flag_apriori,flag_manual,average
-
-# NOT like this (will cause errors)
-# emcp -r flag_apriori flag_manual average  # ERROR! Will be interpreted as positional arguments
-# emcp -r flag_apriori, flag_manual, average  # ERROR! Spaces after commas will be included in step names
+emcp -r flag_apriori flag_manual average
 
 # Skip specific steps (same comma-separated format)
 emcp -s plot_data,save_flags
@@ -163,10 +162,10 @@ emcp -v
 emcp -l
 
 # Initialize a new project (create default_params.yaml and inputs.ini in current directory)
-emcp init
+emcp --init
 
 # Initialize a new project and force overwrite of existing files
-emcp init --force
+emcp --init --force
 
 # Run with custom inputs file
 emcp -i my_inputs.ini
@@ -186,7 +185,7 @@ mkdir my_project
 cd my_project
 
 # Initialize with default configuration files
-emcp init
+emcp --init
 
 # Edit inputs.ini and default_params.yaml as needed
 ```
@@ -270,13 +269,13 @@ calibration
     split_fields
 ```
 
-Selection options are any combination of: a list of any individual step names, `pre_processing`, `calibration` or `all`
+Selection options are any combination of individual step names, `pre_processing`, `calibration`, or `all`.
 
 ### Examples of step selection
 
-You need to specify which steps of the pipeline to run. Some example on how to choose steps:
+Specify which steps of the pipeline to run. For example:
 
-1. Run all the calibration steps (ideal for observatory-processed data for which you want to tweak the calibration parameters). Includes all calibrations steps (see list above):
+1. Run all calibration steps. This is the usual choice for observatory-processed data when you want to refine calibration parameters:
 
 `emcp -r calibration`
 
@@ -286,7 +285,7 @@ You need to specify which steps of the pipeline to run. Some example on how to c
    emcp -r all
    ```
 
-1. Run only the pre-processing steps (usually executed by the observatory. Otherwise you need the raw FITS-IDI files):
+1. Run only the pre-processing steps. These are usually executed by the observatory; otherwise you need the raw FITS-IDI files:
 
    ```bash
    emcp -r pre_processing
@@ -350,7 +349,7 @@ There are two main blocks: pre-processing and calibration. Most probably you wil
 - Identify changes you want to include in the data reduction, like changing calibration parameters or adding manual flags.
 - Add or edit file `manual_avg.flags` with your flag commands (follow the CASA syntax).
 - Edit the file `inputs.ini` if you need to change the sources used or they intend.
-- Edit the file `default_params.json` changing any parameter the pipeline is using, if needed.
+- Edit the file `default_params.yaml` changing any parameter the pipeline is using, if needed.
 - Run the calibration block of the pipeline with the command:
 
 `emcp -r calibration`
