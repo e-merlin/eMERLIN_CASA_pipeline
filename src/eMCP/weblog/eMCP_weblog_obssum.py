@@ -156,13 +156,15 @@ def weblog_obssum(msinfo):
     wlog.write('<div class="subsection">\n')
     wlog.write('  <h3 class="collapsible-header">Antennas</h3>\n')
     wlog.write('  <div>\n')
-    wlog.write('    <p>Reference antenna: {}</p>\n'.format(msinfo.get('refant', 'Not specified')))
+    refant = msinfo.get('refant') or 'not defined yet'
+    first_refant = refant.split(',')[0].strip()
     if 'antennas' in msinfo:
-        wlog.write('    <table class="table" style="max-width:420px;">\n')
-        wlog.write('      <tr><th>Antennas</th></tr>\n')
+        wlog.write('    <div class="antenna-list" aria-label="Antennas">\n')
         for ant in msinfo['antennas']:
-            wlog.write(f'      <tr><td>{ant}</td></tr>\n')
-        wlog.write('    </table>\n')
+            ant_class = 'antenna-code antenna-code-ref' if ant == first_refant else 'antenna-code'
+            wlog.write(f'      <span class="{ant_class}">{ant}</span>\n')
+        wlog.write('    </div>\n')
+    wlog.write('    <p>Reference antenna: {}</p>\n'.format(refant))
     wlog.write('  </div>\n')
     wlog.write('</div>\n')
 
