@@ -5,10 +5,11 @@
 1. [Description](#description)
 1. [Installation](#installation)
    - [Conda Installation](#conda-installation)
-   - [Pip Installation](#pip-installation)
-   - [Containers Installation](#containers)
-     - [Singularity](#singularity-installation)
-     - [Docker](#docker-installation)
+	   - [Pip Installation](#pip-installation)
+	   - [Containers Installation](#containers)
+	     - [Singularity](#singularity)
+	     - [Apptainer](#apptainer)
+	     - [Docker](#docker)
 1. [Quick start](#quick-start)
 1. [Usage](#usage)
 1. [Additional information](#additional-information)
@@ -23,13 +24,13 @@ The pipeline uses YAML for all data serialization, including calibration tables,
 ## Installation
 
 The e-MERLIN CASA Pipeline (eMCP) requires:
-- Python 3.8-3.10. We recommend 3.10 since it supports more operating systems.
+- Python 3.8-3.12. Use Python 3.12 for current modular CASA containers.
 
 Optional requirements:
 - aoflagger v2.9+ (needed for L-band data)
 - wsclean (alternative to tclean for faster imaging)
 
-In the examples below we use python 3.10. CASA does not support all versions of python for all operating systems, so check the documentation in [casadocs](https://casadocs.readthedocs.io/en/stable/notebooks/introduction.html#Compatibility), in particular the Compatibility > Modular CASA section for the right python version for you.
+CASA does not support all versions of python for all operating systems, so check the documentation in [casadocs](https://casadocs.readthedocs.io/en/stable/notebooks/introduction.html#Compatibility), in particular the Compatibility > Modular CASA section for the right python version for you.
 
 ### Method 1: Conda with environment file (Recommended)
 Installs Python 3.10 by default and all the dependencies. You still need to install aoflagger and wsclean separately if needed.
@@ -68,49 +69,36 @@ For development, use `pip install -e .` to install in editable mode.
 
 ## Containers
 
-The container includes the modular CASA Python packages needed by eMCP. CASA
-data (`casadata`) is updated more often than the container image, so keep it in
-a persistent directory outside the container and bind mount it when running eMCP.
-The examples below use the usual host location, `$HOME/.casa/data`, mounted to
-CASA's default data directory inside the container, `/root/.casa/data`.
+The container includes eMCP, modular CASA, WSClean, and AOFlagger. CASA data is
+not baked into the image; keep it in a persistent host directory such as
+`$HOME/.casa/data` and mount it at `/root/.casa/data`.
 
-If you already use CASA outside the container, reuse that same data directory.
-Update it on the host with your normal CASA/modular CASA tools, then start the
-container with the bind mount shown below. Replace `$HOME/.casa/data` if your
-CASA data is stored elsewhere.
-
-### Singularity Installation
-
-For HPC environments and those who prefer Singularity:
+### Singularity
 
 ```bash
-# Pull the container
 singularity pull emerlin_casa.sif docker://ghcr.io/e-merlin/emerlin_casa_pipeline:base
-
-# Run interactively with CASA data mounted
-singularity shell --bind $HOME/.casa/data:/root/.casa/data emerlin_casa.sif
-
-# Execute specific commands
-singularity exec --bind $HOME/.casa/data:/root/.casa/data emerlin_casa.sif emcp -h
+singularity exec --cleanenv --env PYTHONNOUSERSITE=1 \
+  --bind $HOME/.casa/data:/root/.casa/data \
+  emerlin_casa.sif emcp -h
 ```
 
-### Docker Installation
-
-For those who prefer containerized applications:
+### Apptainer
 
 ```bash
-# Pull the container
+apptainer pull emerlin_casa.sif docker://ghcr.io/e-merlin/emerlin_casa_pipeline:base
+apptainer exec --cleanenv --env PYTHONNOUSERSITE=1 \
+  --bind $HOME/.casa/data:/root/.casa/data \
+  emerlin_casa.sif emcp -h
+```
+
+### Docker
+
+```bash
 docker pull ghcr.io/e-merlin/emerlin_casa_pipeline:base
-
-# Run interactively with CASA data mounted
-docker run -it --rm -v $HOME/.casa/data:/root/.casa/data ghcr.io/e-merlin/emerlin_casa_pipeline:base
-```
-
-### Additional directory access
-
-If you need to access directories outside your current location (e.g., `/path/to/my/raw_data`), add additional bind mounts:
-```bash
-... --bind /path/to/my/raw_data:/path/to/my/raw_data --bind $HOME/.casa/data:/root/.casa/data
+docker run --rm -it \
+  -v $PWD:/work \
+  -v $HOME/.casa/data:/root/.casa/data \
+  ghcr.io/e-merlin/emerlin_casa_pipeline:base emcp -h
 ```
 
 ## Quick start
@@ -135,7 +123,10 @@ If you have received calibrated data from the observatory and you want to refine
 - If using Docker:
 
   ```bash
-  docker run -it --rm -v $(pwd):/data emerlin/emcp:latest emcp -r calibration
+  docker run -it --rm \
+    -v $(pwd):/work \
+    -v $HOME/.casa/data:/root/.casa/data \
+    ghcr.io/e-merlin/emerlin_casa_pipeline:base emcp -r calibration
   ```
 
 ## Usage
