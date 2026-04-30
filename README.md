@@ -67,6 +67,18 @@ pip install .
 For development, use `pip install -e .` to install in editable mode.
 
 ## Containers
+
+The container includes the modular CASA Python packages needed by eMCP. CASA
+data (`casadata`) is updated more often than the container image, so keep it in
+a persistent directory outside the container and bind mount it when running eMCP.
+The examples below use the usual host location, `$HOME/.casa/data`, mounted to
+CASA's default data directory inside the container, `/root/.casa/data`.
+
+If you already use CASA outside the container, reuse that same data directory.
+Update it on the host with your normal CASA/modular CASA tools, then start the
+container with the bind mount shown below. Replace `$HOME/.casa/data` if your
+CASA data is stored elsewhere.
+
 ### Singularity Installation
 
 For HPC environments and those who prefer Singularity:
@@ -76,13 +88,11 @@ For HPC environments and those who prefer Singularity:
 singularity pull emerlin_casa.sif docker://ghcr.io/e-merlin/emerlin_casa_pipeline:base
 
 # Run interactively with CASA data mounted
-singularity shell --bind $HOME/.casa/data:$(pwd)/.casa/data emerlin_casa.sif
+singularity shell --bind $HOME/.casa/data:/root/.casa/data emerlin_casa.sif
 
 # Execute specific commands
-singularity exec --bind $HOME/.casa/data:$(pwd)/.casa/data emerlin_casa.sif emcp -h
+singularity exec --bind $HOME/.casa/data:/root/.casa/data emerlin_casa.sif emcp -h
 ```
-
-**Note**: Replace `$HOME/.casa/data` with your actual CASA data directory path if different.
 
 ### Docker Installation
 
@@ -93,16 +103,14 @@ For those who prefer containerized applications:
 docker pull ghcr.io/e-merlin/emerlin_casa_pipeline:base
 
 # Run interactively with CASA data mounted
-docker run -it --rm -v $HOME/.casa/data:$(pwd)/.casa/data ghcr.io/e-merlin/emerlin_casa_pipeline:base
+docker run -it --rm -v $HOME/.casa/data:/root/.casa/data ghcr.io/e-merlin/emerlin_casa_pipeline:base
 ```
-
-**Note**: Replace `$HOME/.casa/data` with your actual CASA data directory path if different.
 
 ### Additional directory access
 
 If you need to access directories outside your current location (e.g., `/path/to/my/raw_data`), add additional bind mounts:
 ```bash
-... --bind /path/to/my/raw_data:/path/to/my/raw_data --bind $HOME/.casa/data:$(pwd)/.casa/data 
+... --bind /path/to/my/raw_data:/path/to/my/raw_data --bind $HOME/.casa/data:/root/.casa/data
 ```
 
 ## Quick start
