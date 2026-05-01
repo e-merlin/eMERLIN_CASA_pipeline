@@ -93,6 +93,7 @@ COPY . /opt/eMERLIN_CASA_pipeline
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       ca-certificates \
+      git \
       libblas-dev \
       libboost-filesystem-dev \
       libboost-program-options-dev \
@@ -116,6 +117,7 @@ RUN apt-get update && \
     ldconfig && \
     cd /opt/eMERLIN_CASA_pipeline && \
     python3 -m pip install --no-cache-dir --no-compile --break-system-packages . && \
+    apt-get purge -y --auto-remove git git-man && \
     mkdir -p /root/.casa/data /usr/local/etc && \
     printf '%s\n' \
       'measurespath = "/root/.casa/data"' \

@@ -104,6 +104,10 @@ If CASA data is not available inside the container, add
 `--bind "$HOME/.casa/data:/root/.casa/data"` for Singularity/Apptainer, or
 `-v "$HOME/.casa/data:/root/.casa/data"` for Docker.
 
+If Apptainer/Singularity reports that `squashfuse` is missing and extracts the
+SIF to a temporary sandbox, install `squashfuse` on the host system. This cannot
+be fixed from inside the container image.
+
 ## Quick start
 
 If you have received calibrated data from the observatory and you want to refine the calibration, you can:
