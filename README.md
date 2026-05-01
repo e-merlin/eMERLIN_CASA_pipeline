@@ -70,8 +70,8 @@ For development, use `pip install -e .` to install in editable mode.
 ## Containers
 
 The container includes eMCP, modular CASA, WSClean, and AOFlagger. Run it from
-the directory containing `inputs.ini`. CASA data is not baked into the image; if
-CASA cannot find your data tables, add the extra CASA-data bind shown below.
+the directory containing `inputs.ini`. CASA data is not baked into the image; the
+examples below bind the usual host location, `$HOME/.casa/data`.
 
 ### Singularity
 
@@ -79,6 +79,7 @@ CASA cannot find your data tables, add the extra CASA-data bind shown below.
 singularity pull emerlin_casa.sif docker://ghcr.io/e-merlin/emerlin_casa_pipeline:base
 singularity exec --cleanenv \
   --home "$PWD:/work" \
+  --bind "$HOME/.casa/data:/root/.casa/data" \
   emerlin_casa.sif emcp -i inputs.ini -r all
 ```
 
@@ -88,6 +89,7 @@ singularity exec --cleanenv \
 apptainer pull emerlin_casa.sif docker://ghcr.io/e-merlin/emerlin_casa_pipeline:base
 apptainer exec --cleanenv \
   --home "$PWD:/work" \
+  --bind "$HOME/.casa/data:/root/.casa/data" \
   emerlin_casa.sif emcp -i inputs.ini -r all
 ```
 
@@ -97,16 +99,18 @@ apptainer exec --cleanenv \
 docker pull ghcr.io/e-merlin/emerlin_casa_pipeline:base
 docker run --rm -it \
   -v "$PWD:/work" \
+  -v "$HOME/.casa/data:/root/.casa/data" \
   ghcr.io/e-merlin/emerlin_casa_pipeline:base emcp -i inputs.ini -r all
 ```
 
-If CASA data is not available inside the container, add
-`--bind "$HOME/.casa/data:/root/.casa/data"` for Singularity/Apptainer, or
-`-v "$HOME/.casa/data:/root/.casa/data"` for Docker.
+If your CASA data is stored elsewhere, replace `$HOME/.casa/data` with that
+path.
 
 If Apptainer/Singularity reports that `squashfuse` is missing and extracts the
 SIF to a temporary sandbox, install `squashfuse` on the host system. This cannot
-be fixed from inside the container image.
+be fixed from inside the container image. As a workaround, set
+`APPTAINER_TMPDIR` and `APPTAINER_CACHEDIR` to a filesystem with enough free
+space before running `apptainer exec`.
 
 ## Quick start
 
@@ -132,6 +136,7 @@ If you have received calibrated data from the observatory and you want to refine
   ```bash
   docker run -it --rm \
     -v "$PWD:/work" \
+    -v "$HOME/.casa/data:/root/.casa/data" \
     ghcr.io/e-merlin/emerlin_casa_pipeline:base emcp -r calibration
   ```
 
