@@ -112,6 +112,11 @@ be fixed from inside the container image. As a workaround, set
 `APPTAINER_TMPDIR` and `APPTAINER_CACHEDIR` to a filesystem with enough free
 space before running `apptainer exec`.
 
+CASA `plotms` needs an X display even when writing plot files. The container
+includes `Xvfb`, and eMCP starts it automatically for headless plotting when
+`DISPLAY` is not set. For non-container installs, install `xvfb` or run with an
+available `DISPLAY`.
+
 ## Quick start
 
 If you have received calibrated data from the observatory and you want to refine the calibration, you can:

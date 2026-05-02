@@ -111,7 +111,8 @@ RUN apt-get update && \
       python3 \
       python3-dev \
       python3-pip \
-      wcslib-dev && \
+      wcslib-dev \
+      xvfb && \
     rm -rf /var/lib/apt/lists/* && \
     ln -s /usr/share/casacore /var/lib/casacore && \
     ldconfig && \

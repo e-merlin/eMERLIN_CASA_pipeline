@@ -1,5 +1,8 @@
 #!/usr/local/python
+import atexit
 import os
+import subprocess
+import time
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
@@ -26,7 +29,7 @@ from ..functions import eMCP_functions as em
 
 import logging
 
-from casaplotms import plotms
+from casaplotms import plotms as casa_plotms
 from casatools import ms as my_ms
 
 plt.ioff()
@@ -34,6 +37,66 @@ plt.ioff()
 ms = my_ms()
 
 logger = logging.getLogger('logger')
+
+_xvfb_process = None
+_xvfb_display = None
+
+
+def _stop_virtual_display():
+    global _xvfb_process
+    if _xvfb_process is None or _xvfb_process.poll() is not None:
+        return
+    _xvfb_process.terminate()
+    try:
+        _xvfb_process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        _xvfb_process.kill()
+        _xvfb_process.wait()
+
+
+def _ensure_plotms_display():
+    global _xvfb_process, _xvfb_display
+    if os.environ.get('DISPLAY'):
+        return
+    if _xvfb_process is not None and _xvfb_process.poll() is None:
+        os.environ['DISPLAY'] = _xvfb_display
+        return
+
+    xvfb = shutil.which('Xvfb')
+    if xvfb is None:
+        raise RuntimeError(
+            'CASA plotms requires an X display even when exporting to a file. '
+            'Install Xvfb or run with DISPLAY set.')
+
+    screen = os.environ.get('EMCP_XVFB_SCREEN', '1600x1200x24')
+    try:
+        first_display = int(os.environ.get('EMCP_XVFB_DISPLAY_BASE', '99'))
+    except ValueError:
+        first_display = 99
+
+    for display_number in range(first_display, first_display + 100):
+        display = f':{display_number}'
+        process = subprocess.Popen(
+            [xvfb, display, '-screen', '0', screen, '-nolisten', 'tcp'],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL)
+        time.sleep(0.2)
+        if process.poll() is None:
+            _xvfb_process = process
+            _xvfb_display = display
+            os.environ['DISPLAY'] = display
+            atexit.register(_stop_virtual_display)
+            logger.info('Started Xvfb display %s for CASA plotms', display)
+            return
+
+    raise RuntimeError(
+        'CASA plotms requires an X display, and eMCP could not start Xvfb. '
+        'Set DISPLAY or check that Xvfb can create a free display.')
+
+
+def plotms(*args, **kwargs):
+    _ensure_plotms_display()
+    return casa_plotms(*args, **kwargs)
 
 weblog_dir = './weblog/'
 info_dir = './weblog/info/'
