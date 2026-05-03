@@ -42,7 +42,7 @@ dependencies = [
     "casatestutils>=6.6.0,<6.8.0",
 
     # Configuration - follows CASA major releases
-    "casaconfig>=1.2.0,<1.3.0",
+    "casaconfig>=1.2.0,<1.5.0",
     
     # Visualization tools - independent versioning 
     "casaplotms>=2.2.4,<3.0.0",     # 6.6.0→2.2.4, 6.6.4→2.4.3, 6.6.5→2.5.2, 6.7.0→2.6.2

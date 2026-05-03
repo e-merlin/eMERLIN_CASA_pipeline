@@ -134,7 +134,7 @@ RUN apt-get update && \
       scipy \
       reproject \
       pyregion \
-      protobuf==3.20.3 \
+      protobuf==3.20 \
       casaconfig==1.4.0 \
       casatools==6.7.2.42 \
       casatasks==6.7.2.42 \
@@ -149,6 +149,19 @@ RUN apt-get update && \
       casampi==0.5.9 && \
     python3 -m pip install --no-cache-dir --no-compile --break-system-packages \
       --no-deps . && \
+    test -n "$(find /usr/local -name '*-x86_64.AppImage' -print -quit)" && \
+    find /usr/local -name '*-x86_64.AppImage' -print | \
+      while IFS= read -r appimage; do \
+        appdir="$(dirname "${appimage}")"; \
+        appname="$(basename "${appimage}")"; \
+        cd "${appdir}" || exit 1; \
+        "./${appname}" --appimage-extract || exit 1; \
+        rm "${appname}" || exit 1; \
+        find squashfs-root -type d -exec chmod 775 {} + || exit 1; \
+        chmod +x squashfs-root/AppRun || exit 1; \
+        find /usr/local -type f -name '*.py' -exec grep -l "${appname}" {} + | \
+          xargs -r sed -i "s#${appname}#squashfs-root/AppRun#g"; \
+      done && \
     apt-get purge -y --auto-remove git git-man && \
     mkdir -p /root/.casa/data /usr/local/etc && \
     printf '%s\n' \
