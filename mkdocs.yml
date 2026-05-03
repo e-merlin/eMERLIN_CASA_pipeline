@@ -12,6 +12,7 @@ nav:
     - Home: index.md
     - Pipeline description: src/description.md
     - Installation: src/installation.md
+    - Container design notes: src/container_design.md
     - Usage: src/usage.md
     - Configuration: src/configuration.md
     - Pipeline Steps: src/pipeline_steps.md
@@ -42,4 +43,3 @@ markdown_extensions:
   - admonition
   - pymdownx.highlight
   - pymdownx.superfences
-
