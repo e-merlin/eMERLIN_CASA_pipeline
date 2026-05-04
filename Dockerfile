@@ -1,4 +1,3 @@
-# Rebuild trigger: 2026-05-04
 FROM ubuntu:24.04 AS native-builder
 
 ENV \
