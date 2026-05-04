@@ -50,7 +50,6 @@ casatestutils==6.7.2.42
 casaconfig==1.4.0
 casatablebrowser==0.0.39
 casalogger==1.0.23
-casafeather==0.0.27
 casampi==0.5.9
 ```
 
@@ -168,7 +167,6 @@ python3 -m pip install --dry-run --ignore-installed --only-binary=:all: \
   casatestutils==6.7.2.42 \
   casatablebrowser==0.0.39 \
   casalogger==1.0.23 \
-  casafeather==0.0.27 \
   casampi==0.5.9
 ```
 

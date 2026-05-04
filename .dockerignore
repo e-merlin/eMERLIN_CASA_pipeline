@@ -1,0 +1,31 @@
+# Local build and runtime outputs
+build/
+dist/
+*.egg-info/
+tmp/
+logs/
+build_logs/
+*.log
+log-*.txt
+casa-*.log
+
+# Python caches and local environments
+__pycache__/
+*.py[cod]
+.cache/
+.pytest_cache/
+.tox/
+.venv/
+venv/
+ENV/
+
+# Development-only files not needed by the runtime image
+.github/
+.pre-commit-config.yaml
+docs/
+mkdocs.yml
+todo.md
+
+# Local exploratory copies
+src/eMCP/weblog/backup/
+src/eMCP/calibrator_models/new/

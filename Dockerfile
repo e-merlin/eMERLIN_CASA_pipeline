@@ -71,8 +71,8 @@ RUN mkdir -p /src && \
     cmake --build aoflagger/build --parallel "$(nproc)" && \
     cmake --install aoflagger/build && \
     cd / && \
-    if ! python3 -c "import aoflagger; print(aoflagger.__file__)"; then \
-      site_packages="$(python3 -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')" && \
+    if ! python3 -c "import importlib.util, sys; sys.exit(importlib.util.find_spec('aoflagger') is None)"; then \
+      site_packages="$(python3 -c 'import sysconfig; print(sysconfig.get_paths()["platlib"])')" && \
       mkdir -p "${site_packages}" && \
       cp /src/aoflagger/build/python/aoflagger*.so "${site_packages}/"; \
     fi && \
@@ -89,12 +89,10 @@ ENV \
 
 COPY --from=native-builder /usr/local /usr/local
 COPY --from=native-builder /usr/share/casacore /usr/share/casacore
-COPY . /opt/eMERLIN_CASA_pipeline
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       ca-certificates \
-      git \
       libblas-dev \
       libboost-filesystem-dev \
       libboost-program-options-dev \
@@ -116,7 +114,6 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* && \
     ln -s /usr/share/casacore /var/lib/casacore && \
     ldconfig && \
-    cd /opt/eMERLIN_CASA_pipeline && \
     python3 -m pip install --no-cache-dir --no-compile --break-system-packages \
       numpy \
       aplpy \
@@ -129,6 +126,8 @@ RUN apt-get update && \
       reproject \
       pyregion \
       protobuf==3.20 \
+      'shadems>=0.5.4,<0.6.0' \
+      'dask[dataframe]>=2023.1.1,<2024.0.0' \
       casaconfig==1.4.0 \
       casatools==6.7.2.42 \
       casatasks==6.7.2.42 \
@@ -136,8 +135,16 @@ RUN apt-get update && \
       casatestutils==6.7.2.42 \
       casatablebrowser==0.0.39 \
       casalogger==1.0.23 \
-      casafeather==0.0.27 \
-      casampi==0.5.9 && \
+      casampi==0.5.9
+
+COPY pyproject.toml README.md /opt/eMERLIN_CASA_pipeline/
+COPY src /opt/eMERLIN_CASA_pipeline/src
+COPY .git /opt/eMERLIN_CASA_pipeline/.git
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git && \
+    rm -rf /var/lib/apt/lists/* && \
+    cd /opt/eMERLIN_CASA_pipeline && \
     python3 -m pip install --no-cache-dir --no-compile --break-system-packages \
       --no-deps . && \
     apt-get purge -y --auto-remove git git-man && \
