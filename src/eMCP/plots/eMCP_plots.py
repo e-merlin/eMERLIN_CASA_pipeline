@@ -23,6 +23,7 @@ from ..utils.weblog_config import get_weblog_function
 # Get the appropriate weblog function (original or modern)
 start_weblog = get_weblog_function()
 from ..utils import eMCP_utils as emutils
+from ..utils import eMCP_paths as empaths
 from ..functions import eMCP_functions as em
 
 import logging
@@ -37,18 +38,18 @@ ms = my_ms()
 
 logger = logging.getLogger('logger')
 
-weblog_dir = './weblog/'
-info_dir = './weblog/info/'
-calib_dir = './weblog/calib/'
-plots_dir = './weblog/plots/'
-logs_dir = './logs/'
-images_dir = './weblog/images/'
+weblog_dir = empaths.WEBLOG_DIR
+info_dir = empaths.INFO_DIR
+calib_dir = empaths.CALIB_DIR
+plots_dir = empaths.PLOTS_DIR
+logs_dir = empaths.LOGS_DIR
+images_dir = empaths.IMAGES_DIR
 
-weblog_link = './'
-info_link = './info/'
-calib_link = './calib/'
-plots_link = './plots/'
-images_link = './images/'
+weblog_link = empaths.WEBLOG_LINK
+info_link = empaths.INFO_LINK
+calib_link = empaths.CALIB_LINK
+plots_link = empaths.PLOTS_LINK
+images_link = empaths.IMAGES_LINK
 
 line0 = '-' * 15
 
@@ -241,11 +242,11 @@ def make_4plots(eMCP, datacolumn='data'):
     logger.info('Start plot_{}'.format(datacolumn))
     t0 = datetime.datetime.now(datetime.timezone.utc)
     if datacolumn == 'data':
-        plots_data_dir = './weblog/plots/plots_data/'
+        plots_data_dir = empaths.PLOTS_DATA_DIR
     elif datacolumn == 'corrected':
-        plots_data_dir = './weblog/plots/plots_corrected/'
+        plots_data_dir = empaths.PLOTS_CORRECTED_DIR
     else:
-        plots_data_dir = './weblog/plots/'
+        plots_data_dir = empaths.PLOTS_DIR
     emutils.makedir(plots_data_dir)
     allsources = msinfo['sources']['allsources'].split(',')
     mssources = msinfo['sources']['mssources'].split(',')
@@ -343,7 +344,7 @@ def single_uvplt_model(msinfo, field, plots_data_dir, amp_max=None):
 def make_uvplt(eMCP):
     msinfo = eMCP['msinfo']
     msfile = msinfo['msfile']
-    plots_data_dir = './weblog/plots/plots_uvplt/'
+    plots_data_dir = empaths.PLOTS_UVPLT_DIR
     emutils.makedir(plots_data_dir)
     if not _ms_has_column(msfile, 'CORRECTED_DATA'):
         logger.warning('Cannot make corrected uvplt plots. Column '
@@ -378,7 +379,7 @@ def make_uvplt(eMCP):
 def make_uvcov(msfile, msinfo):
     """Produce V vs U coverage plots using shadems (one PNG per field)."""
     import multiprocessing
-    plots_obs_dir = './weblog/plots/plots_observation/'
+    plots_obs_dir = empaths.PLOTS_OBSERVATION_DIR
     emutils.makedir(plots_obs_dir)
     allsources = msinfo['sources']['allsources'].split(',')
     mssources = msinfo['sources']['mssources'].split(',')
@@ -447,7 +448,7 @@ def _plot_elevation_track(ax, msmd, me, field_id, field_name):
 
 
 def make_elevation(msfile, msinfo):
-    plots_obs_dir = './weblog/plots/plots_observation/'
+    plots_obs_dir = empaths.PLOTS_OBSERVATION_DIR
     emutils.makedir(plots_obs_dir)
     plot_file = plots_obs_dir + '{0}_elevation.png'.format(
         msinfo['msfilename'])
@@ -509,10 +510,14 @@ def fperc(x):
 
 
 def sort_list(item, flagged, list_order):
+    if len(item) == 0:
+        return np.array([]), np.array([])
     order = {a: i for i, a in enumerate(list_order)}
-    item_sorted, flagged_sorted = np.asarray(
-        sorted(zip(item, flagged), key=lambda d: order[d[0]])).T
-    return item_sorted, np.asarray(flagged_sorted)
+    sorted_pairs = sorted(
+        zip(item, flagged),
+        key=lambda d: (order.get(d[0], len(order)), str(d[0])))
+    item_sorted, flagged_sorted = np.asarray(sorted_pairs, dtype=object).T
+    return item_sorted, np.asarray(flagged_sorted, dtype=float)
 
 
 def read_scan_summary(datain):
@@ -522,24 +527,39 @@ def read_scan_summary(datain):
     return scan_summary
 
 
-def count_flags(flag_stats, label, list_order=[]):
+def count_flags(flag_stats, label, list_order=None):
+    if list_order is None:
+        list_order = []
     item = []
     flagged = []
-    for s in flag_stats[label].keys():
-        flagged.append(fperc(flag_stats[label][s]))
+    for s in flag_stats.get(label, {}).keys():
+        stats = flag_stats[label][s]
+        if stats.get('total', 0) == 0:
+            logger.debug('Skipping empty flag statistics item: %s/%s', label, s)
+            continue
+        flagged.append(fperc(stats))
         try:
             item.append(int(s))
         except:
             item.append(s)
+    if len(item) == 0:
+        return np.array([]), np.array([])
     if len(list_order) == 0:
         order = np.array(item).argsort()
         item_sorted = np.array(item)[order]
-        flagged_sorted = np.array(flagged)[order]
+        flagged_sorted = np.array(flagged, dtype=float)[order]
     else:
         item_sorted, flagged_sorted = sort_list(item,
                                                 flagged,
                                                 list_order=list_order)
     return item_sorted, flagged_sorted
+
+
+def _mark_empty_axis(ax, message):
+    ax.text(0.5, 0.5, message, ha='center', va='center',
+            transform=ax.transAxes)
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
 
 
 def plot_flagstatistics(flag_stats, msinfo, step):
@@ -575,7 +595,7 @@ def plot_flagstatistics(flag_stats, msinfo, step):
     f_field = np.array(f_field, dtype=float)
 
     # Create output directory
-    plots_obs_dir = './weblog/plots/plots_flagstats/'
+    plots_obs_dir = empaths.PLOTS_FLAGSTATS_DIR
     emutils.makedir(plots_obs_dir)
 
     # Define common figure size for both plots
@@ -585,26 +605,43 @@ def plot_flagstatistics(flag_stats, msinfo, step):
     fig_scans = plt.figure(figsize=figsize)
     ax_scan = fig_scans.add_subplot(111)
 
-    # Map scan to field colors
-    scan_fieldID = np.array([scan_fieldID_dict[str(si)] for si in i_scan])
+    if len(i_scan) == 0:
+        logger.warning('No scan flag statistics available for step %s', step)
+        _mark_empty_axis(ax_scan, 'No scan flag statistics available')
+    else:
+        # Map scan to field colors
+        scan_fieldID = np.array([
+            scan_fieldID_dict.get(str(si), -1) for si in i_scan
+        ])
 
-    # Plot bars for each field with different colors
-    for i, fi in enumerate(i_field):
-        cond = scan_fieldID == i
-        if np.any(cond):  # Only plot if there are scans for this field
-            ax_scan.bar(i_scan[cond] - 0.5,
-                    f_scan[cond],
-                    alpha=1.0,
-                    color=plt.cm.Set1(1.0 * i / len(i_field)),
-                    width=1,
-                    label='{0} ({1})'.format(fi, i),
-                    zorder=10)
+        if len(i_field) == 0:
+            ax_scan.bar(i_scan - 0.5,
+                        f_scan,
+                        alpha=1.0,
+                        color='0.5',
+                        width=1,
+                        zorder=10)
+        else:
+            # Plot bars for each field with different colors
+            for i, fi in enumerate(i_field):
+                cond = scan_fieldID == i
+                if np.any(cond):
+                    ax_scan.bar(i_scan[cond] - 0.5,
+                                f_scan[cond],
+                                alpha=1.0,
+                                color=plt.cm.Set1(1.0 * i / len(i_field)),
+                                width=1,
+                                label='{0} ({1})'.format(fi, i),
+                                zorder=10)
 
     # Scan plot styling
     ax_scan.grid(axis='y', ls='-', color='0.6', zorder=-1000)
-    ax_scan.legend(loc=2, fontsize=7, ncol=4)
+    handles, labels = ax_scan.get_legend_handles_labels()
+    if handles:
+        ax_scan.legend(loc=2, fontsize=7, ncol=4)
     ax_scan.xaxis.set_major_locator(MultipleLocator(10))
-    ax_scan.set_xlim(np.min(i_scan) - 0.5, np.max(i_scan) + 0.5)
+    if len(i_scan) > 0:
+        ax_scan.set_xlim(np.min(i_scan) - 0.5, np.max(i_scan) + 0.5)
     ax_scan.set_ylim(0, 1)
     ax_scan.set_xlabel('Scan number')
     ax_scan.set_ylabel('Flagged fraction')
@@ -626,8 +663,10 @@ def plot_flagstatistics(flag_stats, msinfo, step):
     ax_ant = fig_other.add_subplot(133, sharey=ax_field)
 
     # Plot Field flags
-    for i, fi in enumerate(i_field):
-        field_value = f_field[np.argwhere(i_field == fi)[0][0]]
+    if len(i_field) == 0:
+        logger.warning('No field flag statistics available for step %s', step)
+        _mark_empty_axis(ax_field, 'No field flag statistics available')
+    for i, (fi, field_value) in enumerate(zip(i_field, f_field)):
         ax_field.bar(i,
                   field_value,
                   alpha=1.0,
@@ -644,22 +683,31 @@ def plot_flagstatistics(flag_stats, msinfo, step):
                    zorder=12)
 
     # Plot SPW flags
-    ax_spw.bar(range(len(i_spw)),
-              f_spw,
-              alpha=1.0,
-              color='0.5',
-              width=1,
-              align='center',
-              zorder=10)
+    if len(i_spw) == 0:
+        logger.warning('No SPW flag statistics available for step %s', step)
+        _mark_empty_axis(ax_spw, 'No SPW flag statistics available')
+    else:
+        ax_spw.bar(range(len(i_spw)),
+                  f_spw,
+                  alpha=1.0,
+                  color='0.5',
+                  width=1,
+                  align='center',
+                  zorder=10)
 
     # Plot Antenna flags
-    ax_ant.bar(range(len(i_ant)),
-              f_ant,
-              alpha=1.0,
-              color='0.5',
-              width=1,
-              align='center',
-              zorder=10)
+    if len(i_ant) == 0:
+        logger.warning('No antenna flag statistics available for step %s',
+                       step)
+        _mark_empty_axis(ax_ant, 'No antenna flag statistics available')
+    else:
+        ax_ant.bar(range(len(i_ant)),
+                  f_ant,
+                  alpha=1.0,
+                  color='0.5',
+                  width=1,
+                  align='center',
+                  zorder=10)
 
     # Add text annotations for values
     for i, v in enumerate(f_spw):
@@ -685,7 +733,8 @@ def plot_flagstatistics(flag_stats, msinfo, step):
     ax_field.set_title('Field')
     ax_field.set_ylabel('Flagged fraction')
     ax_field.set_ylim(0, 1)
-    ax_field.set_xlim(-0.5, len(i_field) - 0.5)
+    if len(i_field) > 0:
+        ax_field.set_xlim(-0.5, len(i_field) - 0.5)
     ax_field.grid(axis='y', zorder=-1000, ls='-', color='0.6')
 
     # Add field names as rotated annotations
@@ -703,7 +752,8 @@ def plot_flagstatistics(flag_stats, msinfo, step):
     ax_spw.set_title('SPW')
     ax_spw.set_xlabel('spw')
     ax_spw.set_yticklabels([])
-    ax_spw.set_xlim(-0.5, len(i_spw) - 0.5)
+    if len(i_spw) > 0:
+        ax_spw.set_xlim(-0.5, len(i_spw) - 0.5)
     ax_spw.grid(axis='y', zorder=-1000, ls='-', color='0.6')
 
     # Set axis properties for antenna plot
@@ -711,7 +761,8 @@ def plot_flagstatistics(flag_stats, msinfo, step):
     ax_ant.set_xticklabels(i_ant, rotation=90)
     ax_ant.set_title('Antenna')
     ax_ant.set_yticklabels([])
-    ax_ant.set_xlim(-0.5, len(i_ant) - 0.5)
+    if len(i_ant) > 0:
+        ax_ant.set_xlim(-0.5, len(i_ant) - 0.5)
     ax_ant.grid(axis='y', zorder=-1000, ls='-', color='0.6')
 
     # Add overall title
@@ -729,7 +780,7 @@ def plot_flagstatistics(flag_stats, msinfo, step):
 
 def plot_Lo_drops(phscal_scans, scans, amp_mean, lo_dropout_scans, phscal,
                   eMCP):
-    plots_obs_dir = './weblog/plots/plots_flagstats/'
+    plots_obs_dir = empaths.PLOTS_FLAGSTATS_DIR
     emutils.makedir(plots_obs_dir)
     msinfo = eMCP['msinfo']
     drops = np.array([scan in lo_dropout_scans for scan in phscal_scans])
@@ -761,7 +812,7 @@ def plot_Lo_drops(phscal_scans, scans, amp_mean, lo_dropout_scans, phscal,
     ax1.set_xlabel('Scan number')
     ax1.set_ylabel('Mean spw Lo raw amplitude')
 
-    plots_obs_dir = './weblog/plots/plots_flagstats/'
+    plots_obs_dir = empaths.PLOTS_FLAGSTATS_DIR
     plot_file_Lo = plots_obs_dir + '{0}_Lo_dropout_scans{1}.png'.format(
         msinfo['msfilename'], phscal)
     fig.savefig(plot_file_Lo, bbox_inches='tight')
@@ -997,11 +1048,18 @@ def plot_bptable(data, caltable, antenna, ax, calmode='p', field_id=None):
     all_freqs = emutils.read_keyword(caltable,
                                      'CHAN_FREQ',
                                      subtable='SPECTRAL_WINDOW').T
+    plotted = False
     for spw in spws:
         cond4 = data['SPECTRAL_WINDOW_ID'] == spw
         cond = cond1 * cond2 * cond4
         freq = all_freqs[spw] / 1e9
-        idx = np.where(cond)[0][0]
+        idxs = np.where(cond)[0]
+        if len(idxs) == 0:
+            logger.debug('No bandpass rows for antenna %s spw %s in %s',
+                         antenna_name, spw, caltable)
+            continue
+        idx = idxs[0]
+        plotted = True
 
         ax.scatter(freq, value[0,:,idx], marker='.', s=s, c='#0067cb')
         ax.scatter(freq, value[1,:,idx], marker='.', s=s, c='#c67d50')
@@ -1021,6 +1079,8 @@ def plot_bptable(data, caltable, antenna, ax, calmode='p', field_id=None):
                     color='#c67d50',
                     ms=1,
                     alpha=0.5)
+    if not plotted:
+        _mark_empty_axis(ax, 'No bandpass solutions')
     ax.annotate(antenna_name, (0.01, 0.9), xycoords='axes fraction')
     ax.set_xlabel('Freq [GHz]')
     return ax
@@ -1031,13 +1091,21 @@ def plot_caltable(caltable, filename, gaintype='G', calmode=''):
     data = emutils.read_caltable_data(caltable)
     antenna_names = em.get_antennas(caltable)
     num_antennas = len(antenna_names)
+    points_in_table = len(data.get('TIME', []))
+    if num_antennas == 0 or points_in_table == 0:
+        logger.warning('No plottable data in caltable %s', caltable)
+        fig, ax = plt.subplots(figsize=(10, 4))
+        _mark_empty_axis(ax, 'No plottable calibration data')
+        fig.savefig(filename, bbox_inches='tight')
+        plt.close(fig)
+        return
     fig, axes = plt.subplots(nrows=num_antennas,
                              ncols=1,
                              sharex=True,
                              figsize=(10, 14))
+    axes = np.atleast_1d(axes)
     fig.subplots_adjust(hspace=0)
     logger.debug(f"Points in table: {len(data['TIME'])}")
-    points_in_table = len(data['TIME'])
     s = 120 + 10 * (30000 / points_in_table)**0.3
     s = np.min([np.max([s, 50]), 200])
     for i, ax in enumerate(axes):

@@ -1,14 +1,10 @@
 import os
 import numpy as np
-import yaml
 from casatasks import fluxscale
+from ..utils import eMCP_paths as empaths
+from ..utils.eMCP_utils import save_obj
 
-weblog_dir = './weblog/'
-
-
-def save_obj(obj, name):
-    with open(name, 'w') as f:
-        yaml.dump(obj, f, default_flow_style=False)
+weblog_dir = empaths.WEBLOG_DIR
 
 def convert_ndarray(obj):
     # This is to avoid numpy arrays in the yaml file

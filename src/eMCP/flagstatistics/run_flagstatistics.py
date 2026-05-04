@@ -6,9 +6,10 @@ Collects and saves flag statistics from measurement sets.
 
 import os
 from casatasks import flagdata
+from ..utils import eMCP_paths as empaths
 from ..utils.eMCP_utils import save_obj
 
-weblog_dir = './weblog/'
+weblog_dir = empaths.WEBLOG_DIR
 
 
 def run_flagstats(msfile, step):
