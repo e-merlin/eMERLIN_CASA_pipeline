@@ -29,6 +29,7 @@ from ..utils.weblog_config import get_weblog_function
 # Get the appropriate weblog function (original or modern)
 start_weblog = get_weblog_function()
 from ..utils import eMCP_utils as emutils
+from ..utils import eMCP_paths as empaths
 
 from ..fluxscale import run_fluxscale
 from ..flagstatistics import run_flagstats
@@ -39,24 +40,21 @@ from casatasks import mstransform, applycal, gaincal, flagmanager, flagdata, con
 
 from casatools import table, msmetadata, ctsys
 
-tb = table()
-msmd = msmetadata()
-
 # Logging
 logger = logging.getLogger('logger')
 
-weblog_dir = './weblog/'
-info_dir = './weblog/info/'
-calib_dir = './weblog/calib/'
-plots_dir = './weblog/plots/'
-logs_dir = './logs/'
-images_dir = './weblog/images/'
+weblog_dir = empaths.WEBLOG_DIR
+info_dir = empaths.INFO_DIR
+calib_dir = empaths.CALIB_DIR
+plots_dir = empaths.PLOTS_DIR
+logs_dir = empaths.LOGS_DIR
+images_dir = empaths.IMAGES_DIR
 
-weblog_link = './'
-info_link = './info/'
-calib_link = './calib/'
-plots_link = './plots/'
-images_link = './images/'
+weblog_link = empaths.WEBLOG_LINK
+info_link = empaths.INFO_LINK
+calib_link = empaths.CALIB_LINK
+plots_link = empaths.PLOTS_LINK
+images_link = empaths.IMAGES_LINK
 
 line0 = '-' * 15
 
@@ -421,27 +419,33 @@ def get_msfile_sp(eMCP):
     ext_ms = {False: '.ms', True: '.mms'}
     do_ms2mms = eMCP['defaults']['import_eM']['ms2mms']
     msfile_sp = os.path.join(
-        '/', eMCP['inputs']['inbase'] + '_sp' + ext_ms[do_ms2mms])
+        '.', eMCP['inputs']['inbase'] + '_sp' + ext_ms[do_ms2mms])
     return msfile_sp
 
 
 def find_wide_narrow(spw_sp, cent_chan_sp, msfile):
-    msmd.open(msfile)
-    spws = msmd.spwfordatadesc()
+    msmd_tool = msmetadata()
     main_spw = []
-    logger.debug('')
-    logger.debug('Narrow sp {0}, central freq. {1:5.3f}'.format(
-        spw_sp, cent_chan_sp / 1e9))
-    for spw in spws:
-        chan = msmd.chanfreqs(spw)
-        freq_ini = chan[0]
-        freq_end = chan[-1]
-        logger.debug('Wide sp {0}: {1:5.3f} {2:5.3f}'.format(
-            spw, freq_ini / 1e9, freq_end / 1e9))
-        if freq_ini < cent_chan_sp <= freq_end:
-            main_spw.append(spw)
-    logger.debug('Corresponding wide spw {0}'.format(main_spw))
-    msmd.done()
+    try:
+        msmd_tool.open(msfile)
+        spws = msmd_tool.spwfordatadesc()
+        logger.debug('')
+        logger.debug('Narrow sp {0}, central freq. {1:5.3f}'.format(
+            spw_sp, cent_chan_sp / 1e9))
+        for spw in spws:
+            chan = msmd_tool.chanfreqs(spw)
+            freq_ini = chan[0]
+            freq_end = chan[-1]
+            logger.debug('Wide sp {0}: {1:5.3f} {2:5.3f}'.format(
+                spw, freq_ini / 1e9, freq_end / 1e9))
+            if freq_ini < cent_chan_sp <= freq_end:
+                main_spw.append(spw)
+        logger.debug('Corresponding wide spw {0}'.format(main_spw))
+    finally:
+        try:
+            msmd_tool.done()
+        except Exception:
+            pass
     # print results
     if len(main_spw) == 0:
         logger.warning('Could not find wideband spw containing narrow band ' \
@@ -458,30 +462,46 @@ def get_cent_freq(msfile):
     """
     Get central frequency of observation.
     """
-    
-    msmd.open(msfile)
-    spws = msmd.spwfordatadesc()
-    cent_freq = np.array([np.mean(msmd.chanfreqs(spw)) for spw in spws])
-    msmd.done()
-    return cent_freq
+    msmd_tool = msmetadata()
+    try:
+        msmd_tool.open(msfile)
+        spws = msmd_tool.spwfordatadesc()
+        return np.array([np.mean(msmd_tool.chanfreqs(spw)) for spw in spws])
+    finally:
+        try:
+            msmd_tool.done()
+        except Exception:
+            pass
 
 
 def get_chan_width(msfile):
     """
     Get channel width of observation.
     """
-    
-    msmd.open(msfile)
-    spws = msmd.spwfordatadesc()
-    chan_width = np.array([np.unique(msmd.chanwidths(spw))[0] for spw in spws])
-    msmd.done()
-    return chan_width
+    msmd_tool = msmetadata()
+    try:
+        msmd_tool.open(msfile)
+        spws = msmd_tool.spwfordatadesc()
+        return np.array([
+            np.unique(msmd_tool.chanwidths(spw))[0] for spw in spws
+        ])
+    finally:
+        try:
+            msmd_tool.done()
+        except Exception:
+            pass
 
 
 def get_spwmap_sp(msfile, msfile_sp):
-    msmd.open(msfile_sp)
-    spws_sp = msmd.spwfordatadesc()
-    msmd.done()
+    msmd_tool = msmetadata()
+    try:
+        msmd_tool.open(msfile_sp)
+        spws_sp = msmd_tool.spwfordatadesc()
+    finally:
+        try:
+            msmd_tool.done()
+        except Exception:
+            pass
     cent_freq_sp = get_cent_freq(msfile_sp)
     spwmap_sp = []
     for (spw_sp, cent_chan_sp) in zip(spws_sp, cent_freq_sp):
@@ -613,10 +633,15 @@ def remove_missing_scans(caltable, scans2flag):
     index_missing_rows = np.where(antenna1_Lo * missing_rows)[0]
     logger.info('Removing Lo solutions for dropout scans from {0}: {1}'.format(
         caltable, scans2flag))
-    tb = table()
-    tb.open(caltable, nomodify=False)
-    tb.removerows(index_missing_rows)
-    tb.close()
+    tb_tool = table()
+    try:
+        tb_tool.open(caltable, nomodify=False)
+        tb_tool.removerows(index_missing_rows)
+    finally:
+        try:
+            tb_tool.close()
+        except Exception:
+            pass
     #with casacore_tables.table(caltable, ack=False,
     #                           readonly=False) as main_table:
     #    main_table.removerows(index_missing_rows)
@@ -992,23 +1017,46 @@ def run_aoflagger_fields(eMCP):
                         listitems=['spw_name'])['spw_name'][0])
             for b in range(num_spw):
                 logger.info('Processing source {0}, band {1}'.format(field, b))
-                flag_command = '{4} -fields {2} -bands {3} -strategy {0} {1}'.format(
-                    ao_strategy, msfile, fields_num[field], b,
-                    aoflagger_exec)
-                os.system(flag_command)
-                logger.info('Last AOFlagger command: {}'.format(flag_command))
+                flag_command = (
+                    shlex.split(aoflagger_exec) +
+                    ['-fields', str(fields_num[field]), '-bands', str(b),
+                     '-strategy', ao_strategy, msfile])
+                _run_aoflagger_command(flag_command, eMCP)
         else:
             logger.info('Processing source {0}, all bands'.format(field))
-            flag_command = '{3} -fields {2} -strategy {0} {1}'.format(
-                ao_strategy, msfile, fields_num[field], aoflagger_exec)
-            os.system(flag_command + ' | tee -a pre-cal_flag_stats.txt')
-            logger.info('Last AOFlagger command: {}'.format(flag_command))
+            flag_command = (
+                shlex.split(aoflagger_exec) +
+                ['-fields', str(fields_num[field]), '-strategy', ao_strategy,
+                 msfile])
+            _run_aoflagger_command(flag_command, eMCP,
+                                   log_file='pre-cal_flag_stats.txt')
 
     flag_statistics(eMCP, step='flag_aoflagger')
     logger.info('End flag_aoflagger')
     msg = ''
     eMCP = add_step_time('flag_aoflagger', eMCP, msg, t0)
     return eMCP
+
+
+def _run_aoflagger_command(command, eMCP, log_file=None):
+    logger.info('AOFlagger command: {}'.format(shlex.join(command)))
+    process = subprocess.run(command,
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.STDOUT,
+                             text=True,
+                             check=False)
+    if log_file is not None:
+        with open(log_file, 'a') as logfile:
+            logfile.write(process.stdout)
+    if process.stdout:
+        logger.debug(process.stdout)
+    if process.returncode != 0:
+        output_tail = '\n'.join(process.stdout.splitlines()[-10:])
+        logger.critical('AOFlagger failed with exit code {}'.format(
+            process.returncode))
+        if output_tail:
+            logger.critical('AOFlagger output tail:\n{}'.format(output_tail))
+        exit_pipeline(eMCP)
 
 
 def check_command(command):
@@ -1028,22 +1076,30 @@ def check_aoflagger_version(aoflagger_exec='aoflagger'):
             shlex.split(aoflagger_exec) + ['--version'],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            text=True,
             check=False)
-        if process.returncode != 0:
-            logger.info('AOflagger version check failed: {0}'.format(
-                process.stderr.decode(errors='replace').strip()))
-            return None
-        output = (process.stdout + process.stderr).decode(errors='replace')
-        version = re.search(r'\d+(?:\.\d+)+', output).group(0)
-        version_list = version.split('.')
-        if (version_list[0] == '2') and (int(version_list[1]) < 9):
-            old_aoflagger = True
-        else:
-            old_aoflagger = False
-        logger.info('AOflagger version is {0}'.format(version))
-    except:
-        logger.info('AOflagger not available in this computer.')
-        old_aoflagger = None
+    except OSError as exc:
+        logger.info('AOflagger not available in this computer: {}'.format(exc))
+        return None
+
+    if process.returncode != 0:
+        logger.info('AOflagger version check failed: {0}'.format(
+            process.stderr.strip()))
+        return None
+
+    output = process.stdout + process.stderr
+    match = re.search(r'\d+(?:\.\d+)+', output)
+    if match is None:
+        logger.info('Could not parse AOflagger version from: {}'.format(
+            output.strip()))
+        return None
+
+    version = match.group(0)
+    version_list = version.split('.')
+    old_aoflagger = (
+        version_list[0] == '2' and len(version_list) > 1 and
+        int(version_list[1]) < 9)
+    logger.info('AOflagger version is {0}'.format(version))
     return old_aoflagger
 
 
@@ -3340,14 +3396,26 @@ def calc_eMfactor(msfile, field='1331+305'):
 def get_coefficients_from_table(source="", epoch="2017"):
     coefficients_table = ctsys.resolve(
         "nrao/VLA/standards/") + "PerleyButler2017Coeffs"
-    tb.open(coefficients_table)
-    _query_table = tb.taql("select * from " + coefficients_table +
-                           " where Epoch=" + epoch)
-    coefficients = _query_table.getcol(source + "_coeffs").flatten()
-    coefficients_errs = _query_table.getcol(source + "_coefferrs").flatten()
-    if coefficients.size == 0 or coefficients_errs.size == 0:
-        raise ValueError("The selected epoch does not have any data")
-    tb.close()
+    tb_tool = table()
+    query_table = None
+    try:
+        tb_tool.open(coefficients_table)
+        query_table = tb_tool.taql("select * from " + coefficients_table +
+                                   " where Epoch=" + epoch)
+        coefficients = query_table.getcol(source + "_coeffs").flatten()
+        coefficients_errs = query_table.getcol(source + "_coefferrs").flatten()
+        if coefficients.size == 0 or coefficients_errs.size == 0:
+            raise ValueError("The selected epoch does not have any data")
+    finally:
+        if query_table is not None:
+            try:
+                query_table.close()
+            except Exception:
+                pass
+        try:
+            tb_tool.close()
+        except Exception:
+            pass
     return coefficients, coefficients_errs
 
 
@@ -3440,25 +3508,29 @@ def dfluxpy(freq, baseline):
 
 def write_wsclean_command(msfile, config_wsclean, wsclean_exec='wsclean'):
     logger.debug('config_wsclean')
+    wsclean_config = dict(config_wsclean)
     # Duplicate size if needed:
-    if type(config_wsclean['-size']) == int:
-        size_int = config_wsclean['-size']
-        config_wsclean['-size'] = '{0} {0}'.format(size_int)
+    if type(wsclean_config['-size']) == int:
+        size_int = wsclean_config['-size']
+        wsclean_config['-size'] = '{0} {0}'.format(size_int)
 
 
 #    # Skip casa-mask if no mask specified
 #    if config_wsclean['-casa-mask'] == '':
 #        config_wsclean.pop('-casa-mask')
 # Only keep keys starting with - that will be passed to wsclean
-    for key in config_wsclean.keys():
-        if key[0] != '-':
-            config_wsclean = config_wsclean.pop(key)
+    wsclean_config = {
+        key: value for key, value in wsclean_config.items()
+        if str(key).startswith('-')
+    }
 
-    logger.debug(config_wsclean)
-    wsclean_params = ' '.join(
-        ['{0} {1}'.format(k, v) for (k, v) in config_wsclean.items()])
-    wsclean_command = '{0} {1} {2}'.format(wsclean_exec, wsclean_params, msfile)
-    return wsclean_command
+    logger.debug(wsclean_config)
+    command = shlex.split(wsclean_exec)
+    for key, value in wsclean_config.items():
+        command.append(str(key))
+        command.extend(shlex.split(str(value)))
+    command.append(msfile)
+    return shlex.join(command)
 
 
 def single_tclean(eMCP, s, num=0):
@@ -3605,10 +3677,14 @@ def process_fits(fitsfile, eMCP, s):
     imstats_res = get_image_stats(fitsfile.replace('image.fits', 'residual.fits'))
     scaling = np.min(
         [0, -np.log(1.0 * imstats_img['max'] / imstats_res['rms']) + 4])
-    eMCP['img_stats'][s] = [float(imstats_img['max']), float(imstats_res['rms']), float(scaling)]
-    logger.debug('imstats_img max: ',imstats_img['max'])
-    logger.debug('imstats_res rms: ',imstats_res['rms'])
-    logger.debug('scaling: ', scaling)
+    img_peak = float(imstats_img['max'])
+    res_rms = float(imstats_res['rms'])
+    scaling_value = float(scaling)
+    eMCP['img_stats'][s] = [img_peak, res_rms, scaling_value]
+    logger.info('Image stats for {0}: peak={1:.6g}, residual rms={2:.6g}, scaling={3:.3f}'.format(
+        s, img_peak, res_rms, scaling_value))
+    logger.debug('Full image stats for {0}: image={1}, residual={2}'.format(
+        s, imstats_img, imstats_res))
     # Convert to png
     emplt.fits2png(fitsfile,
                    rms=imstats_res['rms'],
@@ -3714,7 +3790,8 @@ def run_split_fields(eMCP):
         if chanaverage is True and chanbin == 1:
             chanaverage = False
         # Define output name
-        msfile_name = '{0}_{1}.ms'.format(msinfo['run'], field)
+        msfile_ext = '.mms' if createmms else '.ms'
+        msfile_name = '{0}_{1}{2}'.format(msinfo['run'], field, msfile_ext)
         outputmsfile = os.path.join(output_dir, msfile_name)
         emutils.rmdir(outputmsfile)
         emutils.rmdir(outputmsfile + '.flagversions')
@@ -3735,6 +3812,7 @@ def run_split_fields(eMCP):
                     timebin=str(timebin),
                     chanbin=chanbin,
                     datacolumn=datacolumn,
+                    createmms=createmms,
                     keepflags=True)
         find_casa_problems()
         flagtable_info = 'after_split'
@@ -3780,11 +3858,22 @@ def shift_field_position(eMCP, msfile, shift):
     find_casa_problems()
     emutils.rmdir(msfile_split+'_tmp')
     # Change field name
-    tb.open(msfile_split + '/FIELD', nomodify=False)
-    st = tb.selectrows(0)
-    st.putcol('NAME', '{0}'.format(position_name))
-    st.done()
-    tb.close()
+    tb_tool = table()
+    st = None
+    try:
+        tb_tool.open(msfile_split + '/FIELD', nomodify=False)
+        st = tb_tool.selectrows(0)
+        st.putcol('NAME', '{0}'.format(position_name))
+    finally:
+        if st is not None:
+            try:
+                st.done()
+            except Exception:
+                pass
+        try:
+            tb_tool.close()
+        except Exception:
+            pass
     # Average individual field
     chanbin = eMCP['defaults']['average']['chanbin']
     timebin = eMCP['defaults']['average']['timebin']
@@ -3900,15 +3989,20 @@ def find_fields_scans(msfile):
     """
     Get mapping between field IDs and scan numbers.
     """
-    
-    msmd.open(msfile)
-    scans = msmd.scannumbers()
-    dict_scans = msmd.fieldsforscans(scans,
-                                     True,
-                                     asmap=True,
-                                     obsid=0,
-                                     arrayid=0)
-    msmd.done()
+    msmd_tool = msmetadata()
+    try:
+        msmd_tool.open(msfile)
+        scans = msmd_tool.scannumbers()
+        dict_scans = msmd_tool.fieldsforscans(scans,
+                                              True,
+                                              asmap=True,
+                                              obsid=0,
+                                              arrayid=0)
+    finally:
+        try:
+            msmd_tool.done()
+        except Exception:
+            pass
     field_for_scan = np.array([dict_scans[str(scan)][0] for scan in scans])
     return scans, field_for_scan
 
@@ -4037,7 +4131,7 @@ def plot_Lo_drops(msfile, phscal_scans, amp_mean, lo_dropout_scans, phscal,
     ax1.set_xlabel('Scan number')
     ax1.set_ylabel('Mean spw Lo raw amplitude')
 
-    plots_obs_dir = './weblog/plots/plots_flagstats/'
+    plots_obs_dir = empaths.PLOTS_FLAGSTATS_DIR
     plot_file_Lo = plots_obs_dir + '{0}_Lo_dropout_scans{1}.png'.format(
         msinfo['msfilename'], phscal)
     fig.savefig(plot_file_Lo, bbox_inches='tight')
@@ -4516,7 +4610,7 @@ def flag_statistics(eMCP, step):
     msfile = msinfo['msfile']
     logger.info(line0)
     logger.info('Start flagstatistics')
-    plots_obs_dir = './weblog/plots/plots_flagstats/'
+    plots_obs_dir = empaths.PLOTS_FLAGSTATS_DIR
     emutils.makedir(plots_obs_dir)
     logger.info('Running flagdata on {0}'.format(step))
     logger.info('mode="summary", action="calculate", antenna="*&*"'.format(

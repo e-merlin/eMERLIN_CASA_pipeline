@@ -11,6 +11,8 @@ import logging
 
 from pathlib import Path
 
+from . import eMCP_paths as empaths
+
 logger = logging.getLogger('logger')
 
 
@@ -108,12 +110,12 @@ def get_logger(LOG_FORMAT='%(asctime)s | %(levelname)s | %(message)s',
 
 def create_dir_structure():
     # Paths to use
-    weblog_dir = './weblog/'
-    info_dir = './weblog/info/'
-    calib_dir = './weblog/calib/'
-    plots_dir = './weblog/plots/'
-    logs_dir = './logs/'
-    images_dir = './weblog/images/'
+    weblog_dir = empaths.WEBLOG_DIR
+    info_dir = empaths.INFO_DIR
+    calib_dir = empaths.CALIB_DIR
+    plots_dir = empaths.PLOTS_DIR
+    logs_dir = empaths.LOGS_DIR
+    images_dir = empaths.IMAGES_DIR
     utils_path = Path(__file__).parent
     utils_path_str = str(utils_path)
 
@@ -229,10 +231,48 @@ def check_pipeline_conflict(eMCP_dict, pipeline_version):
         pass
 
 
+REQUIRED_INPUT_KEYS = (
+    'fits_path', 'inbase', 'targets', 'phscals', 'fluxcal', 'bpcal', 'ptcal'
+)
+
+
+def split_csv_list(value):
+    """Return a cleaned list from a comma-separated config value."""
+    if value is None:
+        return []
+    return [item.strip() for item in str(value).split(',') if item.strip()]
+
+
+def validate_inputs(inputs):
+    missing = [
+        key for key in REQUIRED_INPUT_KEYS
+        if key not in inputs or not str(inputs[key]).strip()
+    ]
+    if missing:
+        raise ValueError('Missing required input key(s): {}'.format(
+            ', '.join(missing)))
+
+    targets = split_csv_list(inputs['targets'])
+    phscals = split_csv_list(inputs['phscals'])
+    if len(targets) != len(phscals):
+        raise ValueError(
+            'The number of targets ({}) must match the number of phscals ({}).'
+            ' Configure one phase calibrator per target.'.format(
+                len(targets), len(phscals)))
+
+
 def read_inputs(inputs_file):
     config = configparser.ConfigParser()
-    config.read(inputs_file)
-    return config._sections['inputs']
+    read_files = config.read(inputs_file)
+    if not read_files:
+        raise FileNotFoundError('Could not read inputs file: {}'.format(
+            inputs_file))
+    if not config.has_section('inputs'):
+        raise ValueError('Inputs file must contain an [inputs] section: {}'.
+                         format(inputs_file))
+    inputs = dict(config.items('inputs'))
+    validate_inputs(inputs)
+    return inputs
 
 
 def exit_pipeline(eMCP=''):
@@ -282,7 +322,7 @@ def find_run_steps(eMCP, run_steps, skip_steps=None):
     # Remove skipped steps:
     for skip_step in skip_steps:
         if skip_step != '':
-            step_list.remove(skip_step)
+            step_list = [step for step in step_list if step != skip_step]
 
     # Define final step dictionary:
     logger.info('Sorted list of steps to execute:')

@@ -16,6 +16,7 @@ import glob
 
 from eMCP.functions import eMCP_functions as em
 from eMCP.utils import eMCP_utils as emutils
+from eMCP.utils import eMCP_paths as empaths
 from eMCP.plots import eMCP_plots as emplt
 from eMCP.utils.weblog_config import get_weblog_function
 from ._version import __version__
@@ -71,7 +72,11 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=None, skip_steps=None):
 
     # Inputs
     if os.path.exists(inputs_file):
-        inputs = emutils.read_inputs(inputs_file)
+        try:
+            inputs = emutils.read_inputs(inputs_file)
+        except (FileNotFoundError, ValueError) as exc:
+            logger.critical(str(exc))
+            emutils.exit_pipeline(eMCP='')
         eMCP['inputs'] = inputs
         logger.info(f'Loaded inputs from {inputs_file}')
     else:
@@ -257,13 +262,13 @@ def run_pipeline(inputs_file='./inputs.ini', run_steps=None, skip_steps=None):
 
     logfiles = glob.glob('casa-*.log') + glob.glob('wsclean_*.log')
     for f in logfiles:
-        dest = os.path.join('./logs', os.path.basename(f))
+        dest = os.path.join(empaths.LOGS_DIR, os.path.basename(f))
         try:
             shutil.move(f, dest)
         except FileExistsError:
             os.remove(dest)
             shutil.move(f, dest)
-        logger.info(f"Moved {f} to ./logs")
+        logger.info(f"Moved {f} to {empaths.LOGS_DIR}")
         logger.info(f"Pipeline execution finished")
 
 def init_project(force=False):
