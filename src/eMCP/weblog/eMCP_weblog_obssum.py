@@ -185,7 +185,7 @@ def weblog_obssum(msinfo):
         plot_path = elev_plots[0]
         rel_path = os.path.join('plots', 'plots_observation', os.path.basename(plot_path))
         wlog.write('    <div >\n')
-        wlog.write(f'      <img src="{rel_path}" style="width:100%; max-width:1100px;" alt="Source elevation plot">\n')
+        wlog.write(f'      <img src="{rel_path}" style="width:100%; max-width:850px;" alt="Source elevation plot">\n')
         wlog.write('    </div>\n')
     else:
         wlog.write('    <p>No elevation plot available</p>\n')
@@ -198,14 +198,14 @@ def weblog_obssum(msinfo):
 
     uvcov_plots = []
     if msfilename:
-        uvcov_plots = sorted(glob.glob(f'{plots_dir}{msfilename}_uvcov_*.png'))
+        uvcov_plots = sorted(glob.glob(f'{plots_dir}{msfilename}_uvcov*.png'))
     if not uvcov_plots:
         uvcov_plots = sorted(glob.glob(f'{plots_dir}*uv*.png') + glob.glob(f'{plots_dir}*UV*.png'))
     if uvcov_plots:
         wlog.write('  <div >\n')
         for plot_path in uvcov_plots:
             rel_path = os.path.join('plots', 'plots_observation', os.path.basename(plot_path))
-            wlog.write(f'    <img src="{rel_path}" style="width:100%; max-width:1100px; margin-bottom:20px;" alt="UV coverage plot">\n')
+            wlog.write(f'    <img src="{rel_path}" style="width:30%; max-width:600px; margin-bottom:20px;" alt="UV coverage plot">\n')
         wlog.write('  </div>\n')
     else:
         wlog.write('  <p>No UV coverage plots available</p>\n')

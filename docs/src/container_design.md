@@ -12,12 +12,11 @@ The container should provide a reproducible eMCP runtime with:
 - WSClean.
 - AOFlagger and its Python bindings.
 - casacore and casacore measures data.
-- Headless plotting with CASA `plotms`.
+- Headless plotting with Matplotlib, shadeMS, and CASA table/metadata tools.
 - Compatibility with Docker, Singularity, and Apptainer.
 
-The main complication is that CASA GUI tools are distributed as AppImages inside
-Python wheels, while most pipeline runs are headless and often happen inside
-Singularity/Apptainer where runtime FUSE is not reliable.
+The main complication is keeping the modular CASA Python package set consistent
+with the base image's Python version.
 
 ## Base Operating System
 
@@ -26,8 +25,6 @@ The current image uses `ubuntu:24.04`.
 Important consequences:
 
 - Ubuntu 24.04 provides Python 3.12 as the system `python3`.
-- Ubuntu 24.04 uses time64 package names for Qt 5 runtime libraries, such as
-  `libqt5core5t64`, `libqt5gui5t64`, and `libqt5widgets5t64`.
 - If the base image changes, re-check all CASA Python compatibility, package
   names, and binary wheel tags.
 
@@ -51,9 +48,6 @@ casatasks==6.7.2.42
 casashell==6.7.2.42
 casatestutils==6.7.2.42
 casaconfig==1.4.0
-casaplotms==2.7.4
-casaviewer==2.4.4
-casaplotserver==2.0.3
 casatablebrowser==0.0.39
 casalogger==1.0.23
 casafeather==0.0.27
@@ -85,72 +79,11 @@ When the explicit CASA set changes, also check that `pyproject.toml` does not
 contradict it. For example, CASA 6.7.2 uses `casaconfig==1.4.0`, so the project
 metadata must allow that version.
 
-## casaviewer Wheel Hash Issue
-
-During one rebuild, pip selected the `casaviewer==2.4.4` Linux wheel tagged
-`manylinux_2_34`, and pip rejected it because the downloaded file did not match
-the PyPI hash. The same version also provides a `manylinux_2_28` wheel with a
-valid hash.
-
-The Dockerfile therefore installs `casaviewer==2.4.4` using the explicit
-`manylinux_2_28` wheel URL with its SHA256 hash. This keeps the documented CASA
-6.7.2 version while avoiding the bad upstream artifact.
-
-If PyPI is fixed later, this direct URL can be revisited. Until then, leaving
-the version unconstrained can make CI fail again.
-
 ## Headless Plotting
 
-`plotms(showgui=False)` still needs an X display. Without one, CASA raises:
-
-```text
-ERROR: DISPLAY environment variable is not set! Cannot run plotms.
-```
-
-The image includes `xvfb`, and eMCP starts `Xvfb` automatically when `DISPLAY`
-is unset. This allows plot generation in headless Docker, Singularity, and
-Apptainer runs without changing user commands.
-
-Relevant runtime packages include:
-
-```text
-xvfb
-libqt5core5t64
-libqt5gui5t64
-libqt5widgets5t64
-libxcb-cursor0
-libxcb-xinerama0
-libxkbcommon-x11-0
-```
-
-The exact package names are Ubuntu-version-specific. Re-check them if the base
-image changes.
-
-## CASA AppImages and FUSE
-
-The CASA GUI wheels include AppImages:
-
-```text
-casaplotms-x86_64.AppImage
-casaplotserver-x86_64.AppImage
-casaviewer-x86_64.AppImage
-```
-
-Running those AppImages inside Singularity/Apptainer can fail with:
-
-```text
-dlopen(): error loading libfuse.so.2
-AppImages require FUSE to run.
-```
-
-Relying on runtime FUSE is fragile, especially on shared systems. The container
-build should extract all installed CASA AppImages at build time with
-`--appimage-extract`, remove the original AppImage files, and patch installed
-Python launchers to call `squashfs-root/AppRun`.
-
-This avoids requiring FUSE at runtime. The build should fail if no CASA AppImage
-files are found, because otherwise the image would silently fall back to the
-broken runtime path.
+Visibility plots are generated with shadeMS, and observation metadata plots are
+generated directly from CASA tools and Matplotlib. These paths work headlessly
+with `MPLBACKEND=Agg` for plot generation.
 
 ## WSClean, AOFlagger, and casacore
 
@@ -231,10 +164,7 @@ python3 -m pip install --dry-run --ignore-installed --only-binary=:all: \
   casaconfig==1.4.0 \
   casatools==6.7.2.42 \
   casatasks==6.7.2.42 \
-  casaplotms==2.7.4 \
-  'casaviewer @ https://files.pythonhosted.org/packages/23/00/d997d5cfb0b8458a4119e8e19483b9015c847a3a8145bda306314c102785/casaviewer-2.4.4-py3-none-manylinux_2_28_x86_64.whl#sha256=f1245490638ca053fa8ad74d589aa616725cbe20d4c740342770222f8aac1efd' \
   casashell==6.7.2.42 \
-  casaplotserver==2.0.3 \
   casatestutils==6.7.2.42 \
   casatablebrowser==0.0.39 \
   casalogger==1.0.23 \
@@ -253,31 +183,21 @@ Then test the key runtime paths:
 ```bash
 docker run --rm emcp-test python3 -c "import eMCP; import casatasks; import casatools"
 docker run --rm emcp-test python3 -c "import aoflagger; print(aoflagger.__file__)"
-docker run --rm emcp-test sh -lc 'find /usr/local -name "*AppImage" -print'
-docker run --rm emcp-test sh -lc 'find /usr/local -path "*squashfs-root/AppRun" -print'
 docker run --rm emcp-test emcp -h
 ```
 
-The `find /usr/local -name "*AppImage"` command should print nothing after a
-successful build, because all CASA AppImages should have been extracted.
-
 For an end-to-end runtime check, run a small pipeline plotting step inside
-Docker or Apptainer with no `DISPLAY` set and confirm that:
+Docker or Apptainer and confirm that:
 
-- eMCP starts `Xvfb`.
-- no FUSE/AppImage error appears.
 - plot files are written under `weblog/plots/`.
 
 ## Known Limits
 
 The current setup is conservative but not fully future-proof:
 
-- It depends on CASA 6.7.2 package availability and the direct `casaviewer`
-  wheel URL remaining accessible.
+- It depends on CASA 6.7.2 package availability.
 - It assumes Ubuntu 24.04/Python 3.12. A Python 3.10 image should use a different
   CASA package set.
-- It avoids runtime FUSE by extracting AppImages, which increases image size
-  compared with leaving compressed AppImages in place.
 - It does not solve host Apptainer/Singularity problems such as missing
   `squashfuse` or too-small temporary filesystems.
 

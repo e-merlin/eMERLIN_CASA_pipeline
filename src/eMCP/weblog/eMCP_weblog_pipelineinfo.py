@@ -21,7 +21,9 @@ def weblog_pipelineinfo(eMCP):
     steps_table = generate_steps_table(eMCP)
     wlog.write(steps_table)
 
-    wlog.write('<p>Green = executed<br>\n')
+    wlog.write('<p>Code: 1 = selected to run in this execution; '
+               '0 = not selected or skipped in this execution.<br>\n')
+    wlog.write('Green = executed<br>\n')
     wlog.write('Red = executed but outdated by a previous step</p>\n')
 
     # Relevant log files section
@@ -150,4 +152,3 @@ def generate_steps_table(eMCP):
 
     html += '</table>\n'
     return html
-

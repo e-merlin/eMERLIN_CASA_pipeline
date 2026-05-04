@@ -257,7 +257,7 @@ def weblog_obssum(msinfo):
     try:
         uvcov = np.sort(
             glob.glob(weblog_dir +
-                      'plots/plots_observation/{0}_uvcov_*.png'.format(
+                      'plots/plots_observation/{0}_uvcov*.png'.format(
                           msinfo['msfilename'])))
         for u in uvcov:
             wlog.write(
@@ -271,31 +271,65 @@ def weblog_obssum(msinfo):
     wlog.close()
 
 
+
+def _safe_name(text):
+    return ''.join(c if c.isalnum() or c in '._+-' else '_' for c in text)
+
+
 def create_pnghtml_baselines(plots_path, source, subtitle, msinfo, datacolumn):
+    """Create per-source page with baseline × plot-type table (shadems PNGs)."""
     page_path = weblog_dir + plots_path + '_' + source + ".html"
+    plots_dir = weblog_dir + 'plots/' + plots_path
+    # shadems {_field} placeholder produces a leading dash (-fieldname)
+    prefix = f"{msinfo['msfilename']}-{_safe_name(source)}_{datacolumn}"
+
+    plot_types = [
+        ('amp_time',   'Amp vs Time'),
+        ('phase_time', 'Phase vs Time'),
+        ('amp_freq',   'Amp vs Freq'),
+        ('phase_freq', 'Phase vs Freq'),
+    ]
+
+    # Collect all baselines from any plot type
+    all_baselines = set()
+    for ptype, _ in plot_types:
+        pattern = os.path.join(plots_dir, f'{prefix}_{ptype}-*.png')
+        for fpath in glob.glob(pattern):
+            tag = f'{prefix}_{ptype}-'
+            bname = os.path.basename(fpath)
+            if bname.startswith(tag):
+                bl = bname[len(tag):].replace('.png', '')
+                all_baselines.add(bl)
+    baselines_sorted = sorted(all_baselines)
+
     wlog = open(page_path, "w")
     weblog_header(wlog, source, msinfo['run'])
     wlog.write('<h3>{0}</h3>\n'.format(subtitle))
-    #------------------------------------------
 
-    plot_file = weblog_dir + 'plots/' + plots_path + '/{0}_4plot_{1}_{2}'.format(
-        msinfo['msfilename'], source, datacolumn)
-    wlog.write(
-        '<table bgcolor="#eeeeee" border="3px" cellspacing = "0" cellpadding = "4px" style="width:40%">\n'
-    )
-    wlog.write('<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td>\n'.format(
-        'Amp vs Time', 'Phase vs  Time', 'Amp vs Freq', 'Phase vs Freq'))
-    link0 = '<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(
-        plot_file + '0.png')
-    link1 = '<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(
-        plot_file + '1.png')
-    link2 = '<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(
-        plot_file + '2.png')
-    link3 = '<td><a href = ".{0}"><img style="max-width:600px" src=".{0}"></a></td>'.format(
-        plot_file + '3.png')
-    wlog.write('<tr>' + link0 + link1 + link2 + link3 + '</tr>')
-    wlog.write('</table></td>\n')
-    #------------------------------------------
+    if not baselines_sorted:
+        wlog.write('<p>No per-baseline plots found.</p>\n')
+    else:
+        wlog.write('<table bgcolor="#eeeeee" border="3px" cellspacing="0"'
+                   ' cellpadding="4px" style="width:100%; table-layout:fixed;">\n')
+        wlog.write('<tr><td style="width:70px;"><b>Baseline</b></td>')
+        for _, label in plot_types:
+            wlog.write(f'<td style="width:calc(25% - 17.5px);">{label}</td>')
+        wlog.write('</tr>\n')
+        for bl in baselines_sorted:
+            wlog.write(f'<tr><td><b>{bl}</b></td>')
+            for ptype, label in plot_types:
+                fpath = os.path.join(plots_dir,
+                                     f'{prefix}_{ptype}-{bl}.png')
+                if os.path.isfile(fpath):
+                    wlog.write(
+                        f'<td><a href=".{fpath}">'
+                        f'<img style="width:100%; height:auto;" src=".{fpath}">'
+                        f'</a></td>')
+                else:
+                    wlog.write('<td style="color:#999">no data</td>')
+            wlog.write('</tr>\n')
+        wlog.write('</table>\n')
+
     weblog_foot(wlog)
     wlog.close()
     return page_path
@@ -323,37 +357,47 @@ def plots_corrected(msinfo, wlog):
             source, page_path))
 
 
-#def plots_caltables(msinfo, wlog):
-#    all_plots = np.sort(glob.glob('./weblog/plots/caltables/*png'))
-#    for p in all_plots:
-#        wlog.write('<a href=".{1}" target="_blank">{0}</a><br>\n'.format(os.path.basename(p), p))
-
-
 def plots_uvplt(msinfo, wlog):
+    """Render UV-distance plots (new shadems naming)."""
     wlog.write('<h3>Calibrated UVplots</h3>\n')
-    all_plots = np.sort(glob.glob('./weblog/plots/plots_uvplt/*_uvplt_a_*png'))
-    for p in all_plots:
-        source_name = os.path.splitext(p)[0].split('_')[-1]
-        wlog.write('<h4>{0}</h4>\n'.format(source_name))
-        wlog.write(
-            '<table cellspacing = "0" cellpadding = "4px" style="width:40%">\n'
-        )
-        wlog.write(
-            '<tr><td  valign="top"><a href = ".{0}"><img style="max-width:500px" src=".{0}"></a></td>\n'
-            .format(p))
-        wlog.write(
-            '<td  valign="top"><a href = ".{0}"><img style="max-width:500px" src=".{0}"></a></td>\n'
-            .format(p.replace('_a_', '_p_')))
-        if source_name in msinfo['sources']['calsources'].split(','):
-            p_model = './weblog/plots/plots_uvplt/{0}_uvpltmodel_a_{1}.png'.format(
-                msinfo['msfilename'], source_name)
-            wlog.write(
-                '<td><a href = ".{0}"><img style="max-width:500px" src=".{0}"></a></td>\n'
-                .format(p_model))
-            wlog.write(
-                '<td><a href = ".{0}"><img style="max-width:500px" src=".{0}"></a></td>\n'
-                .format(p_model.replace('_a_', '_p_')))
-        wlog.write('</tr></table><br><br>\n<hr>\n')
+    msfilename = msinfo['msfilename']
+    calsources = [x.strip() for x in msinfo['sources']['calsources'].split(',')]
+    mssources = [x.strip() for x in msinfo['sources']['mssources'].split(',')]
+    uvplt_dir = './weblog/plots/plots_uvplt/'
+
+    for source in mssources:
+        safe_src = _safe_name(source)
+        prefix = f'{msfilename}_uvplt_{safe_src}'
+        corr_amp = os.path.join(uvplt_dir, f'{prefix}_corrected_amp.png')
+        corr_phase = os.path.join(uvplt_dir, f'{prefix}_corrected_phase.png')
+        model_amp = os.path.join(uvplt_dir, f'{prefix}_model_amp.png')
+        model_phase = os.path.join(uvplt_dir, f'{prefix}_model_phase.png')
+
+        if not (os.path.isfile(corr_amp) or os.path.isfile(corr_phase)):
+            continue
+
+        wlog.write(f'<h4>{source}</h4>\n')
+        wlog.write('<table cellspacing="0" cellpadding="4px" style="width:100%; table-layout:fixed;">\n')
+        wlog.write('<thead><tr><th style="width:50%;">Amplitude</th><th style="width:50%;">Phase</th></tr></thead>\n')
+        wlog.write('<tr>\n')
+        for fpath in [corr_amp, corr_phase]:
+            if os.path.isfile(fpath):
+                wlog.write(
+                    f'<td valign="top"><a href=".{fpath}">'
+                    f'<img style="width:100%; height:auto;" src=".{fpath}">'
+                    f'</a></td>\n')
+        wlog.write('</tr>\n')
+        if source in calsources:
+            wlog.write('<tr>\n')
+            for fpath in [model_amp, model_phase]:
+                if os.path.isfile(fpath):
+                    wlog.write(
+                        f'<td valign="top"><a href=".{fpath}">'
+                        f'<img style="width:100%; height:auto;" src=".{fpath}">'
+                        f'</a></td>\n')
+            wlog.write('</tr>\n')
+        wlog.write('</table><br><br>\n<hr>\n')
+
 
 
 def write_caltable(caltable, wlog):
@@ -448,6 +492,8 @@ def weblog_pipelineinfo(eMCP):
     #'#'    wlog.write('CASA version: {}\n<br>'.format(eMCP['casa_version']))
     wlog.write('Pipeline version: {}\n<br>'.format(eMCP['pipeline_version']))
     wlog.write(table_steps(eMCP))
+    wlog.write('Code: 1 = selected to run in this execution; '
+               '0 = not selected or skipped in this execution.<br>')
     wlog.write('Green = executed<br>')
     wlog.write('Red = executed but outdated by a previous step<br>')
     wlog.write('<br><h4>Relevant log files:</h4>\n')

@@ -1,8 +1,6 @@
 #!/usr/local/python
-import atexit
 import os
 import subprocess
-import time
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
@@ -29,74 +27,15 @@ from ..functions import eMCP_functions as em
 
 import logging
 
-from casaplotms import plotms as casa_plotms
+from casatools import measures
 from casatools import ms as my_ms
+from casatools import msmetadata
 
 plt.ioff()
 
 ms = my_ms()
 
 logger = logging.getLogger('logger')
-
-_xvfb_process = None
-_xvfb_display = None
-
-
-def _stop_virtual_display():
-    global _xvfb_process
-    if _xvfb_process is None or _xvfb_process.poll() is not None:
-        return
-    _xvfb_process.terminate()
-    try:
-        _xvfb_process.wait(timeout=5)
-    except subprocess.TimeoutExpired:
-        _xvfb_process.kill()
-        _xvfb_process.wait()
-
-
-def _ensure_plotms_display():
-    global _xvfb_process, _xvfb_display
-    if os.environ.get('DISPLAY'):
-        return
-    if _xvfb_process is not None and _xvfb_process.poll() is None:
-        os.environ['DISPLAY'] = _xvfb_display
-        return
-
-    xvfb = shutil.which('Xvfb')
-    if xvfb is None:
-        raise RuntimeError(
-            'CASA plotms requires an X display even when exporting to a file. '
-            'Install Xvfb or run with DISPLAY set.')
-
-    screen = os.environ.get('EMCP_XVFB_SCREEN', '1600x1200x24')
-    try:
-        first_display = int(os.environ.get('EMCP_XVFB_DISPLAY_BASE', '99'))
-    except ValueError:
-        first_display = 99
-
-    for display_number in range(first_display, first_display + 100):
-        display = f':{display_number}'
-        process = subprocess.Popen(
-            [xvfb, display, '-screen', '0', screen, '-nolisten', 'tcp'],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL)
-        time.sleep(0.2)
-        if process.poll() is None:
-            _xvfb_process = process
-            _xvfb_display = display
-            os.environ['DISPLAY'] = display
-            atexit.register(_stop_virtual_display)
-            logger.info('Started Xvfb display %s for CASA plotms', display)
-            return
-
-    raise RuntimeError(
-        'CASA plotms requires an X display, and eMCP could not start Xvfb. '
-        'Set DISPLAY or check that Xvfb can create a free display.')
-
-
-def plotms(*args, **kwargs):
-    _ensure_plotms_display()
-    return casa_plotms(*args, **kwargs)
 
 weblog_dir = './weblog/'
 info_dir = './weblog/info/'
@@ -122,173 +61,183 @@ def simple_plot_name(plot_file, i):
         pass
 
 
-def single_4plot(msinfo, field, datacolumn, plots_data_dir):
-    logger.info('Visibility plots for field: {0}, datacolumn: {1}'.format(
-        field, datacolumn))
+# --- shadems helper functions ---------------------------------------------------
+
+
+def _run_shadems(cmd):
+    """Run a shadems command via subprocess, logging output."""
+    import shlex
+    env = os.environ.copy()
+    env.setdefault('MPLBACKEND', 'Agg')
+    logger.info('shadems: %s', shlex.join(cmd))
+    proc = subprocess.run(
+        cmd, env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True, check=False)
+    if proc.returncode:
+        logger.warning('shadems exited with code %d', proc.returncode)
+        lines = [line for line in proc.stdout.splitlines() if line.strip()]
+        if lines:
+            logger.warning('shadems output tail:\n%s',
+                           '\n'.join(lines[-8:]))
+        logger.debug(proc.stdout)
+    else:
+        logger.debug(proc.stdout)
+    return proc.returncode
+
+
+def _get_freq_limits(msfile):
+    """Return (freq_min_Hz, freq_max_Hz) across all SPWs."""
+    freqs = emutils.read_keyword(
+        msfile, 'CHAN_FREQ', subtable='SPECTRAL_WINDOW')
+    return float(freqs.min()), float(freqs.max())
+
+
+def _compute_amp_max(msfile, field, datacolumn):
+    """Return the maximum unflagged amplitude for *field* / *datacolumn*.
+
+    Returns None on any failure so callers can fall back to auto-scale.
+    """
+    from casatools import table as tb_tool
+    field_names = emutils.read_keyword(
+        msfile, 'NAME', 'FIELD').tolist()
+    try:
+        field_id = field_names.index(field)
+    except ValueError:
+        return None
+    tb = tb_tool()
+    try:
+        tb.open(msfile, nomodify=True)
+        subtb = tb.query(f'FIELD_ID == {field_id}')
+        if subtb.nrows() == 0:
+            subtb.close()
+            return None
+        data = subtb.getcol(datacolumn)
+        flags = subtb.getcol('FLAG')
+        subtb.close()
+        amp = np.abs(data)
+        amp[flags] = np.nan
+        return float(np.nanmax(amp)) * 1.05
+    except Exception as exc:
+        logger.warning('Cannot compute amp range for %s/%s: %s',
+                       field, datacolumn, exc)
+        return None
+    finally:
+        try:
+            tb.close()
+        except Exception:
+            pass
+
+
+def _ms_has_column(msfile, column):
+    from casatools import table as tb_tool
+    tb = tb_tool()
+    try:
+        tb.open(msfile, nomodify=True)
+        return column in tb.colnames()
+    except Exception as exc:
+        logger.warning('Cannot inspect columns in %s: %s', msfile, exc)
+        return False
+    finally:
+        try:
+            tb.close()
+        except Exception:
+            pass
+
+
+def _shadems_cmd(msfile, plot_dir, png_name, xaxis, yaxis, field,
+                 corr='RR,LL', baseline='noautocorr',
+                 xcanvas=1200, ycanvas=200, fontsize=14,
+                 title='', norm='eq_hist', data_column=None, extra=None):
+    """Build a shadems command list."""
+    cmd = [
+        'shadems', msfile,
+        '--dir', plot_dir,
+        '--png', png_name,
+        '--title', title,
+        '-x', xaxis, '-y', yaxis,
+        '--field', field,
+        '--corr', corr,
+        '--baseline', baseline,
+        '-X', str(xcanvas), '-Y', str(ycanvas),
+        '--fontsize', str(fontsize),
+        '--norm', norm,
+        '-j', '1',
+    ]
+    if data_column:
+        cmd.extend(['--col', data_column])
+    if extra:
+        cmd.extend(extra)
+    return cmd
+
+
+def _safe_name(text):
+    """Sanitise *text* for use in a filename."""
+    return ''.join(
+        c if c.isalnum() or c in '._+-' else '_' for c in text)
+
+
+# --- visibility 4-plots (shadems) ---------------------------------------------
+
+
+def batch_4plots(msinfo, fields_list, datacolumn, plots_data_dir, num_proc):
+    """Produce per-baseline visibility plots for multiple fields using shadems.
+
+    For each of the four plot types (amp/phase × time/freq) shadems is
+    called once with ``--iter-baseline`` and ``--iter-field``, producing
+    PNGs for all selected fields and baselines in parallel.
+    """
+    logger.info('Batch visibility plots (shadems) for datacolumn: %s', datacolumn)
     msfile = msinfo['msfile']
-    nchan = str(msinfo['nchan'])
+    col = {'data': 'DATA', 'corrected': 'CORRECTED_DATA'}.get(
+        datacolumn, datacolumn.upper())
+    if not _ms_has_column(msfile, col):
+        logger.warning('Cannot make %s plots. Column %s not found in %s.',
+                       datacolumn, col, msfile)
+        return
 
-    plot_file = os.path.join(
-        plots_data_dir, f"{msinfo['msfilename']}_4plot_{field}_{datacolumn}")
-    num_baselines = len(msinfo['baselines'])
+    freq_min, freq_max = _get_freq_limits(msfile)
+    os.makedirs(plots_data_dir, exist_ok=True)
 
-    gridrows = num_baselines
-    gridcols = 1
-    showgui = False
-    avgtime = '300'
-    baseline = '*&*'
-    # Find min and max times per field
-    x_min_time, x_max_time = emutils.find_source_timerange(msfile, field)
+    plot_specs = [
+        ('amp_time', 'TIME', 'amp', []),
+        ('phase_time', 'TIME', 'phase', ['--ymin', '-180', '--ymax', '180']),
+        ('amp_freq', 'FREQ', 'amp',
+         ['--xmin', f'{freq_min:.12g}', '--xmax', f'{freq_max:.12g}',
+          '--colour-by', 'CORR']),
+        ('phase_freq', 'FREQ', 'phase',
+         ['--ymin', '-180', '--ymax', '180',
+          '--xmin', f'{freq_min:.12g}', '--xmax', f'{freq_max:.12g}',
+          '--colour-by', 'CORR']),
+    ]
 
-    w, h = 1200, num_baselines * 200
-    plotms(vis=msfile,
-           xaxis='time',
-           yaxis='amp',
-           title='Amp vs Time {0} (color=spw)'.format(field),
-           gridrows=gridrows,
-           gridcols=gridcols,
-           rowindex=0,
-           colindex=0,
-           plotindex=0,
-           xdatacolumn=datacolumn,
-           ydatacolumn=datacolumn,
-           correlation='RR, LL',
-           antenna=baseline,
-           field=field,
-           iteraxis='baseline',
-           averagedata=True,
-           avgchannel=nchan,
-           avgtime='4',
-           xselfscale=True,
-           xsharedaxis=True,
-           coloraxis='spw',
-           plotrange=[x_min_time, x_max_time, 0, -1],
-           plotfile=plot_file + '0.png',
-           expformat='png',
-           customsymbol=True,
-           symbolshape='circle',
-           width=w,
-           height=h,
-           symbolsize=4,
-           clearplots=False,
-           overwrite=True,
-           showgui=showgui)
-    em.find_casa_problems()
-    simple_plot_name(plot_file, 0)
+    field_str = ','.join(fields_list)
 
-    plotms(vis=msfile,
-           xaxis='time',
-           yaxis='phase',
-           title='Phase vs Time {0} (color=spw)'.format(field),
-           gridrows=gridrows,
-           gridcols=gridcols,
-           rowindex=0,
-           colindex=0,
-           plotindex=0,
-           xdatacolumn=datacolumn,
-           ydatacolumn=datacolumn,
-           correlation='RR, LL',
-           antenna=baseline,
-           field=field,
-           iteraxis='baseline',
-           averagedata=True,
-           avgchannel=nchan,
-           avgtime='4',
-           xselfscale=True,
-           xsharedaxis=True,
-           coloraxis='spw',
-           plotrange=[x_min_time, x_max_time, -180, 180],
-           plotfile=plot_file + '1.png',
-           expformat='png',
-           customsymbol=True,
-           symbolshape='circle',
-           width=w,
-           height=h,
-           symbolsize=4,
-           clearplots=False,
-           overwrite=True,
-           showgui=showgui)
-    em.find_casa_problems()
-    simple_plot_name(plot_file, 1)
+    for ptype, xaxis, yaxis, extra in plot_specs:
+        # shadems replaces {_field} with _fieldname and {_Baseline} with -Ant1-Ant2
+        png = f"{msinfo['msfilename']}{{_field}}_{datacolumn}_{ptype}{{_Baseline}}.png"
+        cmd = _shadems_cmd(
+            msfile, plots_data_dir, png,
+            xaxis=xaxis, yaxis=yaxis, field=field_str,
+            data_column=col,
+            extra=['--iter-baseline', '--iter-field'] + extra)
 
-    plotms(vis=msfile,
-           xaxis="freq",
-           yaxis="amp",
-           title='Amp vs Frequency {0} (color=corr)'.format(field),
-           gridrows=gridrows,
-           gridcols=gridcols,
-           rowindex=0,
-           colindex=0,
-           plotindex=0,
-           xdatacolumn=datacolumn,
-           ydatacolumn=datacolumn,
-           correlation="RR,LL",
-           antenna=baseline,
-           field=field,
-           iteraxis="baseline",
-           averagedata=True,
-           avgtime=avgtime,
-           avgchannel='4',
-           xselfscale=True,
-           xsharedaxis=True,
-           coloraxis="corr",
-           plotrange=[-1, -1, 0, -1],
-           plotfile=plot_file + '2.png',
-           expformat="png",
-           customsymbol=True,
-           symbolshape="circle",
-           width=w,
-           height=h,
-           symbolsize=4,
-           clearplots=False,
-           overwrite=True,
-           showgui=showgui)
+        # Override -j with num_proc
+        try:
+            j_idx = cmd.index('-j')
+            cmd[j_idx + 1] = str(num_proc)
+        except ValueError:
+            cmd.extend(['-j', str(num_proc)])
 
-    em.find_casa_problems()
-    simple_plot_name(plot_file, 2)
+        _run_shadems(cmd)
 
-    plotms(vis=msfile,
-           xaxis='freq',
-           yaxis='phase',
-           title='Phase vs Frequency {0} (color=corr)'.format(field),
-           gridrows=gridrows,
-           gridcols=gridcols,
-           rowindex=0,
-           colindex=0,
-           plotindex=0,
-           xdatacolumn=datacolumn,
-           ydatacolumn=datacolumn,
-           correlation='RR, LL',
-           antenna=baseline,
-           field=field,
-           iteraxis='baseline',
-           averagedata=True,
-           avgtime=avgtime,
-           avgchannel='4',
-           xselfscale=True,
-           xsharedaxis=True,
-           coloraxis='corr',
-           plotrange=[-1, -1, -180, 180],
-           plotfile=plot_file + '3.png',
-           expformat='png',
-           customsymbol=True,
-           symbolshape='circle',
-           width=w,
-           height=h,
-           symbolsize=4,
-           clearplots=False,
-           overwrite=True,
-           showgui=showgui)
-
-    em.find_casa_problems()
-    simple_plot_name(plot_file, 3)
-    logger.info('{0}{{0-4}}.png'.format(plot_file))
+    logger.info('shadems 4-plots batch completed')
 
 
 def make_4plots(eMCP, datacolumn='data'):
     logger.info(line0)
     msinfo = eMCP['msinfo']
-    msfile = eMCP['msinfo']['msfile']
     logger.info('Start plot_{}'.format(datacolumn))
     t0 = datetime.datetime.now(datetime.timezone.utc)
     if datacolumn == 'data':
@@ -301,10 +250,15 @@ def make_4plots(eMCP, datacolumn='data'):
     allsources = msinfo['sources']['allsources'].split(',')
     mssources = msinfo['sources']['mssources'].split(',')
     logger.info('Producing plots for: {}'.format(','.join(allsources)))
+    import multiprocessing
+    num_proc = max(1, multiprocessing.cpu_count() - 1)
+
+    valid_fields = [f for f in allsources if f in mssources]
+    if valid_fields:
+        batch_4plots(msinfo, valid_fields, datacolumn, plots_data_dir, num_proc)
+
     for field in allsources:
-        if field in mssources:
-            single_4plot(msinfo, field, datacolumn, plots_data_dir)
-        else:
+        if field not in mssources:
             logger.warning('Cannot plot {0}. Source not in ms.'.format(field))
 
     logger.info('Visibility plots finished')
@@ -316,240 +270,180 @@ def make_4plots(eMCP, datacolumn='data'):
     return eMCP
 
 
+# --- UV-distance plots (shadems) -----------------------------------------------
+
+
 def single_uvplt(msinfo, field, plots_data_dir):
-    logger.info('uvplt for field: {}'.format(field))
-    plot_file = plots_data_dir + '{0}_uvplt_{1}.png'.format(
-        msinfo['msfilename'], field)
+    """Corrected amplitude and phase vs uv-distance using shadems."""
+    logger.info('uvplt (shadems) for field: %s', field)
     msfile = msinfo['msfile']
-    nchan = msinfo['nchan']
-    datacolumn = 'corrected'
-    avgtime = '16'
-    showgui = False
-    gridrows = 1
-    gridcols = 2
-    # Amp
+    if not _ms_has_column(msfile, 'CORRECTED_DATA'):
+        logger.warning('Cannot make corrected uvplt. Column CORRECTED_DATA '
+                       'not found in %s.', msfile)
+        return
+    prefix = f"{msinfo['msfilename']}_uvplt_{_safe_name(field)}"
+    os.makedirs(plots_data_dir, exist_ok=True)
 
-    plotms(vis=msfile,
-           xaxis='UVwave',
-           yaxis='amp',
-           title='Amplitude vs UVWave {0} (color=spw)'.format(field),
-           gridrows=gridrows,
-           gridcols=gridcols,
-           rowindex=0,
-           colindex=0,
-           plotindex=0,
-           xdatacolumn=datacolumn,
-           ydatacolumn=datacolumn,
-           correlation='RR,LL',
-           antenna='*&*',
-           field=field,
-           averagedata=True,
-           avgtime=avgtime,
-           avgchannel=str(nchan),
-           xselfscale=True,
-           xsharedaxis=True,
-           coloraxis='spw',
-           plotfile=plot_file,
-           expformat='png',
-           customsymbol=True,
-           symbolshape='circle',
-           symbolsize=4,
-           clearplots=True,
-           overwrite=True,
-           showgui=showgui)
-    em.find_casa_problems()
+    # Corrected amplitude
+    _run_shadems(_shadems_cmd(
+        msfile, plots_data_dir,
+        f'{prefix}_corrected_amp.png',
+        xaxis='uv', yaxis='amp', field=field,
+        data_column='CORRECTED_DATA',
+        ycanvas=600, title=f'Corrected Amp vs UV-dist  {field}'))
 
-    # Phase
-    plotms(vis=msfile,
-           xaxis='UVwave',
-           yaxis='phase',
-           title='Phase vs UVWave {0} (color=spw)'.format(field),
-           gridrows=gridrows,
-           gridcols=gridcols,
-           rowindex=0,
-           colindex=1,
-           plotindex=1,
-           xdatacolumn=datacolumn,
-           ydatacolumn=datacolumn,
-           correlation='RR,LL',
-           antenna='*&*',
-           field=field,
-           averagedata=True,
-           avgtime=avgtime,
-           avgchannel=str(nchan),
-           xselfscale=True,
-           xsharedaxis=True,
-           coloraxis='spw',
-           plotrange=[-1, -1, -180, 180],
-           plotfile=plot_file,
-           expformat='png',
-           customsymbol=True,
-           symbolshape='circle',
-           width=1200,
-           height=573,
-           symbolsize=4,
-           clearplots=False,
-           overwrite=True,
-           showgui=showgui)
-    em.find_casa_problems()
+    # Corrected phase
+    _run_shadems(_shadems_cmd(
+        msfile, plots_data_dir,
+        f'{prefix}_corrected_phase.png',
+        xaxis='uv', yaxis='phase', field=field,
+        data_column='CORRECTED_DATA',
+        ycanvas=600, title=f'Corrected Phase vs UV-dist  {field}',
+        extra=['--ymin', '-180', '--ymax', '180']))
 
 
-def single_uvplt_model(msinfo, field, plots_data_dir):
-    logger.info('uvplt (model) for field: {}'.format(field))
-    plot_file = plots_data_dir + '{0}_uvpltmodel_{1}.png'.format(
-        msinfo['msfilename'], field)
+def single_uvplt_model(msinfo, field, plots_data_dir, amp_max=None):
+    """Model amplitude and phase vs uv-distance using shadems.
+
+    If *amp_max* is given the amplitude plot uses the same y-range as
+    the corresponding corrected plot.
+    """
+    logger.info('uvplt model (shadems) for field: %s', field)
     msfile = msinfo['msfile']
-    nchan = msinfo['nchan']
-    datacolumn = 'model'
-    avgtime = '600'
-    showgui = False
-    gridrows = 1
-    gridcols = 2
-    
-    # Amp
-    plotms(vis=msfile,
-           xaxis='UVwave',
-           yaxis='amp',
-           title='Model Amplitude vs UVWave {0} (color=spw)'.format(field),
-           gridrows=gridrows,
-           gridcols=gridcols,
-           rowindex=0,
-           colindex=0,
-           plotindex=0,
-           xdatacolumn=datacolumn,
-           ydatacolumn=datacolumn,
-           correlation='RR,LL',
-           antenna='*&*',
-           field=field,
-           averagedata=True,
-           avgtime=avgtime,
-           avgchannel=str(int(nchan / 16)),
-           xselfscale=True,
-           xsharedaxis=True,
-           coloraxis='spw',
-           plotfile=plot_file,
-           expformat='png',
-           customsymbol=True,
-           symbolshape='circle',
-           symbolsize=4,
-           clearplots=True,
-           overwrite=True,
-           showgui=showgui)
-    em.find_casa_problems()
+    if not _ms_has_column(msfile, 'MODEL_DATA'):
+        logger.warning('Cannot make model uvplt. Column MODEL_DATA not '
+                       'found in %s.', msfile)
+        return
+    prefix = f"{msinfo['msfilename']}_uvplt_{_safe_name(field)}"
+    os.makedirs(plots_data_dir, exist_ok=True)
 
-    plotms(vis=msfile,
-           xaxis='UVwave',
-           yaxis='phase',
-           title='Model Phase vs UVWave {0} (color=spw)'.format(field),
-           gridrows=gridrows,
-           gridcols=gridcols,
-           rowindex=0,
-           colindex=1,
-           plotindex=1,
-           xdatacolumn=datacolumn,
-           ydatacolumn=datacolumn,
-           correlation='RR,LL',
-           antenna='*&*',
-           field=field,
-           averagedata=True,
-           avgtime=avgtime,
-           avgchannel=str(nchan),
-           xselfscale=True,
-           xsharedaxis=True,
-           coloraxis='spw',
-           plotrange=[-1, -1, -180, 180],
-           plotfile=plot_file,
-           expformat='png',
-           customsymbol=True,
-           symbolshape='circle',
-           width=1200,
-           height=573,
-           symbolsize=4,
-           clearplots=False,
-           overwrite=True,
-           showgui=showgui)
-    em.find_casa_problems()
+    amp_extra = []
+    if amp_max is not None:
+        amp_extra = ['--ymin', '0', '--ymax', str(amp_max)]
+
+    # Model amplitude (same y-range as corrected)
+    _run_shadems(_shadems_cmd(
+        msfile, plots_data_dir,
+        f'{prefix}_model_amp.png',
+        xaxis='uv', yaxis='amp', field=field,
+        data_column='MODEL_DATA',
+        ycanvas=600, title=f'Model Amp vs UV-dist  {field}',
+        extra=amp_extra))
+
+    # Model phase
+    _run_shadems(_shadems_cmd(
+        msfile, plots_data_dir,
+        f'{prefix}_model_phase.png',
+        xaxis='uv', yaxis='phase', field=field,
+        data_column='MODEL_DATA',
+        ycanvas=600, title=f'Model Phase vs UV-dist  {field}',
+        extra=['--ymin', '-180', '--ymax', '180']))
 
 
 def make_uvplt(eMCP):
     msinfo = eMCP['msinfo']
-    num_proc = eMCP['defaults']['plot_data']['num_proc']
+    msfile = msinfo['msfile']
     plots_data_dir = './weblog/plots/plots_uvplt/'
     emutils.makedir(plots_data_dir)
+    if not _ms_has_column(msfile, 'CORRECTED_DATA'):
+        logger.warning('Cannot make corrected uvplt plots. Column '
+                       'CORRECTED_DATA not found in %s.', msfile)
+        return
+    has_model_data = _ms_has_column(msfile, 'MODEL_DATA')
+    if not has_model_data:
+        logger.warning('Cannot make model uvplt plots. Column MODEL_DATA '
+                       'not found in %s.', msfile)
     allsources = msinfo['sources']['allsources'].split(',')
     mssources = msinfo['sources']['mssources'].split(',')
-    logger.info('Producing uvplot for: {}'.format(','.join(allsources)))
-    # UVplot all sources
+    calsources = [s.strip() for s in
+                  msinfo['sources']['calsources'].split(',')]
+    logger.info('Producing uvplot for: %s', ','.join(allsources))
+
     for field in allsources:
-        if field in mssources:
-            single_uvplt(msinfo, field, plots_data_dir)
-        else:
-            logger.warning('Cannot plot {0}. Source not in ms.'.format(field))
+        if field not in mssources:
+            logger.warning('Cannot plot %s. Source not in ms.', field)
+            continue
+        # --- corrected amp/phase ---
+        single_uvplt(msinfo, field, plots_data_dir)
 
+        # --- model amp/phase (calibrators only) ---
+        if has_model_data and field in calsources:
+            # Compute corrected amplitude range so the model plot matches
+            amp_max = _compute_amp_max(msfile, field, 'CORRECTED_DATA')
+            single_uvplt_model(msinfo, field, plots_data_dir,
+                               amp_max=amp_max)
 
-# UVplot model, calibrators
-    calsources = msinfo['sources']['calsources'].split(',')
-    for field in calsources:
-        if field in mssources:
-            single_uvplt_model(msinfo, field, plots_data_dir)
-        else:
-            logger.warning('Cannot plot {0}. Source not in ms.'.format(field))
     logger.info('uvplts finished')
 
-
 def make_uvcov(msfile, msinfo):
+    """Produce V vs U coverage plots using shadems (one PNG per field)."""
+    import multiprocessing
     plots_obs_dir = './weblog/plots/plots_observation/'
     emutils.makedir(plots_obs_dir)
-    # CASA 5.4 has a bug, it selects the uv limits of the first spw
-    # I create this manual limit as a compromise
-    max_freq = float(emutils.read_keyword(msfile,
-                                    'CHAN_FREQ',
-                                    subtable='SPECTRAL_WINDOW').max())
-    #'#    msmd.open(msfile)
-    c = light_speed.value
-    #'#    max_freq = np.max(np.array([msmd.chanfreqs(spw) for spw in
-    #'#                                msmd.datadescids()]))
-    max_uvdist = 217000.0 / c * max_freq  # For 217 km baseline
-    #freqs = get_freqs(msfile, allfreqs=True)
     allsources = msinfo['sources']['allsources'].split(',')
     mssources = msinfo['sources']['mssources'].split(',')
-    logger.info('Plotting uvcov for:')
-    for f in allsources:
-        if f in mssources:
-            plot_file = os.path.join(
-                plots_obs_dir,
-                '{0}_uvcov_{1}.png'.format(msinfo['msfilename'], f))
-            logger.info('{0}'.format(f))
-            avgtime = '32'
-            nchan = msinfo['nchan']
-            plotms(
-                vis=msfile,
-                xaxis='Uwave',
-                yaxis='Vwave',
-                field=f,
-                title=f,
-                correlation='RR',
-                spw='',
-                coloraxis='spw',
-                width=900,
-                height=900,
-                symbolsize=1,
-                plotrange=[-max_uvdist, +max_uvdist, -max_uvdist, +max_uvdist],
-                averagedata=True,
-                avgtime=avgtime,
-                avgchannel=str(int(nchan / 8)),
-                plotfile=plot_file,
-                expformat='png',
-                customsymbol=True,
-                symbolshape='circle',
-                overwrite=True,
-                showlegend=False,
-                showgui=False)
-            em.find_casa_problems()
+    valid_fields = [f for f in allsources if f in mssources]
 
-        else:
-            logger.info(
-                'Cannot plot uvcov for {0}. Source not in ms.'.format(f))
+    if not valid_fields:
+        logger.warning('No valid fields for uvcov plotting')
+        return
+
+    num_proc = max(1, multiprocessing.cpu_count() - 1)
+    field_str = ','.join(valid_fields)
+
+    logger.info('Plotting uvcov (shadems) for: %s', field_str)
+
+    # shadems {_field} placeholder produces -fieldname in the filename
+    png = f"{msinfo['msfilename']}_uvcov{{_field}}.png"
+    cmd = _shadems_cmd(
+        msfile, plots_obs_dir, png,
+        xaxis='u', yaxis='v', field=field_str,
+        corr='RR', xcanvas=900, ycanvas=900,
+        title=f"UV coverage {{_field}}",
+        extra=['--iter-field'])
+    # Override -j
+    try:
+        j_idx = cmd.index('-j')
+        cmd[j_idx + 1] = str(num_proc)
+    except ValueError:
+        cmd.extend(['-j', str(num_proc)])
+    _run_shadems(cmd)
+
+    for f in allsources:
+        if f not in mssources:
+            logger.warning(
+                'Cannot plot uvcov for %s. Source not in ms.', f)
+
+
+def _phasecenter_for_epoch(msmd, field_id, epoch):
+    """Return the field phase centre, using epoch-aware metadata if available."""
+    try:
+        return msmd.phasecenter(field_id, epoch)
+    except TypeError:
+        return msmd.phasecenter(field_id)
+
+
+def _plot_elevation_track(ax, msmd, me, field_id, field_name):
+    times = np.asarray(msmd.timesforfield(field_id), dtype=float)
+    if times.size == 0:
+        logger.warning('No times found for field %s. Skipping elevation plot.',
+                       field_name)
+        return False
+
+    elevations = []
+    valid_times = []
+    for timestamp in times:
+        epoch = me.epoch('utc', f'{timestamp / 86400.0}d')
+        me.doframe(epoch)
+        direction = _phasecenter_for_epoch(msmd, field_id, epoch)
+        azel = me.measure(direction, 'azel')
+        elevations.append(np.degrees(azel['m1']['value']))
+        valid_times.append(timestamp)
+
+    plot_times = Time(np.asarray(valid_times) / 86400.0,
+                      format='mjd', scale='utc').datetime
+    ax.plot(plot_times, elevations, '.', ms=4, label=field_name)
+    return True
 
 
 def make_elevation(msfile, msinfo):
@@ -559,27 +453,54 @@ def make_elevation(msfile, msinfo):
         msinfo['msfilename'])
     logger.info('Plotting elevation to:')
     logger.info('{}'.format(plot_file))
-    avgtime = '16'
-    showgui = False
-    plotms(vis=msfile,
-           xaxis='time',
-           yaxis='elevation',
-           correlation='RR',
-           spw='',
-           coloraxis='field',
-           width=900,
-           symbolsize=5,
-           plotrange=[-1, -1, 0, 90],
-           averagedata=True,
-           avgtime=avgtime,
-           plotfile=plot_file,
-           expformat='png',
-           customsymbol=True,
-           symbolshape='circle',
-           overwrite=True,
-           showlegend=True,
-           showgui=showgui)
-    em.find_casa_problems()
+
+    msmd = msmetadata()
+    me = measures()
+    plotted = False
+    fig, ax = plt.subplots(figsize=(9, 6))
+
+    try:
+        msmd.open(msfile)
+        me.doframe(msmd.observatoryposition())
+
+        field_names = list(msmd.namesforfields())
+        allsources = msinfo['sources']['allsources'].split(',')
+        mssources = msinfo['sources']['mssources'].split(',')
+        valid_sources = [source for source in allsources if source in mssources]
+
+        for field_id, field_name in enumerate(field_names):
+            if valid_sources and field_name not in valid_sources:
+                continue
+            plotted |= _plot_elevation_track(
+                ax, msmd, me, field_id, field_name)
+
+        for field_name in allsources:
+            if field_name not in mssources:
+                logger.warning(
+                    'Cannot plot elevation for %s. Source not in ms.',
+                    field_name)
+
+    finally:
+        try:
+            msmd.done()
+        except Exception:
+            pass
+
+    if not plotted:
+        plt.close(fig)
+        logger.warning('No valid elevation data found. Plot not created.')
+        return
+
+    ax.set_xlabel('UTC time')
+    ax.set_ylabel('Elevation [deg]')
+    ax.set_ylim(0, 90)
+    ax.grid(True, alpha=0.3)
+    ax.legend(loc='best', fontsize='small')
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y/%m/%d %H:%M'))
+    fig.autofmt_xdate()
+    fig.tight_layout()
+    fig.savefig(plot_file, dpi=100)
+    plt.close(fig)
 
 
 # Flag statistics
@@ -623,11 +544,11 @@ def count_flags(flag_stats, label, list_order=[]):
 
 def plot_flagstatistics(flag_stats, msinfo, step):
     """Create flag statistics plots for a processing step.
-    
+
     Creates two separate plots:
     1. A plot showing only scan flags with detailed view
     2. A plot showing field, spw, and antenna flags
-    
+
     Both plots have the same dimensions for consistency.
     """
     # Read MS information for field identification
@@ -656,17 +577,17 @@ def plot_flagstatistics(flag_stats, msinfo, step):
     # Create output directory
     plots_obs_dir = './weblog/plots/plots_flagstats/'
     emutils.makedir(plots_obs_dir)
-    
+
     # Define common figure size for both plots
     figsize = (25, 4)
-    
+
     # 1. First plot - Only scan flags
     fig_scans = plt.figure(figsize=figsize)
     ax_scan = fig_scans.add_subplot(111)
-    
+
     # Map scan to field colors
     scan_fieldID = np.array([scan_fieldID_dict[str(si)] for si in i_scan])
-    
+
     # Plot bars for each field with different colors
     for i, fi in enumerate(i_field):
         cond = scan_fieldID == i
@@ -698,7 +619,7 @@ def plot_flagstatistics(flag_stats, msinfo, step):
     # 2. Second plot - Field, SPW, and Antenna flags
     fig_other = plt.figure(figsize=figsize)
     plt.subplots_adjust(wspace=0.01)
-    
+
     # Create three side-by-side subplots for field, spw, and antenna
     ax_field = fig_other.add_subplot(131)
     ax_spw = fig_other.add_subplot(132, sharey=ax_field)
@@ -730,7 +651,7 @@ def plot_flagstatistics(flag_stats, msinfo, step):
               width=1,
               align='center',
               zorder=10)
-    
+
     # Plot Antenna flags
     ax_ant.bar(range(len(i_ant)),
               f_ant,
@@ -748,7 +669,7 @@ def plot_flagstatistics(flag_stats, msinfo, step):
                    color='k',
                    va='center',
                    zorder=12)
-    
+
     for i, v in enumerate(f_ant):
         v = float(v)
         ax_ant.text(i - 0.1,
@@ -766,10 +687,10 @@ def plot_flagstatistics(flag_stats, msinfo, step):
     ax_field.set_ylim(0, 1)
     ax_field.set_xlim(-0.5, len(i_field) - 0.5)
     ax_field.grid(axis='y', zorder=-1000, ls='-', color='0.6')
-    
+
     # Add field names as rotated annotations
     for i, fi in enumerate(i_field):
-        ax_field.annotate('{0} ({1})'.format(fi, i), 
+        ax_field.annotate('{0} ({1})'.format(fi, i),
                          (i + 0.1, 0.95),
                          va='top',
                          ha='right',
@@ -795,13 +716,13 @@ def plot_flagstatistics(flag_stats, msinfo, step):
 
     # Add overall title
     fig_other.suptitle('Other Flags - {0}'.format(step), fontsize=14)
-    
+
     # Save other flags plot
     plot_file_other = plots_obs_dir + '{0}_flagstats_other_{1}.png'.format(
         msinfo['msfilename'], step)
     fig_other.savefig(plot_file_other, bbox_inches='tight')
     plt.close(fig_other)
-    
+
     # Return both plot filenames for use in the weblog
     return plot_file_scans, plot_file_other
 

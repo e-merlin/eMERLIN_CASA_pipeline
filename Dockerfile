@@ -108,18 +108,11 @@ RUN apt-get update && \
       libopenmpi-dev \
       libpng-dev \
       libpython3-dev \
-      libqt5core5t64 \
-      libqt5gui5t64 \
-      libqt5widgets5t64 \
       libreadline-dev \
-      libxcb-cursor0 \
-      libxcb-xinerama0 \
-      libxkbcommon-x11-0 \
       python3 \
       python3-dev \
       python3-pip \
-      wcslib-dev \
-      xvfb && \
+      wcslib-dev && \
     rm -rf /var/lib/apt/lists/* && \
     ln -s /usr/share/casacore /var/lib/casacore && \
     ldconfig && \
@@ -139,10 +132,7 @@ RUN apt-get update && \
       casaconfig==1.4.0 \
       casatools==6.7.2.42 \
       casatasks==6.7.2.42 \
-      casaplotms==2.7.4 \
-      'casaviewer @ https://files.pythonhosted.org/packages/23/00/d997d5cfb0b8458a4119e8e19483b9015c847a3a8145bda306314c102785/casaviewer-2.4.4-py3-none-manylinux_2_28_x86_64.whl#sha256=f1245490638ca053fa8ad74d589aa616725cbe20d4c740342770222f8aac1efd' \
       casashell==6.7.2.42 \
-      casaplotserver==2.0.3 \
       casatestutils==6.7.2.42 \
       casatablebrowser==0.0.39 \
       casalogger==1.0.23 \
@@ -150,19 +140,6 @@ RUN apt-get update && \
       casampi==0.5.9 && \
     python3 -m pip install --no-cache-dir --no-compile --break-system-packages \
       --no-deps . && \
-    test -n "$(find /usr/local -name '*-x86_64.AppImage' -print -quit)" && \
-    find /usr/local -name '*-x86_64.AppImage' -print | \
-      while IFS= read -r appimage; do \
-        appdir="$(dirname "${appimage}")"; \
-        appname="$(basename "${appimage}")"; \
-        cd "${appdir}" || exit 1; \
-        "./${appname}" --appimage-extract || exit 1; \
-        rm "${appname}" || exit 1; \
-        find squashfs-root -type d -exec chmod 775 {} + || exit 1; \
-        chmod +x squashfs-root/AppRun || exit 1; \
-        find /usr/local -type f -name '*.py' -exec grep -l "${appname}" {} + | \
-          xargs -r sed -i "s#${appname}#squashfs-root/AppRun#g"; \
-      done && \
     apt-get purge -y --auto-remove git git-man && \
     mkdir -p /root/.casa/data /usr/local/etc && \
     printf '%s\n' \

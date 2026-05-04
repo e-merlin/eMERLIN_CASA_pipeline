@@ -38,7 +38,6 @@ from casatasks import mstransform, applycal, gaincal, flagmanager, flagdata, con
     imstat, fringefit, smoothcal, bandpass, delmod, clearcal, initweights, ft, tclean, exportfits
 
 from casatools import table, msmetadata, ctsys
-from casaviewer import imview
 
 tb = table()
 msmd = msmetadata()
