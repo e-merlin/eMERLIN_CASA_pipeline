@@ -1,6 +1,7 @@
 import os
 import logging
 from ..utils import eMCP_utils as emutils
+from ..utils import eMCP_paths as empaths
 
 logger = logging.getLogger('logger')
 
@@ -28,13 +29,13 @@ def start_weblog(eMCP, silent=False):
         return
 
     # Setup directories
-    weblog_dir = './weblog/'
-    info_dir = './weblog/info/'
-    calib_dir = './weblog/calib/'
-    plots_dir = './weblog/plots/'
-    logs_dir = './logs/'
-    images_dir = './weblog/images/'
-    flagstats_dir = './weblog/flagstats/'
+    weblog_dir = empaths.WEBLOG_DIR
+    info_dir = empaths.INFO_DIR
+    calib_dir = empaths.CALIB_DIR
+    plots_dir = empaths.PLOTS_DIR
+    logs_dir = empaths.LOGS_DIR
+    images_dir = empaths.IMAGES_DIR
+    flagstats_dir = empaths.FLAGSTATS_DIR
 
     # Create directories if they don't exist
     for directory in [weblog_dir, info_dir, calib_dir, plots_dir, images_dir, flagstats_dir]:
@@ -53,19 +54,23 @@ def start_weblog(eMCP, silent=False):
     # Generate the rest of the weblog pages if MS info is available
     if 'msinfo' in eMCP and isinstance(eMCP['msinfo'], dict):
         msinfo = eMCP['msinfo']
-        try:
-            weblog_index(msinfo)
-            weblog_obssum(msinfo)
-            weblog_calibration(eMCP)
-            weblog_plots(weblog_dir, './', './plots/', msinfo)
-            weblog_flagstats(msinfo)
-            weblog_images(eMCP)
-            weblog_download(msinfo)
-            if not silent:
-                logger.info('Created weblog in ./weblog/')
-        except Exception as e:
-            logger.warning(f'Error creating some weblog pages: {e}')
-            logger.info('Basic weblog created with available information')
+        pages = [
+            ('index', weblog_index, (msinfo,)),
+            ('observation summary', weblog_obssum, (msinfo,)),
+            ('calibration', weblog_calibration, (eMCP,)),
+            ('plots', weblog_plots, (weblog_dir, './', './plots/', msinfo)),
+            ('flag statistics', weblog_flagstats, (msinfo,)),
+            ('images', weblog_images, (eMCP,)),
+            ('download', weblog_download, (msinfo,)),
+        ]
+        for page_name, page_func, page_args in pages:
+            try:
+                page_func(*page_args)
+            except Exception as e:
+                logger.warning('Error creating weblog %s page: %s',
+                               page_name, e)
+        if not silent:
+            logger.info('Created weblog in %s', empaths.WEBLOG_DIR)
     else:
         logger.warning('No MS info available, only pipeline info page created.')
 
@@ -80,4 +85,3 @@ if __name__ == "__main__":
         start_weblog(eMCP)
     else:
         print("Usage: python -m eMCP.weblog.eMCP_weblog_main <eMCP_yaml_file>")
-

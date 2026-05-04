@@ -3,11 +3,12 @@ import glob
 import logging
 import numpy as np
 from ..utils import eMCP_utils as emutils
+from ..utils import eMCP_paths as empaths
 from .eMCP_weblog_modern import weblog_header, weblog_foot
 
 logger = logging.getLogger('logger')
-weblog_dir = './weblog/'
-calib_dir = './weblog/calib/'
+weblog_dir = empaths.WEBLOG_DIR
+calib_dir = empaths.CALIB_DIR
 
 def write_caltable(caltable, wlog):
     """Display calibration table information"""
@@ -99,8 +100,9 @@ def weblog_calibration(eMCP):
 
     # Load caltable names
     caltable_names = {}
-    if os.path.isfile('./weblog/calib/caltables.yaml'):
-        caltables = emutils.load_obj('./weblog/calib/caltables.yaml')
+    caltables_file = os.path.join(calib_dir, 'caltables.yaml')
+    if os.path.isfile(caltables_file):
+        caltables = emutils.load_obj(caltables_file)
         for calstep in all_calsteps:
             if calstep in caltables:
                 caltable_names[calstep] = caltables[calstep]['name'] if calstep != 'fluxscale' else 'Fluxscale'
@@ -109,8 +111,8 @@ def weblog_calibration(eMCP):
     wlog.write('<div class="calib-main">\n')
     
     # --- Calibration Steps Content ---
-    if os.path.isfile('./weblog/calib/caltables.yaml'):
-        caltables = emutils.load_obj('./weblog/calib/caltables.yaml')
+    if os.path.isfile(caltables_file):
+        caltables = emutils.load_obj(caltables_file)
         for calstep in all_calsteps:
             logger.debug('calstep {}'.format(calstep))
             try:
@@ -134,7 +136,9 @@ def weblog_calibration(eMCP):
                     write_caltable(caltables[calstep], wlog)
                     wlog.write('</td>\n')
                     # Right column for plots
-                    all_plots = np.sort(glob.glob('./weblog/plots/caltables/*{}*.png'.format(calstep)))
+                    all_plots = np.sort(glob.glob(
+                        '{}*{}*.png'.format(empaths.CALTABLE_PLOTS_DIR,
+                                            calstep)))
                     if len(all_plots) > 0:
                         for p in all_plots:
                             wlog.write('<td align="center">\n')

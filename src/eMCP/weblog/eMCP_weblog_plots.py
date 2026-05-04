@@ -3,10 +3,11 @@ import glob
 import logging
 import numpy as np
 from html import escape
+from ..utils import eMCP_paths as empaths
 from .eMCP_weblog_modern import weblog_header, weblog_foot
 
 logger = logging.getLogger('logger')
-weblog_dir = './weblog/'
+weblog_dir = empaths.WEBLOG_DIR
 
 
 def _safe_name(text):
@@ -157,7 +158,7 @@ def plots_uvplt(msinfo, wlog):
                   msinfo['sources']['calsources'].split(',')]
     mssources = [x.strip() for x in
                  msinfo['sources']['mssources'].split(',')]
-    uvplt_dir = './weblog/plots/plots_uvplt/'
+    uvplt_dir = empaths.PLOTS_UVPLT_DIR
 
     for source in mssources:
         safe_src = _safe_name(source)
@@ -220,27 +221,27 @@ def weblog_plots(weblog, weblog_link, plots_link, msinfo):
     wlog.write('<div class="plots-main">\n')
 
     # Display available plots
-    if os.path.isdir('./weblog/plots/plots_data/') and os.listdir('./weblog/plots/plots_data/'):
+    if os.path.isdir(empaths.PLOTS_DATA_DIR) and os.listdir(empaths.PLOTS_DATA_DIR):
         plots_data(msinfo, wlog)
-    if os.path.isdir('./weblog/plots/plots_corrected/') and os.listdir('./weblog/plots/plots_corrected/'):
+    if os.path.isdir(empaths.PLOTS_CORRECTED_DIR) and os.listdir(empaths.PLOTS_CORRECTED_DIR):
         plots_corrected(msinfo, wlog)
-    if os.path.isdir('./weblog/plots/plots_uvplt/') and os.listdir('./weblog/plots/plots_uvplt/'):
+    if os.path.isdir(empaths.PLOTS_UVPLT_DIR) and os.listdir(empaths.PLOTS_UVPLT_DIR):
         plots_uvplt(msinfo, wlog)
 
     wlog.write('</div>')  # close plots-main
 
     # --- Sidebar navigation ---
     plot_sections = []
-    if os.path.isdir('./weblog/plots/plots_data/') and os.listdir('./weblog/plots/plots_data/'):
+    if os.path.isdir(empaths.PLOTS_DATA_DIR) and os.listdir(empaths.PLOTS_DATA_DIR):
         plot_sections.append(('uncalibrated', 'Uncalibrated Visibilities'))
-    if os.path.isdir('./weblog/plots/plots_corrected/') and os.listdir('./weblog/plots/plots_corrected/'):
+    if os.path.isdir(empaths.PLOTS_CORRECTED_DIR) and os.listdir(empaths.PLOTS_CORRECTED_DIR):
         plot_sections.append(('calibrated', 'Calibrated Visibilities'))
-    if os.path.isdir('./weblog/plots/plots_uvplt/') and os.listdir('./weblog/plots/plots_uvplt/'):
+    if os.path.isdir(empaths.PLOTS_UVPLT_DIR) and os.listdir(empaths.PLOTS_UVPLT_DIR):
         mssources = [s.strip() for s in msinfo['sources']['mssources'].split(',')]
         for source in mssources:
             safe_src = _safe_name(source)
             prefix = f"{msinfo['msfilename']}_uvplt_{safe_src}"
-            uvplt_dir = './weblog/plots/plots_uvplt/'
+            uvplt_dir = empaths.PLOTS_UVPLT_DIR
             if (os.path.isfile(os.path.join(uvplt_dir, f'{prefix}_corrected_amp.png'))
                     or os.path.isfile(os.path.join(uvplt_dir, f'{prefix}_corrected_phase.png'))):
                 plot_sections.append((f'uvplot-{source}', f'UV Plot: {source}'))

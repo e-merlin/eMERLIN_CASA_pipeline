@@ -3,40 +3,45 @@ import numpy as np
 import glob
 import datetime
 from ..utils import eMCP_utils as emutils
+from ..utils import eMCP_paths as empaths
+import html
 
 import logging
 
 logger = logging.getLogger('logger')
 
-weblog_dir = './weblog/'
-info_dir = './weblog/info/'
-calib_dir = './weblog/calib/'
-plots_dir = './weblog/plots/'
-logs_dir = './logs/'
-images_dir = './weblog/images/'
-flagstats_dir = './weblog/flagstats/'
+weblog_dir = empaths.WEBLOG_DIR
+info_dir = empaths.INFO_DIR
+calib_dir = empaths.CALIB_DIR
+plots_dir = empaths.PLOTS_DIR
+logs_dir = empaths.LOGS_DIR
+images_dir = empaths.IMAGES_DIR
+flagstats_dir = empaths.FLAGSTATS_DIR
 
-weblog_link = './'
-info_link = './info/'
-calib_link = './calib/'
-plots_link = './plots/'
-images_link = './images/'
+weblog_link = empaths.WEBLOG_LINK
+info_link = empaths.INFO_LINK
+calib_link = empaths.CALIB_LINK
+plots_link = empaths.PLOTS_LINK
+images_link = empaths.IMAGES_LINK
 
 line0 = '-' * 15
 
 def weblog_nav_item(weblog_link, name, link, active=False):
     """Creates a navigation item for the modern weblog."""
     active_class = ' active' if active else ''
-    return f'<li class="nav-item"><a class="nav-link{active_class}" href="{weblog_link}{link}.html">{name}</a></li>\n'
+    safe_name = html.escape(str(name))
+    safe_href = html.escape(f'{weblog_link}{link}.html', quote=True)
+    return f'<li class="nav-item"><a class="nav-link{active_class}" href="{safe_href}">{safe_name}</a></li>\n'
 
 def weblog_header(wlog, section, project):
-    weblog_link = './'
+    weblog_link = empaths.WEBLOG_LINK
+    safe_project = html.escape(str(project))
     wlog.write('<!DOCTYPE html>\n')
     wlog.write('<html lang="en">\n')
     wlog.write('<head>\n')
     wlog.write('  <meta charset="UTF-8">\n')
     wlog.write('  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n')
-    wlog.write(f'  <title>{project} - eMCP</title>\n')
+    wlog.write(f'  <title>{safe_project} - eMCP</title>\n')
     wlog.write(f'  <link rel="stylesheet" type="text/css" href="{weblog_link}eMCP_modern.css"/>\n')
     wlog.write(f'  <link rel="icon" href="{weblog_link}eMCP_logo.png">\n')
     wlog.write('</head>\n')
@@ -67,15 +72,15 @@ def weblog_header(wlog, section, project):
 
     # Main content container to the right of the sidebar
     wlog.write('<main class="main">\n')
-    wlog.write(f'  <div class="project-title">{project}</div>\n')
+    wlog.write(f'  <div class="project-title">{safe_project}</div>\n')
     wlog.write('  <section class="section">\n')
 
 
 def weblog_foot(wlog):
     """Creates a modern footer for the weblog."""
-    weblog_link = './'
+    weblog_link = empaths.WEBLOG_LINK
     wlog.write('    </section>\n')  # Close the main section
-    wlog.write('  </div>\n')  # Close the container
+    wlog.write('  </main>\n')  # Close the main content container
 
     # Footer
     wlog.write('  <footer class="footer">\n')
@@ -103,5 +108,7 @@ def weblog_foot(wlog):
 
 def write_link_txt(wlog, infile, intext, text='txt'):
     """Creates a link to a text file."""
-    wlog.write(f'<p>{intext}: <a href="{infile}" target="_blank">{text}</a></p>\n')
-
+    safe_intext = html.escape(str(intext))
+    safe_infile = html.escape(str(infile), quote=True)
+    safe_text = html.escape(str(text))
+    wlog.write(f'<p>{safe_intext}: <a href="{safe_infile}" target="_blank">{safe_text}</a></p>\n')

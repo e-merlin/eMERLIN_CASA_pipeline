@@ -1,13 +1,14 @@
 import os
+from ..utils import eMCP_paths as empaths
 
 def weblog_pipelineinfo(eMCP):
     """Create pipeline info page (pipelineinfo.html) for the weblog."""
     from .eMCP_weblog_modern import weblog_header, weblog_foot, write_link_txt
 
-    weblog_dir = './weblog/'
-    info_dir = './weblog/info/'
-    info_link = './info/'
-    calib_dir = './weblog/calib/'
+    weblog_dir = empaths.WEBLOG_DIR
+    info_dir = empaths.INFO_DIR
+    info_link = empaths.INFO_LINK
+    calib_dir = empaths.CALIB_DIR
 
     wlog = open(os.path.join(weblog_dir, "pipelineinfo.html"), "w")
     run_name = eMCP['msinfo'].get('run', eMCP['msinfo'].get('project', 'Pipeline'))

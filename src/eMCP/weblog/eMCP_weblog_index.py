@@ -1,9 +1,10 @@
 import os
+from ..utils import eMCP_paths as empaths
 from .eMCP_weblog_modern import weblog_header, weblog_foot, write_link_txt
 
 def weblog_index(msinfo):
     """Create the Home (index.html) page for the weblog."""
-    wlog = open("./weblog/index.html", "w")
+    wlog = open(os.path.join(empaths.WEBLOG_DIR, "index.html"), "w")
     weblog_header(wlog, 'Home', msinfo.get('run', msinfo.get('project', 'eMERLIN')))
 
     wlog.write('<div class="section centered">\n')
@@ -51,4 +52,3 @@ def weblog_index(msinfo):
 
     weblog_foot(wlog)
     wlog.close()
-

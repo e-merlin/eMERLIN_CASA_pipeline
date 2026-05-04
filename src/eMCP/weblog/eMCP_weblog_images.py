@@ -1,10 +1,11 @@
 import os
 import logging
 from html import escape
+from ..utils import eMCP_paths as empaths
 from .eMCP_weblog_modern import weblog_header, weblog_foot
 
 logger = logging.getLogger('logger')
-weblog_dir = './weblog/'
+weblog_dir = empaths.WEBLOG_DIR
 
 def check_any_image(eMCP):
     msinfo = eMCP['msinfo']

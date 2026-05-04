@@ -4,9 +4,10 @@ import logging
 import numpy as np
 from .eMCP_weblog_modern import weblog_header, weblog_foot
 from ..utils import eMCP_utils as emutils
+from ..utils import eMCP_paths as empaths
 
 logger = logging.getLogger('logger')
-weblog_dir = './weblog/'
+weblog_dir = empaths.WEBLOG_DIR
 
 def weblog_flagstats(msinfo):
     """Create flag statistics page with modern layout and sticky jump-to sidebar (calib-style)."""
@@ -27,28 +28,40 @@ def weblog_flagstats(msinfo):
     # Get list of steps that have plots
     available_steps = []
     for step in flagstats_steps:
-        scan_glob = glob.glob(f'./weblog/plots/plots_flagstats/*_flagstats_scans_{step}.png')
-        other_glob = glob.glob(f'./weblog/plots/plots_flagstats/*_flagstats_other_{step}.png')
+        scan_glob = glob.glob(
+            f'{empaths.PLOTS_FLAGSTATS_DIR}*_flagstats_scans_{step}.png')
+        other_glob = glob.glob(
+            f'{empaths.PLOTS_FLAGSTATS_DIR}*_flagstats_other_{step}.png')
         if scan_glob or other_glob:
             available_steps.append(step)
 
     # Process each step in the defined order
     prev_perc_flagged = 0.0
     for step in flagstats_steps:
-        flag_stats_file = './weblog/plots/plots_flagstats/flagstats_{}.yaml'.format(step)
+        flag_stats_file = '{}flagstats_{}.yaml'.format(
+            empaths.PLOTS_FLAGSTATS_DIR, step)
         if not os.path.isfile(flag_stats_file):
             continue
 
         try:
             flag_stats = emutils.load_obj(flag_stats_file)
-            perc_flagged = flag_stats['flagged'] / flag_stats['total'] * 100.
+            total_flags = flag_stats.get('total', 0)
+            if total_flags == 0:
+                logger.warning('Skipping empty flag statistics file: %s',
+                               flag_stats_file)
+                continue
+            perc_flagged = flag_stats['flagged'] / total_flags * 100.
             diff_flagged = perc_flagged - prev_perc_flagged
             prev_perc_flagged = perc_flagged
 
-            scan_plot_list = glob.glob('./weblog/plots/plots_flagstats/*_flagstats_scans_{}.png'.format(step))
+            scan_plot_list = glob.glob(
+                '{}*_flagstats_scans_{}.png'.format(
+                    empaths.PLOTS_FLAGSTATS_DIR, step))
             scan_plot = scan_plot_list[0] if scan_plot_list else None
 
-            other_plot_list = glob.glob('./weblog/plots/plots_flagstats/*_flagstats_other_{}.png'.format(step))
+            other_plot_list = glob.glob(
+                '{}*_flagstats_other_{}.png'.format(
+                    empaths.PLOTS_FLAGSTATS_DIR, step))
             other_plot = other_plot_list[0] if other_plot_list else None
 
             if scan_plot is not None or other_plot is not None:
@@ -81,7 +94,9 @@ def weblog_flagstats(msinfo):
             wlog.write('</div>\n')
 
     # Flag summary table if available
-    if os.path.isfile('./weblog/flagstats/flag_summary.txt'):
+    flag_summary_file = os.path.join(empaths.FLAGSTATS_DIR,
+                                     'flag_summary.txt')
+    if os.path.isfile(flag_summary_file):
         wlog.write('<div class="card mt-4 mb-4">\n')
         wlog.write('  <div class="card-header">\n')
         wlog.write('    <h3 class="mb-0">Flag Summary Table</h3>\n')
@@ -89,7 +104,7 @@ def weblog_flagstats(msinfo):
         wlog.write('  <div class="card-body">\n')
 
         try:
-            with open('./weblog/flagstats/flag_summary.txt', 'r') as f:
+            with open(flag_summary_file, 'r') as f:
                 flag_data = f.readlines()
 
             wlog.write('    <div class="table-responsive">\n')

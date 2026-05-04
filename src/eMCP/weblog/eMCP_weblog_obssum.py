@@ -1,12 +1,13 @@
 import os
 import glob
+from ..utils import eMCP_paths as empaths
 from .eMCP_weblog_modern import weblog_header, weblog_foot, write_link_txt
 
 def weblog_obssum(msinfo):
     """Creates the Observation summary page (obs_summary.html) for the weblog."""
-    weblog_dir = './weblog/'
-    info_dir = './weblog/info/'
-    info_link = './info/'
+    weblog_dir = empaths.WEBLOG_DIR
+    info_dir = empaths.INFO_DIR
+    info_link = empaths.INFO_LINK
 
     wlog = open(os.path.join(weblog_dir, "obs_summary.html"), "w")
     weblog_header(wlog, 'Observation summary', msinfo.get('run', msinfo.get('project', 'eMERLIN')))
@@ -175,7 +176,7 @@ def weblog_obssum(msinfo):
 
     # Elevation plots (try msfilename, fallback to any elevation plot)
     msfilename = msinfo.get('msfilename', None)
-    plots_dir = './weblog/plots/plots_observation/'
+    plots_dir = empaths.PLOTS_OBSERVATION_DIR
     elev_plots = []
     if msfilename:
         elev_plots = glob.glob(f'{plots_dir}{msfilename}_elevation.png')
