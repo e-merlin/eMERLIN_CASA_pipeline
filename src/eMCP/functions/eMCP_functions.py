@@ -1724,18 +1724,39 @@ def saveflagstatus(eMCP):
     return eMCP
 
 
+def _check_flag_version_exists(msfile, versionname):
+    """Return True if the named flag version exists inside msfile.flagversions/."""
+    flagversions_dir = msfile.rstrip('/') + '.flagversions'
+    version_dir = os.path.join(flagversions_dir, 'flags.' + versionname)
+    return os.path.isdir(version_dir)
+
+
 def restoreflagstatus(eMCP):
     msinfo = eMCP['msinfo']
     t0 = datetime.datetime.now(datetime.timezone.utc)
     logger.info('Starting restoreflagstatus')
     logger.info(
         'Restoring flagging status in versionname=\'initialize_flags\'')
+
+    if not _check_flag_version_exists(msinfo['msfile'], 'initialize_flags'):
+        logger.critical(
+            'Flag version "initialize_flags" does not exist for {0}. '
+            'Run the save_flags step first before restore_flags.'.format(
+                msinfo['msfile']))
+        exit_pipeline(eMCP)
+
     flagmanager(msinfo['msfile'],
                 mode='restore',
                 versionname='initialize_flags',
                 merge='replace')
     find_casa_problems()
     if eMCP['is_mixed_mode']:
+        if not _check_flag_version_exists(msinfo['msfile_sp'], 'initialize_flags'):
+            logger.critical(
+                'Flag version "initialize_flags" does not exist for {0}. '
+                'Run the save_flags step first before restore_flags.'.format(
+                    msinfo['msfile_sp']))
+            exit_pipeline(eMCP)
         flagmanager(msinfo['msfile_sp'],
                     mode='restore',
                     versionname='initialize_flags',
@@ -3689,20 +3710,20 @@ def process_fits(fitsfile, eMCP, s):
     emplt.fits2png(fitsfile,
                    rms=imstats_res['rms'],
                    scaling=scaling,
-                   contour=False)
+                   contour=True)
     emplt.fits2png(fitsfile,
                    rms=imstats_res['rms'],
                    scaling=scaling,
                    zoom=True,
-                   contour=False)
+                   contour=True)
     emplt.fits2png(fitsfile.replace('image.fits', 'residual.fits'),
                    scaling=scaling,
                    rms=imstats_res['rms'],
-                   contour=False)
+                   contour=True)
     emplt.fits2png(fitsfile.replace('image.fits', 'residual.fits'),
                    scaling=scaling,
                    rms=imstats_res['rms'],
-                   contour=False,
+                   contour=True,
                    zoom=True)
     return eMCP
 

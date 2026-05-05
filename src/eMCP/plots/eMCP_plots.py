@@ -1182,11 +1182,10 @@ def fits2png(fits_name,
     wcs_celestial = WCS(hdu.header).celestial
     img_tmp = fits.PrimaryHDU(hdu.data[0, 0] * 1000.,
                               header=wcs_celestial.to_header())
-    #ToDo I need to make this work when running tclean
-    # img_tmp.header['BUNIT'] = hdu.header['BUNIT']
-    # img_tmp.header['BMAJ'] = hdu.header['BMAJ']
-    # img_tmp.header['BMIN'] = hdu.header['BMIN']
-    # img_tmp.header['BPA'] = hdu.header['BPA']
+    # Copy beam info if available
+    for key in ['BUNIT', 'BMAJ', 'BMIN', 'BPA']:
+        if key in hdu.header:
+            img_tmp.header[key] = hdu.header[key]
     img_tmp.writeto(fits_name_tmp, overwrite=True)
 
     f = aplpy.FITSFigure(fits_name_tmp, figsize=(10, 8))
@@ -1231,9 +1230,12 @@ def fits2png(fits_name,
         f.beam.set_linewidth(1.5)
         f.beam.set_alpha(0.5)
     if contour:
-        levels = 3. * rms * 1000. * np.sqrt(3)**np.arange(1, 25, 1)
-        logger.info(f"levels: {levels*1000}")
-        f.show_contour(levels=levels, alpha=0.4)
+        levels = 5. * rms * 1000. * np.sqrt(3)**np.arange(1, 25, 1)
+        logger.debug(f"levels: {levels*1000}")
+        try:
+            f.show_contour(levels=levels, alpha=0.4, linewidths=0.5)
+        except Exception as e:
+            logger.warning(f"Could not add contours to {fits_name}: {e}")
     else:
         pass
         #levels = 3. * rms * 1000. * np.sqrt(3)**np.arange(1, 3, 1)

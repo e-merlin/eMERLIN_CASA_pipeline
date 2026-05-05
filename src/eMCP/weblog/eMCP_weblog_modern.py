@@ -80,8 +80,6 @@ def weblog_foot(wlog):
     """Creates a modern footer for the weblog."""
     weblog_link = empaths.WEBLOG_LINK
     wlog.write('    </section>\n')  # Close the main section
-    wlog.write('  </main>\n')  # Close the main content container
-
     # Footer
     wlog.write('  <footer class="footer">\n')
     wlog.write('    <div class="container">\n')
@@ -102,6 +100,7 @@ def weblog_foot(wlog):
     wlog.write('      </div>\n')
     wlog.write('    </div>\n')
     wlog.write('  </footer>\n')
+    wlog.write('  </main>\n')  # Close the main content container
     wlog.write('<a href="#top" class="back-to-top">↑ Top</a>\n')
     wlog.write('</body>\n')
     wlog.write('</html>\n')
