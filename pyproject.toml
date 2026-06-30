@@ -45,7 +45,7 @@ dependencies = [
     "casaconfig>=1.2.0,<1.5.0",
     
     "shadems>=0.5.4,<0.6.0",
-    "dask[dataframe]>=2023.1.1,<2024.0.0", # shadeMS 0.5.4 uses the pre-dask-expr DataFrame constructor
+    "dask>=2024.4.1,<2024.5.0", # dask (not dask[dataframe]) to avoid dask-expr which breaks shadems 0.5.4
 
     # Utility packages - incremental versioning
     "casatablebrowser>=0.0.33,<1.0.0", # 6.6.0→0.0.33, 6.6.4+→0.0.35, 6.7.0→0.0.37

@@ -877,7 +877,7 @@ def fluxscale_models(calfluxes, eMfactor, msinfo):
                           linewidth=2,
                           zorder=-5,
                           label=label)
-            color1 = str(p.get_color())
+            color1 = p.get_color()
             #ax1.errorbar(freq*factor_unit, flux, eflux, fmt = 'o', color =color1, mec = color1, zorder = 10)
             ax1.plot(freq * factor_unit,
                      flux,

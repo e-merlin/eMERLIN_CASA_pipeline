@@ -126,7 +126,7 @@ RUN apt-get update && \
       pyregion \
       protobuf==3.20 \
       'shadems>=0.5.4,<0.6.0' \
-      'dask[dataframe]>=2023.1.1,<2024.0.0' \
+      'dask>=2024.4.1,<2024.5.0' \
       casaconfig==1.4.0 \
       casatools==6.7.2.42 \
       casatasks==6.7.2.42 \
